@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRemisionesRouteImport } from './routes/_authenticated/remisiones'
+import { Route as AuthenticatedRedIpsRouteImport } from './routes/_authenticated/red-ips'
 import { Route as AuthenticatedHistorialRouteImport } from './routes/_authenticated/historial'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCasosRouteImport } from './routes/_authenticated/casos'
@@ -34,6 +35,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthenticatedRemisionesRoute = AuthenticatedRemisionesRouteImport.update({
   id: '/remisiones',
   path: '/remisiones',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedRedIpsRoute = AuthenticatedRedIpsRouteImport.update({
+  id: '/red-ips',
+  path: '/red-ips',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedHistorialRoute = AuthenticatedHistorialRouteImport.update({
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/casos': typeof AuthenticatedCasosRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/historial': typeof AuthenticatedHistorialRoute
+  '/red-ips': typeof AuthenticatedRedIpsRoute
   '/remisiones': typeof AuthenticatedRemisionesRoute
 }
 export interface FileRoutesByTo {
@@ -66,6 +73,7 @@ export interface FileRoutesByTo {
   '/casos': typeof AuthenticatedCasosRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/historial': typeof AuthenticatedHistorialRoute
+  '/red-ips': typeof AuthenticatedRedIpsRoute
   '/remisiones': typeof AuthenticatedRemisionesRoute
 }
 export interface FileRoutesById {
@@ -76,6 +84,7 @@ export interface FileRoutesById {
   '/_authenticated/casos': typeof AuthenticatedCasosRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/historial': typeof AuthenticatedHistorialRoute
+  '/_authenticated/red-ips': typeof AuthenticatedRedIpsRoute
   '/_authenticated/remisiones': typeof AuthenticatedRemisionesRoute
 }
 export interface FileRouteTypes {
@@ -86,9 +95,17 @@ export interface FileRouteTypes {
     | '/casos'
     | '/dashboard'
     | '/historial'
+    | '/red-ips'
     | '/remisiones'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/casos' | '/dashboard' | '/historial' | '/remisiones'
+  to:
+    | '/'
+    | '/login'
+    | '/casos'
+    | '/dashboard'
+    | '/historial'
+    | '/red-ips'
+    | '/remisiones'
   id:
     | '__root__'
     | '/'
@@ -97,6 +114,7 @@ export interface FileRouteTypes {
     | '/_authenticated/casos'
     | '/_authenticated/dashboard'
     | '/_authenticated/historial'
+    | '/_authenticated/red-ips'
     | '/_authenticated/remisiones'
   fileRoutesById: FileRoutesById
 }
@@ -136,6 +154,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRemisionesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/red-ips': {
+      id: '/_authenticated/red-ips'
+      path: '/red-ips'
+      fullPath: '/red-ips'
+      preLoaderRoute: typeof AuthenticatedRedIpsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/historial': {
       id: '/_authenticated/historial'
       path: '/historial'
@@ -164,6 +189,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedCasosRoute: typeof AuthenticatedCasosRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedHistorialRoute: typeof AuthenticatedHistorialRoute
+  AuthenticatedRedIpsRoute: typeof AuthenticatedRedIpsRoute
   AuthenticatedRemisionesRoute: typeof AuthenticatedRemisionesRoute
 }
 
@@ -171,6 +197,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedCasosRoute: AuthenticatedCasosRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedHistorialRoute: AuthenticatedHistorialRoute,
+  AuthenticatedRedIpsRoute: AuthenticatedRedIpsRoute,
   AuthenticatedRemisionesRoute: AuthenticatedRemisionesRoute,
 }
 
