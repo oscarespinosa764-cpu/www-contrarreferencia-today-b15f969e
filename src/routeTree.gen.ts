@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedSeguimientosRouteImport } from './routes/_authenticated/seguimientos'
 import { Route as AuthenticatedRemisionesRouteImport } from './routes/_authenticated/remisiones'
 import { Route as AuthenticatedRedIpsRouteImport } from './routes/_authenticated/red-ips'
 import { Route as AuthenticatedHistorialRouteImport } from './routes/_authenticated/historial'
@@ -32,6 +33,12 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedSeguimientosRoute =
+  AuthenticatedSeguimientosRouteImport.update({
+    id: '/seguimientos',
+    path: '/seguimientos',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedRemisionesRoute = AuthenticatedRemisionesRouteImport.update({
   id: '/remisiones',
   path: '/remisiones',
@@ -66,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/historial': typeof AuthenticatedHistorialRoute
   '/red-ips': typeof AuthenticatedRedIpsRoute
   '/remisiones': typeof AuthenticatedRemisionesRoute
+  '/seguimientos': typeof AuthenticatedSeguimientosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -75,6 +83,7 @@ export interface FileRoutesByTo {
   '/historial': typeof AuthenticatedHistorialRoute
   '/red-ips': typeof AuthenticatedRedIpsRoute
   '/remisiones': typeof AuthenticatedRemisionesRoute
+  '/seguimientos': typeof AuthenticatedSeguimientosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -86,6 +95,7 @@ export interface FileRoutesById {
   '/_authenticated/historial': typeof AuthenticatedHistorialRoute
   '/_authenticated/red-ips': typeof AuthenticatedRedIpsRoute
   '/_authenticated/remisiones': typeof AuthenticatedRemisionesRoute
+  '/_authenticated/seguimientos': typeof AuthenticatedSeguimientosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/historial'
     | '/red-ips'
     | '/remisiones'
+    | '/seguimientos'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/historial'
     | '/red-ips'
     | '/remisiones'
+    | '/seguimientos'
   id:
     | '__root__'
     | '/'
@@ -116,6 +128,7 @@ export interface FileRouteTypes {
     | '/_authenticated/historial'
     | '/_authenticated/red-ips'
     | '/_authenticated/remisiones'
+    | '/_authenticated/seguimientos'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -146,6 +159,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/seguimientos': {
+      id: '/_authenticated/seguimientos'
+      path: '/seguimientos'
+      fullPath: '/seguimientos'
+      preLoaderRoute: typeof AuthenticatedSeguimientosRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/remisiones': {
       id: '/_authenticated/remisiones'
@@ -191,6 +211,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedHistorialRoute: typeof AuthenticatedHistorialRoute
   AuthenticatedRedIpsRoute: typeof AuthenticatedRedIpsRoute
   AuthenticatedRemisionesRoute: typeof AuthenticatedRemisionesRoute
+  AuthenticatedSeguimientosRoute: typeof AuthenticatedSeguimientosRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -199,6 +220,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedHistorialRoute: AuthenticatedHistorialRoute,
   AuthenticatedRedIpsRoute: AuthenticatedRedIpsRoute,
   AuthenticatedRemisionesRoute: AuthenticatedRemisionesRoute,
+  AuthenticatedSeguimientosRoute: AuthenticatedSeguimientosRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
