@@ -168,5 +168,41 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-display);
+  }
+}
+
+@layer utilities {
+  .bg-gradient-brand {
+    background-image: var(--gradient-brand);
+  }
+  .text-gradient-accent {
+    background-image: var(--gradient-accent);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .shadow-modern {
+    box-shadow: var(--shadow-modern);
+  }
+  .glass-panel {
+    background-color: color-mix(in oklab, white 8%, transparent);
+    backdrop-filter: blur(12px);
+    border: 1px solid color-mix(in oklab, white 12%, transparent);
+  }
+  @keyframes blob {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(20px, -30px) scale(1.1); }
+    66% { transform: translate(-20px, 20px) scale(0.95); }
+  }
+  .animate-blob {
+    animation: blob 9s ease-in-out infinite;
+  }
+  .animation-delay-2000 {
+    animation-delay: 2s;
   }
 }
