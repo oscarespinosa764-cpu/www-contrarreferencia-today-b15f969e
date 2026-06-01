@@ -11,6 +11,23 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
+  head: () => ({
+    meta: [
+      { title: "Ingresar — CEDIM IPS Referencia" },
+      {
+        name: "description",
+        content:
+          "Acceso al sistema de coordinación de referencia y contrarreferencia de CEDIM IPS para el equipo autorizado.",
+      },
+      { property: "og:title", content: "Ingresar — CEDIM IPS Referencia" },
+      {
+        property: "og:description",
+        content:
+          "Acceso al sistema de coordinación de referencia y contrarreferencia de CEDIM IPS.",
+      },
+      { property: "og:type", content: "website" },
+    ],
+  }),
 });
 
 function LoginPage() {
@@ -59,7 +76,9 @@ function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-secondary to-accent px-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">CEDIM IPS</CardTitle>
+          <CardTitle asChild>
+            <h1 className="text-2xl font-semibold">CEDIM IPS</h1>
+          </CardTitle>
           <CardDescription>Referencia y Contrarreferencia</CardDescription>
         </CardHeader>
         <CardContent>
