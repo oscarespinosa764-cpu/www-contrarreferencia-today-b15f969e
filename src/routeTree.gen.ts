@@ -21,6 +21,7 @@ import { Route as AuthenticatedIndicadoresRouteImport } from './routes/_authenti
 import { Route as AuthenticatedHistoricosRouteImport } from './routes/_authenticated/historicos'
 import { Route as AuthenticatedHistorialRouteImport } from './routes/_authenticated/historial'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedControlMandoRouteImport } from './routes/_authenticated/control-mando'
 import { Route as AuthenticatedCatalogoRouteImport } from './routes/_authenticated/catalogo'
 import { Route as AuthenticatedCasosRouteImport } from './routes/_authenticated/casos'
 
@@ -85,6 +86,12 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedControlMandoRoute =
+  AuthenticatedControlMandoRouteImport.update({
+    id: '/control-mando',
+    path: '/control-mando',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedCatalogoRoute = AuthenticatedCatalogoRouteImport.update({
   id: '/catalogo',
   path: '/catalogo',
@@ -101,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/casos': typeof AuthenticatedCasosRoute
   '/catalogo': typeof AuthenticatedCatalogoRoute
+  '/control-mando': typeof AuthenticatedControlMandoRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/historial': typeof AuthenticatedHistorialRoute
   '/historicos': typeof AuthenticatedHistoricosRoute
@@ -116,6 +124,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/casos': typeof AuthenticatedCasosRoute
   '/catalogo': typeof AuthenticatedCatalogoRoute
+  '/control-mando': typeof AuthenticatedControlMandoRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/historial': typeof AuthenticatedHistorialRoute
   '/historicos': typeof AuthenticatedHistoricosRoute
@@ -133,6 +142,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/casos': typeof AuthenticatedCasosRoute
   '/_authenticated/catalogo': typeof AuthenticatedCatalogoRoute
+  '/_authenticated/control-mando': typeof AuthenticatedControlMandoRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/historial': typeof AuthenticatedHistorialRoute
   '/_authenticated/historicos': typeof AuthenticatedHistoricosRoute
@@ -150,6 +160,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/casos'
     | '/catalogo'
+    | '/control-mando'
     | '/dashboard'
     | '/historial'
     | '/historicos'
@@ -165,6 +176,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/casos'
     | '/catalogo'
+    | '/control-mando'
     | '/dashboard'
     | '/historial'
     | '/historicos'
@@ -181,6 +193,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/casos'
     | '/_authenticated/catalogo'
+    | '/_authenticated/control-mando'
     | '/_authenticated/dashboard'
     | '/_authenticated/historial'
     | '/_authenticated/historicos'
@@ -284,6 +297,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/control-mando': {
+      id: '/_authenticated/control-mando'
+      path: '/control-mando'
+      fullPath: '/control-mando'
+      preLoaderRoute: typeof AuthenticatedControlMandoRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/catalogo': {
       id: '/_authenticated/catalogo'
       path: '/catalogo'
@@ -304,6 +324,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteChildren {
   AuthenticatedCasosRoute: typeof AuthenticatedCasosRoute
   AuthenticatedCatalogoRoute: typeof AuthenticatedCatalogoRoute
+  AuthenticatedControlMandoRoute: typeof AuthenticatedControlMandoRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedHistorialRoute: typeof AuthenticatedHistorialRoute
   AuthenticatedHistoricosRoute: typeof AuthenticatedHistoricosRoute
@@ -318,6 +339,7 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedCasosRoute: AuthenticatedCasosRoute,
   AuthenticatedCatalogoRoute: AuthenticatedCatalogoRoute,
+  AuthenticatedControlMandoRoute: AuthenticatedControlMandoRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedHistorialRoute: AuthenticatedHistorialRoute,
   AuthenticatedHistoricosRoute: AuthenticatedHistoricosRoute,
