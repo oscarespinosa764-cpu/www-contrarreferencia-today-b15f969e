@@ -1,0 +1,7 @@
+# CEDIM IPS — Referencia y Contrarreferencia
+
+> Sistema interno de coordinación de referencia y contrarreferencia de CEDIM IPS. El acceso al sistema está restringido al equipo autorizado.
+
+## Pages
+
+- [Ingresar](/login): Acceso al sistema para el equipo autorizado de coordinación.
