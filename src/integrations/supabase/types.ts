@@ -14,16 +14,349 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      casos_entrantes: {
+        Row: {
+          apellidos: string | null
+          archivado: boolean
+          aseguramiento: string | null
+          cod_ref: string | null
+          codigo: string | null
+          created_at: string
+          created_by: string | null
+          detalle: string | null
+          documento: string | null
+          eapb: string | null
+          especialidad: string | null
+          estado: string | null
+          fecha: string | null
+          fecha_vence: string | null
+          hrs_reserva: string | null
+          id: string
+          ips: string | null
+          medico: string | null
+          nombres: string | null
+          regimen: string | null
+          texto_ia: string | null
+          tipo: string | null
+          unidad: string | null
+          updated_at: string
+        }
+        Insert: {
+          apellidos?: string | null
+          archivado?: boolean
+          aseguramiento?: string | null
+          cod_ref?: string | null
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          detalle?: string | null
+          documento?: string | null
+          eapb?: string | null
+          especialidad?: string | null
+          estado?: string | null
+          fecha?: string | null
+          fecha_vence?: string | null
+          hrs_reserva?: string | null
+          id?: string
+          ips?: string | null
+          medico?: string | null
+          nombres?: string | null
+          regimen?: string | null
+          texto_ia?: string | null
+          tipo?: string | null
+          unidad?: string | null
+          updated_at?: string
+        }
+        Update: {
+          apellidos?: string | null
+          archivado?: boolean
+          aseguramiento?: string | null
+          cod_ref?: string | null
+          codigo?: string | null
+          created_at?: string
+          created_by?: string | null
+          detalle?: string | null
+          documento?: string | null
+          eapb?: string | null
+          especialidad?: string | null
+          estado?: string | null
+          fecha?: string | null
+          fecha_vence?: string | null
+          hrs_reserva?: string | null
+          id?: string
+          ips?: string | null
+          medico?: string | null
+          nombres?: string | null
+          regimen?: string | null
+          texto_ia?: string | null
+          tipo?: string | null
+          unidad?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      catalogos: {
+        Row: {
+          activo: boolean
+          created_at: string
+          extra1: string | null
+          extra2: string | null
+          id: string
+          tipo: string
+          updated_at: string
+          valor: string
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string
+          extra1?: string | null
+          extra2?: string | null
+          id?: string
+          tipo: string
+          updated_at?: string
+          valor: string
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string
+          extra1?: string | null
+          extra2?: string | null
+          id?: string
+          tipo?: string
+          updated_at?: string
+          valor?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          activo: boolean
+          cargo: string | null
+          created_at: string
+          id: string
+          nombre: string | null
+          numero_documento: string | null
+          tipo_documento: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activo?: boolean
+          cargo?: string | null
+          created_at?: string
+          id?: string
+          nombre?: string | null
+          numero_documento?: string | null
+          tipo_documento?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activo?: boolean
+          cargo?: string | null
+          created_at?: string
+          id?: string
+          nombre?: string | null
+          numero_documento?: string | null
+          tipo_documento?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      remisiones: {
+        Row: {
+          archivado: boolean
+          asegurador: string | null
+          cama: string | null
+          cie10: string | null
+          codigo_radicacion: string | null
+          contacto_nombre: string | null
+          contacto_parentesco: string | null
+          contacto_telefono: string | null
+          created_at: string
+          created_by: string | null
+          documento: string | null
+          edad: string | null
+          especialidades_receptoras: string | null
+          especialidades_tratantes: string | null
+          especificacion: string | null
+          estado: string | null
+          evolucion: string | null
+          evolucion_detalle: string | null
+          fecha_inicio: string | null
+          fecha_radicado: string | null
+          id: string
+          ips_receptora: string | null
+          observaciones: string | null
+          paciente: string | null
+          pqrs: string | null
+          prestador_traslado: string | null
+          prioridad: string | null
+          regimen: string | null
+          remision_por: string | null
+          servicio: string | null
+          soportes: string | null
+          texto_ia: string | null
+          tipo_ambulancia: string | null
+          tipo_tramite: string | null
+          updated_at: string
+        }
+        Insert: {
+          archivado?: boolean
+          asegurador?: string | null
+          cama?: string | null
+          cie10?: string | null
+          codigo_radicacion?: string | null
+          contacto_nombre?: string | null
+          contacto_parentesco?: string | null
+          contacto_telefono?: string | null
+          created_at?: string
+          created_by?: string | null
+          documento?: string | null
+          edad?: string | null
+          especialidades_receptoras?: string | null
+          especialidades_tratantes?: string | null
+          especificacion?: string | null
+          estado?: string | null
+          evolucion?: string | null
+          evolucion_detalle?: string | null
+          fecha_inicio?: string | null
+          fecha_radicado?: string | null
+          id?: string
+          ips_receptora?: string | null
+          observaciones?: string | null
+          paciente?: string | null
+          pqrs?: string | null
+          prestador_traslado?: string | null
+          prioridad?: string | null
+          regimen?: string | null
+          remision_por?: string | null
+          servicio?: string | null
+          soportes?: string | null
+          texto_ia?: string | null
+          tipo_ambulancia?: string | null
+          tipo_tramite?: string | null
+          updated_at?: string
+        }
+        Update: {
+          archivado?: boolean
+          asegurador?: string | null
+          cama?: string | null
+          cie10?: string | null
+          codigo_radicacion?: string | null
+          contacto_nombre?: string | null
+          contacto_parentesco?: string | null
+          contacto_telefono?: string | null
+          created_at?: string
+          created_by?: string | null
+          documento?: string | null
+          edad?: string | null
+          especialidades_receptoras?: string | null
+          especialidades_tratantes?: string | null
+          especificacion?: string | null
+          estado?: string | null
+          evolucion?: string | null
+          evolucion_detalle?: string | null
+          fecha_inicio?: string | null
+          fecha_radicado?: string | null
+          id?: string
+          ips_receptora?: string | null
+          observaciones?: string | null
+          paciente?: string | null
+          pqrs?: string | null
+          prestador_traslado?: string | null
+          prioridad?: string | null
+          regimen?: string | null
+          remision_por?: string | null
+          servicio?: string | null
+          soportes?: string | null
+          texto_ia?: string | null
+          tipo_ambulancia?: string | null
+          tipo_tramite?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      seguimientos: {
+        Row: {
+          archivado: boolean
+          caso_id: string
+          created_at: string
+          created_by: string | null
+          detalle: string | null
+          id: string
+          nombre_usuario: string | null
+          radicado: string | null
+          tipo_caso: string
+          tipo_seguimiento: string | null
+          updated_at: string
+        }
+        Insert: {
+          archivado?: boolean
+          caso_id: string
+          created_at?: string
+          created_by?: string | null
+          detalle?: string | null
+          id?: string
+          nombre_usuario?: string | null
+          radicado?: string | null
+          tipo_caso: string
+          tipo_seguimiento?: string | null
+          updated_at?: string
+        }
+        Update: {
+          archivado?: boolean
+          caso_id?: string
+          created_at?: string
+          created_by?: string | null
+          detalle?: string | null
+          id?: string
+          nombre_usuario?: string | null
+          radicado?: string | null
+          tipo_caso?: string
+          tipo_seguimiento?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      can_edit: { Args: { _user_id: string }; Returns: boolean }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "operativa" | "temporal"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +483,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "operativa", "temporal"],
+    },
   },
 } as const
