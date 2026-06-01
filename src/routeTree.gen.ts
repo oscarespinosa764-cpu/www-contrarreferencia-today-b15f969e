@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedSeguimientosRouteImport } from './routes/_authenticated/seguimientos'
 import { Route as AuthenticatedRemisionesRouteImport } from './routes/_authenticated/remisiones'
 import { Route as AuthenticatedRedIpsRouteImport } from './routes/_authenticated/red-ips'
+import { Route as AuthenticatedPlantillasRouteImport } from './routes/_authenticated/plantillas'
 import { Route as AuthenticatedHistorialRouteImport } from './routes/_authenticated/historial'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCasosRouteImport } from './routes/_authenticated/casos'
@@ -49,6 +50,11 @@ const AuthenticatedRedIpsRoute = AuthenticatedRedIpsRouteImport.update({
   path: '/red-ips',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedPlantillasRoute = AuthenticatedPlantillasRouteImport.update({
+  id: '/plantillas',
+  path: '/plantillas',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedHistorialRoute = AuthenticatedHistorialRouteImport.update({
   id: '/historial',
   path: '/historial',
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/casos': typeof AuthenticatedCasosRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/historial': typeof AuthenticatedHistorialRoute
+  '/plantillas': typeof AuthenticatedPlantillasRoute
   '/red-ips': typeof AuthenticatedRedIpsRoute
   '/remisiones': typeof AuthenticatedRemisionesRoute
   '/seguimientos': typeof AuthenticatedSeguimientosRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/casos': typeof AuthenticatedCasosRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/historial': typeof AuthenticatedHistorialRoute
+  '/plantillas': typeof AuthenticatedPlantillasRoute
   '/red-ips': typeof AuthenticatedRedIpsRoute
   '/remisiones': typeof AuthenticatedRemisionesRoute
   '/seguimientos': typeof AuthenticatedSeguimientosRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/_authenticated/casos': typeof AuthenticatedCasosRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/historial': typeof AuthenticatedHistorialRoute
+  '/_authenticated/plantillas': typeof AuthenticatedPlantillasRoute
   '/_authenticated/red-ips': typeof AuthenticatedRedIpsRoute
   '/_authenticated/remisiones': typeof AuthenticatedRemisionesRoute
   '/_authenticated/seguimientos': typeof AuthenticatedSeguimientosRoute
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/casos'
     | '/dashboard'
     | '/historial'
+    | '/plantillas'
     | '/red-ips'
     | '/remisiones'
     | '/seguimientos'
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
     | '/casos'
     | '/dashboard'
     | '/historial'
+    | '/plantillas'
     | '/red-ips'
     | '/remisiones'
     | '/seguimientos'
@@ -126,6 +137,7 @@ export interface FileRouteTypes {
     | '/_authenticated/casos'
     | '/_authenticated/dashboard'
     | '/_authenticated/historial'
+    | '/_authenticated/plantillas'
     | '/_authenticated/red-ips'
     | '/_authenticated/remisiones'
     | '/_authenticated/seguimientos'
@@ -181,6 +193,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRedIpsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/plantillas': {
+      id: '/_authenticated/plantillas'
+      path: '/plantillas'
+      fullPath: '/plantillas'
+      preLoaderRoute: typeof AuthenticatedPlantillasRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/historial': {
       id: '/_authenticated/historial'
       path: '/historial'
@@ -209,6 +228,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedCasosRoute: typeof AuthenticatedCasosRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedHistorialRoute: typeof AuthenticatedHistorialRoute
+  AuthenticatedPlantillasRoute: typeof AuthenticatedPlantillasRoute
   AuthenticatedRedIpsRoute: typeof AuthenticatedRedIpsRoute
   AuthenticatedRemisionesRoute: typeof AuthenticatedRemisionesRoute
   AuthenticatedSeguimientosRoute: typeof AuthenticatedSeguimientosRoute
@@ -218,6 +238,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedCasosRoute: AuthenticatedCasosRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedHistorialRoute: AuthenticatedHistorialRoute,
+  AuthenticatedPlantillasRoute: AuthenticatedPlantillasRoute,
   AuthenticatedRedIpsRoute: AuthenticatedRedIpsRoute,
   AuthenticatedRemisionesRoute: AuthenticatedRemisionesRoute,
   AuthenticatedSeguimientosRoute: AuthenticatedSeguimientosRoute,
