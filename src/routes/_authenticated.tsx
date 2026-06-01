@@ -3,7 +3,6 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { Button } from "@/components/ui/button";
 import cedimLogo from "@/assets/cedim-logo.png";
 import {
   LayoutDashboard,
@@ -19,7 +18,7 @@ import {
   BookOpen,
   Gauge,
   Users,
-  LogOut,
+
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -79,7 +78,7 @@ const groups: NavGroup[] = [
 ];
 
 function AuthenticatedLayout() {
-  const { user, loading, signOut, roles, isAdmin } = useAuth();
+  const { user, loading, roles, isAdmin } = useAuth();
   const navigate = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
 
@@ -170,7 +169,7 @@ function AuthenticatedLayout() {
         </nav>
 
         <div className="border-t border-sidebar-border p-3">
-          <div className="flex items-center gap-3 px-1 pb-2">
+          <div className="flex items-center gap-3 px-1">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground text-sm font-bold">
               {inicial}
             </div>
@@ -182,17 +181,9 @@ function AuthenticatedLayout() {
               </p>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            onClick={() => signOut()}
-          >
-            <LogOut className="mr-2 h-4 w-4" /> Cerrar sesión
-          </Button>
         </div>
       </aside>
-      <main className="flex-1 overflow-auto p-6">
+      <main className="app-surface flex-1 overflow-auto p-6">
         <Outlet />
       </main>
     </div>
