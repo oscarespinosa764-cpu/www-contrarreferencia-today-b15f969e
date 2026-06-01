@@ -49,7 +49,10 @@ function LoginPage() {
     });
     setBusy(false);
     if (error) toast.error(error.message);
-    else toast.success("Cuenta creada. Revisa tu correo para confirmar el registro.");
+    else
+      toast.success(
+        "Cuenta creada. Revisa tu correo para confirmar el registro. Un administrador debe asignarte un rol antes de poder acceder a la información.",
+      );
   };
 
   return (
