@@ -79,7 +79,7 @@ const groups: NavGroup[] = [
 ];
 
 function AuthenticatedLayout() {
-  const { user, loading, signOut, roles, isAdmin } = useAuth();
+  const { user, loading, roles, isAdmin } = useAuth();
   const navigate = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
 
