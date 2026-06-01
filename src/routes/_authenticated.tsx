@@ -18,7 +18,7 @@ import {
   BookOpen,
   Gauge,
   Users,
-  LogOut,
+
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated")({
