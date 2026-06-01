@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as AuthenticatedSeguimientosRouteImport } from './routes/_authenticated/seguimientos'
 import { Route as AuthenticatedRemisionesRouteImport } from './routes/_authenticated/remisiones'
 import { Route as AuthenticatedReglasRouteImport } from './routes/_authenticated/reglas'
@@ -38,6 +39,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedSeguimientosRoute =
   AuthenticatedSeguimientosRouteImport.update({
@@ -118,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/reglas': typeof AuthenticatedReglasRoute
   '/remisiones': typeof AuthenticatedRemisionesRoute
   '/seguimientos': typeof AuthenticatedSeguimientosRoute
+  '/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -134,6 +141,7 @@ export interface FileRoutesByTo {
   '/reglas': typeof AuthenticatedReglasRoute
   '/remisiones': typeof AuthenticatedRemisionesRoute
   '/seguimientos': typeof AuthenticatedSeguimientosRoute
+  '/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -152,6 +160,7 @@ export interface FileRoutesById {
   '/_authenticated/reglas': typeof AuthenticatedReglasRoute
   '/_authenticated/remisiones': typeof AuthenticatedRemisionesRoute
   '/_authenticated/seguimientos': typeof AuthenticatedSeguimientosRoute
+  '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -170,6 +179,7 @@ export interface FileRouteTypes {
     | '/reglas'
     | '/remisiones'
     | '/seguimientos'
+    | '/usuarios'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/reglas'
     | '/remisiones'
     | '/seguimientos'
+    | '/usuarios'
   id:
     | '__root__'
     | '/'
@@ -203,6 +214,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reglas'
     | '/_authenticated/remisiones'
     | '/_authenticated/seguimientos'
+    | '/_authenticated/usuarios'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -233,6 +245,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/usuarios': {
+      id: '/_authenticated/usuarios'
+      path: '/usuarios'
+      fullPath: '/usuarios'
+      preLoaderRoute: typeof AuthenticatedUsuariosRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/seguimientos': {
       id: '/_authenticated/seguimientos'
@@ -334,6 +353,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedReglasRoute: typeof AuthenticatedReglasRoute
   AuthenticatedRemisionesRoute: typeof AuthenticatedRemisionesRoute
   AuthenticatedSeguimientosRoute: typeof AuthenticatedSeguimientosRoute
+  AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -349,6 +369,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedReglasRoute: AuthenticatedReglasRoute,
   AuthenticatedRemisionesRoute: AuthenticatedRemisionesRoute,
   AuthenticatedSeguimientosRoute: AuthenticatedSeguimientosRoute,
+  AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
