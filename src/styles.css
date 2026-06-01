@@ -194,6 +194,17 @@
   .bg-gradient-brand {
     background-image: var(--gradient-brand);
   }
+  .app-surface {
+    background-image: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--vitalis-blue) 8%, white),
+      color-mix(in oklab, var(--vitalis-blue) 14%, white)
+    );
+  }
+  .dark .app-surface {
+    background-image: none;
+    background-color: var(--background);
+  }
   .text-gradient-accent {
     background-image: var(--gradient-accent);
     -webkit-background-clip: text;
