@@ -122,6 +122,10 @@
 }
 
 .dark {
+  --vitalis-dark: oklch(0.2810 0.0923 254.94);
+  --vitalis-main: oklch(0.3538 0.1107 253.47);
+  --vitalis-blue: oklch(0.6789 0.1449 235.41);
+  --vitalis-teal: oklch(0.7603 0.1111 195.07);
   --background: oklch(0.129 0.042 264.695);
   --foreground: oklch(0.984 0.003 247.858);
   --card: oklch(0.208 0.042 265.755);
