@@ -83,6 +83,14 @@
   --vitalis-blue: oklch(0.6789 0.1449 235.41); /* #00A4E4 */
   --vitalis-teal: oklch(0.7603 0.1111 195.07); /* #45C7C7 */
 
+  /* Colores de estado (semáforo de tarjetas) */
+  --status-blue: oklch(0.6789 0.1449 235.41);
+  --status-green: oklch(0.7 0.16 152);
+  --status-red: oklch(0.62 0.22 25);
+  --status-amber: oklch(0.78 0.16 75);
+  --status-teal: oklch(0.7603 0.1111 195.07);
+  --status-sky: oklch(0.74 0.12 225);
+
   --gradient-brand: linear-gradient(
     135deg,
     var(--vitalis-dark),
