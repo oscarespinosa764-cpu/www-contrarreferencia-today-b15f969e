@@ -79,7 +79,7 @@ function UsuariosPage() {
         const rol = (u.roles[0] ?? "operativa") as Rol;
         if (filtroRol !== "todos" && rol !== filtroRol) return false;
         if (!term) return true;
-        return [u.nombre, u.documento, u.cargo, rolLabels[rol]]
+        return [u.nombre, u.numero_documento, u.cargo, rolLabels[rol]]
           .filter(Boolean)
           .join(" ")
           .toLowerCase()
@@ -169,7 +169,7 @@ function UsuariosPage() {
                   const esYo = u.user_id === user?.id;
                   return (
                     <tr key={u.id} className="border-b border-border/60 last:border-0">
-                      <td className="px-3 py-3 text-muted-foreground">{u.documento || "—"}</td>
+                      <td className="px-3 py-3 text-muted-foreground">{u.numero_documento || "—"}</td>
                       <td className="px-3 py-3 font-semibold text-foreground">
                         {u.nombre || "Sin nombre"}
                         {esYo && <span className="ml-1.5 text-xs font-normal text-muted-foreground">(tú)</span>}
