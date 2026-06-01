@@ -144,9 +144,11 @@ function LoginPage() {
 
         <div className="z-10 w-full max-w-md rounded-[2rem] border border-border bg-card p-8 shadow-modern lg:p-10">
           <div className="mb-8 text-center lg:hidden">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-vitalis-main text-2xl font-extrabold text-white">
-              C
-            </div>
+            <img
+              src={cedimLogo}
+              alt="Logo CEDIM IPS"
+              className="mx-auto h-16 w-auto"
+            />
           </div>
 
           <div className="mb-8">
