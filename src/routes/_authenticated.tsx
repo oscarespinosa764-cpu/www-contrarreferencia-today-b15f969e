@@ -124,8 +124,8 @@ function AuthenticatedLayout() {
     <div className="flex min-h-screen w-full bg-background">
       <aside className="flex w-64 flex-col bg-sidebar text-sidebar-foreground">
         <div className="flex items-center gap-3 border-b border-sidebar-border px-5 py-4">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground font-bold">
-            C
+          <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-white p-1">
+            <img src={cedimLogo} alt="Logo CEDIM IPS" className="h-full w-full object-contain" />
           </div>
           <div>
             <p className="text-base font-bold leading-tight">CEDIM IPS</p>
