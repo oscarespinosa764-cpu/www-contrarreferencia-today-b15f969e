@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedSeguimientosRouteImport } from './routes/_authenticated/seguimientos'
 import { Route as AuthenticatedRemisionesRouteImport } from './routes/_authenticated/remisiones'
+import { Route as AuthenticatedReglasRouteImport } from './routes/_authenticated/reglas'
 import { Route as AuthenticatedRedIpsRouteImport } from './routes/_authenticated/red-ips'
 import { Route as AuthenticatedPlantillasRouteImport } from './routes/_authenticated/plantillas'
 import { Route as AuthenticatedIndicadoresRouteImport } from './routes/_authenticated/indicadores'
@@ -44,6 +45,11 @@ const AuthenticatedSeguimientosRoute =
 const AuthenticatedRemisionesRoute = AuthenticatedRemisionesRouteImport.update({
   id: '/remisiones',
   path: '/remisiones',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedReglasRoute = AuthenticatedReglasRouteImport.update({
+  id: '/reglas',
+  path: '/reglas',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedRedIpsRoute = AuthenticatedRedIpsRouteImport.update({
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/indicadores': typeof AuthenticatedIndicadoresRoute
   '/plantillas': typeof AuthenticatedPlantillasRoute
   '/red-ips': typeof AuthenticatedRedIpsRoute
+  '/reglas': typeof AuthenticatedReglasRoute
   '/remisiones': typeof AuthenticatedRemisionesRoute
   '/seguimientos': typeof AuthenticatedSeguimientosRoute
 }
@@ -99,6 +106,7 @@ export interface FileRoutesByTo {
   '/indicadores': typeof AuthenticatedIndicadoresRoute
   '/plantillas': typeof AuthenticatedPlantillasRoute
   '/red-ips': typeof AuthenticatedRedIpsRoute
+  '/reglas': typeof AuthenticatedReglasRoute
   '/remisiones': typeof AuthenticatedRemisionesRoute
   '/seguimientos': typeof AuthenticatedSeguimientosRoute
 }
@@ -113,6 +121,7 @@ export interface FileRoutesById {
   '/_authenticated/indicadores': typeof AuthenticatedIndicadoresRoute
   '/_authenticated/plantillas': typeof AuthenticatedPlantillasRoute
   '/_authenticated/red-ips': typeof AuthenticatedRedIpsRoute
+  '/_authenticated/reglas': typeof AuthenticatedReglasRoute
   '/_authenticated/remisiones': typeof AuthenticatedRemisionesRoute
   '/_authenticated/seguimientos': typeof AuthenticatedSeguimientosRoute
 }
@@ -127,6 +136,7 @@ export interface FileRouteTypes {
     | '/indicadores'
     | '/plantillas'
     | '/red-ips'
+    | '/reglas'
     | '/remisiones'
     | '/seguimientos'
   fileRoutesByTo: FileRoutesByTo
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
     | '/indicadores'
     | '/plantillas'
     | '/red-ips'
+    | '/reglas'
     | '/remisiones'
     | '/seguimientos'
   id:
@@ -152,6 +163,7 @@ export interface FileRouteTypes {
     | '/_authenticated/indicadores'
     | '/_authenticated/plantillas'
     | '/_authenticated/red-ips'
+    | '/_authenticated/reglas'
     | '/_authenticated/remisiones'
     | '/_authenticated/seguimientos'
   fileRoutesById: FileRoutesById
@@ -197,6 +209,13 @@ declare module '@tanstack/react-router' {
       path: '/remisiones'
       fullPath: '/remisiones'
       preLoaderRoute: typeof AuthenticatedRemisionesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/reglas': {
+      id: '/_authenticated/reglas'
+      path: '/reglas'
+      fullPath: '/reglas'
+      preLoaderRoute: typeof AuthenticatedReglasRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/red-ips': {
@@ -251,6 +270,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedIndicadoresRoute: typeof AuthenticatedIndicadoresRoute
   AuthenticatedPlantillasRoute: typeof AuthenticatedPlantillasRoute
   AuthenticatedRedIpsRoute: typeof AuthenticatedRedIpsRoute
+  AuthenticatedReglasRoute: typeof AuthenticatedReglasRoute
   AuthenticatedRemisionesRoute: typeof AuthenticatedRemisionesRoute
   AuthenticatedSeguimientosRoute: typeof AuthenticatedSeguimientosRoute
 }
@@ -262,6 +282,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedIndicadoresRoute: AuthenticatedIndicadoresRoute,
   AuthenticatedPlantillasRoute: AuthenticatedPlantillasRoute,
   AuthenticatedRedIpsRoute: AuthenticatedRedIpsRoute,
+  AuthenticatedReglasRoute: AuthenticatedReglasRoute,
   AuthenticatedRemisionesRoute: AuthenticatedRemisionesRoute,
   AuthenticatedSeguimientosRoute: AuthenticatedSeguimientosRoute,
 }
