@@ -64,6 +64,12 @@
   --color-vitalis-main: var(--vitalis-main);
   --color-vitalis-blue: var(--vitalis-blue);
   --color-vitalis-teal: var(--vitalis-teal);
+  --color-status-blue: var(--status-blue);
+  --color-status-green: var(--status-green);
+  --color-status-red: var(--status-red);
+  --color-status-amber: var(--status-amber);
+  --color-status-teal: var(--status-teal);
+  --color-status-sky: var(--status-sky);
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Plus Jakarta Sans", "Inter", sans-serif;
 }
