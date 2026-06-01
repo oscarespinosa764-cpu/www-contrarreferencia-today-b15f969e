@@ -76,9 +76,7 @@ function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-secondary to-accent px-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center">
-          <CardTitle asChild>
-            <h1 className="text-2xl font-semibold">CEDIM IPS</h1>
-          </CardTitle>
+          <h1 className="text-2xl font-semibold leading-none tracking-tight">CEDIM IPS</h1>
           <CardDescription>Referencia y Contrarreferencia</CardDescription>
         </CardHeader>
         <CardContent>
