@@ -12,8 +12,18 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
+import { Route as AuthenticatedSeguimientosRouteImport } from './routes/_authenticated/seguimientos'
 import { Route as AuthenticatedRemisionesRouteImport } from './routes/_authenticated/remisiones'
+import { Route as AuthenticatedReglasRouteImport } from './routes/_authenticated/reglas'
+import { Route as AuthenticatedRedIpsRouteImport } from './routes/_authenticated/red-ips'
+import { Route as AuthenticatedPlantillasRouteImport } from './routes/_authenticated/plantillas'
+import { Route as AuthenticatedIndicadoresRouteImport } from './routes/_authenticated/indicadores'
+import { Route as AuthenticatedHistoricosRouteImport } from './routes/_authenticated/historicos'
+import { Route as AuthenticatedHistorialRouteImport } from './routes/_authenticated/historial'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedControlMandoRouteImport } from './routes/_authenticated/control-mando'
+import { Route as AuthenticatedCatalogoRouteImport } from './routes/_authenticated/catalogo'
 import { Route as AuthenticatedCasosRouteImport } from './routes/_authenticated/casos'
 
 const LoginRoute = LoginRouteImport.update({
@@ -30,14 +40,67 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedSeguimientosRoute =
+  AuthenticatedSeguimientosRouteImport.update({
+    id: '/seguimientos',
+    path: '/seguimientos',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedRemisionesRoute = AuthenticatedRemisionesRouteImport.update({
   id: '/remisiones',
   path: '/remisiones',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedReglasRoute = AuthenticatedReglasRouteImport.update({
+  id: '/reglas',
+  path: '/reglas',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedRedIpsRoute = AuthenticatedRedIpsRouteImport.update({
+  id: '/red-ips',
+  path: '/red-ips',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedPlantillasRoute = AuthenticatedPlantillasRouteImport.update({
+  id: '/plantillas',
+  path: '/plantillas',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedIndicadoresRoute =
+  AuthenticatedIndicadoresRouteImport.update({
+    id: '/indicadores',
+    path: '/indicadores',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedHistoricosRoute = AuthenticatedHistoricosRouteImport.update({
+  id: '/historicos',
+  path: '/historicos',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedHistorialRoute = AuthenticatedHistorialRouteImport.update({
+  id: '/historial',
+  path: '/historial',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedControlMandoRoute =
+  AuthenticatedControlMandoRouteImport.update({
+    id: '/control-mando',
+    path: '/control-mando',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedCatalogoRoute = AuthenticatedCatalogoRouteImport.update({
+  id: '/catalogo',
+  path: '/catalogo',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedCasosRoute = AuthenticatedCasosRouteImport.update({
@@ -50,15 +113,35 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/casos': typeof AuthenticatedCasosRoute
+  '/catalogo': typeof AuthenticatedCatalogoRoute
+  '/control-mando': typeof AuthenticatedControlMandoRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/historial': typeof AuthenticatedHistorialRoute
+  '/historicos': typeof AuthenticatedHistoricosRoute
+  '/indicadores': typeof AuthenticatedIndicadoresRoute
+  '/plantillas': typeof AuthenticatedPlantillasRoute
+  '/red-ips': typeof AuthenticatedRedIpsRoute
+  '/reglas': typeof AuthenticatedReglasRoute
   '/remisiones': typeof AuthenticatedRemisionesRoute
+  '/seguimientos': typeof AuthenticatedSeguimientosRoute
+  '/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/casos': typeof AuthenticatedCasosRoute
+  '/catalogo': typeof AuthenticatedCatalogoRoute
+  '/control-mando': typeof AuthenticatedControlMandoRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/historial': typeof AuthenticatedHistorialRoute
+  '/historicos': typeof AuthenticatedHistoricosRoute
+  '/indicadores': typeof AuthenticatedIndicadoresRoute
+  '/plantillas': typeof AuthenticatedPlantillasRoute
+  '/red-ips': typeof AuthenticatedRedIpsRoute
+  '/reglas': typeof AuthenticatedReglasRoute
   '/remisiones': typeof AuthenticatedRemisionesRoute
+  '/seguimientos': typeof AuthenticatedSeguimientosRoute
+  '/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -66,22 +149,72 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
   '/_authenticated/casos': typeof AuthenticatedCasosRoute
+  '/_authenticated/catalogo': typeof AuthenticatedCatalogoRoute
+  '/_authenticated/control-mando': typeof AuthenticatedControlMandoRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/historial': typeof AuthenticatedHistorialRoute
+  '/_authenticated/historicos': typeof AuthenticatedHistoricosRoute
+  '/_authenticated/indicadores': typeof AuthenticatedIndicadoresRoute
+  '/_authenticated/plantillas': typeof AuthenticatedPlantillasRoute
+  '/_authenticated/red-ips': typeof AuthenticatedRedIpsRoute
+  '/_authenticated/reglas': typeof AuthenticatedReglasRoute
   '/_authenticated/remisiones': typeof AuthenticatedRemisionesRoute
+  '/_authenticated/seguimientos': typeof AuthenticatedSeguimientosRoute
+  '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/casos' | '/dashboard' | '/remisiones'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/casos'
+    | '/catalogo'
+    | '/control-mando'
+    | '/dashboard'
+    | '/historial'
+    | '/historicos'
+    | '/indicadores'
+    | '/plantillas'
+    | '/red-ips'
+    | '/reglas'
+    | '/remisiones'
+    | '/seguimientos'
+    | '/usuarios'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/casos' | '/dashboard' | '/remisiones'
+  to:
+    | '/'
+    | '/login'
+    | '/casos'
+    | '/catalogo'
+    | '/control-mando'
+    | '/dashboard'
+    | '/historial'
+    | '/historicos'
+    | '/indicadores'
+    | '/plantillas'
+    | '/red-ips'
+    | '/reglas'
+    | '/remisiones'
+    | '/seguimientos'
+    | '/usuarios'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/login'
     | '/_authenticated/casos'
+    | '/_authenticated/catalogo'
+    | '/_authenticated/control-mando'
     | '/_authenticated/dashboard'
+    | '/_authenticated/historial'
+    | '/_authenticated/historicos'
+    | '/_authenticated/indicadores'
+    | '/_authenticated/plantillas'
+    | '/_authenticated/red-ips'
+    | '/_authenticated/reglas'
     | '/_authenticated/remisiones'
+    | '/_authenticated/seguimientos'
+    | '/_authenticated/usuarios'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -113,6 +246,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/usuarios': {
+      id: '/_authenticated/usuarios'
+      path: '/usuarios'
+      fullPath: '/usuarios'
+      preLoaderRoute: typeof AuthenticatedUsuariosRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/seguimientos': {
+      id: '/_authenticated/seguimientos'
+      path: '/seguimientos'
+      fullPath: '/seguimientos'
+      preLoaderRoute: typeof AuthenticatedSeguimientosRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/remisiones': {
       id: '/_authenticated/remisiones'
       path: '/remisiones'
@@ -120,11 +267,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRemisionesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/reglas': {
+      id: '/_authenticated/reglas'
+      path: '/reglas'
+      fullPath: '/reglas'
+      preLoaderRoute: typeof AuthenticatedReglasRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/red-ips': {
+      id: '/_authenticated/red-ips'
+      path: '/red-ips'
+      fullPath: '/red-ips'
+      preLoaderRoute: typeof AuthenticatedRedIpsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/plantillas': {
+      id: '/_authenticated/plantillas'
+      path: '/plantillas'
+      fullPath: '/plantillas'
+      preLoaderRoute: typeof AuthenticatedPlantillasRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/indicadores': {
+      id: '/_authenticated/indicadores'
+      path: '/indicadores'
+      fullPath: '/indicadores'
+      preLoaderRoute: typeof AuthenticatedIndicadoresRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/historicos': {
+      id: '/_authenticated/historicos'
+      path: '/historicos'
+      fullPath: '/historicos'
+      preLoaderRoute: typeof AuthenticatedHistoricosRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/historial': {
+      id: '/_authenticated/historial'
+      path: '/historial'
+      fullPath: '/historial'
+      preLoaderRoute: typeof AuthenticatedHistorialRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/control-mando': {
+      id: '/_authenticated/control-mando'
+      path: '/control-mando'
+      fullPath: '/control-mando'
+      preLoaderRoute: typeof AuthenticatedControlMandoRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/catalogo': {
+      id: '/_authenticated/catalogo'
+      path: '/catalogo'
+      fullPath: '/catalogo'
+      preLoaderRoute: typeof AuthenticatedCatalogoRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/casos': {
@@ -139,14 +342,34 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteChildren {
   AuthenticatedCasosRoute: typeof AuthenticatedCasosRoute
+  AuthenticatedCatalogoRoute: typeof AuthenticatedCatalogoRoute
+  AuthenticatedControlMandoRoute: typeof AuthenticatedControlMandoRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedHistorialRoute: typeof AuthenticatedHistorialRoute
+  AuthenticatedHistoricosRoute: typeof AuthenticatedHistoricosRoute
+  AuthenticatedIndicadoresRoute: typeof AuthenticatedIndicadoresRoute
+  AuthenticatedPlantillasRoute: typeof AuthenticatedPlantillasRoute
+  AuthenticatedRedIpsRoute: typeof AuthenticatedRedIpsRoute
+  AuthenticatedReglasRoute: typeof AuthenticatedReglasRoute
   AuthenticatedRemisionesRoute: typeof AuthenticatedRemisionesRoute
+  AuthenticatedSeguimientosRoute: typeof AuthenticatedSeguimientosRoute
+  AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedCasosRoute: AuthenticatedCasosRoute,
+  AuthenticatedCatalogoRoute: AuthenticatedCatalogoRoute,
+  AuthenticatedControlMandoRoute: AuthenticatedControlMandoRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedHistorialRoute: AuthenticatedHistorialRoute,
+  AuthenticatedHistoricosRoute: AuthenticatedHistoricosRoute,
+  AuthenticatedIndicadoresRoute: AuthenticatedIndicadoresRoute,
+  AuthenticatedPlantillasRoute: AuthenticatedPlantillasRoute,
+  AuthenticatedRedIpsRoute: AuthenticatedRedIpsRoute,
+  AuthenticatedReglasRoute: AuthenticatedReglasRoute,
   AuthenticatedRemisionesRoute: AuthenticatedRemisionesRoute,
+  AuthenticatedSeguimientosRoute: AuthenticatedSeguimientosRoute,
+  AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
