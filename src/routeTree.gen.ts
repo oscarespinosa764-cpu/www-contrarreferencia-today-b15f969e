@@ -16,6 +16,7 @@ import { Route as AuthenticatedSeguimientosRouteImport } from './routes/_authent
 import { Route as AuthenticatedRemisionesRouteImport } from './routes/_authenticated/remisiones'
 import { Route as AuthenticatedRedIpsRouteImport } from './routes/_authenticated/red-ips'
 import { Route as AuthenticatedPlantillasRouteImport } from './routes/_authenticated/plantillas'
+import { Route as AuthenticatedIndicadoresRouteImport } from './routes/_authenticated/indicadores'
 import { Route as AuthenticatedHistorialRouteImport } from './routes/_authenticated/historial'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCasosRouteImport } from './routes/_authenticated/casos'
@@ -55,6 +56,12 @@ const AuthenticatedPlantillasRoute = AuthenticatedPlantillasRouteImport.update({
   path: '/plantillas',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedIndicadoresRoute =
+  AuthenticatedIndicadoresRouteImport.update({
+    id: '/indicadores',
+    path: '/indicadores',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedHistorialRoute = AuthenticatedHistorialRouteImport.update({
   id: '/historial',
   path: '/historial',
@@ -77,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/casos': typeof AuthenticatedCasosRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/historial': typeof AuthenticatedHistorialRoute
+  '/indicadores': typeof AuthenticatedIndicadoresRoute
   '/plantillas': typeof AuthenticatedPlantillasRoute
   '/red-ips': typeof AuthenticatedRedIpsRoute
   '/remisiones': typeof AuthenticatedRemisionesRoute
@@ -88,6 +96,7 @@ export interface FileRoutesByTo {
   '/casos': typeof AuthenticatedCasosRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/historial': typeof AuthenticatedHistorialRoute
+  '/indicadores': typeof AuthenticatedIndicadoresRoute
   '/plantillas': typeof AuthenticatedPlantillasRoute
   '/red-ips': typeof AuthenticatedRedIpsRoute
   '/remisiones': typeof AuthenticatedRemisionesRoute
@@ -101,6 +110,7 @@ export interface FileRoutesById {
   '/_authenticated/casos': typeof AuthenticatedCasosRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/historial': typeof AuthenticatedHistorialRoute
+  '/_authenticated/indicadores': typeof AuthenticatedIndicadoresRoute
   '/_authenticated/plantillas': typeof AuthenticatedPlantillasRoute
   '/_authenticated/red-ips': typeof AuthenticatedRedIpsRoute
   '/_authenticated/remisiones': typeof AuthenticatedRemisionesRoute
@@ -114,6 +124,7 @@ export interface FileRouteTypes {
     | '/casos'
     | '/dashboard'
     | '/historial'
+    | '/indicadores'
     | '/plantillas'
     | '/red-ips'
     | '/remisiones'
@@ -125,6 +136,7 @@ export interface FileRouteTypes {
     | '/casos'
     | '/dashboard'
     | '/historial'
+    | '/indicadores'
     | '/plantillas'
     | '/red-ips'
     | '/remisiones'
@@ -137,6 +149,7 @@ export interface FileRouteTypes {
     | '/_authenticated/casos'
     | '/_authenticated/dashboard'
     | '/_authenticated/historial'
+    | '/_authenticated/indicadores'
     | '/_authenticated/plantillas'
     | '/_authenticated/red-ips'
     | '/_authenticated/remisiones'
@@ -200,6 +213,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPlantillasRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/indicadores': {
+      id: '/_authenticated/indicadores'
+      path: '/indicadores'
+      fullPath: '/indicadores'
+      preLoaderRoute: typeof AuthenticatedIndicadoresRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/historial': {
       id: '/_authenticated/historial'
       path: '/historial'
@@ -228,6 +248,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedCasosRoute: typeof AuthenticatedCasosRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedHistorialRoute: typeof AuthenticatedHistorialRoute
+  AuthenticatedIndicadoresRoute: typeof AuthenticatedIndicadoresRoute
   AuthenticatedPlantillasRoute: typeof AuthenticatedPlantillasRoute
   AuthenticatedRedIpsRoute: typeof AuthenticatedRedIpsRoute
   AuthenticatedRemisionesRoute: typeof AuthenticatedRemisionesRoute
@@ -238,6 +259,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedCasosRoute: AuthenticatedCasosRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedHistorialRoute: AuthenticatedHistorialRoute,
+  AuthenticatedIndicadoresRoute: AuthenticatedIndicadoresRoute,
   AuthenticatedPlantillasRoute: AuthenticatedPlantillasRoute,
   AuthenticatedRedIpsRoute: AuthenticatedRedIpsRoute,
   AuthenticatedRemisionesRoute: AuthenticatedRemisionesRoute,
