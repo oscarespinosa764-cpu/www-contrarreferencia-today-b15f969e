@@ -170,7 +170,7 @@ function AuthenticatedLayout() {
         </nav>
 
         <div className="border-t border-sidebar-border p-3">
-          <div className="flex items-center gap-3 px-1 pb-2">
+          <div className="flex items-center gap-3 px-1">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground text-sm font-bold">
               {inicial}
             </div>
@@ -182,17 +182,9 @@ function AuthenticatedLayout() {
               </p>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            onClick={() => signOut()}
-          >
-            <LogOut className="mr-2 h-4 w-4" /> Cerrar sesión
-          </Button>
         </div>
       </aside>
-      <main className="flex-1 overflow-auto p-6">
+      <main className="app-surface flex-1 overflow-auto p-6">
         <Outlet />
       </main>
     </div>
