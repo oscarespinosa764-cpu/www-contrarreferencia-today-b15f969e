@@ -21,6 +21,7 @@ import { Route as AuthenticatedIndicadoresRouteImport } from './routes/_authenti
 import { Route as AuthenticatedHistoricosRouteImport } from './routes/_authenticated/historicos'
 import { Route as AuthenticatedHistorialRouteImport } from './routes/_authenticated/historial'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedCatalogoRouteImport } from './routes/_authenticated/catalogo'
 import { Route as AuthenticatedCasosRouteImport } from './routes/_authenticated/casos'
 
 const LoginRoute = LoginRouteImport.update({
@@ -84,6 +85,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedCatalogoRoute = AuthenticatedCatalogoRouteImport.update({
+  id: '/catalogo',
+  path: '/catalogo',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedCasosRoute = AuthenticatedCasosRouteImport.update({
   id: '/casos',
   path: '/casos',
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/casos': typeof AuthenticatedCasosRoute
+  '/catalogo': typeof AuthenticatedCatalogoRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/historial': typeof AuthenticatedHistorialRoute
   '/historicos': typeof AuthenticatedHistoricosRoute
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/casos': typeof AuthenticatedCasosRoute
+  '/catalogo': typeof AuthenticatedCatalogoRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/historial': typeof AuthenticatedHistorialRoute
   '/historicos': typeof AuthenticatedHistoricosRoute
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
   '/_authenticated/casos': typeof AuthenticatedCasosRoute
+  '/_authenticated/catalogo': typeof AuthenticatedCatalogoRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/historial': typeof AuthenticatedHistorialRoute
   '/_authenticated/historicos': typeof AuthenticatedHistoricosRoute
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/casos'
+    | '/catalogo'
     | '/dashboard'
     | '/historial'
     | '/historicos'
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/casos'
+    | '/catalogo'
     | '/dashboard'
     | '/historial'
     | '/historicos'
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/login'
     | '/_authenticated/casos'
+    | '/_authenticated/catalogo'
     | '/_authenticated/dashboard'
     | '/_authenticated/historial'
     | '/_authenticated/historicos'
@@ -272,6 +284,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/catalogo': {
+      id: '/_authenticated/catalogo'
+      path: '/catalogo'
+      fullPath: '/catalogo'
+      preLoaderRoute: typeof AuthenticatedCatalogoRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/casos': {
       id: '/_authenticated/casos'
       path: '/casos'
@@ -284,6 +303,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteChildren {
   AuthenticatedCasosRoute: typeof AuthenticatedCasosRoute
+  AuthenticatedCatalogoRoute: typeof AuthenticatedCatalogoRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedHistorialRoute: typeof AuthenticatedHistorialRoute
   AuthenticatedHistoricosRoute: typeof AuthenticatedHistoricosRoute
@@ -297,6 +317,7 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedCasosRoute: AuthenticatedCasosRoute,
+  AuthenticatedCatalogoRoute: AuthenticatedCatalogoRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedHistorialRoute: AuthenticatedHistorialRoute,
   AuthenticatedHistoricosRoute: AuthenticatedHistoricosRoute,
