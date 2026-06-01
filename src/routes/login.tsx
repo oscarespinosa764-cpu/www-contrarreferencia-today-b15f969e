@@ -5,12 +5,29 @@ import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
+  head: () => ({
+    meta: [
+      { title: "Ingresar — CEDIM IPS Referencia" },
+      {
+        name: "description",
+        content:
+          "Acceso al sistema de coordinación de referencia y contrarreferencia de CEDIM IPS para el equipo autorizado.",
+      },
+      { property: "og:title", content: "Ingresar — CEDIM IPS Referencia" },
+      {
+        property: "og:description",
+        content:
+          "Acceso al sistema de coordinación de referencia y contrarreferencia de CEDIM IPS.",
+      },
+      { property: "og:type", content: "website" },
+    ],
+  }),
 });
 
 function LoginPage() {
@@ -59,7 +76,7 @@ function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-secondary to-accent px-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">CEDIM IPS</CardTitle>
+          <h1 className="text-2xl font-semibold leading-none tracking-tight">CEDIM IPS</h1>
           <CardDescription>Referencia y Contrarreferencia</CardDescription>
         </CardHeader>
         <CardContent>

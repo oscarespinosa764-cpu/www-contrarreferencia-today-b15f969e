@@ -23,6 +23,12 @@ import {
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthenticatedLayout,
+  head: () => ({
+    meta: [
+      { title: "Panel — CEDIM IPS Referencia" },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
 });
 
 type NavItem = {
@@ -121,7 +127,7 @@ function AuthenticatedLayout() {
             C
           </div>
           <div>
-            <h1 className="text-base font-bold leading-tight">CEDIM IPS</h1>
+            <p className="text-base font-bold leading-tight">CEDIM IPS</p>
             <p className="text-[11px] text-sidebar-foreground/60">Referencia y Contrarreferencia</p>
           </div>
         </div>
