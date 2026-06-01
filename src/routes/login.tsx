@@ -102,9 +102,11 @@ function LoginPage() {
         <div className="relative z-20 flex w-full max-w-3xl flex-col items-center text-center">
           <div className="mb-8 flex flex-row items-center justify-center gap-5">
             <div className="glass-panel shrink-0 rounded-2xl p-4">
-              <div className="flex h-20 w-20 items-center justify-center rounded-xl bg-white/95 text-3xl font-extrabold text-vitalis-main shadow-lg">
-                C
-              </div>
+              <img
+                src={cedimLogo}
+                alt="Logo CEDIM IPS"
+                className="h-24 w-auto rounded-xl bg-white/95 p-3 shadow-lg"
+              />
             </div>
             <h1 className="text-left font-display text-4xl font-extrabold leading-tight tracking-tight text-white xl:text-5xl">
               Gestión Integral <br />
