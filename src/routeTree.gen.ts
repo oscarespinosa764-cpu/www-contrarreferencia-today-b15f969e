@@ -18,6 +18,7 @@ import { Route as AuthenticatedReglasRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedRedIpsRouteImport } from './routes/_authenticated/red-ips'
 import { Route as AuthenticatedPlantillasRouteImport } from './routes/_authenticated/plantillas'
 import { Route as AuthenticatedIndicadoresRouteImport } from './routes/_authenticated/indicadores'
+import { Route as AuthenticatedHistoricosRouteImport } from './routes/_authenticated/historicos'
 import { Route as AuthenticatedHistorialRouteImport } from './routes/_authenticated/historial'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCasosRouteImport } from './routes/_authenticated/casos'
@@ -68,6 +69,11 @@ const AuthenticatedIndicadoresRoute =
     path: '/indicadores',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedHistoricosRoute = AuthenticatedHistoricosRouteImport.update({
+  id: '/historicos',
+  path: '/historicos',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedHistorialRoute = AuthenticatedHistorialRouteImport.update({
   id: '/historial',
   path: '/historial',
@@ -90,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/casos': typeof AuthenticatedCasosRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/historial': typeof AuthenticatedHistorialRoute
+  '/historicos': typeof AuthenticatedHistoricosRoute
   '/indicadores': typeof AuthenticatedIndicadoresRoute
   '/plantillas': typeof AuthenticatedPlantillasRoute
   '/red-ips': typeof AuthenticatedRedIpsRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/casos': typeof AuthenticatedCasosRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/historial': typeof AuthenticatedHistorialRoute
+  '/historicos': typeof AuthenticatedHistoricosRoute
   '/indicadores': typeof AuthenticatedIndicadoresRoute
   '/plantillas': typeof AuthenticatedPlantillasRoute
   '/red-ips': typeof AuthenticatedRedIpsRoute
@@ -118,6 +126,7 @@ export interface FileRoutesById {
   '/_authenticated/casos': typeof AuthenticatedCasosRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/historial': typeof AuthenticatedHistorialRoute
+  '/_authenticated/historicos': typeof AuthenticatedHistoricosRoute
   '/_authenticated/indicadores': typeof AuthenticatedIndicadoresRoute
   '/_authenticated/plantillas': typeof AuthenticatedPlantillasRoute
   '/_authenticated/red-ips': typeof AuthenticatedRedIpsRoute
@@ -133,6 +142,7 @@ export interface FileRouteTypes {
     | '/casos'
     | '/dashboard'
     | '/historial'
+    | '/historicos'
     | '/indicadores'
     | '/plantillas'
     | '/red-ips'
@@ -146,6 +156,7 @@ export interface FileRouteTypes {
     | '/casos'
     | '/dashboard'
     | '/historial'
+    | '/historicos'
     | '/indicadores'
     | '/plantillas'
     | '/red-ips'
@@ -160,6 +171,7 @@ export interface FileRouteTypes {
     | '/_authenticated/casos'
     | '/_authenticated/dashboard'
     | '/_authenticated/historial'
+    | '/_authenticated/historicos'
     | '/_authenticated/indicadores'
     | '/_authenticated/plantillas'
     | '/_authenticated/red-ips'
@@ -239,6 +251,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIndicadoresRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/historicos': {
+      id: '/_authenticated/historicos'
+      path: '/historicos'
+      fullPath: '/historicos'
+      preLoaderRoute: typeof AuthenticatedHistoricosRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/historial': {
       id: '/_authenticated/historial'
       path: '/historial'
@@ -267,6 +286,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedCasosRoute: typeof AuthenticatedCasosRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedHistorialRoute: typeof AuthenticatedHistorialRoute
+  AuthenticatedHistoricosRoute: typeof AuthenticatedHistoricosRoute
   AuthenticatedIndicadoresRoute: typeof AuthenticatedIndicadoresRoute
   AuthenticatedPlantillasRoute: typeof AuthenticatedPlantillasRoute
   AuthenticatedRedIpsRoute: typeof AuthenticatedRedIpsRoute
@@ -279,6 +299,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedCasosRoute: AuthenticatedCasosRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedHistorialRoute: AuthenticatedHistorialRoute,
+  AuthenticatedHistoricosRoute: AuthenticatedHistoricosRoute,
   AuthenticatedIndicadoresRoute: AuthenticatedIndicadoresRoute,
   AuthenticatedPlantillasRoute: AuthenticatedPlantillasRoute,
   AuthenticatedRedIpsRoute: AuthenticatedRedIpsRoute,
