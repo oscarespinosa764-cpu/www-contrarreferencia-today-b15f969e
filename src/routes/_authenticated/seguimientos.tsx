@@ -110,9 +110,9 @@ function SeguimientosPage() {
       <AppHeader title="Seguimientos" subtitle="Notas y avances registrados sobre cada caso en gestión" />
 
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <Resumen label="Total" value={seguimientos?.length ?? 0} color="border-l-status-blue text-status-blue" />
-        <Resumen label="Entrantes" value={totalEntrantes} color="border-l-status-green text-status-green" />
-        <Resumen label="Salientes" value={totalSalientes} color="border-l-status-teal text-status-teal" />
+        <StatCard title="Activos totales" value={seguimientos?.length ?? 0} caption="Casos en seguimiento" color="blue" />
+        <StatCard title="Entrantes" value={totalEntrantes} caption="Casos R&C entrantes" color="green" />
+        <StatCard title="Salientes" value={totalSalientes} caption="Remisiones salientes" color="teal" />
       </div>
 
       <Panel
