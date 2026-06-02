@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/app-header";
-import { Panel } from "@/components/stat-card";
+import { Panel, StatCard } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -110,9 +110,9 @@ function SeguimientosPage() {
       <AppHeader title="Seguimientos" subtitle="Notas y avances registrados sobre cada caso en gestión" />
 
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <Resumen label="Total" value={seguimientos?.length ?? 0} color="border-l-status-blue text-status-blue" />
-        <Resumen label="Entrantes" value={totalEntrantes} color="border-l-status-green text-status-green" />
-        <Resumen label="Salientes" value={totalSalientes} color="border-l-status-teal text-status-teal" />
+        <StatCard title="Activos totales" value={seguimientos?.length ?? 0} caption="Casos en seguimiento" color="blue" />
+        <StatCard title="Entrantes" value={totalEntrantes} caption="Casos R&C entrantes" color="green" />
+        <StatCard title="Salientes" value={totalSalientes} caption="Remisiones salientes" color="teal" />
       </div>
 
       <Panel
@@ -199,15 +199,6 @@ function SeguimientosPage() {
           </p>
         )}
       </Panel>
-    </div>
-  );
-}
-
-function Resumen({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <div className={`rounded-xl border border-border border-l-4 bg-card p-4 shadow-sm ${color.split(" ")[0]}`}>
-      <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className={`mt-1 text-2xl font-extrabold ${color.split(" ")[1]}`}>{value}</p>
     </div>
   );
 }

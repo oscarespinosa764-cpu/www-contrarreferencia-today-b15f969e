@@ -47,6 +47,28 @@ export function StatCard({
   );
 }
 
+/** Tarjeta compacta: número grande arriba y etiqueta debajo, dentro de un recuadro interior. */
+export function MiniStat({
+  label,
+  value,
+  color = "muted",
+}: {
+  label: string;
+  value: ReactNode;
+  color?: StatColor;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+      <div className="rounded-lg border border-border/60 bg-background/40 py-3 text-center">
+        <p className={`text-3xl font-extrabold leading-none ${valueColor[color]}`}>{value ?? "—"}</p>
+        <p className="mt-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+          {label}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 /** Banda de título de sección centrada (ej. "REFERENCIAS ENTRANTES"). */
 export function SectionTitle({ children }: { children: ReactNode }) {
   return (
