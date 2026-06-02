@@ -37,11 +37,12 @@ type NavItem = {
   badge?: "seguimientos";
 };
 
-type NavGroup = { label: string; adminOnly?: boolean; items: NavItem[] };
+type NavGroup = { label: string; abbr: string; adminOnly?: boolean; items: NavItem[] };
 
 const groups: NavGroup[] = [
   {
     label: "Principal",
+    abbr: "INI",
     items: [
       { to: "/dashboard", label: "Dashboard General", icon: LayoutDashboard },
       { to: "/historial", label: "Historial de Casos", icon: Search },
@@ -49,6 +50,7 @@ const groups: NavGroup[] = [
   },
   {
     label: "Remisiones salientes",
+    abbr: "SAL",
     items: [
       { to: "/remisiones", label: "Dashboard Operativo", icon: ClipboardList },
       { to: "/red-ips", label: "Red / Disponibilidad IPS", icon: Network },
@@ -56,6 +58,7 @@ const groups: NavGroup[] = [
   },
   {
     label: "Remisiones entrantes",
+    abbr: "ENT",
     items: [
       { to: "/casos", label: "Registrar Caso", icon: PlusCircle },
       { to: "/seguimientos", label: "Seguimientos", icon: ClipboardCheck, badge: "seguimientos" },
@@ -64,6 +67,7 @@ const groups: NavGroup[] = [
   },
   {
     label: "Gestión de coordinación",
+    abbr: "GES",
     adminOnly: true,
     items: [
       { to: "/indicadores", label: "Indicadores", icon: BarChart3 },
