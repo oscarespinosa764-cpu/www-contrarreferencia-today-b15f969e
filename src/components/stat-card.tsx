@@ -111,11 +111,14 @@ export function Panel({
   action,
   leftAction,
   children,
+  bodyMaxHeight = "24rem",
 }: {
   title?: ReactNode;
   action?: ReactNode;
   leftAction?: ReactNode;
   children: ReactNode;
+  /** Altura máxima del cuerpo; al superarla aparece scroll interno. Usa null para deshabilitar. */
+  bodyMaxHeight?: string | null;
 }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -130,7 +133,13 @@ export function Panel({
           {action && <div className="absolute right-0">{action}</div>}
         </div>
       )}
-      {children}
+      {bodyMaxHeight ? (
+        <div className="overflow-y-auto pr-1" style={{ maxHeight: bodyMaxHeight }}>
+          {children}
+        </div>
+      ) : (
+        children
+      )}
     </div>
   );
 }
