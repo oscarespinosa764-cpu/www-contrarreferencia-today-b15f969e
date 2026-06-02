@@ -37,11 +37,12 @@ type NavItem = {
   badge?: "seguimientos";
 };
 
-type NavGroup = { label: string; adminOnly?: boolean; items: NavItem[] };
+type NavGroup = { label: string; abbr: string; adminOnly?: boolean; items: NavItem[] };
 
 const groups: NavGroup[] = [
   {
     label: "Principal",
+    abbr: "INI",
     items: [
       { to: "/dashboard", label: "Dashboard General", icon: LayoutDashboard },
       { to: "/historial", label: "Historial de Casos", icon: Search },
@@ -49,6 +50,7 @@ const groups: NavGroup[] = [
   },
   {
     label: "Remisiones salientes",
+    abbr: "SAL",
     items: [
       { to: "/remisiones", label: "Dashboard Operativo", icon: ClipboardList },
       { to: "/red-ips", label: "Red / Disponibilidad IPS", icon: Network },
@@ -56,6 +58,7 @@ const groups: NavGroup[] = [
   },
   {
     label: "Remisiones entrantes",
+    abbr: "ENT",
     items: [
       { to: "/casos", label: "Registrar Caso", icon: PlusCircle },
       { to: "/seguimientos", label: "Seguimientos", icon: ClipboardCheck, badge: "seguimientos" },
@@ -64,6 +67,7 @@ const groups: NavGroup[] = [
   },
   {
     label: "Gestión de coordinación",
+    abbr: "GES",
     adminOnly: true,
     items: [
       { to: "/indicadores", label: "Indicadores", icon: BarChart3 },
@@ -170,7 +174,11 @@ function AuthenticatedLayout() {
             .filter((g) => !g.adminOnly || isAdmin)
             .map((group) => (
               <div key={group.label}>
-                {!collapsed && (
+                {collapsed ? (
+                  <p className="pb-1.5 text-center text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/45">
+                    {group.abbr}
+                  </p>
+                ) : (
                   <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/45">
                     {group.label}
                   </p>
@@ -183,7 +191,7 @@ function AuthenticatedLayout() {
                         key={item.to}
                         to={item.to}
                         title={collapsed ? item.label : undefined}
-                        className={`flex items-center rounded-md text-sm transition-colors ${
+                        className={`relative flex items-center rounded-md text-sm transition-colors ${
                           collapsed ? "justify-center px-2 py-2" : "gap-3 px-3 py-2"
                         } ${
                           active
