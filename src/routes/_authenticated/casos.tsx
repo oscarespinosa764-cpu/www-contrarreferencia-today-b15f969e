@@ -249,3 +249,43 @@ function Field({ name, label, required }: { name: string; label: string; require
     </div>
   );
 }
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="border-b border-border pb-1.5 text-[11px] font-extrabold uppercase tracking-wide text-muted-foreground">
+      {children}
+    </h3>
+  );
+}
+
+function SelectField({
+  name,
+  label,
+  options,
+  defaultValue,
+}: {
+  name: string;
+  label: string;
+  options: string[];
+  defaultValue?: string;
+}) {
+  const [value, setValue] = useState(defaultValue ?? "");
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <input type="hidden" name={name} value={value} />
+      <Select value={value} onValueChange={setValue}>
+        <SelectTrigger>
+          <SelectValue placeholder="Seleccionar…" />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((o) => (
+            <SelectItem key={o} value={o}>
+              {o}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
