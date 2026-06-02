@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { PageHeader } from "@/components/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AppHeader } from "@/components/app-header";
+import { StatCard, Panel } from "@/components/stat-card";
 
 export const Route = createFileRoute("/_authenticated/indicadores")({
   component: IndicadoresPage,
@@ -43,61 +43,53 @@ function IndicadoresPage() {
   });
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Indicadores" description="Resumen del desempeño de la coordinación de referencia y contrarreferencia." />
+    <div>
+      <AppHeader
+        title="Indicadores"
+        subtitle="Resumen del desempeño de la coordinación de referencia y contrarreferencia"
+      />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Entrantes activos" value={data?.entrantesActivos} />
-        <Stat label="Salientes activos" value={data?.salientesActivos} />
-        <Stat label="Seguimientos activos" value={data?.seguimientosActivos} />
-        <Stat label="Total histórico" value={(data?.entrantesTotal ?? 0) + (data?.salientesTotal ?? 0)} />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard title="Entrantes activos" value={data?.entrantesActivos} color="green" />
+        <StatCard title="Salientes activos" value={data?.salientesActivos} color="teal" />
+        <StatCard title="Seguimientos activos" value={data?.seguimientosActivos} color="blue" />
+        <StatCard
+          title="Total histórico"
+          value={(data?.entrantesTotal ?? 0) + (data?.salientesTotal ?? 0)}
+          color="muted"
+        />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <EstadoCard title="Casos entrantes por estado" rows={data?.estadoEntrantes ?? []} />
-        <EstadoCard title="Remisiones salientes por estado" rows={data?.estadoSalientes ?? []} />
+      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+        <Panel title="Casos entrantes por estado">
+          <EstadoLista rows={data?.estadoEntrantes ?? []} barColor="bg-status-green" />
+        </Panel>
+        <Panel title="Remisiones salientes por estado">
+          <EstadoLista rows={data?.estadoSalientes ?? []} barColor="bg-status-teal" />
+        </Panel>
       </div>
     </div>
   );
 }
 
-function Stat({ label, value }: { label: string; value?: number }) {
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-3xl font-bold">{value ?? "—"}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function EstadoCard({ title, rows }: { title: string; rows: [string, number][] }) {
+function EstadoLista({ rows, barColor }: { rows: [string, number][]; barColor: string }) {
   const total = rows.reduce((a, [, n]) => a + n, 0) || 1;
+  if (rows.length === 0) {
+    return <p className="py-6 text-center text-sm text-muted-foreground">Sin datos.</p>;
+  }
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Sin datos.</p>
-        ) : (
-          rows.map(([estado, n]) => (
-            <div key={estado} className="space-y-1">
-              <div className="flex justify-between text-sm">
-                <span className="text-foreground">{estado}</span>
-                <span className="text-muted-foreground">{n}</span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                <div className="h-full rounded-full bg-primary" style={{ width: `${(n / total) * 100}%` }} />
-              </div>
-            </div>
-          ))
-        )}
-      </CardContent>
-    </Card>
+    <div className="space-y-3">
+      {rows.map(([estado, n]) => (
+        <div key={estado} className="space-y-1">
+          <div className="flex justify-between text-sm">
+            <span className="text-foreground">{estado}</span>
+            <span className="text-muted-foreground">{n}</span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div className={`h-full rounded-full ${barColor}`} style={{ width: `${(n / total) * 100}%` }} />
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

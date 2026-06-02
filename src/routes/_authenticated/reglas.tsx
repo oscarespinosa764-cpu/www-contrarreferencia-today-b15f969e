@@ -1,16 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { PageHeader } from "@/components/page-header";
+import { AppHeader } from "@/components/app-header";
+import { Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Zap } from "lucide-react";
+import { Plus, Zap, Search } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/reglas")({
@@ -21,6 +21,7 @@ function ReglasPage() {
   const { isAdmin } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
 
   const { data: reglas, isLoading } = useQuery({
     queryKey: ["reglas"],
@@ -34,6 +35,15 @@ function ReglasPage() {
       return data;
     },
   });
+
+  const term = q.trim().toLowerCase();
+  const reglasF = useMemo(
+    () =>
+      (reglas ?? []).filter((r) =>
+        term ? [r.valor, r.extra1].filter(Boolean).join(" ").toLowerCase().includes(term) : true,
+      ),
+    [reglas, term],
+  );
 
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -51,16 +61,20 @@ function ReglasPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <PageHeader
+    <div>
+      <AppHeader
         title="Reglas Operativas"
-        description="Lineamientos y criterios estandarizados que el equipo debe seguir en cada gestión."
+        subtitle="Lineamientos y criterios estandarizados para cada gestión"
+      />
+
+      <Panel
+        title="Reglas operativas"
         action={
           isAdmin && (
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" /> Nueva regla
+                <Button size="sm" className="rounded-full">
+                  <Plus className="mr-1.5 h-4 w-4" /> Nueva regla
                 </Button>
               </DialogTrigger>
               <DialogContent>
@@ -84,30 +98,41 @@ function ReglasPage() {
             </Dialog>
           )
         }
-      />
-
-      {isLoading ? (
-        <p className="text-muted-foreground">Cargando…</p>
-      ) : reglas && reglas.length > 0 ? (
-        <div className="grid gap-3">
-          {reglas.map((r) => (
-            <Card key={r.id}>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Zap className="h-4 w-4 text-primary" /> {r.valor}
-                </CardTitle>
-              </CardHeader>
-              {r.extra1 && (
-                <CardContent>
-                  <p className="whitespace-pre-wrap text-sm text-muted-foreground">{r.extra1}</p>
-                </CardContent>
-              )}
-            </Card>
-          ))}
+      >
+        <div className="relative mb-4 mx-auto max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="rounded-full pl-9"
+            placeholder="Buscar regla…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
         </div>
-      ) : (
-        <p className="text-muted-foreground">Aún no hay reglas operativas definidas.</p>
-      )}
+
+        {isLoading ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Cargando…</p>
+        ) : reglasF.length > 0 ? (
+          <div className="grid gap-3">
+            {reglasF.map((r) => (
+              <div
+                key={r.id}
+                className="rounded-xl border border-border border-l-4 border-l-status-amber bg-card p-4 shadow-sm"
+              >
+                <p className="flex items-center gap-2 text-sm font-bold text-foreground">
+                  <Zap className="h-4 w-4 text-status-amber" /> {r.valor}
+                </p>
+                {r.extra1 && (
+                  <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">{r.extra1}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            Aún no hay reglas operativas definidas.
+          </p>
+        )}
+      </Panel>
     </div>
   );
 }

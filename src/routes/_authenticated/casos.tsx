@@ -1,18 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { generarTextoCaso } from "@/lib/ai.functions";
+import { AppHeader } from "@/components/app-header";
+import { Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Plus } from "lucide-react";
+import { Sparkles, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/casos")({
@@ -23,6 +24,7 @@ function CasosPage() {
   const { canEdit } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
   const [iaTexto, setIaTexto] = useState("");
   const [iaBusy, setIaBusy] = useState(false);
   const generar = useServerFn(generarTextoCaso);
@@ -39,6 +41,21 @@ function CasosPage() {
       return data;
     },
   });
+
+  const term = q.trim().toLowerCase();
+  const casosF = useMemo(
+    () =>
+      (casos ?? []).filter((c) =>
+        term
+          ? [c.nombres, c.apellidos, c.documento, c.codigo, c.ips, c.especialidad, c.estado]
+              .filter(Boolean)
+              .join(" ")
+              .toLowerCase()
+              .includes(term)
+          : true,
+      ),
+    [casos, term],
+  );
 
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -83,84 +100,112 @@ function CasosPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Casos entrantes (R&C)</h1>
-          <p className="text-muted-foreground">Casos que otras IPS remiten hacia CEDIM</p>
-        </div>
-        {canEdit && (
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button><Plus className="mr-2 h-4 w-4" /> Nuevo caso</Button>
-            </DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-auto sm:max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Nuevo caso entrante</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleCreate} className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field name="codigo" label="Código" />
-                  <Field name="documento" label="Documento" required />
-                  <Field name="nombres" label="Nombres" required />
-                  <Field name="apellidos" label="Apellidos" />
-                  <Field name="ips" label="IPS que remite" />
-                  <Field name="medico" label="Médico" />
-                  <Field name="especialidad" label="Especialidad" />
-                  <Field name="aseguramiento" label="Aseguramiento" />
-                  <Field name="estado" label="Estado" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="detalle">Detalle</Label>
-                  <Textarea id="detalle" name="detalle" rows={3} />
-                </div>
-                <div className="space-y-2 rounded-md border border-border p-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> Texto generado por IA</Label>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      disabled={iaBusy}
-                      onClick={(e) => handleIA(e.currentTarget.closest("form") as HTMLFormElement)}
-                    >
-                      {iaBusy ? "Generando…" : "Generar resumen"}
-                    </Button>
-                  </div>
-                  <Textarea value={iaTexto} onChange={(e) => setIaTexto(e.target.value)} rows={4} placeholder="Pulsa «Generar resumen» para crear el texto del caso con IA." />
-                </div>
-                <DialogFooter>
-                  <Button type="submit">Guardar caso</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        )}
-      </div>
+    <div>
+      <AppHeader title="Casos Entrantes (R&C)" subtitle="Casos que otras IPS remiten hacia CEDIM" />
 
-      {isLoading ? (
-        <p className="text-muted-foreground">Cargando…</p>
-      ) : casos && casos.length > 0 ? (
-        <div className="grid gap-3">
-          {casos.map((c) => (
-            <Card key={c.id}>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">{[c.nombres, c.apellidos].filter(Boolean).join(" ") || "Sin nombre"}</CardTitle>
+      <Panel
+        title="Casos entrantes activos"
+        action={
+          canEdit && (
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="rounded-full">
+                  <Plus className="mr-1.5 h-4 w-4" /> Nuevo caso
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-h-[90vh] overflow-auto sm:max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Nuevo caso entrante</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleCreate} className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field name="codigo" label="Código" />
+                    <Field name="documento" label="Documento" required />
+                    <Field name="nombres" label="Nombres" required />
+                    <Field name="apellidos" label="Apellidos" />
+                    <Field name="ips" label="IPS que remite" />
+                    <Field name="medico" label="Médico" />
+                    <Field name="especialidad" label="Especialidad" />
+                    <Field name="aseguramiento" label="Aseguramiento" />
+                    <Field name="estado" label="Estado" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="detalle">Detalle</Label>
+                    <Textarea id="detalle" name="detalle" rows={3} />
+                  </div>
+                  <div className="space-y-2 rounded-md border border-border p-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-primary" /> Texto generado por IA
+                      </Label>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="rounded-full"
+                        disabled={iaBusy}
+                        onClick={(e) => handleIA(e.currentTarget.closest("form") as HTMLFormElement)}
+                      >
+                        {iaBusy ? "Generando…" : "Generar resumen"}
+                      </Button>
+                    </div>
+                    <Textarea
+                      value={iaTexto}
+                      onChange={(e) => setIaTexto(e.target.value)}
+                      rows={4}
+                      placeholder="Pulsa «Generar resumen» para crear el texto del caso con IA."
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit">Guardar caso</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )
+        }
+      >
+        <div className="relative mb-4 mx-auto max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="rounded-full pl-9"
+            placeholder="Buscar por nombre, documento, código…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        </div>
+
+        {isLoading ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Cargando…</p>
+        ) : casosF.length > 0 ? (
+          <div className="grid gap-3">
+            {casosF.map((c) => (
+              <div
+                key={c.id}
+                className="rounded-xl border border-border border-l-4 border-l-status-blue bg-card p-4 shadow-sm"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-bold text-foreground">
+                    {[c.nombres, c.apellidos].filter(Boolean).join(" ") || "Sin nombre"}
+                  </p>
                   {c.estado && <Badge variant="outline">{c.estado}</Badge>}
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-1 text-sm text-muted-foreground">
-                <p>Doc: {c.documento || "—"} · {c.especialidad || "—"} · {c.ips || "—"}</p>
-                {c.codigo && <p>Código: {c.codigo}</p>}
-                {c.texto_ia && <p className="mt-2 rounded bg-muted p-2 text-foreground">{c.texto_ia}</p>}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <p className="text-muted-foreground">No hay casos entrantes registrados todavía.</p>
-      )}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Doc: {c.documento || "—"} · {c.especialidad || "—"} · {c.ips || "—"}
+                </p>
+                {c.codigo && <p className="text-xs text-muted-foreground">Código: {c.codigo}</p>}
+                {c.texto_ia && (
+                  <p className="mt-2 rounded bg-muted p-2 text-xs text-foreground">{c.texto_ia}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            No hay casos entrantes registrados todavía.
+          </p>
+        )}
+      </Panel>
     </div>
   );
 }
