@@ -24,7 +24,11 @@ function SeguimientosPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [casoSel, setCasoSel] = useState("");
+  const [tipoSeg, setTipoSeg] = useState("");
   const [q, setQ] = useState("");
+  const [filtroTipo, setFiltroTipo] = useState<"todos" | "entrante" | "saliente">("todos");
+
+  const TIPOS_SEG = ["Llamada", "Gestión", "Respuesta IPS", "Coordinación ambulancia", "Nota interna", "Cierre"];
 
   const { data: casos } = useQuery({
     queryKey: ["sel-casos"],
