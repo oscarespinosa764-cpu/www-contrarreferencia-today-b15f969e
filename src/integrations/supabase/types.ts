@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      avisos: {
+        Row: {
+          archivado: boolean
+          created_at: string
+          created_by: string | null
+          estado: string | null
+          fecha_final: string | null
+          fecha_inicio: string | null
+          id: string
+          mensaje: string | null
+          modulo: string | null
+          prioridad: string | null
+          updated_at: string
+        }
+        Insert: {
+          archivado?: boolean
+          created_at?: string
+          created_by?: string | null
+          estado?: string | null
+          fecha_final?: string | null
+          fecha_inicio?: string | null
+          id?: string
+          mensaje?: string | null
+          modulo?: string | null
+          prioridad?: string | null
+          updated_at?: string
+        }
+        Update: {
+          archivado?: boolean
+          created_at?: string
+          created_by?: string | null
+          estado?: string | null
+          fecha_final?: string | null
+          fecha_inicio?: string | null
+          id?: string
+          mensaje?: string | null
+          modulo?: string | null
+          prioridad?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       casos_entrantes: {
         Row: {
           apellidos: string | null
@@ -128,6 +170,446 @@ export type Database = {
         }
         Relationships: []
       }
+      control_mando: {
+        Row: {
+          accion: string | null
+          created_at: string
+          detalle: string | null
+          fecha: string
+          id: string
+          modulo: string | null
+          nombre_usuario: string | null
+          registro_id: string | null
+          rol: string | null
+          sesion_id: string | null
+          usuario: string | null
+        }
+        Insert: {
+          accion?: string | null
+          created_at?: string
+          detalle?: string | null
+          fecha?: string
+          id?: string
+          modulo?: string | null
+          nombre_usuario?: string | null
+          registro_id?: string | null
+          rol?: string | null
+          sesion_id?: string | null
+          usuario?: string | null
+        }
+        Update: {
+          accion?: string | null
+          created_at?: string
+          detalle?: string | null
+          fecha?: string
+          id?: string
+          modulo?: string | null
+          nombre_usuario?: string | null
+          registro_id?: string | null
+          rol?: string | null
+          sesion_id?: string | null
+          usuario?: string | null
+        }
+        Relationships: []
+      }
+      coordinacion: {
+        Row: {
+          archivado: boolean
+          caso_id: string | null
+          created_at: string
+          created_by: string | null
+          detalle: string | null
+          documento: string | null
+          estado: string | null
+          fecha_alerta: string | null
+          id: string
+          paciente: string | null
+          tipo: string | null
+          updated_at: string
+        }
+        Insert: {
+          archivado?: boolean
+          caso_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          detalle?: string | null
+          documento?: string | null
+          estado?: string | null
+          fecha_alerta?: string | null
+          id?: string
+          paciente?: string | null
+          tipo?: string | null
+          updated_at?: string
+        }
+        Update: {
+          archivado?: boolean
+          caso_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          detalle?: string | null
+          documento?: string | null
+          estado?: string | null
+          fecha_alerta?: string | null
+          id?: string
+          paciente?: string | null
+          tipo?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      domiciliarios: {
+        Row: {
+          archivado: boolean
+          created_at: string
+          created_by: string | null
+          detalle: string | null
+          documento: string | null
+          estado: string | null
+          evolucion: string | null
+          evolucion_detalle: string | null
+          fecha: string | null
+          id: string
+          ips: string | null
+          observaciones: string | null
+          paciente: string | null
+          prioridad: string | null
+          tipo_solicitud: string | null
+          unidad_especial: string | null
+          updated_at: string
+        }
+        Insert: {
+          archivado?: boolean
+          created_at?: string
+          created_by?: string | null
+          detalle?: string | null
+          documento?: string | null
+          estado?: string | null
+          evolucion?: string | null
+          evolucion_detalle?: string | null
+          fecha?: string | null
+          id?: string
+          ips?: string | null
+          observaciones?: string | null
+          paciente?: string | null
+          prioridad?: string | null
+          tipo_solicitud?: string | null
+          unidad_especial?: string | null
+          updated_at?: string
+        }
+        Update: {
+          archivado?: boolean
+          created_at?: string
+          created_by?: string | null
+          detalle?: string | null
+          documento?: string | null
+          estado?: string | null
+          evolucion?: string | null
+          evolucion_detalle?: string | null
+          fecha?: string | null
+          id?: string
+          ips?: string | null
+          observaciones?: string | null
+          paciente?: string | null
+          prioridad?: string | null
+          tipo_solicitud?: string | null
+          unidad_especial?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      historial_turnos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          entrega: string | null
+          fecha_guardado: string | null
+          id: string
+          rango_turno: string | null
+          recibe: string | null
+          snapshot: Json | null
+          turno: string | null
+          updated_at: string
+          usuario_inicio: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          entrega?: string | null
+          fecha_guardado?: string | null
+          id?: string
+          rango_turno?: string | null
+          recibe?: string | null
+          snapshot?: Json | null
+          turno?: string | null
+          updated_at?: string
+          usuario_inicio?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          entrega?: string | null
+          fecha_guardado?: string | null
+          id?: string
+          rango_turno?: string | null
+          recibe?: string | null
+          snapshot?: Json | null
+          turno?: string | null
+          updated_at?: string
+          usuario_inicio?: string | null
+        }
+        Relationships: []
+      }
+      historicos_casos: {
+        Row: {
+          archivado: boolean
+          asegurador: string | null
+          created_at: string
+          created_by: string | null
+          datos: Json | null
+          detalle: string | null
+          documento: string | null
+          estado: string | null
+          fecha: string | null
+          fuente_archivo: string | null
+          fuente_hoja: string | null
+          id: string
+          ips: string | null
+          paciente: string | null
+          radicado: string | null
+          seccion: string | null
+          tipo_caso: string | null
+          updated_at: string
+        }
+        Insert: {
+          archivado?: boolean
+          asegurador?: string | null
+          created_at?: string
+          created_by?: string | null
+          datos?: Json | null
+          detalle?: string | null
+          documento?: string | null
+          estado?: string | null
+          fecha?: string | null
+          fuente_archivo?: string | null
+          fuente_hoja?: string | null
+          id?: string
+          ips?: string | null
+          paciente?: string | null
+          radicado?: string | null
+          seccion?: string | null
+          tipo_caso?: string | null
+          updated_at?: string
+        }
+        Update: {
+          archivado?: boolean
+          asegurador?: string | null
+          created_at?: string
+          created_by?: string | null
+          datos?: Json | null
+          detalle?: string | null
+          documento?: string | null
+          estado?: string | null
+          fecha?: string | null
+          fuente_archivo?: string | null
+          fuente_hoja?: string | null
+          id?: string
+          ips?: string | null
+          paciente?: string | null
+          radicado?: string | null
+          seccion?: string | null
+          tipo_caso?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      indicadores: {
+        Row: {
+          activo: boolean
+          archivado: boolean
+          created_at: string
+          created_by: string | null
+          denominador: string | null
+          fuente: string | null
+          id: string
+          meta: number | null
+          nombre: string | null
+          numerador: string | null
+          sentido: string | null
+          tipo: string | null
+          unidad: string | null
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          archivado?: boolean
+          created_at?: string
+          created_by?: string | null
+          denominador?: string | null
+          fuente?: string | null
+          id?: string
+          meta?: number | null
+          nombre?: string | null
+          numerador?: string | null
+          sentido?: string | null
+          tipo?: string | null
+          unidad?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          archivado?: boolean
+          created_at?: string
+          created_by?: string | null
+          denominador?: string | null
+          fuente?: string | null
+          id?: string
+          meta?: number | null
+          nombre?: string | null
+          numerador?: string | null
+          sentido?: string | null
+          tipo?: string | null
+          unidad?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      mediciones_indicadores: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          denominador_valor: number | null
+          fecha: string | null
+          id: string
+          indicador_id: string
+          numerador_valor: number | null
+          resultado: number | null
+          semaforo: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          denominador_valor?: number | null
+          fecha?: string | null
+          id?: string
+          indicador_id: string
+          numerador_valor?: number | null
+          resultado?: number | null
+          semaforo?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          denominador_valor?: number | null
+          fecha?: string | null
+          id?: string
+          indicador_id?: string
+          numerador_valor?: number | null
+          resultado?: number | null
+          semaforo?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mediciones_indicadores_indicador_id_fkey"
+            columns: ["indicador_id"]
+            isOneToOne: false
+            referencedRelation: "indicadores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pendientes: {
+        Row: {
+          archivado: boolean
+          created_at: string
+          created_by: string | null
+          estado: string | null
+          fecha: string | null
+          id: string
+          ips_area: string | null
+          observacion_entrega: string | null
+          paciente_asunto: string | null
+          prioridad: string | null
+          tipo_pendiente: string | null
+          updated_at: string
+        }
+        Insert: {
+          archivado?: boolean
+          created_at?: string
+          created_by?: string | null
+          estado?: string | null
+          fecha?: string | null
+          id?: string
+          ips_area?: string | null
+          observacion_entrega?: string | null
+          paciente_asunto?: string | null
+          prioridad?: string | null
+          tipo_pendiente?: string | null
+          updated_at?: string
+        }
+        Update: {
+          archivado?: boolean
+          created_at?: string
+          created_by?: string | null
+          estado?: string | null
+          fecha?: string | null
+          id?: string
+          ips_area?: string | null
+          observacion_entrega?: string | null
+          paciente_asunto?: string | null
+          prioridad?: string | null
+          tipo_pendiente?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      plantillas: {
+        Row: {
+          activo: boolean
+          archivado: boolean
+          categoria: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          indicativo: string | null
+          mensaje: string | null
+          nombre: string | null
+          subcategoria: string | null
+          updated_at: string
+          variables: string | null
+        }
+        Insert: {
+          activo?: boolean
+          archivado?: boolean
+          categoria?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          indicativo?: string | null
+          mensaje?: string | null
+          nombre?: string | null
+          subcategoria?: string | null
+          updated_at?: string
+          variables?: string | null
+        }
+        Update: {
+          activo?: boolean
+          archivado?: boolean
+          categoria?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          indicativo?: string | null
+          mensaje?: string | null
+          nombre?: string | null
+          subcategoria?: string | null
+          updated_at?: string
+          variables?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           activo: boolean
@@ -161,6 +643,204 @@ export type Database = {
           tipo_documento?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      red_operativa: {
+        Row: {
+          archivado: boolean
+          categoria: string | null
+          ciudad: string | null
+          contacto: string | null
+          correo: string | null
+          created_at: string
+          created_by: string | null
+          cups: string | null
+          departamento: string | null
+          entidad: string | null
+          eps: string | null
+          estado: string | null
+          fecha_final: string | null
+          fecha_inicio: string | null
+          id: string
+          ips: string | null
+          link: string | null
+          medico: string | null
+          observaciones: string | null
+          rondas: string | null
+          servicio_especialidad: string | null
+          subcategoria: string | null
+          telefono: string | null
+          tipo_ambulancia: string | null
+          tipo_contacto: string | null
+          updated_at: string
+        }
+        Insert: {
+          archivado?: boolean
+          categoria?: string | null
+          ciudad?: string | null
+          contacto?: string | null
+          correo?: string | null
+          created_at?: string
+          created_by?: string | null
+          cups?: string | null
+          departamento?: string | null
+          entidad?: string | null
+          eps?: string | null
+          estado?: string | null
+          fecha_final?: string | null
+          fecha_inicio?: string | null
+          id?: string
+          ips?: string | null
+          link?: string | null
+          medico?: string | null
+          observaciones?: string | null
+          rondas?: string | null
+          servicio_especialidad?: string | null
+          subcategoria?: string | null
+          telefono?: string | null
+          tipo_ambulancia?: string | null
+          tipo_contacto?: string | null
+          updated_at?: string
+        }
+        Update: {
+          archivado?: boolean
+          categoria?: string | null
+          ciudad?: string | null
+          contacto?: string | null
+          correo?: string | null
+          created_at?: string
+          created_by?: string | null
+          cups?: string | null
+          departamento?: string | null
+          entidad?: string | null
+          eps?: string | null
+          estado?: string | null
+          fecha_final?: string | null
+          fecha_inicio?: string | null
+          id?: string
+          ips?: string | null
+          link?: string | null
+          medico?: string | null
+          observaciones?: string | null
+          rondas?: string | null
+          servicio_especialidad?: string | null
+          subcategoria?: string | null
+          telefono?: string | null
+          tipo_ambulancia?: string | null
+          tipo_contacto?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      referencia_interna: {
+        Row: {
+          archivado: boolean
+          created_at: string
+          created_by: string | null
+          documento: string | null
+          estado: string | null
+          evolucion: string | null
+          evolucion_detalle: string | null
+          fecha: string | null
+          id: string
+          observaciones: string | null
+          paciente: string | null
+          prioridad: string | null
+          proveedor_prestador: string | null
+          servicio: string | null
+          tipo_solicitud: string | null
+          updated_at: string
+        }
+        Insert: {
+          archivado?: boolean
+          created_at?: string
+          created_by?: string | null
+          documento?: string | null
+          estado?: string | null
+          evolucion?: string | null
+          evolucion_detalle?: string | null
+          fecha?: string | null
+          id?: string
+          observaciones?: string | null
+          paciente?: string | null
+          prioridad?: string | null
+          proveedor_prestador?: string | null
+          servicio?: string | null
+          tipo_solicitud?: string | null
+          updated_at?: string
+        }
+        Update: {
+          archivado?: boolean
+          created_at?: string
+          created_by?: string | null
+          documento?: string | null
+          estado?: string | null
+          evolucion?: string | null
+          evolucion_detalle?: string | null
+          fecha?: string | null
+          id?: string
+          observaciones?: string | null
+          paciente?: string | null
+          prioridad?: string | null
+          proveedor_prestador?: string | null
+          servicio?: string | null
+          tipo_solicitud?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      reglas_operativas: {
+        Row: {
+          accion: string | null
+          activo: boolean
+          archivado: boolean
+          campo: string | null
+          created_at: string
+          created_by: string | null
+          horas: number | null
+          id: string
+          mensaje: string | null
+          modulo: string | null
+          nivel: string | null
+          nombre: string | null
+          tipo_condicion: string | null
+          updated_at: string
+          valor: string | null
+        }
+        Insert: {
+          accion?: string | null
+          activo?: boolean
+          archivado?: boolean
+          campo?: string | null
+          created_at?: string
+          created_by?: string | null
+          horas?: number | null
+          id?: string
+          mensaje?: string | null
+          modulo?: string | null
+          nivel?: string | null
+          nombre?: string | null
+          tipo_condicion?: string | null
+          updated_at?: string
+          valor?: string | null
+        }
+        Update: {
+          accion?: string | null
+          activo?: boolean
+          archivado?: boolean
+          campo?: string | null
+          created_at?: string
+          created_by?: string | null
+          horas?: number | null
+          id?: string
+          mensaje?: string | null
+          modulo?: string | null
+          nivel?: string | null
+          nombre?: string | null
+          tipo_condicion?: string | null
+          updated_at?: string
+          valor?: string | null
         }
         Relationships: []
       }
@@ -317,6 +997,51 @@ export type Database = {
           tipo_caso?: string
           tipo_seguimiento?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      turnos: {
+        Row: {
+          activo: boolean
+          created_at: string
+          created_by: string | null
+          entrega: string | null
+          fecha_guardado: string | null
+          id: string
+          pendientes_generales: string | null
+          rango_turno: string | null
+          recibe: string | null
+          turno: string | null
+          updated_at: string
+          usuario_inicio: string | null
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string
+          created_by?: string | null
+          entrega?: string | null
+          fecha_guardado?: string | null
+          id?: string
+          pendientes_generales?: string | null
+          rango_turno?: string | null
+          recibe?: string | null
+          turno?: string | null
+          updated_at?: string
+          usuario_inicio?: string | null
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string
+          created_by?: string | null
+          entrega?: string | null
+          fecha_guardado?: string | null
+          id?: string
+          pendientes_generales?: string | null
+          rango_turno?: string | null
+          recibe?: string | null
+          turno?: string | null
+          updated_at?: string
+          usuario_inicio?: string | null
         }
         Relationships: []
       }
