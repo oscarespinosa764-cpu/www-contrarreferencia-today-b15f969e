@@ -84,7 +84,8 @@ function Dashboard() {
         <StatCard title="Pendientes generales" value={data?.pendAbiertos} caption="Otros pendientes" color="amber" />
         <StatCard title="Acep. pendiente ambulancia" value={data?.rem.acepPendienteAmbulancia} caption="Traslado por coordinar" color="sky" />
         <StatCard title="Acep. ambulancia coordinada" value={data?.rem.acepAmbulanciaCoordinada} caption="Traslado ya definido" color="green" />
-        <StatCard title="Desistimientos de remisión" value={(data?.rem.desistIps ?? 0) + (data?.rem.desistGeneral ?? 0)} caption={`IPS: ${data?.rem.desistIps ?? 0} · General: ${data?.rem.desistGeneral ?? 0}`} color="muted" />
+        <StatCard title="Desistimiento IPS / DPTO específico" value={data?.rem.desistIps} caption="Desistimientos hacia IPS o depto. específico" color="muted" />
+        <StatCard title="Desistimiento remisión general" value={data?.rem.desistGeneral} caption="Desistimientos de remisión general" color="muted" />
       </div>
 
       <SectionTitle>Referencias entrantes</SectionTitle>
