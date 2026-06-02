@@ -191,7 +191,7 @@ function AuthenticatedLayout() {
                         key={item.to}
                         to={item.to}
                         title={collapsed ? item.label : undefined}
-                        className={`flex items-center rounded-md text-sm transition-colors ${
+                        className={`relative flex items-center rounded-md text-sm transition-colors ${
                           collapsed ? "justify-center px-2 py-2" : "gap-3 px-3 py-2"
                         } ${
                           active
