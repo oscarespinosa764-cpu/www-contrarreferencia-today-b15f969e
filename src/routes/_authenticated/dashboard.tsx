@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/app-header";
 import { StatCard, SplitStatCard, MiniStat, SectionTitle, Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
+import { ProgramarAlertasDialog } from "@/components/coordinacion/programar-alertas-dialog";
 import {
   metricasRemisiones,
   metricasCasos,
@@ -132,9 +133,9 @@ function Dashboard() {
         <Panel
           title="Avisos operativos"
           action={
-            <Button asChild variant="outline" size="sm" className="rounded-full">
-              <Link to="/remisiones">Ver avisos</Link>
-            </Button>
+            <span className="rounded-full border border-border bg-secondary px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-secondary-foreground">
+              {data?.avisosActivos ?? 0} activos
+            </span>
           }
         >
           {(data?.avisosActivos ?? 0) === 0 ? (
@@ -217,13 +218,17 @@ function Dashboard() {
         <Panel
           title="Alertas de coordinación"
           leftAction={
-            <Button asChild variant="outline" size="sm" className="rounded-full">
-              <Link to="/remisiones">Programar</Link>
-            </Button>
+            <ProgramarAlertasDialog
+              trigger={
+                <Button variant="outline" size="sm" className="rounded-full">
+                  Programar
+                </Button>
+              }
+            />
           }
           action={
             <Button asChild variant="outline" size="sm" className="rounded-full">
-              <Link to="/remisiones">Gestionar</Link>
+              <Link to="/reglas">Gestionar</Link>
             </Button>
           }
         >
