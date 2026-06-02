@@ -218,13 +218,17 @@ function Dashboard() {
         <Panel
           title="Alertas de coordinación"
           leftAction={
-            <Button asChild variant="outline" size="sm" className="rounded-full">
-              <Link to="/remisiones">Programar</Link>
-            </Button>
+            <ProgramarAlertasDialog
+              trigger={
+                <Button variant="outline" size="sm" className="rounded-full">
+                  Programar
+                </Button>
+              }
+            />
           }
           action={
             <Button asChild variant="outline" size="sm" className="rounded-full">
-              <Link to="/remisiones">Gestionar</Link>
+              <Link to="/reglas">Gestionar</Link>
             </Button>
           }
         >
