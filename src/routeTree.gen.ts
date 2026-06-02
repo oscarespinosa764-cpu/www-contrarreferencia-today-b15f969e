@@ -13,14 +13,12 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as AuthenticatedSeguimientosRouteImport } from './routes/_authenticated/seguimientos'
 import { Route as AuthenticatedRemisionesRouteImport } from './routes/_authenticated/remisiones'
 import { Route as AuthenticatedReglasRouteImport } from './routes/_authenticated/reglas'
 import { Route as AuthenticatedRedIpsRouteImport } from './routes/_authenticated/red-ips'
 import { Route as AuthenticatedPlantillasRouteImport } from './routes/_authenticated/plantillas'
 import { Route as AuthenticatedIndicadoresRouteImport } from './routes/_authenticated/indicadores'
-import { Route as AuthenticatedHistoricosRouteImport } from './routes/_authenticated/historicos'
 import { Route as AuthenticatedHistorialRouteImport } from './routes/_authenticated/historial'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedControlMandoRouteImport } from './routes/_authenticated/control-mando'
@@ -45,11 +43,6 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
-  id: '/usuarios',
-  path: '/usuarios',
-  getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedSeguimientosRoute =
   AuthenticatedSeguimientosRouteImport.update({
@@ -83,11 +76,6 @@ const AuthenticatedIndicadoresRoute =
     path: '/indicadores',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedHistoricosRoute = AuthenticatedHistoricosRouteImport.update({
-  id: '/historicos',
-  path: '/historicos',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 const AuthenticatedHistorialRoute = AuthenticatedHistorialRouteImport.update({
   id: '/historial',
   path: '/historial',
@@ -124,14 +112,12 @@ export interface FileRoutesByFullPath {
   '/control-mando': typeof AuthenticatedControlMandoRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/historial': typeof AuthenticatedHistorialRoute
-  '/historicos': typeof AuthenticatedHistoricosRoute
   '/indicadores': typeof AuthenticatedIndicadoresRoute
   '/plantillas': typeof AuthenticatedPlantillasRoute
   '/red-ips': typeof AuthenticatedRedIpsRoute
   '/reglas': typeof AuthenticatedReglasRoute
   '/remisiones': typeof AuthenticatedRemisionesRoute
   '/seguimientos': typeof AuthenticatedSeguimientosRoute
-  '/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -142,14 +128,12 @@ export interface FileRoutesByTo {
   '/control-mando': typeof AuthenticatedControlMandoRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/historial': typeof AuthenticatedHistorialRoute
-  '/historicos': typeof AuthenticatedHistoricosRoute
   '/indicadores': typeof AuthenticatedIndicadoresRoute
   '/plantillas': typeof AuthenticatedPlantillasRoute
   '/red-ips': typeof AuthenticatedRedIpsRoute
   '/reglas': typeof AuthenticatedReglasRoute
   '/remisiones': typeof AuthenticatedRemisionesRoute
   '/seguimientos': typeof AuthenticatedSeguimientosRoute
-  '/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -162,14 +146,12 @@ export interface FileRoutesById {
   '/_authenticated/control-mando': typeof AuthenticatedControlMandoRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/historial': typeof AuthenticatedHistorialRoute
-  '/_authenticated/historicos': typeof AuthenticatedHistoricosRoute
   '/_authenticated/indicadores': typeof AuthenticatedIndicadoresRoute
   '/_authenticated/plantillas': typeof AuthenticatedPlantillasRoute
   '/_authenticated/red-ips': typeof AuthenticatedRedIpsRoute
   '/_authenticated/reglas': typeof AuthenticatedReglasRoute
   '/_authenticated/remisiones': typeof AuthenticatedRemisionesRoute
   '/_authenticated/seguimientos': typeof AuthenticatedSeguimientosRoute
-  '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -182,14 +164,12 @@ export interface FileRouteTypes {
     | '/control-mando'
     | '/dashboard'
     | '/historial'
-    | '/historicos'
     | '/indicadores'
     | '/plantillas'
     | '/red-ips'
     | '/reglas'
     | '/remisiones'
     | '/seguimientos'
-    | '/usuarios'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -200,14 +180,12 @@ export interface FileRouteTypes {
     | '/control-mando'
     | '/dashboard'
     | '/historial'
-    | '/historicos'
     | '/indicadores'
     | '/plantillas'
     | '/red-ips'
     | '/reglas'
     | '/remisiones'
     | '/seguimientos'
-    | '/usuarios'
   id:
     | '__root__'
     | '/'
@@ -219,14 +197,12 @@ export interface FileRouteTypes {
     | '/_authenticated/control-mando'
     | '/_authenticated/dashboard'
     | '/_authenticated/historial'
-    | '/_authenticated/historicos'
     | '/_authenticated/indicadores'
     | '/_authenticated/plantillas'
     | '/_authenticated/red-ips'
     | '/_authenticated/reglas'
     | '/_authenticated/remisiones'
     | '/_authenticated/seguimientos'
-    | '/_authenticated/usuarios'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -265,13 +241,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/usuarios': {
-      id: '/_authenticated/usuarios'
-      path: '/usuarios'
-      fullPath: '/usuarios'
-      preLoaderRoute: typeof AuthenticatedUsuariosRouteImport
-      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/seguimientos': {
       id: '/_authenticated/seguimientos'
@@ -313,13 +282,6 @@ declare module '@tanstack/react-router' {
       path: '/indicadores'
       fullPath: '/indicadores'
       preLoaderRoute: typeof AuthenticatedIndicadoresRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/historicos': {
-      id: '/_authenticated/historicos'
-      path: '/historicos'
-      fullPath: '/historicos'
-      preLoaderRoute: typeof AuthenticatedHistoricosRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/historial': {
@@ -366,14 +328,12 @@ interface AuthenticatedRouteChildren {
   AuthenticatedControlMandoRoute: typeof AuthenticatedControlMandoRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedHistorialRoute: typeof AuthenticatedHistorialRoute
-  AuthenticatedHistoricosRoute: typeof AuthenticatedHistoricosRoute
   AuthenticatedIndicadoresRoute: typeof AuthenticatedIndicadoresRoute
   AuthenticatedPlantillasRoute: typeof AuthenticatedPlantillasRoute
   AuthenticatedRedIpsRoute: typeof AuthenticatedRedIpsRoute
   AuthenticatedReglasRoute: typeof AuthenticatedReglasRoute
   AuthenticatedRemisionesRoute: typeof AuthenticatedRemisionesRoute
   AuthenticatedSeguimientosRoute: typeof AuthenticatedSeguimientosRoute
-  AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -382,14 +342,12 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedControlMandoRoute: AuthenticatedControlMandoRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedHistorialRoute: AuthenticatedHistorialRoute,
-  AuthenticatedHistoricosRoute: AuthenticatedHistoricosRoute,
   AuthenticatedIndicadoresRoute: AuthenticatedIndicadoresRoute,
   AuthenticatedPlantillasRoute: AuthenticatedPlantillasRoute,
   AuthenticatedRedIpsRoute: AuthenticatedRedIpsRoute,
   AuthenticatedReglasRoute: AuthenticatedReglasRoute,
   AuthenticatedRemisionesRoute: AuthenticatedRemisionesRoute,
   AuthenticatedSeguimientosRoute: AuthenticatedSeguimientosRoute,
-  AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
@@ -405,3 +363,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
