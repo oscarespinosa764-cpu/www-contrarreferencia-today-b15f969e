@@ -24,7 +24,11 @@ function SeguimientosPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [casoSel, setCasoSel] = useState("");
+  const [tipoSeg, setTipoSeg] = useState("");
   const [q, setQ] = useState("");
+  const [filtroTipo, setFiltroTipo] = useState<"todos" | "entrante" | "saliente">("todos");
+
+  const TIPOS_SEG = ["Llamada", "Gestión", "Respuesta IPS", "Coordinación ambulancia", "Nota interna", "Cierre"];
 
   const { data: casos } = useQuery({
     queryKey: ["sel-casos"],
@@ -67,16 +71,16 @@ function SeguimientosPage() {
   const term = q.trim().toLowerCase();
   const seguimientosF = useMemo(
     () =>
-      (seguimientos ?? []).filter((s) =>
-        term
-          ? [s.tipo_seguimiento, s.detalle, s.nombre_usuario, s.radicado]
-              .filter(Boolean)
-              .join(" ")
-              .toLowerCase()
-              .includes(term)
-          : true,
-      ),
-    [seguimientos, term],
+      (seguimientos ?? []).filter((s) => {
+        if (filtroTipo !== "todos" && s.tipo_caso !== filtroTipo) return false;
+        if (!term) return true;
+        return [s.tipo_seguimiento, s.detalle, s.nombre_usuario, s.radicado]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(term);
+      }),
+    [seguimientos, term, filtroTipo],
   );
 
   const totalEntrantes = (seguimientos ?? []).filter((s) => s.tipo_caso === "entrante").length;
@@ -92,7 +96,7 @@ function SeguimientosPage() {
       caso_id: sel.id,
       tipo_caso: sel.tipo,
       radicado: sel.radicado || null,
-      tipo_seguimiento: String(f.get("tipo_seguimiento")) || null,
+      tipo_seguimiento: tipoSeg || null,
       detalle: String(f.get("detalle")),
       nombre_usuario: prof?.nombre || user!.email,
       created_by: user!.id,
@@ -101,6 +105,7 @@ function SeguimientosPage() {
     toast.success("Seguimiento registrado");
     setOpen(false);
     setCasoSel("");
+    setTipoSeg("");
     qc.invalidateQueries({ queryKey: ["seguimientos-lista"] });
     qc.invalidateQueries({ queryKey: ["seguimientos-pendientes"] });
   };
@@ -125,36 +130,62 @@ function SeguimientosPage() {
                   <Plus className="mr-1.5 h-4 w-4" /> Nuevo seguimiento
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-h-[90vh] overflow-auto sm:max-w-lg">
                 <DialogHeader>
                   <DialogTitle>Nuevo seguimiento</DialogTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Registra una nota o avance sobre un caso entrante o una remisión saliente.
+                  </p>
                 </DialogHeader>
-                <form onSubmit={handleCreate} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Caso</Label>
-                    <Select value={casoSel} onValueChange={setCasoSel}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona un caso" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(casos ?? []).map((c) => (
-                          <SelectItem key={c.key} value={c.key}>
-                            {c.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="tipo_seguimiento">Tipo de seguimiento</Label>
-                    <Input id="tipo_seguimiento" name="tipo_seguimiento" placeholder="Llamada, gestión, respuesta IPS…" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="detalle">Detalle</Label>
-                    <Textarea id="detalle" name="detalle" rows={4} required />
-                  </div>
+                <form onSubmit={handleCreate} className="space-y-5">
+                  <section className="space-y-3">
+                    <h3 className="border-b border-border pb-1.5 text-[11px] font-extrabold uppercase tracking-wide text-muted-foreground">
+                      🗂️ Caso asociado
+                    </h3>
+                    <div className="space-y-2">
+                      <Label>Caso</Label>
+                      <Select value={casoSel} onValueChange={setCasoSel}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona un caso" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(casos ?? []).map((c) => (
+                            <SelectItem key={c.key} value={c.key}>
+                              {c.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </section>
+
+                  <section className="space-y-3">
+                    <h3 className="border-b border-border pb-1.5 text-[11px] font-extrabold uppercase tracking-wide text-muted-foreground">
+                      📝 Detalle del seguimiento
+                    </h3>
+                    <div className="space-y-2">
+                      <Label>Tipo de seguimiento</Label>
+                      <Select value={tipoSeg} onValueChange={setTipoSeg}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona el tipo…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TIPOS_SEG.map((t) => (
+                            <SelectItem key={t} value={t}>
+                              {t}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="detalle">Detalle</Label>
+                      <Textarea id="detalle" name="detalle" rows={4} required placeholder="Describe la gestión realizada…" />
+                    </div>
+                  </section>
+
                   <DialogFooter>
-                    <Button type="submit">Guardar</Button>
+                    <Button type="submit">Guardar seguimiento</Button>
                   </DialogFooter>
                 </form>
               </DialogContent>
@@ -162,6 +193,23 @@ function SeguimientosPage() {
           )
         }
       >
+        {/* Filtros por tipo de caso */}
+        <div className="mb-3 flex flex-wrap items-center justify-center gap-1.5">
+          {(["todos", "entrante", "saliente"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setFiltroTipo(t)}
+              className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wide transition ${
+                filtroTipo === t
+                  ? "border-primary bg-primary/15 text-primary"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t === "todos" ? "Todos" : t === "entrante" ? "Entrantes" : "Salientes"}
+            </button>
+          ))}
+        </div>
+
         <div className="relative mb-4 mx-auto max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input

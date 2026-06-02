@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
@@ -63,14 +64,18 @@ function CasosPage() {
     const { data: u } = await supabase.auth.getUser();
     const { error } = await supabase.from("casos_entrantes").insert({
       codigo: String(f.get("codigo")),
+      tipo: String(f.get("tipo")) || "ACEP",
       nombres: String(f.get("nombres")),
       apellidos: String(f.get("apellidos")),
       documento: String(f.get("documento")),
       ips: String(f.get("ips")),
+      unidad: String(f.get("unidad")),
       medico: String(f.get("medico")),
       especialidad: String(f.get("especialidad")),
+      eapb: String(f.get("eapb")),
+      regimen: String(f.get("regimen")),
       aseguramiento: String(f.get("aseguramiento")),
-      estado: String(f.get("estado")) || "PENDIENTE",
+      estado: String(f.get("estado")) || "REGISTRADO",
       detalle: String(f.get("detalle")),
       texto_ia: iaTexto || null,
       created_by: u.user?.id,
@@ -115,24 +120,50 @@ function CasosPage() {
               </DialogTrigger>
               <DialogContent className="max-h-[90vh] overflow-auto sm:max-w-2xl">
                 <DialogHeader>
-                  <DialogTitle>Nuevo caso entrante</DialogTitle>
+                  <DialogTitle>Registrar caso entrante</DialogTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Caso que otra IPS remite hacia CEDIM (Referencia y Contrarreferencia).
+                  </p>
                 </DialogHeader>
-                <form onSubmit={handleCreate} className="space-y-4">
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <Field name="codigo" label="Código" />
-                    <Field name="documento" label="Documento" required />
-                    <Field name="nombres" label="Nombres" required />
-                    <Field name="apellidos" label="Apellidos" />
-                    <Field name="ips" label="IPS que remite" />
-                    <Field name="medico" label="Médico" />
-                    <Field name="especialidad" label="Especialidad" />
-                    <Field name="aseguramiento" label="Aseguramiento" />
-                    <Field name="estado" label="Estado" />
-                  </div>
+                <form onSubmit={handleCreate} className="space-y-5">
+                  {/* Datos del paciente */}
+                  <section className="space-y-3">
+                    <SectionTitle>👤 Datos del paciente</SectionTitle>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field name="documento" label="Documento" required />
+                      <Field name="nombres" label="Nombres" required />
+                      <Field name="apellidos" label="Apellidos" />
+                      <Field name="eapb" label="EAPB / Asegurador" />
+                    </div>
+                  </section>
+
+                  {/* Datos de la remisión */}
+                  <section className="space-y-3">
+                    <SectionTitle>🏥 Datos de la remisión</SectionTitle>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field name="ips" label="IPS que remite" />
+                      <Field name="unidad" label="Unidad / Servicio" />
+                      <Field name="medico" label="Médico" />
+                      <Field name="especialidad" label="Especialidad" />
+                    </div>
+                  </section>
+
+                  {/* Clasificación */}
+                  <section className="space-y-3">
+                    <SectionTitle>🗂️ Clasificación del caso</SectionTitle>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <SelectField name="tipo" label="Tipo de gestión" defaultValue="ACEP" options={["ACEP", "NEG", "AMP", "CAN", "ING"]} />
+                      <SelectField name="estado" label="Estado" defaultValue="REGISTRADO" options={["REGISTRADO", "INGRESADO", "CERRADO"]} />
+                      <Field name="regimen" label="Régimen" />
+                      <Field name="codigo" label="Código / Radicado" />
+                    </div>
+                  </section>
+
                   <div className="space-y-2">
                     <Label htmlFor="detalle">Detalle</Label>
-                    <Textarea id="detalle" name="detalle" rows={3} />
+                    <Textarea id="detalle" name="detalle" rows={3} placeholder="Motivo, diagnóstico, observaciones…" />
                   </div>
+
                   <div className="space-y-2 rounded-md border border-border p-3">
                     <div className="flex items-center justify-between">
                       <Label className="flex items-center gap-2">
@@ -215,6 +246,46 @@ function Field({ name, label, required }: { name: string; label: string; require
     <div className="space-y-2">
       <Label htmlFor={name}>{label}</Label>
       <Input id={name} name={name} required={required} />
+    </div>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="border-b border-border pb-1.5 text-[11px] font-extrabold uppercase tracking-wide text-muted-foreground">
+      {children}
+    </h3>
+  );
+}
+
+function SelectField({
+  name,
+  label,
+  options,
+  defaultValue,
+}: {
+  name: string;
+  label: string;
+  options: string[];
+  defaultValue?: string;
+}) {
+  const [value, setValue] = useState(defaultValue ?? "");
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <input type="hidden" name={name} value={value} />
+      <Select value={value} onValueChange={setValue}>
+        <SelectTrigger>
+          <SelectValue placeholder="Seleccionar…" />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((o) => (
+            <SelectItem key={o} value={o}>
+              {o}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
