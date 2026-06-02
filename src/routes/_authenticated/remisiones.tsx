@@ -232,7 +232,14 @@ function RemisionesPage() {
         <StatCard title="Pend. generales" value={stats.generales} caption="Otros pendientes" color="amber" />
         <StatCard title="Acep. pendiente ambulancia" value={stats.acepPendiente} caption="Traslado por coordinar" color="amber" />
         <StatCard title="Acep. ambulancia coordinada" value={stats.acepCoordinada} caption="Traslado ya definido" color="green" />
-        <StatCard title="Desistimientos de remisión" value={stats.desistimientos} caption="Remisión general" color="red" />
+        <SplitStatCard
+          title="Desistimientos de remisión"
+          color="red"
+          parts={[
+            { label: "IPS / depto específico", value: stats.desistIps },
+            { label: "Remisión general", value: stats.desistGeneral },
+          ]}
+        />
       </div>
 
       {/* Pestañas + filtros + lista */}
