@@ -87,7 +87,8 @@ function RemisionesPage() {
     generales: count((r) => (r.estado || "").toUpperCase().includes("GENERAL")),
     acepPendiente: count((r) => /AMBULANCIA/i.test(r.estado || "") && /PENDIENTE/i.test(r.estado || "")),
     acepCoordinada: count((r) => /AMBULANCIA/i.test(r.estado || "") && /COORDINAD/i.test(r.estado || "")),
-    desistimientos: count((r) => /DESIST/i.test(r.estado || "")),
+    desistIps: count((r) => /DESIST/i.test(r.estado || "") && !/GENERAL/i.test(r.estado || "")),
+    desistGeneral: count((r) => /DESIST/i.test(r.estado || "") && /GENERAL/i.test(r.estado || "")),
   };
 
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
