@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/app-header";
 import { StatCard, SplitStatCard, MiniStat, SectionTitle, Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
-import { ProgramarAlertasDialog } from "@/components/coordinacion/programar-alertas-dialog";
+
 import {
   metricasRemisiones,
   metricasCasos,
@@ -217,15 +217,6 @@ function Dashboard() {
         </Panel>
         <Panel
           title="Alertas de coordinación"
-          leftAction={
-            <ProgramarAlertasDialog
-              trigger={
-                <Button variant="outline" size="sm" className="rounded-full">
-                  Programar
-                </Button>
-              }
-            />
-          }
           action={
             <Button asChild variant="outline" size="sm" className="rounded-full">
               <Link to="/reglas">Gestionar</Link>

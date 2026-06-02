@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { ProgramarAlertasDialog } from "@/components/coordinacion/programar-alertas-dialog";
 import { Plus, Zap, Search } from "lucide-react";
 import { toast } from "sonner";
 
@@ -57,6 +58,15 @@ export function ReglasPanel() {
   return (
     <Panel
       title="Reglas operativas"
+      leftAction={
+        <ProgramarAlertasDialog
+          trigger={
+            <Button variant="outline" size="sm" className="rounded-full">
+              Programar
+            </Button>
+          }
+        />
+      }
       action={
         isAdmin && (
           <Dialog open={open} onOpenChange={setOpen}>

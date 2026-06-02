@@ -16,17 +16,17 @@ function ReglasPage() {
         subtitle="Lineamientos operativos y programación de alertas de coordinación"
       />
 
-      <Tabs defaultValue="reglas" className="w-full">
+      <Tabs defaultValue="alertas" className="w-full">
         <TabsList className="mb-4">
-          <TabsTrigger value="reglas">Reglas Operativas</TabsTrigger>
           <TabsTrigger value="alertas">Alertas de Coordinación</TabsTrigger>
+          <TabsTrigger value="reglas">Reglas Operativas</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="reglas">
-          <ReglasPanel />
-        </TabsContent>
         <TabsContent value="alertas">
           <AlertasPanel />
+        </TabsContent>
+        <TabsContent value="reglas">
+          <ReglasPanel />
         </TabsContent>
       </Tabs>
     </div>
