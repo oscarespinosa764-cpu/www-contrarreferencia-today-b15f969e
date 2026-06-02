@@ -1,18 +1,27 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/app-header";
-import { StatCard, MiniStat, SectionTitle, Panel } from "@/components/stat-card";
+import { StatCard, SplitStatCard, MiniStat, SectionTitle, Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import {
   metricasRemisiones,
   metricasCasos,
   metricasIndicadores,
+  casosNotificacion,
 } from "@/lib/dashboard-metrics";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
+
+function fmtVence(min: number): string {
+  const abs = Math.abs(Math.round(min));
+  const h = Math.floor(abs / 60);
+  const m = abs % 60;
+  const txt = `${h}H ${m}MIN`;
+  return min < 0 ? `VENCIDO HACE ${txt}` : `VENCE EN ${txt}`;
+}
 
 function Dashboard() {
   const { data } = useQuery({
@@ -25,7 +34,12 @@ function Dashboard() {
             "archivado,estado,tipo_tramite,remision_por,especificacion,observaciones,evolucion,evolucion_detalle,tipo_ambulancia,ips_receptora",
           )
           .limit(2000),
-        supabase.from("casos_entrantes").select("archivado,tipo,estado,fecha_vence").limit(2000),
+        supabase
+          .from("casos_entrantes")
+          .select(
+            "id,archivado,tipo,estado,fecha_vence,nombres,apellidos,codigo,cod_ref,especialidad,ips,documento",
+          )
+          .limit(2000),
         supabase.from("domiciliarios").select("archivado").limit(2000),
         supabase.from("referencia_interna").select("archivado").limit(2000),
         supabase.from("pendientes").select("archivado,estado").limit(2000),
@@ -42,6 +56,7 @@ function Dashboard() {
       const r = metricasRemisiones(rem.data ?? []);
       const c = metricasCasos(casos.data ?? []);
       const i = metricasIndicadores(ind.data ?? [], med.data ?? []);
+      const notifLista = casosNotificacion(casos.data ?? []);
 
       const domActivos = (dom.data ?? []).filter((x) => !x.archivado).length;
       const riActivos = (ri.data ?? []).filter((x) => !x.archivado).length;
@@ -62,6 +77,7 @@ function Dashboard() {
         rem: r,
         casos: c,
         ind: i,
+        notifLista,
         domActivos,
         riActivos,
         pendAbiertos,
@@ -76,6 +92,7 @@ function Dashboard() {
     <div>
       <AppHeader title="Dashboard General" subtitle="Panel Inteligente de Coordinación" />
 
+      <SectionTitle>Remisiones salientes</SectionTitle>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
         <StatCard title="Remisiones activas" value={data?.rem.activas} caption="En trámite hacia otras IPS" color="blue" />
         <StatCard title="Pendientes por aceptación" value={data?.rem.pendientesAceptacion} caption="Esperando respuesta de red" color="amber" />
@@ -84,8 +101,14 @@ function Dashboard() {
         <StatCard title="Pendientes generales" value={data?.pendAbiertos} caption="Otros pendientes" color="amber" />
         <StatCard title="Acep. pendiente ambulancia" value={data?.rem.acepPendienteAmbulancia} caption="Traslado por coordinar" color="sky" />
         <StatCard title="Acep. ambulancia coordinada" value={data?.rem.acepAmbulanciaCoordinada} caption="Traslado ya definido" color="green" />
-        <StatCard title="Desistimiento IPS / DPTO específico" value={data?.rem.desistIps} caption="Desistimientos hacia IPS o depto. específico" color="muted" />
-        <StatCard title="Desistimiento remisión general" value={data?.rem.desistGeneral} caption="Desistimientos de remisión general" color="muted" />
+        <SplitStatCard
+          title="Desistimientos de remisión"
+          color="muted"
+          parts={[
+            { label: "IPS / depto específico", value: data?.rem.desistIps },
+            { label: "Remisión general", value: data?.rem.desistGeneral },
+          ]}
+        />
       </div>
 
       <SectionTitle>Referencias entrantes</SectionTitle>
@@ -93,30 +116,93 @@ function Dashboard() {
         <StatCard title="Casos aceptados" value={data?.casos.aceptados} caption="ACEP registradas" color="green" />
         <StatCard title="Casos negados" value={data?.casos.negados} caption="NEG registradas" color="red" />
         <StatCard title="Pendientes por ingreso" value={data?.casos.pendientesIngreso} caption="Aceptaciones activas sin ingreso" color="green" />
-        <StatCard title="Seguimientos de aceptados" value={data?.casos.proximosVencer} caption="Próximos a vencer" color="amber" />
+        <SplitStatCard
+          title="Seguimientos de aceptados"
+          color="amber"
+          parts={[
+            { label: "Próximos a vencer", value: data?.casos.proximosVencer, color: "amber" },
+            { label: "Vencidos", value: data?.casos.vencidos, color: "red" },
+          ]}
+        />
         <StatCard title="Cancelación pacientes aceptados" value={data?.casos.cancelaciones} caption="CAN asociadas a aceptaciones" color="red" />
         <StatCard title="Ampliación pacientes aceptados" value={data?.casos.ampliaciones} caption="AMP asociadas a aceptaciones" color="sky" />
       </div>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-2">
-        <Panel title="Avisos operativos" action={<span className="rounded-full bg-status-amber/15 px-2 py-0.5 text-[11px] font-semibold text-status-amber">{data?.avisosActivos ?? 0} activos</span>}>
+        <Panel
+          title="Avisos operativos"
+          action={
+            <Button asChild variant="outline" size="sm" className="rounded-full">
+              <Link to="/remisiones">Ver avisos</Link>
+            </Button>
+          }
+        >
           {(data?.avisosActivos ?? 0) === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">Sin avisos operativos activos. Todo en orden ✓</p>
           ) : (
             <p className="py-8 text-center text-sm text-muted-foreground">{data?.avisosActivos} aviso(s) operativo(s) activo(s).</p>
           )}
         </Panel>
-        <Panel title="Pendientes de notificación" action={<Button variant="outline" size="sm" className="rounded-full">Ver seguimientos</Button>}>
-          {(data?.notificaciones ?? 0) === 0 ? (
+        <Panel
+          title="Pendientes de notificación"
+          action={
+            <Button asChild variant="outline" size="sm" className="rounded-full">
+              <Link to="/seguimientos">Ver seguimientos</Link>
+            </Button>
+          }
+        >
+          <p className="-mt-1 mb-3 text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Remisiones entrantes
+          </p>
+          {(data?.notifLista?.length ?? 0) === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">Sin pendientes de notificación.</p>
           ) : (
-            <p className="py-8 text-center text-sm text-muted-foreground">{data?.notificaciones} aceptación(es) próximas a vencer o vencidas.</p>
+            <div className="space-y-2">
+              {data?.notifLista.map((c) => {
+                const nombre = [c.nombres, c.apellidos].filter(Boolean).join(" ").trim() || "Sin nombre";
+                const vencido = (c.minutos ?? 0) < 0;
+                return (
+                  <div
+                    key={c.id}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background/40 p-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold uppercase text-foreground">{nombre}</p>
+                      <p className="truncate text-[11px] text-muted-foreground">
+                        {[c.codigo, c.especialidad].filter(Boolean).join(" · ") || "—"}
+                      </p>
+                      <p className="truncate text-[11px] text-muted-foreground">
+                        IPS: {c.ips || "—"} · Doc: {c.documento || "—"}
+                      </p>
+                    </div>
+                    {c.minutos !== null && (
+                      <span
+                        className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${
+                          vencido
+                            ? "bg-status-red/15 text-status-red"
+                            : "bg-status-amber/15 text-status-amber"
+                        }`}
+                      >
+                        {fmtVence(c.minutos)}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
         </Panel>
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <Panel title="Indicadores rápidos del área" action={<Button variant="outline" size="sm" className="rounded-full">Ver todos</Button>}>
+        <Panel
+          title="Indicadores rápidos del área"
+          action={
+            <Button asChild variant="outline" size="sm" className="rounded-full">
+              <Link to="/indicadores">Ver todos</Link>
+            </Button>
+          }
+        >
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <MiniStat label="Total" value={data?.ind.total} color="muted" />
             <MiniStat label="En meta" value={data?.ind.enMeta} color="green" />
@@ -128,7 +214,19 @@ function Dashboard() {
             <p className="mt-1 text-center text-sm italic text-muted-foreground">Sin mediciones registradas todavía.</p>
           )}
         </Panel>
-        <Panel title="Alertas de coordinación" action={<Button variant="outline" size="sm" className="rounded-full">Gestionar</Button>}>
+        <Panel
+          title="Alertas de coordinación"
+          action={
+            <div className="flex items-center gap-2">
+              <Button asChild variant="outline" size="sm" className="rounded-full">
+                <Link to="/remisiones">Programar</Link>
+              </Button>
+              <Button asChild variant="outline" size="sm" className="rounded-full">
+                <Link to="/remisiones">Gestionar</Link>
+              </Button>
+            </div>
+          }
+        >
           {(data?.alertasCoord ?? 0) === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">Sin alertas abiertas para coordinación.</p>
           ) : (
