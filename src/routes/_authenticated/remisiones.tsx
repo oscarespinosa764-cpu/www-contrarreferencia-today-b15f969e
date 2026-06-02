@@ -31,7 +31,7 @@ function RemisionesPage() {
   const [prioridad, setPrioridad] = useState("todas");
   const [estadoFiltro, setEstadoFiltro] = useState("todos");
   const [tab, setTab] = useState("remisiones");
-  const [turnoEntrega, setTurnoEntrega] = useState(getTurno().nombre);
+  const [turnoEntrega, setTurnoEntrega] = useState<string>(getTurno().nombre);
   const [recibe, setRecibe] = useState("");
   const [iaTexto, setIaTexto] = useState("");
   const [iaBusy, setIaBusy] = useState(false);
