@@ -109,16 +109,19 @@ export function SectionTitle({ children }: { children: ReactNode }) {
 export function Panel({
   title,
   action,
+  leftAction,
   children,
 }: {
   title?: ReactNode;
   action?: ReactNode;
+  leftAction?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-      {(title || action) && (
+      {(title || action || leftAction) && (
         <div className="relative mb-3 flex items-center justify-center">
+          {leftAction && <div className="absolute left-0">{leftAction}</div>}
           {title && (
             <span className="rounded-full border border-border bg-secondary px-4 py-1 text-xs font-bold uppercase tracking-wide text-secondary-foreground">
               {title}
