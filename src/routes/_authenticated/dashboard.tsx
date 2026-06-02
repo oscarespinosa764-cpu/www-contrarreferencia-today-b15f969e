@@ -216,15 +216,15 @@ function Dashboard() {
         </Panel>
         <Panel
           title="Alertas de coordinación"
+          leftAction={
+            <Button asChild variant="outline" size="sm" className="rounded-full">
+              <Link to="/remisiones">Programar</Link>
+            </Button>
+          }
           action={
-            <div className="flex items-center gap-2">
-              <Button asChild variant="outline" size="sm" className="rounded-full">
-                <Link to="/remisiones">Programar</Link>
-              </Button>
-              <Button asChild variant="outline" size="sm" className="rounded-full">
-                <Link to="/remisiones">Gestionar</Link>
-              </Button>
-            </div>
+            <Button asChild variant="outline" size="sm" className="rounded-full">
+              <Link to="/remisiones">Gestionar</Link>
+            </Button>
           }
         >
           {(data?.alertasCoord ?? 0) === 0 ? (
