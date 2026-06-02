@@ -71,16 +71,16 @@ function SeguimientosPage() {
   const term = q.trim().toLowerCase();
   const seguimientosF = useMemo(
     () =>
-      (seguimientos ?? []).filter((s) =>
-        term
-          ? [s.tipo_seguimiento, s.detalle, s.nombre_usuario, s.radicado]
-              .filter(Boolean)
-              .join(" ")
-              .toLowerCase()
-              .includes(term)
-          : true,
-      ),
-    [seguimientos, term],
+      (seguimientos ?? []).filter((s) => {
+        if (filtroTipo !== "todos" && s.tipo_caso !== filtroTipo) return false;
+        if (!term) return true;
+        return [s.tipo_seguimiento, s.detalle, s.nombre_usuario, s.radicado]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(term);
+      }),
+    [seguimientos, term, filtroTipo],
   );
 
   const totalEntrantes = (seguimientos ?? []).filter((s) => s.tipo_caso === "entrante").length;
