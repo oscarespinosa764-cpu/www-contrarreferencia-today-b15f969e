@@ -96,7 +96,7 @@ function SeguimientosPage() {
       caso_id: sel.id,
       tipo_caso: sel.tipo,
       radicado: sel.radicado || null,
-      tipo_seguimiento: String(f.get("tipo_seguimiento")) || null,
+      tipo_seguimiento: tipoSeg || null,
       detalle: String(f.get("detalle")),
       nombre_usuario: prof?.nombre || user!.email,
       created_by: user!.id,
@@ -105,6 +105,7 @@ function SeguimientosPage() {
     toast.success("Seguimiento registrado");
     setOpen(false);
     setCasoSel("");
+    setTipoSeg("");
     qc.invalidateQueries({ queryKey: ["seguimientos-lista"] });
     qc.invalidateQueries({ queryKey: ["seguimientos-pendientes"] });
   };
