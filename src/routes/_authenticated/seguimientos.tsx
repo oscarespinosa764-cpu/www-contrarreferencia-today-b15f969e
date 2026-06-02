@@ -202,12 +202,3 @@ function SeguimientosPage() {
     </div>
   );
 }
-
-function Resumen({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <div className={`rounded-xl border border-border border-l-4 bg-card p-4 shadow-sm ${color.split(" ")[0]}`}>
-      <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className={`mt-1 text-2xl font-extrabold ${color.split(" ")[1]}`}>{value}</p>
-    </div>
-  );
-}
