@@ -47,6 +47,33 @@ export function StatCard({
   );
 }
 
+/** Tarjeta de estadística con un único título y el contador dividido en dos recuadros internos. */
+export function SplitStatCard({
+  title,
+  color = "blue",
+  parts,
+}: {
+  title: string;
+  color?: StatColor;
+  parts: { label: string; value: ReactNode; color?: StatColor }[];
+}) {
+  return (
+    <div className={`rounded-xl border border-border ${topBorder[color]} border-t-4 bg-card p-4 text-center shadow-sm`}>
+      <p className="mb-3 text-[11px] font-bold uppercase leading-tight tracking-wide text-muted-foreground">
+        {title}
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        {parts.map((p, i) => (
+          <div key={i} className="rounded-lg border border-border/60 bg-background/40 px-1 py-3">
+            <p className={`text-2xl font-extrabold ${valueColor[p.color ?? color]}`}>{p.value ?? "—"}</p>
+            <p className="mt-1 text-[10px] leading-tight text-muted-foreground">{p.label}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** Tarjeta compacta: número grande arriba y etiqueta debajo, dentro de un recuadro interior. */
 export function MiniStat({
   label,
@@ -82,16 +109,19 @@ export function SectionTitle({ children }: { children: ReactNode }) {
 export function Panel({
   title,
   action,
+  leftAction,
   children,
 }: {
   title?: ReactNode;
   action?: ReactNode;
+  leftAction?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-      {(title || action) && (
+      {(title || action || leftAction) && (
         <div className="relative mb-3 flex items-center justify-center">
+          {leftAction && <div className="absolute left-0">{leftAction}</div>}
           {title && (
             <span className="rounded-full border border-border bg-secondary px-4 py-1 text-xs font-bold uppercase tracking-wide text-secondary-foreground">
               {title}

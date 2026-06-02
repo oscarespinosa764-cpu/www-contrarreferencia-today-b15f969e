@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { generarTextoCaso } from "@/lib/ai.functions";
 import { AppHeader } from "@/components/app-header";
-import { Panel, StatCard } from "@/components/stat-card";
+import { Panel, StatCard, SplitStatCard } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -87,7 +87,8 @@ function RemisionesPage() {
     generales: count((r) => (r.estado || "").toUpperCase().includes("GENERAL")),
     acepPendiente: count((r) => /AMBULANCIA/i.test(r.estado || "") && /PENDIENTE/i.test(r.estado || "")),
     acepCoordinada: count((r) => /AMBULANCIA/i.test(r.estado || "") && /COORDINAD/i.test(r.estado || "")),
-    desistimientos: count((r) => /DESIST/i.test(r.estado || "")),
+    desistIps: count((r) => /DESIST/i.test(r.estado || "") && !/GENERAL/i.test(r.estado || "")),
+    desistGeneral: count((r) => /DESIST/i.test(r.estado || "") && /GENERAL/i.test(r.estado || "")),
   };
 
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -231,7 +232,14 @@ function RemisionesPage() {
         <StatCard title="Pend. generales" value={stats.generales} caption="Otros pendientes" color="amber" />
         <StatCard title="Acep. pendiente ambulancia" value={stats.acepPendiente} caption="Traslado por coordinar" color="amber" />
         <StatCard title="Acep. ambulancia coordinada" value={stats.acepCoordinada} caption="Traslado ya definido" color="green" />
-        <StatCard title="Desistimientos de remisión" value={stats.desistimientos} caption="Remisión general" color="red" />
+        <SplitStatCard
+          title="Desistimientos de remisión"
+          color="red"
+          parts={[
+            { label: "IPS / depto específico", value: stats.desistIps },
+            { label: "Remisión general", value: stats.desistGeneral },
+          ]}
+        />
       </div>
 
       {/* Pestañas + filtros + lista */}
