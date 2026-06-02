@@ -14,11 +14,8 @@ import {
   Mail,
   BarChart3,
   Zap,
-  Archive,
   BookOpen,
   Gauge,
-  Users,
-
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated")({
