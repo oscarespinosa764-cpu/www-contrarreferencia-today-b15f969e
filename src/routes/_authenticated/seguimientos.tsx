@@ -1,18 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { PageHeader } from "@/components/page-header";
+import { AppHeader } from "@/components/app-header";
+import { Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/seguimientos")({
@@ -24,6 +24,7 @@ function SeguimientosPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [casoSel, setCasoSel] = useState("");
+  const [q, setQ] = useState("");
 
   const { data: casos } = useQuery({
     queryKey: ["sel-casos"],
@@ -63,6 +64,24 @@ function SeguimientosPage() {
     },
   });
 
+  const term = q.trim().toLowerCase();
+  const seguimientosF = useMemo(
+    () =>
+      (seguimientos ?? []).filter((s) =>
+        term
+          ? [s.tipo_seguimiento, s.detalle, s.nombre_usuario, s.radicado]
+              .filter(Boolean)
+              .join(" ")
+              .toLowerCase()
+              .includes(term)
+          : true,
+      ),
+    [seguimientos, term],
+  );
+
+  const totalEntrantes = (seguimientos ?? []).filter((s) => s.tipo_caso === "entrante").length;
+  const totalSalientes = (seguimientos ?? []).filter((s) => s.tipo_caso === "saliente").length;
+
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -87,16 +106,23 @@ function SeguimientosPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Seguimientos"
-        description="Notas y avances registrados sobre cada caso en gestión."
+    <div>
+      <AppHeader title="Seguimientos" subtitle="Notas y avances registrados sobre cada caso en gestión" />
+
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <Resumen label="Total" value={seguimientos?.length ?? 0} color="border-l-status-blue text-status-blue" />
+        <Resumen label="Entrantes" value={totalEntrantes} color="border-l-status-green text-status-green" />
+        <Resumen label="Salientes" value={totalSalientes} color="border-l-status-teal text-status-teal" />
+      </div>
+
+      <Panel
+        title="Seguimientos registrados"
         action={
           canEdit && (
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" /> Nuevo seguimiento
+                <Button size="sm" className="rounded-full">
+                  <Plus className="mr-1.5 h-4 w-4" /> Nuevo seguimiento
                 </Button>
               </DialogTrigger>
               <DialogContent>
@@ -135,33 +161,53 @@ function SeguimientosPage() {
             </Dialog>
           )
         }
-      />
+      >
+        <div className="relative mb-4 mx-auto max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="rounded-full pl-9"
+            placeholder="Buscar por tipo, detalle, usuario…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        </div>
 
-      {isLoading ? (
-        <p className="text-muted-foreground">Cargando…</p>
-      ) : seguimientos && seguimientos.length > 0 ? (
-        <div className="grid gap-3">
-          {seguimientos.map((s) => (
-            <Card key={s.id}>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">{s.tipo_seguimiento || "Seguimiento"}</CardTitle>
+        {isLoading ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Cargando…</p>
+        ) : seguimientosF.length > 0 ? (
+          <div className="grid gap-3">
+            {seguimientosF.map((s) => (
+              <div
+                key={s.id}
+                className={`rounded-xl border border-border border-l-4 bg-card p-4 shadow-sm ${s.tipo_caso === "entrante" ? "border-l-status-green" : "border-l-status-teal"}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-bold text-foreground">{s.tipo_seguimiento || "Seguimiento"}</p>
                   <Badge variant="outline">{s.tipo_caso === "entrante" ? "Entrante" : "Saliente"}</Badge>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-1 text-sm text-muted-foreground">
-                {s.detalle && <p className="text-foreground">{s.detalle}</p>}
-                <p className="text-xs">
+                {s.detalle && <p className="mt-1 text-sm text-foreground">{s.detalle}</p>}
+                <p className="mt-1 text-xs text-muted-foreground">
                   {s.nombre_usuario || "—"} · {new Date(s.created_at).toLocaleString("es-CO")}
                   {s.radicado ? ` · Rad. ${s.radicado}` : ""}
                 </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <p className="text-muted-foreground">No hay seguimientos registrados todavía.</p>
-      )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            No hay seguimientos registrados todavía.
+          </p>
+        )}
+      </Panel>
+    </div>
+  );
+}
+
+function Resumen({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div className={`rounded-xl border border-border border-l-4 bg-card p-4 shadow-sm ${color.split(" ")[0]}`}>
+      <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className={`mt-1 text-2xl font-extrabold ${color.split(" ")[1]}`}>{value}</p>
     </div>
   );
 }
