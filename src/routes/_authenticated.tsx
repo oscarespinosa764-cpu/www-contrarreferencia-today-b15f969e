@@ -174,7 +174,11 @@ function AuthenticatedLayout() {
             .filter((g) => !g.adminOnly || isAdmin)
             .map((group) => (
               <div key={group.label}>
-                {!collapsed && (
+                {collapsed ? (
+                  <p className="pb-1.5 text-center text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/45">
+                    {group.abbr}
+                  </p>
+                ) : (
                   <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/45">
                     {group.label}
                   </p>
