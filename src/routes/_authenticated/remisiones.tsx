@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { generarTextoCaso } from "@/lib/ai.functions";
 import { AppHeader } from "@/components/app-header";
-import { Panel, StatCard } from "@/components/stat-card";
+import { Panel, StatCard, SplitStatCard } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
