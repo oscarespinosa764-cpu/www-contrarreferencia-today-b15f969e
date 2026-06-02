@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/app-header";
 import { StatCard, SplitStatCard, MiniStat, SectionTitle, Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
-import { ProgramarAlertasDialog } from "@/components/coordinacion/programar-alertas-dialog";
+
 import {
   metricasRemisiones,
   metricasCasos,
