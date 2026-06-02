@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/app-header";
-import { StatCard, SectionTitle, Panel } from "@/components/stat-card";
+import { StatCard, MiniStat, SectionTitle, Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
