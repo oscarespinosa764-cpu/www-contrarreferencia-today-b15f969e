@@ -1,18 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { generarTextoCaso } from "@/lib/ai.functions";
+import { AppHeader } from "@/components/app-header";
+import { Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Plus } from "lucide-react";
+import { Sparkles, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/remisiones")({
@@ -23,6 +24,7 @@ function RemisionesPage() {
   const { canEdit } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
   const [iaTexto, setIaTexto] = useState("");
   const [iaBusy, setIaBusy] = useState(false);
   const generar = useServerFn(generarTextoCaso);
@@ -39,6 +41,21 @@ function RemisionesPage() {
       return data;
     },
   });
+
+  const term = q.trim().toLowerCase();
+  const remisionesF = useMemo(
+    () =>
+      (remisiones ?? []).filter((r) =>
+        term
+          ? [r.paciente, r.documento, r.servicio, r.ips_receptora, r.estado, r.prioridad]
+              .filter(Boolean)
+              .join(" ")
+              .toLowerCase()
+              .includes(term)
+          : true,
+      ),
+    [remisiones, term],
+  );
 
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -82,83 +99,109 @@ function RemisionesPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Remisiones salientes</h1>
-          <p className="text-muted-foreground">Casos que CEDIM remite hacia otras IPS</p>
-        </div>
-        {canEdit && (
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button><Plus className="mr-2 h-4 w-4" /> Nueva remisión</Button>
-            </DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-auto sm:max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Nueva remisión saliente</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleCreate} className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field name="paciente" label="Paciente" required />
-                  <Field name="documento" label="Documento" required />
-                  <Field name="edad" label="Edad" />
-                  <Field name="servicio" label="Servicio" />
-                  <Field name="prioridad" label="Prioridad" />
-                  <Field name="asegurador" label="Asegurador" />
-                  <Field name="ips_receptora" label="IPS receptora" />
-                  <Field name="estado" label="Estado" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="observaciones">Observaciones</Label>
-                  <Textarea id="observaciones" name="observaciones" rows={3} />
-                </div>
-                <div className="space-y-2 rounded-md border border-border p-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> Texto generado por IA</Label>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      disabled={iaBusy}
-                      onClick={(e) => handleIA(e.currentTarget.closest("form") as HTMLFormElement)}
-                    >
-                      {iaBusy ? "Generando…" : "Generar resumen"}
-                    </Button>
-                  </div>
-                  <Textarea value={iaTexto} onChange={(e) => setIaTexto(e.target.value)} rows={4} placeholder="Pulsa «Generar resumen» para crear el texto del caso con IA." />
-                </div>
-                <DialogFooter>
-                  <Button type="submit">Guardar remisión</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        )}
-      </div>
+    <div>
+      <AppHeader title="Remisiones Salientes" subtitle="Casos que CEDIM remite hacia otras IPS" />
 
-      {isLoading ? (
-        <p className="text-muted-foreground">Cargando…</p>
-      ) : remisiones && remisiones.length > 0 ? (
-        <div className="grid gap-3">
-          {remisiones.map((r) => (
-            <Card key={r.id}>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">{r.paciente || "Sin nombre"}</CardTitle>
+      <Panel
+        title="Remisiones activas"
+        action={
+          canEdit && (
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="rounded-full">
+                  <Plus className="mr-1.5 h-4 w-4" /> Nueva remisión
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-h-[90vh] overflow-auto sm:max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Nueva remisión saliente</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleCreate} className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field name="paciente" label="Paciente" required />
+                    <Field name="documento" label="Documento" required />
+                    <Field name="edad" label="Edad" />
+                    <Field name="servicio" label="Servicio" />
+                    <Field name="prioridad" label="Prioridad" />
+                    <Field name="asegurador" label="Asegurador" />
+                    <Field name="ips_receptora" label="IPS receptora" />
+                    <Field name="estado" label="Estado" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="observaciones">Observaciones</Label>
+                    <Textarea id="observaciones" name="observaciones" rows={3} />
+                  </div>
+                  <div className="space-y-2 rounded-md border border-border p-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-primary" /> Texto generado por IA
+                      </Label>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="rounded-full"
+                        disabled={iaBusy}
+                        onClick={(e) => handleIA(e.currentTarget.closest("form") as HTMLFormElement)}
+                      >
+                        {iaBusy ? "Generando…" : "Generar resumen"}
+                      </Button>
+                    </div>
+                    <Textarea
+                      value={iaTexto}
+                      onChange={(e) => setIaTexto(e.target.value)}
+                      rows={4}
+                      placeholder="Pulsa «Generar resumen» para crear el texto del caso con IA."
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit">Guardar remisión</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )
+        }
+      >
+        <div className="relative mb-4 mx-auto max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="rounded-full pl-9"
+            placeholder="Buscar por paciente, documento, IPS…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        </div>
+
+        {isLoading ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Cargando…</p>
+        ) : remisionesF.length > 0 ? (
+          <div className="grid gap-3">
+            {remisionesF.map((r) => (
+              <div
+                key={r.id}
+                className="rounded-xl border border-border border-l-4 border-l-status-teal bg-card p-4 shadow-sm"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-bold text-foreground">{r.paciente || "Sin nombre"}</p>
                   {r.prioridad && <Badge variant="outline">{r.prioridad}</Badge>}
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-1 text-sm text-muted-foreground">
-                <p>Doc: {r.documento || "—"} · {r.servicio || "—"} · {r.ips_receptora || "—"}</p>
-                <p>Estado: {r.estado || "—"}</p>
-                {r.texto_ia && <p className="mt-2 rounded bg-muted p-2 text-foreground">{r.texto_ia}</p>}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <p className="text-muted-foreground">No hay remisiones registradas todavía.</p>
-      )}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Doc: {r.documento || "—"} · {r.servicio || "—"} · {r.ips_receptora || "—"}
+                </p>
+                <p className="text-xs text-muted-foreground">Estado: {r.estado || "—"}</p>
+                {r.texto_ia && (
+                  <p className="mt-2 rounded bg-muted p-2 text-xs text-foreground">{r.texto_ia}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            No hay remisiones registradas todavía.
+          </p>
+        )}
+      </Panel>
     </div>
   );
 }
