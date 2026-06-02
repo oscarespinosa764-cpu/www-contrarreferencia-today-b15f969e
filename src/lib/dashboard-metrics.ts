@@ -119,7 +119,45 @@ export function metricasCasos(rows: CasoRow[]) {
   };
 }
 
-// ---------- Indicadores rápidos ----------
+// ---------- Lista de casos pendientes de notificación ----------
+export type CasoNotifRow = CasoRow & {
+  id: string;
+  nombres?: string | null;
+  apellidos?: string | null;
+  codigo?: string | null;
+  cod_ref?: string | null;
+  especialidad?: string | null;
+  ips?: string | null;
+  documento?: string | null;
+};
+
+export function casosNotificacion(rows: CasoNotifRow[]) {
+  const tipo = (r: CasoNotifRow) => norm(r.tipo);
+  const estado = (r: CasoNotifRow) => norm(r.estado);
+
+  const esCerrado = (r: CasoNotifRow) => {
+    const e = estado(r);
+    return (
+      e.includes("CERRADO") ||
+      e.includes("CANCELADO") ||
+      e.includes("ARCHIVADO") ||
+      e.includes("INGRESADO")
+    );
+  };
+
+  const minutosRestantes = (r: CasoNotifRow) => {
+    if (!r.fecha_vence) return null;
+    const t = new Date(r.fecha_vence).getTime();
+    if (Number.isNaN(t)) return null;
+    return (t - Date.now()) / 60000;
+  };
+
+  return rows
+    .filter((r) => tipo(r).includes("ACEP") && !esCerrado(r))
+    .map((r) => ({ ...r, minutos: minutosRestantes(r) }))
+    .filter((r) => r.minutos !== null && r.minutos <= NOTIF_PROXIMO_MIN)
+    .sort((a, b) => (a.minutos ?? 0) - (b.minutos ?? 0));
+}
 export type IndicadorRow = { id: string; activo?: boolean | null; archivado?: boolean | null };
 export type MedicionRow = { indicador_id: string; semaforo?: string | null; fecha?: string | null };
 
