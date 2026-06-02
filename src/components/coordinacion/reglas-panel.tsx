@@ -58,15 +58,6 @@ export function ReglasPanel() {
   return (
     <Panel
       title="Reglas operativas"
-      leftAction={
-        <ProgramarAlertasDialog
-          trigger={
-            <Button variant="outline" size="sm" className="rounded-full">
-              Programar
-            </Button>
-          }
-        />
-      }
       action={
         isAdmin && (
           <Dialog open={open} onOpenChange={setOpen}>
