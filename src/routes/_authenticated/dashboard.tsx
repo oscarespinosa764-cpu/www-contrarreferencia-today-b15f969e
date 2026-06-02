@@ -57,12 +57,14 @@ function Dashboard() {
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <Panel title="Indicadores rápidos del área" action={<Button variant="outline" size="sm" className="rounded-full">Ver todos</Button>}>
-          <div className="grid grid-cols-4 gap-2">
-            <StatCard title="Total" value={0} color="muted" />
-            <StatCard title="En meta" value={0} color="green" />
-            <StatCard title="Alerta" value={0} color="amber" />
-            <StatCard title="Críticos" value={0} color="red" />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <MiniStat label="Total" value={0} color="muted" />
+            <MiniStat label="En meta" value={0} color="green" />
+            <MiniStat label="Alerta" value={0} color="amber" />
+            <MiniStat label="Críticos" value={0} color="red" />
           </div>
+          <p className="mt-3 text-center text-[11px] text-muted-foreground">0 indicador(es) sin medición reciente.</p>
+          <p className="mt-1 text-center text-sm italic text-muted-foreground">Sin mediciones registradas todavía.</p>
         </Panel>
         <Panel title="Alertas de coordinación" action={<Button variant="outline" size="sm" className="rounded-full">Gestionar</Button>}>
           <p className="py-8 text-center text-sm text-muted-foreground">Sin alertas abiertas para coordinación.</p>
