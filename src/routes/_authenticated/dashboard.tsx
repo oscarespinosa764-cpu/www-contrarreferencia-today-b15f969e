@@ -133,9 +133,9 @@ function Dashboard() {
         <Panel
           title="Avisos operativos"
           action={
-            <Button asChild variant="outline" size="sm" className="rounded-full">
-              <Link to="/remisiones">Ver avisos</Link>
-            </Button>
+            <span className="rounded-full border border-border bg-secondary px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-secondary-foreground">
+              {data?.avisosActivos ?? 0} activos
+            </span>
           }
         >
           {(data?.avisosActivos ?? 0) === 0 ? (
