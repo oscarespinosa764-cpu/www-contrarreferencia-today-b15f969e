@@ -158,6 +158,8 @@ export function casosNotificacion(rows: CasoNotifRow[]) {
     .filter((r) => r.minutos !== null && r.minutos <= NOTIF_PROXIMO_MIN)
     .sort((a, b) => (a.minutos ?? 0) - (b.minutos ?? 0));
 }
+
+// ---------- Indicadores rápidos ----------
 export type IndicadorRow = { id: string; activo?: boolean | null; archivado?: boolean | null };
 export type MedicionRow = { indicador_id: string; semaforo?: string | null; fecha?: string | null };
 
