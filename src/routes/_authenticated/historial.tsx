@@ -338,7 +338,7 @@ function HistorialPage() {
         {/* Encabezado: título + filtros por tipo + Excel */}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-extrabold uppercase tracking-wide text-foreground">
-            {vista === "entrantes" ? "Historial de Casos R&C" : "Historial de Remisiones Salientes"}
+            {vista === "entrantes" ? "HISTORIAL DE REMISIONES ENTRANTES" : "Historial de Remisiones Salientes"}
           </h2>
           <div className="flex flex-wrap items-center gap-1.5">
             {vista === "entrantes"
