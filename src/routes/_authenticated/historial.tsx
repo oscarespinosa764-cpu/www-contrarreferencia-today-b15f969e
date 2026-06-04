@@ -312,7 +312,7 @@ function HistorialPage() {
     <div>
       <AppHeader title="Referencia y Contrarreferencia" subtitle="CEDIM IPS S.A.S — Control de Casos" />
 
-      <Panel>
+      <Panel bodyMaxHeight={null}>
         {/* Selector de vista: Entrantes / Salientes */}
         <div className="mb-4 flex items-center justify-center">
           <div className="inline-flex rounded-full border border-border bg-muted/40 p-1">
