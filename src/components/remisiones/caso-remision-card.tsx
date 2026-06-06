@@ -173,9 +173,9 @@ export function CasoRemisionCard({
         <Dato
           label="Evolución"
           value={
-            <span className="inline-flex items-center gap-1.5">
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${evo.chip}`}>
               <span className={`h-2 w-2 rounded-full ${evo.dot}`} />
-              {evo.label}
+              {evoRes.label}
             </span>
           }
         />
