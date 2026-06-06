@@ -167,12 +167,77 @@ function RemisionesPage() {
 
   const nombreRecibe = recibeOpciones.find((a) => a.user_id === recibe)?.nombre || "el siguiente turno";
 
-  const guardarEntrega = () => {
+  // Al cerrar el turno NOCHE: pendientes de evolución → alertas, y evolución a ceros.
+  const reiniciarEvolucionNoche = async () => {
+    const ahora = new Date();
+    const fechaTxt = ahora.toLocaleDateString("es-CO");
+    const nowIso = ahora.toISOString();
+
+    const { data: pend } = await supabase
+      .from("pendientes")
+      .select("id, caso_id, paciente_asunto, observacion_entrega")
+      .eq("origen", "evolucion")
+      .eq("archivado", false);
+
+    if (pend && pend.length > 0) {
+      const alertas = pend.map((p) => ({
+        tipo: "Evolución pendiente",
+        estado: "ABIERTA",
+        fecha_alerta: nowIso,
+        caso_id: p.caso_id,
+        paciente: p.paciente_asunto,
+        detalle:
+          `Cierre de turno NOCHE (${fechaTxt}): quedó sin completar la evolución. ${p.observacion_entrega ?? ""}`.trim(),
+        created_by: user?.id,
+      }));
+      await supabase.from("coordinacion").insert(alertas);
+      await supabase
+        .from("pendientes")
+        .update({ archivado: true })
+        .in("id", pend.map((p) => p.id));
+    }
+
+    const reset = {
+      evolucion: "sin",
+      evolucion_detalle: null,
+      evolucion_motivo: null,
+      evolucion_actualizada_at: nowIso,
+    };
+    await supabase.from("remisiones").update(reset).eq("archivado", false);
+    await supabase.from("domiciliarios").update(reset).eq("archivado", false);
+    await supabase.from("referencia_interna").update(reset).eq("archivado", false);
+  };
+
+  const guardarEntrega = async () => {
     if (!recibe) {
       toast.error("Selecciona quién recibe el turno");
       return;
     }
+    const miNombre = auxiliares?.find((a) => a.user_id === user?.id)?.nombre || user?.email || null;
+    const esNoche = turnoEntrega === "NOCHE";
+
+    const { error } = await supabase.from("entregas_turno").insert({
+      turno: turnoEntrega,
+      entrega_por: user?.id,
+      entrega_nombre: miNombre,
+      recibe_por: recibe,
+      recibe_nombre: nombreRecibe,
+      reinicio_evolucion: esNoche,
+      created_by: user?.id,
+    });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    if (esNoche) await reiniciarEvolucionNoche();
+
     setConfirmEntrega(true);
+    qc.invalidateQueries({ queryKey: ["remisiones"] });
+    qc.invalidateQueries({ queryKey: ["domiciliarios"] });
+    qc.invalidateQueries({ queryKey: ["referencia-interna"] });
+    qc.invalidateQueries({ queryKey: ["pendientes-rem"] });
+    qc.invalidateQueries({ queryKey: ["coordinacion-alertas"] });
   };
 
   return (
