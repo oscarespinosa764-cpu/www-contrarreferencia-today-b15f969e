@@ -307,6 +307,9 @@ export function CasoRemisionCard({
         tipoCaso="remision"
         paciente={nombre}
         evolucionActual={r.evolucion}
+        evolucionDetalle={r.evolucion_detalle}
+        especialidades={r.especialidades_receptoras}
+        radicadoCaso={r.codigo_radicacion}
         tabla="remisiones"
       />
     </div>
