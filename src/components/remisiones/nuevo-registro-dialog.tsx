@@ -266,25 +266,79 @@ export function NuevoRegistroDialog({
           {/* PHD */}
           <TabsContent value="phd" className="pt-4">
             <form onSubmit={handlePHD} className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field name="tipo_solicitud" label="Tipo solicitud" placeholder="PHD / PAD / O₂ / Especial" required />
-                <Field name="unidad_especial" label="Unidad especial" />
-                <Field name="paciente" label="Paciente" required />
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <Field
+                  name="fecha_inicio"
+                  label="Fecha y hora inicio trámite"
+                  type="datetime-local"
+                  required
+                />
+                <Field
+                  name="fecha_radicado_display"
+                  label="Fecha y hora radicación"
+                  defaultValue="Se asigna automáticamente al guardar"
+                  readOnly
+                />
+                <SelectField
+                  name="servicio"
+                  label="Servicio"
+                  options={["URGENCIAS", "HOSPITALIZACION", "UCI ADULTOS", "QUIROFANO"]}
+                  required
+                />
+                <Field name="cama" label="Cama" />
+                <Field name="paciente" label="Nombres y apellidos paciente" required />
+                <SelectField
+                  name="tipo_documento"
+                  label="Tipo de documento"
+                  options={["CC", "CE", "TI", "RC", "RNV", "ASI", "MSI"]}
+                  required
+                />
                 <Field name="documento" label="Documento" required />
-                <Field name="ips" label="IPS / prestador" />
-                <Field name="prioridad" label="Prioridad" required />
+                <Field name="edad" label="Edad" placeholder="Ej: 15 años" />
+                <Field name="cie10" label="CIE-10" />
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="phd-detalle" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Detalle
-                </Label>
-                <Textarea id="phd-detalle" name="detalle" rows={2} />
+              <SpecialtyList
+                label="Especialidades tratantes"
+                items={phdTratantes}
+                onChange={setPhdTratantes}
+              />
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <SelectField
+                  name="tipo_solicitud"
+                  label="Tipo de solicitud"
+                  options={[
+                    "PHD",
+                    "PAD CRONICO",
+                    "OXIGENO DOMICILIARIO",
+                    "PHD + OXIGENO DOMICILIARIO",
+                    "PAD CRONICO + OXIGENO DOMICILIARIO",
+                    "UNIDADES ESPECIALES",
+                  ]}
+                  required
+                />
+                <Field name="eapb" label="EAPB / ERP" placeholder="Ej: NUEVA EPS, SAVIA SALUD…" />
+                <SelectField
+                  name="regimen"
+                  label="Régimen"
+                  options={["SUBSIDIADO", "CONTRIBUTIVO", "ESPECIAL", "NO APLICA"]}
+                />
+                <Field name="codigo_radicacion" label="Código de radicación" />
+                <SelectField
+                  name="requiere_ambulancia"
+                  label="Requiere ambulancia"
+                  options={["SI", "NO"]}
+                />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Field name="contacto_nombre" label="Nombre y apellido familiar" />
+                <Field name="contacto_parentesco" label="Parentesco" />
+                <Field name="contacto_telefono" label="Número telefónico" />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="phd-obs" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Observaciones
                 </Label>
-                <Textarea id="phd-obs" name="observaciones" rows={2} />
+                <Textarea id="phd-obs" name="observaciones" rows={3} />
               </div>
               <DialogFooter>
                 <Button type="submit" className="rounded-full">
@@ -293,6 +347,7 @@ export function NuevoRegistroDialog({
               </DialogFooter>
             </form>
           </TabsContent>
+
 
           {/* REF INTERNA */}
           <TabsContent value="interna" className="pt-4">
