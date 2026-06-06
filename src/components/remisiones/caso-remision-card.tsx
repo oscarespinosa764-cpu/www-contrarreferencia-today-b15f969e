@@ -114,7 +114,7 @@ export function CasoRemisionCard({
   };
 
   return (
-    <div className="rounded-xl border border-border border-l-4 border-l-status-teal bg-card p-3.5 shadow-sm">
+    <div className={`rounded-xl border border-border border-l-4 ${prio.borderL} bg-card p-3.5 shadow-sm`}>
       {/* Encabezado */}
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
@@ -125,25 +125,15 @@ export function CasoRemisionCard({
               .join(" · ") || "—"}
           </p>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <div className="flex items-center gap-1.5">
-            {r.prioridad && (
-              <Badge
-                variant="outline"
-                className={
-                  /alta|alto/i.test(r.prioridad) ? "border-status-red/40 text-status-red" : undefined
-                }
-              >
-                {r.prioridad}
-              </Badge>
-            )}
-            <Badge variant="secondary" className="font-mono text-[10px]">
-              Rad: {radicado}
+        <div className="flex items-center gap-1.5">
+          {r.prioridad && (
+            <Badge variant="outline" className={prio.badge}>
+              {r.prioridad}
             </Badge>
-          </div>
-          <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground">
-            {fmtTranscurrido(r.created_at)}
-          </span>
+          )}
+          <Badge variant="secondary" className="font-mono text-[10px]">
+            Rad: {radicado}
+          </Badge>
         </div>
       </div>
 
