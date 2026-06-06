@@ -311,6 +311,7 @@ export function CasoRemisionCard({
         casoId={r.id}
         tipoCaso="remision"
         paciente={nombre}
+        documento={r.documento}
         evolucionActual={r.evolucion}
         evolucionDetalle={r.evolucion_detalle}
         especialidades={r.especialidades_tratantes}
