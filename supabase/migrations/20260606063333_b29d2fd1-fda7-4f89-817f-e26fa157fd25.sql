@@ -1,0 +1,16 @@
+ALTER TABLE public.domiciliarios
+  ADD COLUMN IF NOT EXISTS fecha_inicio timestamptz,
+  ADD COLUMN IF NOT EXISTS fecha_radicado timestamptz,
+  ADD COLUMN IF NOT EXISTS servicio text,
+  ADD COLUMN IF NOT EXISTS cama text,
+  ADD COLUMN IF NOT EXISTS tipo_documento text,
+  ADD COLUMN IF NOT EXISTS edad text,
+  ADD COLUMN IF NOT EXISTS cie10 text,
+  ADD COLUMN IF NOT EXISTS especialidades_tratantes text,
+  ADD COLUMN IF NOT EXISTS eapb text,
+  ADD COLUMN IF NOT EXISTS regimen text,
+  ADD COLUMN IF NOT EXISTS codigo_radicacion text,
+  ADD COLUMN IF NOT EXISTS requiere_ambulancia text,
+  ADD COLUMN IF NOT EXISTS contacto_nombre text,
+  ADD COLUMN IF NOT EXISTS contacto_parentesco text,
+  ADD COLUMN IF NOT EXISTS contacto_telefono text;
