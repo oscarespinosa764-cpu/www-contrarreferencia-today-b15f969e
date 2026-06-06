@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
+  EVO_CANALES,
+  canalesFaltantes,
   evolucionFromDetalle,
   evolucionMeta,
   fmtFechaHora,
@@ -24,6 +26,7 @@ type Props = {
   casoId: string;
   tipoCaso: string;
   paciente: string;
+  documento?: string | null;
   evolucionActual?: string | null;
   /** JSON con el detalle de evolución por especialidad. */
   evolucionDetalle?: string | null;
@@ -51,7 +54,7 @@ export function SeguimientoDialog({
   casoId,
   tipoCaso,
   paciente,
-  
+  documento,
   evolucionDetalle,
   especialidades,
   radicadoCaso,
@@ -66,12 +69,20 @@ export function SeguimientoDialog({
   const [tipoSeg, setTipoSeg] = useState("");
   const [detalle, setDetalle] = useState("");
   const [evoDetalle, setEvoDetalle] = useState<Record<string, EvoEspecialidad>>({});
+  // Snapshot de lo ya guardado: los canales en true quedan bloqueados.
+  const [inicial, setInicial] = useState<Record<string, EvoEspecialidad>>({});
+  const [motivoEvo, setMotivoEvo] = useState("");
   const [busy, setBusy] = useState(false);
   const [busyEvo, setBusyEvo] = useState(false);
 
   // Inicializar el checklist por especialidad al abrir.
   useEffect(() => {
-    if (open) setEvoDetalle(parseEvolucionDetalle(evolucionDetalle, especialidadesList));
+    if (open) {
+      const parsed = parseEvolucionDetalle(evolucionDetalle, especialidadesList);
+      setEvoDetalle(parsed);
+      setInicial(parseEvolucionDetalle(evolucionDetalle, especialidadesList));
+      setMotivoEvo("");
+    }
   }, [open, evolucionDetalle, especialidadesList]);
 
   const { data: historial } = useQuery({
@@ -95,18 +106,74 @@ export function SeguimientoDialog({
       ? radicado
       : radicadoExistente;
 
-  const toggleEvo = (esp: string, key: keyof EvoEspecialidad) =>
+  const isLocked = (esp: string, key: keyof EvoEspecialidad) => !!inicial[esp]?.[key];
+
+  const toggleEvo = (esp: string, key: keyof EvoEspecialidad) => {
+    if (isLocked(esp, key)) return; // No se puede desmarcar lo ya guardado.
     setEvoDetalle((prev) => ({
       ...prev,
       [esp]: { ...prev[esp], [key]: !prev[esp]?.[key] },
     }));
+  };
 
   const evolucionCalc = evolucionFromDetalle(evoDetalle);
   const metaCalc = evolucionMeta[evolucionCalc];
+  const faltan = canalesFaltantes(evoDetalle);
+  const requiereMotivo = evolucionCalc === "parcial";
+
+  // Crea, actualiza o archiva el pendiente automático de evolución.
+  const sincronizarPendiente = async (uid: string | undefined) => {
+    const { data: existentes } = await supabase
+      .from("pendientes")
+      .select("id")
+      .eq("caso_id", casoId)
+      .eq("origen", "evolucion")
+      .eq("archivado", false);
+    const ids = (existentes ?? []).map((e) => e.id);
+
+    if (evolucionCalc === "parcial") {
+      const payload = {
+        tipo_pendiente: "Evolución pendiente",
+        paciente_asunto: documento ? `${paciente} · ${documento}` : paciente,
+        prioridad: "ALTA",
+        estado: "ABIERTO",
+        observacion_entrega:
+          `Falta: ${faltan.join(", ") || "—"}.` + (motivoEvo.trim() ? ` Motivo: ${motivoEvo.trim()}` : ""),
+        fecha: new Date().toISOString().slice(0, 10),
+        caso_id: casoId,
+        tipo_caso: tipoCaso,
+        origen: "evolucion",
+      };
+      if (ids.length > 0) {
+        await supabase.from("pendientes").update(payload).eq("id", ids[0]);
+        if (ids.length > 1)
+          await supabase.from("pendientes").update({ archivado: true }).in("id", ids.slice(1));
+      } else {
+        await supabase.from("pendientes").insert({ ...payload, created_by: uid });
+      }
+    } else if (ids.length > 0) {
+      // Completo o sin evolucionar → se elimina (archiva) el pendiente.
+      await supabase.from("pendientes").update({ archivado: true }).in("id", ids);
+    }
+  };
+
+  const refrescar = () => {
+    qc.invalidateQueries({ queryKey: ["seguimientos-caso", casoId] });
+    qc.invalidateQueries({ queryKey: ["remisiones"] });
+    qc.invalidateQueries({ queryKey: ["domiciliarios"] });
+    qc.invalidateQueries({ queryKey: ["referencia-interna"] });
+    qc.invalidateQueries({ queryKey: ["pendientes-rem"] });
+    qc.invalidateQueries({ queryKey: ["pendientes"] });
+    qc.invalidateQueries({ queryKey: ["seguimientos-ult"] });
+  };
 
   const guardar = async () => {
     if (!tipoSeg) {
       toast.error("Selecciona el tipo de seguimiento");
+      return;
+    }
+    if (requiereMotivo && !motivoEvo.trim()) {
+      toast.error("Indica el motivo de la evolución pendiente");
       return;
     }
     setBusy(true);
@@ -136,14 +203,21 @@ export function SeguimientoDialog({
       const update: {
         evolucion: string;
         evolucion_detalle?: string;
+        evolucion_actualizada_at?: string;
+        evolucion_motivo?: string | null;
         codigo_radicacion?: string;
       } = { evolucion: evolucionCalc };
-      if (especialidadesList.length > 0) update.evolucion_detalle = JSON.stringify(evoDetalle);
+      if (especialidadesList.length > 0) {
+        update.evolucion_detalle = JSON.stringify(evoDetalle);
+        update.evolucion_actualizada_at = new Date().toISOString();
+        update.evolucion_motivo = requiereMotivo ? motivoEvo.trim() : null;
+      }
       if (radicadoEnUso) update.codigo_radicacion = radicadoEnUso;
       await supabase
         .from(tabla as "remisiones")
         .update(update)
         .eq("id", casoId);
+      if (especialidadesList.length > 0) await sincronizarPendiente(u.user?.id);
     }
 
     toast.success("Seguimiento registrado");
@@ -151,12 +225,7 @@ export function SeguimientoDialog({
     setTipoSeg("");
     setNuevoRadicado(false);
     setBusy(false);
-    qc.invalidateQueries({ queryKey: ["seguimientos-caso", casoId] });
-    qc.invalidateQueries({ queryKey: ["remisiones"] });
-    qc.invalidateQueries({ queryKey: ["domiciliarios"] });
-    qc.invalidateQueries({ queryKey: ["referencia-interna"] });
-    qc.invalidateQueries({ queryKey: ["pendientes-rem"] });
-    qc.invalidateQueries({ queryKey: ["seguimientos-ult"] });
+    refrescar();
   };
 
   // Guarda únicamente la evolución por especialidad, sin exigir tipo de seguimiento.
@@ -166,22 +235,30 @@ export function SeguimientoDialog({
       toast.error("No hay especialidades tratantes registradas en este caso.");
       return;
     }
+    if (requiereMotivo && !motivoEvo.trim()) {
+      toast.error("Indica el motivo de la evolución pendiente");
+      return;
+    }
     setBusyEvo(true);
+    const { data: u } = await supabase.auth.getUser();
     const { error } = await supabase
       .from(tabla as "remisiones")
-      .update({ evolucion: evolucionCalc, evolucion_detalle: JSON.stringify(evoDetalle) })
+      .update({
+        evolucion: evolucionCalc,
+        evolucion_detalle: JSON.stringify(evoDetalle),
+        evolucion_actualizada_at: new Date().toISOString(),
+        evolucion_motivo: requiereMotivo ? motivoEvo.trim() : null,
+      })
       .eq("id", casoId);
     if (error) {
       toast.error(error.message);
       setBusyEvo(false);
       return;
     }
+    await sincronizarPendiente(u.user?.id);
     toast.success("Evolución guardada");
     setBusyEvo(false);
-    qc.invalidateQueries({ queryKey: ["remisiones"] });
-    qc.invalidateQueries({ queryKey: ["domiciliarios"] });
-    qc.invalidateQueries({ queryKey: ["referencia-interna"] });
-    qc.invalidateQueries({ queryKey: ["pendientes-rem"] });
+    refrescar();
   };
 
   return (
@@ -248,6 +325,17 @@ export function SeguimientoDialog({
             </Select>
           </div>
 
+          <div className="space-y-1.5">
+            <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Detalle del seguimiento
+            </Label>
+            <Textarea value={detalle} onChange={(e) => setDetalle(e.target.value)} rows={3} />
+          </div>
+
+          <Button className="w-full rounded-full" disabled={busy} onClick={guardar}>
+            {busy ? "Guardando…" : "Registrar seguimiento"}
+          </Button>
+
           {/* Evolución diaria por especialidad */}
           <div className="space-y-2 rounded-lg border border-border p-3">
             <div className="flex items-center justify-between gap-2">
@@ -279,45 +367,49 @@ export function SeguimientoDialog({
               </p>
             ) : (
               <div className="space-y-2">
-                <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <div className="grid grid-cols-[1fr_5rem_5rem_5rem] items-end gap-x-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                   <span>Especialidad</span>
-                  <span className="text-center">Índigo</span>
-                  <span className="text-center">EAPB</span>
+                  {EVO_CANALES.map((c) => (
+                    <span key={c.key} className="text-center leading-tight">
+                      {c.label}
+                    </span>
+                  ))}
                 </div>
                 {especialidadesList.map((esp) => (
-                  <div key={esp} className="grid grid-cols-[1fr_auto_auto] items-center gap-x-3">
+                  <div key={esp} className="grid grid-cols-[1fr_5rem_5rem_5rem] items-center gap-x-1">
                     <span className="truncate text-sm text-foreground">{esp}</span>
-                    <div className="flex w-12 justify-center">
-                      <Checkbox
-                        checked={!!evoDetalle[esp]?.indigo}
-                        onCheckedChange={() => toggleEvo(esp, "indigo")}
-                      />
-                    </div>
-                    <div className="flex w-12 justify-center">
-                      <Checkbox
-                        checked={!!evoDetalle[esp]?.eapb}
-                        onCheckedChange={() => toggleEvo(esp, "eapb")}
-                      />
-                    </div>
+                    {EVO_CANALES.map((c) => (
+                      <div key={c.key} className="flex justify-center">
+                        <Checkbox
+                          checked={!!evoDetalle[esp]?.[c.key]}
+                          disabled={isLocked(esp, c.key)}
+                          onCheckedChange={() => toggleEvo(esp, c.key)}
+                        />
+                      </div>
+                    ))}
                   </div>
                 ))}
                 <p className="pt-1 text-[10px] text-muted-foreground">
-                  Índigo = evolucionada en el sistema · EAPB = enviada a la aseguradora por correo/plataforma.
+                  Índigo = sistema · EAPB Correo = enviada por correo · EAPB Plataforma = cargada en plataforma. Lo ya
+                  guardado queda bloqueado.
                 </p>
+
+                {requiereMotivo && (
+                  <div className="space-y-1.5 pt-1">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-status-amber">
+                      Motivo del pendiente {faltan.length ? `(falta ${faltan.join(", ")})` : ""}
+                    </Label>
+                    <Textarea
+                      value={motivoEvo}
+                      onChange={(e) => setMotivoEvo(e.target.value)}
+                      rows={2}
+                      placeholder="¿Por qué queda pendiente la evolución?"
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Detalle del seguimiento
-            </Label>
-            <Textarea value={detalle} onChange={(e) => setDetalle(e.target.value)} rows={3} />
-          </div>
-
-          <Button className="w-full rounded-full" disabled={busy} onClick={guardar}>
-            {busy ? "Guardando…" : "Registrar seguimiento"}
-          </Button>
 
           {/* Historial: solo los 2 últimos seguimientos */}
           <div>

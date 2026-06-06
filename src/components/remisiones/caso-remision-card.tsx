@@ -13,8 +13,8 @@ import {
   evolucionMeta,
   fmtFechaHora,
   fmtTranscurrido,
-  normEvolucion,
   prioridadMeta,
+  resumenEvolucion,
   splitEspecialidades,
   tiempoChip,
 } from "@/lib/remisiones-utils";
@@ -89,7 +89,8 @@ export function CasoRemisionCard({
     }
   }, [editar, r.especialidades_tratantes, r.especialidades_receptoras]);
 
-  const evo = evolucionMeta[normEvolucion(r.evolucion)];
+  const evoRes = resumenEvolucion(r.evolucion_detalle, splitEspecialidades(r.especialidades_tratantes));
+  const evo = evolucionMeta[evoRes.estado];
   const pendiente = /PENDIENTE/i.test(r.estado || "");
   const nombre = r.paciente || "Sin nombre";
   const radicado = r.codigo_radicacion?.trim() || "No aplica";
@@ -172,9 +173,9 @@ export function CasoRemisionCard({
         <Dato
           label="Evolución"
           value={
-            <span className="inline-flex items-center gap-1.5">
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${evo.chip}`}>
               <span className={`h-2 w-2 rounded-full ${evo.dot}`} />
-              {evo.label}
+              {evoRes.label}
             </span>
           }
         />
@@ -310,6 +311,7 @@ export function CasoRemisionCard({
         casoId={r.id}
         tipoCaso="remision"
         paciente={nombre}
+        documento={r.documento}
         evolucionActual={r.evolucion}
         evolucionDetalle={r.evolucion_detalle}
         especialidades={r.especialidades_tratantes}
