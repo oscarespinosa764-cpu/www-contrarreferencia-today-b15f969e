@@ -159,6 +159,31 @@ export function SeguimientoDialog({
     qc.invalidateQueries({ queryKey: ["seguimientos-ult"] });
   };
 
+  // Guarda únicamente la evolución por especialidad, sin exigir tipo de seguimiento.
+  const guardarEvolucion = async () => {
+    if (!tabla) return;
+    if (especialidadesList.length === 0) {
+      toast.error("No hay especialidades tratantes registradas en este caso.");
+      return;
+    }
+    setBusyEvo(true);
+    const { error } = await supabase
+      .from(tabla as "remisiones")
+      .update({ evolucion: evolucionCalc, evolucion_detalle: JSON.stringify(evoDetalle) })
+      .eq("id", casoId);
+    if (error) {
+      toast.error(error.message);
+      setBusyEvo(false);
+      return;
+    }
+    toast.success("Evolución guardada");
+    setBusyEvo(false);
+    qc.invalidateQueries({ queryKey: ["remisiones"] });
+    qc.invalidateQueries({ queryKey: ["domiciliarios"] });
+    qc.invalidateQueries({ queryKey: ["referencia-interna"] });
+    qc.invalidateQueries({ queryKey: ["pendientes-rem"] });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-auto sm:max-w-xl">
