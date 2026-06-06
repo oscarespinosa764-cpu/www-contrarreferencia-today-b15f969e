@@ -200,7 +200,13 @@ export function SeguimientoDialog({
     }
 
     if (tabla) {
-      const update: Record<string, unknown> = { evolucion: evolucionCalc };
+      const update: {
+        evolucion: string;
+        evolucion_detalle?: string;
+        evolucion_actualizada_at?: string;
+        evolucion_motivo?: string | null;
+        codigo_radicacion?: string;
+      } = { evolucion: evolucionCalc };
       if (especialidadesList.length > 0) {
         update.evolucion_detalle = JSON.stringify(evoDetalle);
         update.evolucion_actualizada_at = new Date().toISOString();
