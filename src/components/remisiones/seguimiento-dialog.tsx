@@ -12,7 +12,6 @@ import {
   evolucionFromDetalle,
   evolucionMeta,
   fmtFechaHora,
-  normEvolucion,
   parseEvolucionDetalle,
   splitEspecialidades,
   type EvoEspecialidad,
