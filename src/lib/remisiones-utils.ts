@@ -102,11 +102,22 @@ export function fmtFechaHora(iso: string | null | undefined): string {
 }
 
 // --- Evolución detallada por especialidad ---
-// Por cada especialidad receptora se registran dos casillas:
-//   indigo = evolucionada en el sistema Índigo
-//   eapb   = enviada a la EAPB por correo / plataformas
+// Por cada especialidad receptora se registran tres casillas:
+//   indigo         = evolucionada en el sistema Índigo
+//   eapb_correo    = enviada a la EAPB por correo
+//   eapb_plataforma= cargada en la plataforma de la EAPB
 
-export type EvoEspecialidad = { indigo: boolean; eapb: boolean };
+export type EvoEspecialidad = {
+  indigo: boolean;
+  eapb_correo: boolean;
+  eapb_plataforma: boolean;
+};
+
+export const EVO_CANALES = [
+  { key: "indigo", label: "Índigo" },
+  { key: "eapb_correo", label: "EAPB Correo" },
+  { key: "eapb_plataforma", label: "EAPB Plataforma" },
+] as const satisfies ReadonlyArray<{ key: keyof EvoEspecialidad; label: string }>;
 
 export function splitEspecialidades(v: string | null | undefined): string[] {
   return (v || "")
@@ -119,7 +130,7 @@ export function parseEvolucionDetalle(
   json: string | null | undefined,
   especialidades: string[],
 ): Record<string, EvoEspecialidad> {
-  let base: Record<string, EvoEspecialidad> = {};
+  let base: Record<string, Partial<EvoEspecialidad> & { eapb?: boolean }> = {};
   if (json) {
     try {
       const parsed = JSON.parse(json);
@@ -130,9 +141,20 @@ export function parseEvolucionDetalle(
   }
   const out: Record<string, EvoEspecialidad> = {};
   for (const e of especialidades) {
-    out[e] = { indigo: !!base[e]?.indigo, eapb: !!base[e]?.eapb };
+    const b = base[e] ?? {};
+    out[e] = {
+      indigo: !!b.indigo,
+      // Compatibilidad con el esquema anterior de 2 casillas (eapb único).
+      eapb_correo: !!(b.eapb_correo ?? b.eapb),
+      eapb_plataforma: !!b.eapb_plataforma,
+    };
   }
   return out;
+}
+
+/** Una especialidad está completa cuando los 3 canales están marcados. */
+export function espCompleta(d: EvoEspecialidad | undefined): boolean {
+  return !!d && d.indigo && d.eapb_correo && d.eapb_plataforma;
 }
 
 export function evolucionFromDetalle(
@@ -140,8 +162,40 @@ export function evolucionFromDetalle(
 ): EvolucionEstado {
   const items = Object.values(detalle);
   if (items.length === 0) return "sin";
-  const completas = items.filter((d) => d.indigo && d.eapb).length;
-  if (completas === 0) return "sin";
+  const completas = items.filter(espCompleta).length;
+  const algunaMarca = items.some(
+    (d) => d.indigo || d.eapb_correo || d.eapb_plataforma,
+  );
+  if (!algunaMarca) return "sin";
   if (completas === items.length) return "completo";
   return "parcial";
+}
+
+/** Canales que faltan por completar (al menos en una especialidad). */
+export function canalesFaltantes(
+  detalle: Record<string, EvoEspecialidad>,
+): string[] {
+  const faltan: string[] = [];
+  for (const { key, label } of EVO_CANALES) {
+    const incompleto = Object.values(detalle).some((d) => !d[key]);
+    if (incompleto) faltan.push(label);
+  }
+  return faltan;
+}
+
+/** Resumen del estado de evolución a partir del JSON guardado, para tarjetas. */
+export function resumenEvolucion(
+  json: string | null | undefined,
+  especialidades: string[],
+): { estado: EvolucionEstado; label: string; faltan: string[] } {
+  const detalle = parseEvolucionDetalle(json, especialidades);
+  const estado = especialidades.length === 0 ? "sin" : evolucionFromDetalle(detalle);
+  const faltan = estado === "parcial" ? canalesFaltantes(detalle) : [];
+  const label =
+    estado === "completo"
+      ? "Evolucionado"
+      : estado === "parcial"
+        ? `Evolución parcial${faltan.length ? ` · falta ${faltan.join(", ")}` : ""}`
+        : "Sin evolucionar";
+  return { estado, label, faltan };
 }
