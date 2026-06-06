@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -23,10 +23,16 @@ export type Remision = {
   prioridad: string | null;
   estado: string | null;
   tipo_tramite: string | null;
+  especialidades_tratantes: string | null;
   especialidades_receptoras: string | null;
+  codigo_radicacion: string | null;
+  contacto_nombre: string | null;
+  contacto_parentesco: string | null;
+  contacto_telefono: string | null;
   observaciones: string | null;
   especificacion: string | null;
   evolucion: string | null;
+  evolucion_detalle: string | null;
   texto_ia: string | null;
   created_at: string | null;
 };
@@ -38,6 +44,16 @@ function Dato({ label, value }: { label: string; value: React.ReactNode }) {
       <p className="text-sm text-foreground">{value || "—"}</p>
     </div>
   );
+}
+
+/** Reloj que se actualiza cada segundo para el tiempo transcurrido. */
+function useTick(active: boolean) {
+  const [, setN] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    const id = setInterval(() => setN((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [active]);
 }
 
 export function CasoRemisionCard({
