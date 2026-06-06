@@ -278,20 +278,15 @@ export function CasoRemisionCard({
               <Field name="prioridad" label="Prioridad" defaultValue={r.prioridad ?? ""} />
               <Field name="estado" label="Estado" defaultValue={r.estado ?? ""} />
               <Field
-                name="especialidades_tratantes"
-                label="Especialidad tratante"
-                defaultValue={r.especialidades_tratantes ?? ""}
-              />
-              <Field
-                name="especialidades_receptoras"
-                label="Especialidad destino"
-                defaultValue={r.especialidades_receptoras ?? ""}
-              />
-              <Field
                 name="codigo_radicacion"
                 label="N° radicado"
                 defaultValue={r.codigo_radicacion ?? ""}
+                readOnly
               />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SpecialtyList label="Especialidad tratante" items={tratantes} onChange={setTratantes} />
+              <SpecialtyList label="Especialidad destino" items={receptoras} onChange={setReceptoras} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="observaciones" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
