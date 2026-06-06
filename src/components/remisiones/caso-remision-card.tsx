@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -23,10 +23,16 @@ export type Remision = {
   prioridad: string | null;
   estado: string | null;
   tipo_tramite: string | null;
+  especialidades_tratantes: string | null;
   especialidades_receptoras: string | null;
+  codigo_radicacion: string | null;
+  contacto_nombre: string | null;
+  contacto_parentesco: string | null;
+  contacto_telefono: string | null;
   observaciones: string | null;
   especificacion: string | null;
   evolucion: string | null;
+  evolucion_detalle: string | null;
   texto_ia: string | null;
   created_at: string | null;
 };
@@ -38,6 +44,16 @@ function Dato({ label, value }: { label: string; value: React.ReactNode }) {
       <p className="text-sm text-foreground">{value || "—"}</p>
     </div>
   );
+}
+
+/** Reloj que se actualiza cada segundo para el tiempo transcurrido. */
+function useTick(active: boolean) {
+  const [, setN] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    const id = setInterval(() => setN((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [active]);
 }
 
 export function CasoRemisionCard({
@@ -53,10 +69,12 @@ export function CasoRemisionCard({
   const [ver, setVer] = useState(false);
   const [editar, setEditar] = useState(false);
   const [seg, setSeg] = useState(false);
+  useTick(true);
 
   const evo = evolucionMeta[normEvolucion(r.evolucion)];
   const pendiente = /PENDIENTE/i.test(r.estado || "");
   const nombre = r.paciente || "Sin nombre";
+  const radicado = r.codigo_radicacion?.trim() || "No aplica";
 
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -72,7 +90,9 @@ export function CasoRemisionCard({
         asegurador: String(f.get("asegurador")),
         prioridad: String(f.get("prioridad")),
         estado: String(f.get("estado")),
+        especialidades_tratantes: String(f.get("especialidades_tratantes")),
         especialidades_receptoras: String(f.get("especialidades_receptoras")),
+        codigo_radicacion: String(f.get("codigo_radicacion")),
         observaciones: String(f.get("observaciones")),
       })
       .eq("id", r.id);
@@ -97,25 +117,31 @@ export function CasoRemisionCard({
               .join(" · ") || "—"}
           </p>
         </div>
-        <div className="flex items-center gap-1.5">
-          {r.prioridad && (
-            <Badge
-              variant="outline"
-              className={
-                /alta|alto/i.test(r.prioridad) ? "border-status-red/40 text-status-red" : undefined
-              }
-            >
-              {r.prioridad}
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex items-center gap-1.5">
+            {r.prioridad && (
+              <Badge
+                variant="outline"
+                className={
+                  /alta|alto/i.test(r.prioridad) ? "border-status-red/40 text-status-red" : undefined
+                }
+              >
+                {r.prioridad}
+              </Badge>
+            )}
+            <Badge variant="secondary" className="font-mono text-[10px]">
+              Rad: {radicado}
             </Badge>
-          )}
+          </div>
           <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground">
             {fmtTranscurrido(r.created_at)}
           </span>
         </div>
       </div>
 
+
       {/* Datos compactos */}
-      <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-4">
+      <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-3 lg:grid-cols-5">
         <Dato
           label="Ubicación"
           value={
@@ -133,6 +159,7 @@ export function CasoRemisionCard({
             </span>
           }
         />
+        <Dato label="Especialidad tratante" value={r.especialidades_tratantes} />
         <Dato label="Especialidad destino" value={r.especialidades_receptoras} />
         <Dato
           label="Evolución"
@@ -180,7 +207,23 @@ export function CasoRemisionCard({
       <Dialog open={ver} onOpenChange={setVer}>
         <DialogContent className="max-h-[90vh] overflow-auto sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>Detalle · {nombre}</DialogTitle>
+            <div className="flex items-center justify-between gap-2 pr-6">
+              <DialogTitle>Detalle · {nombre}</DialogTitle>
+              {canEdit && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full"
+                  aria-label="Editar"
+                  onClick={() => {
+                    setVer(false);
+                    setEditar(true);
+                  }}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3">
             <Dato label="Paciente" value={r.paciente} />
@@ -190,9 +233,14 @@ export function CasoRemisionCard({
             <Dato label="Servicio" value={r.servicio} />
             <Dato label="Cama" value={r.cama} />
             <Dato label="Prioridad" value={r.prioridad} />
+            <Dato label="N° radicado" value={radicado} />
             <Dato label="Tipo trámite" value={r.tipo_tramite} />
             <Dato label="Estado" value={r.estado} />
+            <Dato label="Especialidad tratante" value={r.especialidades_tratantes} />
             <Dato label="Especialidad destino" value={r.especialidades_receptoras} />
+            <Dato label="Familiar" value={r.contacto_nombre} />
+            <Dato label="Parentesco" value={r.contacto_parentesco} />
+            <Dato label="Teléfono familiar" value={r.contacto_telefono} />
           </div>
           {r.observaciones && (
             <div>
@@ -200,11 +248,9 @@ export function CasoRemisionCard({
               <p className="text-sm text-foreground">{r.observaciones}</p>
             </div>
           )}
-          {r.texto_ia && (
-            <div className="rounded-md bg-muted p-3 text-xs text-foreground">{r.texto_ia}</div>
-          )}
         </DialogContent>
       </Dialog>
+
 
       {/* Editar */}
       <Dialog open={editar} onOpenChange={setEditar}>
@@ -223,9 +269,19 @@ export function CasoRemisionCard({
               <Field name="prioridad" label="Prioridad" defaultValue={r.prioridad ?? ""} />
               <Field name="estado" label="Estado" defaultValue={r.estado ?? ""} />
               <Field
+                name="especialidades_tratantes"
+                label="Especialidad tratante"
+                defaultValue={r.especialidades_tratantes ?? ""}
+              />
+              <Field
                 name="especialidades_receptoras"
                 label="Especialidad destino"
                 defaultValue={r.especialidades_receptoras ?? ""}
+              />
+              <Field
+                name="codigo_radicacion"
+                label="N° radicado"
+                defaultValue={r.codigo_radicacion ?? ""}
               />
             </div>
             <div className="space-y-1.5">
@@ -251,6 +307,9 @@ export function CasoRemisionCard({
         tipoCaso="remision"
         paciente={nombre}
         evolucionActual={r.evolucion}
+        evolucionDetalle={r.evolucion_detalle}
+        especialidades={r.especialidades_receptoras}
+        radicadoCaso={r.codigo_radicacion}
         tabla="remisiones"
       />
     </div>

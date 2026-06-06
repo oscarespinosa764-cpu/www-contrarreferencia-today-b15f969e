@@ -1,14 +1,11 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { generarTextoCaso } from "@/lib/ai.functions";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Sparkles } from "lucide-react";
 import { Field, SpecialtyList } from "./form-bits";
 import { toast } from "sonner";
 
@@ -23,9 +20,6 @@ export function NuevoRegistroDialog({
   const [tab, setTab] = useState("remision");
   const [tratantes, setTratantes] = useState<string[]>([]);
   const [receptoras, setReceptoras] = useState<string[]>([]);
-  const [iaTexto, setIaTexto] = useState("");
-  const [iaBusy, setIaBusy] = useState(false);
-  const generar = useServerFn(generarTextoCaso);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["remisiones"] });
@@ -38,21 +32,8 @@ export function NuevoRegistroDialog({
   const reset = () => {
     setTratantes([]);
     setReceptoras([]);
-    setIaTexto("");
   };
 
-  const handleIA = (form: HTMLFormElement) => {
-    const f = new FormData(form);
-    const datos = `Paciente: ${f.get("paciente")}\nDocumento: ${f.get("documento")}\nEdad: ${f.get("edad")}\nServicio: ${f.get("servicio")}\nCama: ${f.get("cama")}\nPrioridad: ${f.get("prioridad")}\nAsegurador: ${f.get("asegurador")}\nRégimen: ${f.get("regimen")}\nCIE-10: ${f.get("cie10")}\nEsp. tratantes: ${tratantes.join(", ")}\nEsp. receptoras: ${receptoras.join(", ")}\nObservaciones: ${f.get("observaciones")}`;
-    setIaBusy(true);
-    generar({ data: { tipoCaso: "remision", datos, formato: "resumen" } })
-      .then((r) => {
-        if (r.error) toast.error(r.error);
-        else setIaTexto(r.texto);
-      })
-      .catch(() => toast.error("No se pudo generar el texto"))
-      .finally(() => setIaBusy(false));
-  };
 
   const handleRemision = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -79,7 +60,6 @@ export function NuevoRegistroDialog({
       observaciones: String(f.get("observaciones")),
       estado: "PENDIENTE ACEPTACION",
       evolucion: "sin",
-      texto_ia: iaTexto || null,
       created_by: u.user?.id,
     });
     if (error) return toast.error(error.message);
@@ -174,16 +154,16 @@ export function NuevoRegistroDialog({
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <Field name="paciente" label="Paciente" required />
                 <Field name="documento" label="Documento" required />
-                <Field name="edad" label="Edad" />
-                <Field name="asegurador" label="Asegurador" />
-                <Field name="regimen" label="Régimen" />
-                <Field name="servicio" label="Servicio" />
-                <Field name="cama" label="Cama" />
-                <Field name="cie10" label="CIE-10" />
-                <Field name="prioridad" label="Prioridad" placeholder="Alta / Media / Baja" />
-                <Field name="remision_por" label="Remisión por" />
-                <Field name="tipo_tramite" label="Tipo trámite" />
-                <Field name="tipo_ambulancia" label="Ambulancia" />
+                <Field name="edad" label="Edad" required />
+                <Field name="asegurador" label="Asegurador" required />
+                <Field name="regimen" label="Régimen" required />
+                <Field name="servicio" label="Servicio" required />
+                <Field name="cama" label="Cama" required />
+                <Field name="cie10" label="CIE-10" required />
+                <Field name="prioridad" label="Prioridad" placeholder="Alta / Media / Baja" required />
+                <Field name="remision_por" label="Remisión por" required />
+                <Field name="tipo_tramite" label="Tipo trámite" required />
+                <Field name="tipo_ambulancia" label="Ambulancia" required />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <SpecialtyList label="Esp. tratantes" items={tratantes} onChange={setTratantes} />
@@ -200,29 +180,6 @@ export function NuevoRegistroDialog({
                 </Label>
                 <Textarea id="observaciones" name="observaciones" rows={3} />
               </div>
-              <div className="space-y-2 rounded-md border border-border p-3">
-                <div className="flex items-center justify-between">
-                  <Label className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-primary" /> Texto generado por IA
-                  </Label>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    className="rounded-full"
-                    disabled={iaBusy}
-                    onClick={(e) => handleIA(e.currentTarget.closest("form") as HTMLFormElement)}
-                  >
-                    {iaBusy ? "Generando…" : "Generar resumen"}
-                  </Button>
-                </div>
-                <Textarea
-                  value={iaTexto}
-                  onChange={(e) => setIaTexto(e.target.value)}
-                  rows={4}
-                  placeholder="Pulsa «Generar resumen» para crear el texto del caso con IA."
-                />
-              </div>
               <DialogFooter>
                 <Button type="submit" className="rounded-full">
                   Guardar remisión
@@ -235,12 +192,12 @@ export function NuevoRegistroDialog({
           <TabsContent value="phd" className="pt-4">
             <form onSubmit={handlePHD} className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field name="tipo_solicitud" label="Tipo solicitud" placeholder="PHD / PAD / O₂ / Especial" />
+                <Field name="tipo_solicitud" label="Tipo solicitud" placeholder="PHD / PAD / O₂ / Especial" required />
                 <Field name="unidad_especial" label="Unidad especial" />
                 <Field name="paciente" label="Paciente" required />
-                <Field name="documento" label="Documento" />
+                <Field name="documento" label="Documento" required />
                 <Field name="ips" label="IPS / prestador" />
-                <Field name="prioridad" label="Prioridad" />
+                <Field name="prioridad" label="Prioridad" required />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="phd-detalle" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -266,11 +223,11 @@ export function NuevoRegistroDialog({
           <TabsContent value="interna" className="pt-4">
             <form onSubmit={handleRefInterna} className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field name="tipo_solicitud" label="Tipo solicitud" />
-                <Field name="servicio" label="Servicio" />
+                <Field name="tipo_solicitud" label="Tipo solicitud" required />
+                <Field name="servicio" label="Servicio" required />
                 <Field name="proveedor_prestador" label="Proveedor / prestador" />
                 <Field name="paciente" label="Paciente" required />
-                <Field name="documento" label="Documento" />
+                <Field name="documento" label="Documento" required />
                 <Field name="prioridad" label="Prioridad" />
               </div>
               <div className="space-y-1.5">
@@ -291,16 +248,16 @@ export function NuevoRegistroDialog({
           <TabsContent value="pendiente" className="pt-4">
             <form onSubmit={handlePendiente} className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field name="tipo_pendiente" label="Tipo pendiente" />
+                <Field name="tipo_pendiente" label="Tipo pendiente" required />
                 <Field name="ips_area" label="IPS / área" />
                 <Field name="paciente_asunto" label="Paciente / asunto" required />
-                <Field name="prioridad" label="Prioridad" />
+                <Field name="prioridad" label="Prioridad" required />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="pend-obs" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Observación de entrega
                 </Label>
-                <Textarea id="pend-obs" name="observacion_entrega" rows={2} />
+                <Textarea id="pend-obs" name="observacion_entrega" rows={2} required />
               </div>
               <DialogFooter>
                 <Button type="submit" className="rounded-full">
