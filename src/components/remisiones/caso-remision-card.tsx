@@ -13,8 +13,8 @@ import {
   evolucionMeta,
   fmtFechaHora,
   fmtTranscurrido,
-  normEvolucion,
   prioridadMeta,
+  resumenEvolucion,
   splitEspecialidades,
   tiempoChip,
 } from "@/lib/remisiones-utils";
