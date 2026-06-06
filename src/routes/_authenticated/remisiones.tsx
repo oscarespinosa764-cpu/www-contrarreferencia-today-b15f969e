@@ -550,6 +550,12 @@ function RemisionesPage() {
             Resumen de casos activos: {stats.activas} remisiones · {stats.especiales} PHD/especiales ·{" "}
             {stats.internas} ref. internas · {stats.generales} pendientes.
           </p>
+          {turnoEntrega === "NOCHE" && (
+            <p className="rounded-md bg-status-amber/10 px-3 py-2 text-xs font-medium text-status-amber">
+              Cierre de turno NOCHE: la evolución de todos los casos se reinició a «Sin evolucionar». Las evoluciones
+              que quedaron pendientes se enviaron como alertas a Coordinación.
+            </p>
+          )}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" className="rounded-full" onClick={() => setConfirmEntrega(false)}>
               Cerrar
