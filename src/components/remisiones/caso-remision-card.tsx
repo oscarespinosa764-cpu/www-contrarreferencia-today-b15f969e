@@ -89,7 +89,8 @@ export function CasoRemisionCard({
     }
   }, [editar, r.especialidades_tratantes, r.especialidades_receptoras]);
 
-  const evo = evolucionMeta[normEvolucion(r.evolucion)];
+  const evoRes = resumenEvolucion(r.evolucion_detalle, splitEspecialidades(r.especialidades_tratantes));
+  const evo = evolucionMeta[evoRes.estado];
   const pendiente = /PENDIENTE/i.test(r.estado || "");
   const nombre = r.paciente || "Sin nombre";
   const radicado = r.codigo_radicacion?.trim() || "No aplica";
