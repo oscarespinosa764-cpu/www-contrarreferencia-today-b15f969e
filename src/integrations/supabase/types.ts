@@ -260,63 +260,108 @@ export type Database = {
       domiciliarios: {
         Row: {
           archivado: boolean
+          cama: string | null
+          cie10: string | null
+          codigo_radicacion: string | null
+          contacto_nombre: string | null
+          contacto_parentesco: string | null
+          contacto_telefono: string | null
           created_at: string
           created_by: string | null
           detalle: string | null
           documento: string | null
+          eapb: string | null
+          edad: string | null
+          especialidades_tratantes: string | null
           estado: string | null
           evolucion: string | null
           evolucion_actualizada_at: string | null
           evolucion_detalle: string | null
           evolucion_motivo: string | null
           fecha: string | null
+          fecha_inicio: string | null
+          fecha_radicado: string | null
           id: string
           ips: string | null
           observaciones: string | null
           paciente: string | null
           prioridad: string | null
+          regimen: string | null
+          requiere_ambulancia: string | null
+          servicio: string | null
+          tipo_documento: string | null
           tipo_solicitud: string | null
           unidad_especial: string | null
           updated_at: string
         }
         Insert: {
           archivado?: boolean
+          cama?: string | null
+          cie10?: string | null
+          codigo_radicacion?: string | null
+          contacto_nombre?: string | null
+          contacto_parentesco?: string | null
+          contacto_telefono?: string | null
           created_at?: string
           created_by?: string | null
           detalle?: string | null
           documento?: string | null
+          eapb?: string | null
+          edad?: string | null
+          especialidades_tratantes?: string | null
           estado?: string | null
           evolucion?: string | null
           evolucion_actualizada_at?: string | null
           evolucion_detalle?: string | null
           evolucion_motivo?: string | null
           fecha?: string | null
+          fecha_inicio?: string | null
+          fecha_radicado?: string | null
           id?: string
           ips?: string | null
           observaciones?: string | null
           paciente?: string | null
           prioridad?: string | null
+          regimen?: string | null
+          requiere_ambulancia?: string | null
+          servicio?: string | null
+          tipo_documento?: string | null
           tipo_solicitud?: string | null
           unidad_especial?: string | null
           updated_at?: string
         }
         Update: {
           archivado?: boolean
+          cama?: string | null
+          cie10?: string | null
+          codigo_radicacion?: string | null
+          contacto_nombre?: string | null
+          contacto_parentesco?: string | null
+          contacto_telefono?: string | null
           created_at?: string
           created_by?: string | null
           detalle?: string | null
           documento?: string | null
+          eapb?: string | null
+          edad?: string | null
+          especialidades_tratantes?: string | null
           estado?: string | null
           evolucion?: string | null
           evolucion_actualizada_at?: string | null
           evolucion_detalle?: string | null
           evolucion_motivo?: string | null
           fecha?: string | null
+          fecha_inicio?: string | null
+          fecha_radicado?: string | null
           id?: string
           ips?: string | null
           observaciones?: string | null
           paciente?: string | null
           prioridad?: string | null
+          regimen?: string | null
+          requiere_ambulancia?: string | null
+          servicio?: string | null
+          tipo_documento?: string | null
           tipo_solicitud?: string | null
           unidad_especial?: string | null
           updated_at?: string
