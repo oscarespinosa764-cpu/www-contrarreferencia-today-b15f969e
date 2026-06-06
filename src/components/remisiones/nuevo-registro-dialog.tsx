@@ -248,10 +248,10 @@ export function NuevoRegistroDialog({
           <TabsContent value="pendiente" className="pt-4">
             <form onSubmit={handlePendiente} className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field name="tipo_pendiente" label="Tipo pendiente" />
+                <Field name="tipo_pendiente" label="Tipo pendiente" required />
                 <Field name="ips_area" label="IPS / área" />
                 <Field name="paciente_asunto" label="Paciente / asunto" required />
-                <Field name="prioridad" label="Prioridad" />
+                <Field name="prioridad" label="Prioridad" required />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="pend-obs" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
