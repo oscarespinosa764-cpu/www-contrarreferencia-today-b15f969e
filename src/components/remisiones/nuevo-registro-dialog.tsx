@@ -60,7 +60,6 @@ export function NuevoRegistroDialog({
       observaciones: String(f.get("observaciones")),
       estado: "PENDIENTE ACEPTACION",
       evolucion: "sin",
-      texto_ia: iaTexto || null,
       created_by: u.user?.id,
     });
     if (error) return toast.error(error.message);
