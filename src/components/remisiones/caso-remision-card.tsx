@@ -205,7 +205,23 @@ export function CasoRemisionCard({
       <Dialog open={ver} onOpenChange={setVer}>
         <DialogContent className="max-h-[90vh] overflow-auto sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>Detalle · {nombre}</DialogTitle>
+            <div className="flex items-center justify-between gap-2 pr-6">
+              <DialogTitle>Detalle · {nombre}</DialogTitle>
+              {canEdit && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full"
+                  aria-label="Editar"
+                  onClick={() => {
+                    setVer(false);
+                    setEditar(true);
+                  }}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3">
             <Dato label="Paciente" value={r.paciente} />
@@ -215,9 +231,14 @@ export function CasoRemisionCard({
             <Dato label="Servicio" value={r.servicio} />
             <Dato label="Cama" value={r.cama} />
             <Dato label="Prioridad" value={r.prioridad} />
+            <Dato label="N° radicado" value={radicado} />
             <Dato label="Tipo trámite" value={r.tipo_tramite} />
             <Dato label="Estado" value={r.estado} />
+            <Dato label="Especialidad tratante" value={r.especialidades_tratantes} />
             <Dato label="Especialidad destino" value={r.especialidades_receptoras} />
+            <Dato label="Familiar" value={r.contacto_nombre} />
+            <Dato label="Parentesco" value={r.contacto_parentesco} />
+            <Dato label="Teléfono familiar" value={r.contacto_telefono} />
           </div>
           {r.observaciones && (
             <div>
@@ -225,11 +246,9 @@ export function CasoRemisionCard({
               <p className="text-sm text-foreground">{r.observaciones}</p>
             </div>
           )}
-          {r.texto_ia && (
-            <div className="rounded-md bg-muted p-3 text-xs text-foreground">{r.texto_ia}</div>
-          )}
         </DialogContent>
       </Dialog>
+
 
       {/* Editar */}
       <Dialog open={editar} onOpenChange={setEditar}>
