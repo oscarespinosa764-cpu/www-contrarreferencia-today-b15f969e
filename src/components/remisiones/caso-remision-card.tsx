@@ -82,6 +82,7 @@ export function CasoRemisionCard({
   const pendiente = /PENDIENTE/i.test(r.estado || "");
   const nombre = r.paciente || "Sin nombre";
   const radicado = r.codigo_radicacion?.trim() || "No aplica";
+  const prio = prioridadMeta(r.prioridad);
 
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
