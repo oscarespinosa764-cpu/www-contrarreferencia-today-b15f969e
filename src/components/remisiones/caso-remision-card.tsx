@@ -77,7 +77,17 @@ export function CasoRemisionCard({
   const [ver, setVer] = useState(false);
   const [editar, setEditar] = useState(false);
   const [seg, setSeg] = useState(false);
+  const [tratantes, setTratantes] = useState<string[]>([]);
+  const [receptoras, setReceptoras] = useState<string[]>([]);
   useTick(true);
+
+  // Al abrir el editor, precargar las especialidades actuales.
+  useEffect(() => {
+    if (editar) {
+      setTratantes(splitEspecialidades(r.especialidades_tratantes));
+      setReceptoras(splitEspecialidades(r.especialidades_receptoras));
+    }
+  }, [editar, r.especialidades_tratantes, r.especialidades_receptoras]);
 
   const evo = evolucionMeta[normEvolucion(r.evolucion)];
   const pendiente = /PENDIENTE/i.test(r.estado || "");
