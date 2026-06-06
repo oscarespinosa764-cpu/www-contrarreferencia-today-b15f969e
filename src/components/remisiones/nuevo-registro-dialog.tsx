@@ -223,11 +223,11 @@ export function NuevoRegistroDialog({
           <TabsContent value="interna" className="pt-4">
             <form onSubmit={handleRefInterna} className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field name="tipo_solicitud" label="Tipo solicitud" />
-                <Field name="servicio" label="Servicio" />
+                <Field name="tipo_solicitud" label="Tipo solicitud" required />
+                <Field name="servicio" label="Servicio" required />
                 <Field name="proveedor_prestador" label="Proveedor / prestador" />
                 <Field name="paciente" label="Paciente" required />
-                <Field name="documento" label="Documento" />
+                <Field name="documento" label="Documento" required />
                 <Field name="prioridad" label="Prioridad" />
               </div>
               <div className="space-y-1.5">
