@@ -1,61 +1,71 @@
-# Rediseño visual — plataforma CEDIM IPS
+# Plan — Ajustes Bitácora de Remisiones + Sesión
 
-Objetivo: que todas las ventanas se vean **iguales a las capturas oficiales** que enviaste. Solo es trabajo **visual/maquetado**; la lógica real (consultas, guardados, IA, permisos) se mantiene intacta. Los números que hoy salen en cero seguirán saliendo en cero hasta conectar datos.
+## 1. Tarjeta del caso (imagen 1) — `caso-remision-card.tsx`
 
-## 1. Encabezado compartido (afecta a todas las ventanas)
+**Tiempo transcurrido (esquina inferior derecha):**
+- Quitar el chip de tiempo del encabezado (arriba a la derecha, junto a "Rad").
+- Colocarlo abajo a la derecha de la tarjeta (donde está la X roja).
+- Eliminar los segundos → mostrar solo `días, horas, minutos`.
+- Color del recuadro según antigüedad:
+  - menos de 12 h → verde
+  - 12 h a menos de 120 h → amarillo
+  - 120 h o más → rojo
 
-Crear un componente de encabezado reutilizable que toda página use, igual a las capturas:
+**Última gestión (junto al botón Seguimiento):**
+- Quitarla de su posición actual (debajo del motivo) y ubicarla en la fila de acciones, al lado del botón "Seguimiento".
+- Si hay gestión previa: mostrar **fecha, hora y quién** la realizó.
+- Si no hay: "Sin seguimientos registrados".
+- (La data ya llega vía `ultimaGestion = { fecha, responsable }`; se aprovecha tal cual.)
 
-- **Izquierda:** saludo dinámico "Buenas tardes, OSCAR 👋" (Buenos días / Buenas tardes / Buenas noches según la hora, con el nombre real del usuario).
-- **Centro:** título grande en mayúsculas + subtítulo azul (ej. "DASHBOARD GENERAL" / "Panel Inteligente de Coordinación"). Cada página define su título y subtítulo.
-- **Derecha:** insignia de turno "TARDE · 01/06 13:00 – 01/06 19:00" (calculada por hora: MAÑANA/TARDE/NOCHE), botón de tema (☾) y botón "✕ Cerrar sesión".
-- Mover "Cerrar sesión" a esta barra superior; en el sidebar se conserva el bloque de perfil del usuario.
-- Fondo de página con degradado azul claro como en las capturas.
+**Texto "Motivo":**
+- Cambiar la etiqueta `Motivo:` por `Justificación remisión:`.
 
-## 2. Estilo de tarjetas (sistema de diseño)
+**Marquita de prioridad (media/baja/alta):**
+- baja → verde, media → amarillo, alta → rojo (hoy solo se colorea "alta" en rojo).
 
-- Tarjetas blancas redondeadas con **borde superior de color** (azul, verde, rojo, ámbar, teal).
-- Título pequeño en mayúsculas centrado, número grande en color, leyenda pequeña debajo.
-- Filas horizontales de tarjetas de estado (scroll en pantallas chicas).
-- Barras de búsqueda, dropdowns y botones ("+ Nuevo", "Refrescar", "Excel", "PDF") con el mismo estilo redondeado de las capturas.
-- Pestañas (tabs) con subrayado azul activo.
+**Borde izquierdo de la tarjeta:**
+- Cambiar el color fijo azul/teal por el color de prioridad (verde / amarillo / rojo).
 
-Estos estilos se definen como tokens/clases en `src/styles.css` y un par de componentes auxiliares (tarjeta de estadística, sección) para reutilizar.
+**Rad:** se mantiene el color actual.
 
-## 3. Rediseño por ventana
+## 2. Modal de seguimiento (imagen 2) — `seguimiento-dialog.tsx`
 
-```text
-Dashboard General   → fila de 8 tarjetas "Referencias salientes" + bloque
-                      "Referencias entrantes" (6 tarjetas de colores) +
-                      paneles Avisos / Pendientes de notificación +
-                      Indicadores rápidos / Alertas de coordinación.
-Historial de Casos  → filtros de fecha (Todos/Hoy/Semana/Mes…), selector
-                      entrantes/salientes, buscador, dropdowns tipo/estado,
-                      botones Excel/Actualizar, tarjetas de caso con badges.
-Dashboard Operativo → bloque Entrega de turno + Exportaciones, banda Avisos
-(Bitácora salientes)  operativos, fila de 8 tarjetas, tabs + filtros + tabla.
-Red / Disponibilidad→ buscador + filtro "Todos", estado vacío con ícono.
-Registrar Caso      → asistente de 3 pasos (Identificación/Datos/Tipo),
-                      campos, zona de carga de archivos.
-Seguimientos        → 5 tarjetas resumen + buscador/filtros + tarjeta de
-                      seguimiento con acciones + Alertas de coordinación.
-Plantillas          → buscador + filtros + botón "+ Nueva plantilla".
-Indicadores         → 5 tarjetas semáforo + buscador + "+ Nuevo indicador".
-Reglas Operativas   → 4 tarjetas resumen + Avisos activos + lista de reglas
-                      con toggle, badges de módulo/severidad y acciones.
-Catálogo / Históricos / Control de Mando / Usuarios → mismo encabezado y
-                      estilo de tarjetas/tablas para que combinen.
-```
+- **"Agregar nuevo radicado"**: convertirlo en un **botón** con estilo (outline/secundario), no texto plano.
+- **"No aplica (esta EPS no genera radicado)"**: mostrar la casilla **solo cuando el número de radicado está vacío** (no generado). Si ya hay radicado guardado, ocultarla.
+- **Tipo de seguimiento**: agregar la opción **"Radicado de trámite de remisión"** (para cuando solo se registra el radicado).
+- **Evolución diaria — especialidades correctas**: hoy usa las especialidades **destino/receptoras**. Debe usar las **especialidades tratantes (remisoras)**. Se pasará `r.especialidades_tratantes` en lugar de `r.especialidades_receptoras` al modal.
 
-## 4. Orden de trabajo
+## 3. Evolución diaria con guardado independiente (imagen 4) — `seguimiento-dialog.tsx`
 
-1. Encabezado compartido + tokens/estilos de tarjeta.
-2. Dashboard General (la más visible).
-3. Resto de ventanas una por una con el mismo patrón.
+- Mantener las dos casillas por especialidad **Índigo / EAPB** (con visual de check, ya lo es).
+- Agregar un botón **"Guardar"** propio dentro del recuadro de "Evolución diaria" (en la fila del título), que muestre "Guardando…" mientras procesa.
+- Ese botón guarda **solo la evolución** (actualiza `evolucion` y `evolucion_detalle` del caso) **sin exigir** tipo de seguimiento ni el resto del modal.
+- El botón inferior "Registrar seguimiento" sigue funcionando como hasta ahora (sí exige tipo de seguimiento).
 
-## Notas técnicas
-- No se toca la autenticación, las consultas a la base de datos ni la lógica de permisos (admin/operativa).
-- Reutilizo los datos que ya consulta cada página; solo cambia la presentación.
-- Login ya quedó alineado en pasos previos.
+## 4. Color coding centralizado — `remisiones-utils.ts`
 
-¿Le doy luz verde a este plan y empiezo por el encabezado compartido + Dashboard General, o ajustamos algo antes?
+- `fmtTranscurrido`: quitar segundos (solo días/horas/min).
+- Nuevo helper `tiempoTono(fromISO)` → devuelve `verde | amarillo | rojo` según los umbrales (12 h / 120 h).
+- Nuevo helper `prioridadMeta(prioridad)` → mapea baja/media/alta a clases de color (borde, texto, fondo) usando los tokens `status-green / status-amber / status-red` ya existentes en `styles.css`.
+
+## 5. Sesión por inactividad (imagen 3)
+
+**Nuevo componente** `src/components/session-timeout.tsx` + hook de inactividad, montado dentro del layout `_authenticated.tsx`:
+- Detecta inactividad (mouse, teclado, scroll, touch). Tras **3 horas sin actividad**, muestra el modal "Sesión expirada" con dos acciones:
+  - **Cerrar sesión** → `signOut()`.
+  - **Continuar/Renovar** → refresca la sesión (`supabase.auth.refreshSession()`), reinicia el contador y cierra el modal.
+- Si tras aparecer el modal pasa **1 hora más** sin que el usuario presione "Continuar", se ejecuta `signOut()` automáticamente.
+
+**Cierre al cerrar pestaña/navegador:**
+- Marcar la sesión como "viva" en `sessionStorage` al cargar la app autenticada. Como `sessionStorage` se borra al cerrar la pestaña/navegador, al volver a abrir sin esa marca se fuerza `signOut()`. Esto cierra la sesión cuando se cierra la pestaña o el navegador, sin afectar la navegación dentro de la misma pestaña.
+- (Nota técnica: `client.ts` es autogenerado y persiste en `localStorage`; por eso el cierre por cierre de pestaña se implementa con la marca de `sessionStorage`, sin tocar ese archivo.)
+
+## Detalles técnicos
+
+- Tokens de color (verde/amarillo/rojo) ya existen: `status-green`, `status-amber`, `status-red` en `src/styles.css`. No se crean colores nuevos.
+- Cambios contenidos a: `caso-remision-card.tsx`, `seguimiento-dialog.tsx`, `remisiones-utils.ts`, `_authenticated.tsx`, y un nuevo `session-timeout.tsx`. Sin cambios de base de datos.
+- `GenericoCard` (PHD/internas/pendientes) en `remisiones.tsx` también usa tiempo/última gestión; se aplicará el mismo color de tiempo para consistencia, opcional según prioridad.
+
+## Pendiente / fuera de alcance
+- Trazabilidad completa de seguimientos (el usuario indicó que se organizará en otro lugar más adelante).
+- Formatos de exportación (PDF/Excel) — el usuario los enviará al final.
