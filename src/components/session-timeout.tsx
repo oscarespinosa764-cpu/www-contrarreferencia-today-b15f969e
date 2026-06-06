@@ -69,8 +69,12 @@ export function SessionTimeout() {
   if (!user) return null;
 
   return (
-    <Dialog open={aviso} onOpenChange={() => { /* solo se cierra con los botones */ }}>
-      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()} hideClose>
+    <Dialog open={aviso}>
+      <DialogContent
+        className="sm:max-w-md [&>button]:hidden"
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>Sesión expirada</DialogTitle>
           <DialogDescription>
