@@ -78,14 +78,26 @@ export function NuevoRegistroDialog({
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const { data: u } = await supabase.auth.getUser();
+    const inicioRaw = String(f.get("fecha_inicio") || "");
     const { error } = await supabase.from("domiciliarios").insert({
-      tipo_solicitud: String(f.get("tipo_solicitud")),
-      unidad_especial: String(f.get("unidad_especial")),
+      fecha_inicio: inicioRaw ? new Date(inicioRaw).toISOString() : null,
+      fecha_radicado: new Date().toISOString(),
+      servicio: String(f.get("servicio")),
+      cama: String(f.get("cama")),
       paciente: String(f.get("paciente")),
+      tipo_documento: String(f.get("tipo_documento")),
       documento: String(f.get("documento")),
-      ips: String(f.get("ips")),
-      prioridad: String(f.get("prioridad")),
-      detalle: String(f.get("detalle")),
+      edad: String(f.get("edad")),
+      cie10: String(f.get("cie10")),
+      especialidades_tratantes: phdTratantes.join(", "),
+      tipo_solicitud: String(f.get("tipo_solicitud")),
+      eapb: String(f.get("eapb")),
+      regimen: String(f.get("regimen")),
+      codigo_radicacion: String(f.get("codigo_radicacion")),
+      requiere_ambulancia: String(f.get("requiere_ambulancia")),
+      contacto_nombre: String(f.get("contacto_nombre")),
+      contacto_parentesco: String(f.get("contacto_parentesco")),
+      contacto_telefono: String(f.get("contacto_telefono")),
       observaciones: String(f.get("observaciones")),
       estado: "ACTIVO",
       evolucion: "sin",
@@ -93,6 +105,7 @@ export function NuevoRegistroDialog({
     });
     if (error) return toast.error(error.message);
     toast.success("Solicitud especial registrada");
+    reset();
     onOpenChange(false);
     invalidate();
   };
