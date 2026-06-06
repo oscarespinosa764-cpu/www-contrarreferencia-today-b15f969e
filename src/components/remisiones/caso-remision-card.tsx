@@ -9,13 +9,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Eye, Pencil, ClipboardCheck, MapPin } from "lucide-react";
 import { Field, SpecialtyList } from "./form-bits";
 import { SeguimientoDialog } from "./seguimiento-dialog";
-import { splitEspecialidades } from "@/lib/remisiones-utils";
 import {
   evolucionMeta,
   fmtFechaHora,
   fmtTranscurrido,
   normEvolucion,
   prioridadMeta,
+  splitEspecialidades,
   tiempoChip,
 } from "@/lib/remisiones-utils";
 import { toast } from "sonner";
