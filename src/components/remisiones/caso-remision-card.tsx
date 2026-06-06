@@ -267,9 +267,19 @@ export function CasoRemisionCard({
               <Field name="prioridad" label="Prioridad" defaultValue={r.prioridad ?? ""} />
               <Field name="estado" label="Estado" defaultValue={r.estado ?? ""} />
               <Field
+                name="especialidades_tratantes"
+                label="Especialidad tratante"
+                defaultValue={r.especialidades_tratantes ?? ""}
+              />
+              <Field
                 name="especialidades_receptoras"
                 label="Especialidad destino"
                 defaultValue={r.especialidades_receptoras ?? ""}
+              />
+              <Field
+                name="codigo_radicacion"
+                label="N° radicado"
+                defaultValue={r.codigo_radicacion ?? ""}
               />
             </div>
             <div className="space-y-1.5">
