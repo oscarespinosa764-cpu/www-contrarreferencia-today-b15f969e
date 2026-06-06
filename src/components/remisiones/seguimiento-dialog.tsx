@@ -50,7 +50,7 @@ export function SeguimientoDialog({
   casoId,
   tipoCaso,
   paciente,
-  evolucionActual,
+  
   evolucionDetalle,
   especialidades,
   radicadoCaso,
