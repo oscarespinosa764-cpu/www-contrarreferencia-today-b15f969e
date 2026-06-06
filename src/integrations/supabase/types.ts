@@ -941,6 +941,7 @@ export type Database = {
           soportes: string | null
           texto_ia: string | null
           tipo_ambulancia: string | null
+          tipo_documento: string | null
           tipo_tramite: string | null
           updated_at: string
         }
@@ -980,6 +981,7 @@ export type Database = {
           soportes?: string | null
           texto_ia?: string | null
           tipo_ambulancia?: string | null
+          tipo_documento?: string | null
           tipo_tramite?: string | null
           updated_at?: string
         }
@@ -1019,6 +1021,7 @@ export type Database = {
           soportes?: string | null
           texto_ia?: string | null
           tipo_ambulancia?: string | null
+          tipo_documento?: string | null
           tipo_tramite?: string | null
           updated_at?: string
         }

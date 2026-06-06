@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Field, SpecialtyList } from "./form-bits";
+import { Field, SelectField, SpecialtyList } from "./form-bits";
 import { toast } from "sonner";
 
 export function NuevoRegistroDialog({
@@ -39,24 +39,27 @@ export function NuevoRegistroDialog({
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const { data: u } = await supabase.auth.getUser();
+    const inicioRaw = String(f.get("fecha_inicio") || "");
     const { error } = await supabase.from("remisiones").insert({
-      paciente: String(f.get("paciente")),
-      documento: String(f.get("documento")),
-      edad: String(f.get("edad")),
-      asegurador: String(f.get("asegurador")),
-      regimen: String(f.get("regimen")),
+      fecha_inicio: inicioRaw ? new Date(inicioRaw).toISOString() : null,
+      fecha_radicado: new Date().toISOString(),
       servicio: String(f.get("servicio")),
       cama: String(f.get("cama")),
+      paciente: String(f.get("paciente")),
+      tipo_documento: String(f.get("tipo_documento")),
+      documento: String(f.get("documento")),
+      edad: String(f.get("edad")),
       cie10: String(f.get("cie10")),
-      prioridad: String(f.get("prioridad")),
-      remision_por: String(f.get("remision_por")),
-      tipo_tramite: String(f.get("tipo_tramite")),
       especialidades_tratantes: tratantes.join(", "),
       especialidades_receptoras: receptoras.join(", "),
+      prioridad: String(f.get("prioridad")),
+      remision_por: String(f.get("remision_por")),
+      especificacion: String(f.get("especificacion")),
+      tipo_tramite: String(f.get("tipo_tramite")),
       tipo_ambulancia: String(f.get("tipo_ambulancia")),
       contacto_nombre: String(f.get("contacto_nombre")),
-      contacto_telefono: String(f.get("contacto_telefono")),
       contacto_parentesco: String(f.get("contacto_parentesco")),
+      contacto_telefono: String(f.get("contacto_telefono")),
       observaciones: String(f.get("observaciones")),
       estado: "PENDIENTE ACEPTACION",
       evolucion: "sin",
@@ -152,27 +155,84 @@ export function NuevoRegistroDialog({
           <TabsContent value="remision" className="pt-4">
             <form onSubmit={handleRemision} className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <Field name="paciente" label="Paciente" required />
-                <Field name="documento" label="Documento" required />
-                <Field name="edad" label="Edad" required />
-                <Field name="asegurador" label="Asegurador" required />
-                <Field name="regimen" label="Régimen" required />
-                <Field name="servicio" label="Servicio" required />
+                <Field
+                  name="fecha_inicio"
+                  label="Fecha y hora inicio trámite"
+                  type="datetime-local"
+                  required
+                />
+                <Field
+                  name="fecha_radicado_display"
+                  label="Fecha y hora radicación"
+                  defaultValue="Se asigna automáticamente al guardar"
+                  readOnly
+                />
+                <SelectField
+                  name="servicio"
+                  label="Servicio"
+                  options={["URGENCIAS", "HOSPITALIZACION", "UCI ADULTOS", "QUIROFANO"]}
+                  required
+                />
                 <Field name="cama" label="Cama" required />
+                <Field name="paciente" label="Nombres y apellidos paciente" required />
+                <SelectField
+                  name="tipo_documento"
+                  label="Tipo de documento"
+                  options={["CC", "CE", "TI", "RC", "RNV", "ASI", "MSI"]}
+                  required
+                />
+                <Field name="documento" label="Documento" required />
+                <Field name="edad" label="Edad" placeholder="Ej: 15 años" required />
                 <Field name="cie10" label="CIE-10" required />
-                <Field name="prioridad" label="Prioridad" placeholder="Alta / Media / Baja" required />
-                <Field name="remision_por" label="Remisión por" required />
-                <Field name="tipo_tramite" label="Tipo trámite" required />
-                <Field name="tipo_ambulancia" label="Ambulancia" required />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <SpecialtyList label="Esp. tratantes" items={tratantes} onChange={setTratantes} />
                 <SpecialtyList label="Esp. receptoras" items={receptoras} onChange={setReceptoras} />
               </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <SelectField
+                  name="prioridad"
+                  label="Prioridad"
+                  options={["ALTA", "MEDIA", "BAJA"]}
+                  required
+                />
+                <SelectField
+                  name="remision_por"
+                  label="Remisión por"
+                  options={[
+                    "RED NO CONTRATADA",
+                    "NO RECURSO HUMANO",
+                    "NO DISPONIBILIDAD DE INSUMO O TECNOLOGIA",
+                    "NO DISPONIBILIDAD DE UNIDAD",
+                    "NO DISPONIBILIDAD DE CAMAS",
+                    "NIVEL DE COMPETENCIA",
+                    "PETICION VOLUNTARIA",
+                  ]}
+                  required
+                />
+                <SelectField
+                  name="tipo_tramite"
+                  label="Tipo trámite"
+                  options={["TRAMITE ADMINISTRATIVO", "PERTINENCIA MEDICA", "PETICION VOLUNTARIA"]}
+                  required
+                />
+                <SelectField
+                  name="tipo_ambulancia"
+                  label="Tipo de ambulancia"
+                  options={["TAB", "TAM", "TAM-N"]}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="especificacion" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Justificación remisión
+                </Label>
+                <Textarea id="especificacion" name="especificacion" rows={2} />
+              </div>
               <div className="grid gap-3 sm:grid-cols-3">
-                <Field name="contacto_nombre" label="Nombre familiar" />
-                <Field name="contacto_telefono" label="Teléfono" />
+                <Field name="contacto_nombre" label="Nombre y apellido familiar" />
                 <Field name="contacto_parentesco" label="Parentesco" />
+                <Field name="contacto_telefono" label="Número telefónico" />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="observaciones" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">

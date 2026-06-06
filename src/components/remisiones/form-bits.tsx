@@ -42,6 +42,47 @@ export function Field({
   );
 }
 
+export function SelectField({
+  name,
+  label,
+  options,
+  required,
+  defaultValue,
+  placeholder = "Seleccione…",
+}: {
+  name: string;
+  label: string;
+  options: string[];
+  required?: boolean;
+  defaultValue?: string;
+  placeholder?: string;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={name} className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+        {required && <span className="ml-0.5 text-status-red">*</span>}
+      </Label>
+      <select
+        id={name}
+        name={name}
+        required={required}
+        defaultValue={defaultValue ?? ""}
+        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <option value="" disabled>
+          {placeholder}
+        </option>
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 export function SpecialtyList({
   label,
   items,
