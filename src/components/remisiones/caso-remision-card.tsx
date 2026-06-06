@@ -172,34 +172,40 @@ export function CasoRemisionCard({
 
       {(r.observaciones || r.especificacion) && (
         <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
-          <span className="font-semibold">Motivo:</span> {r.observaciones || r.especificacion}
+          <span className="font-semibold">Justificación remisión:</span> {r.observaciones || r.especificacion}
         </p>
       )}
 
-      {/* Última gestión */}
-      <p className="mt-2 text-[11px] text-muted-foreground">
-        <span className="font-semibold">Última gestión:</span>{" "}
-        {ultimaGestion
-          ? `${fmtFechaHora(ultimaGestion.fecha)} · ${ultimaGestion.responsable || "—"}`
-          : "Sin seguimientos registrados"}
-      </p>
-
-      {/* Acciones */}
-      <div className="mt-3 flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" className="rounded-full" onClick={() => setVer(true)}>
-          <Eye className="mr-1 h-3.5 w-3.5" /> Ver caso
-        </Button>
-        {canEdit && (
-          <Button variant="outline" size="sm" className="rounded-full" onClick={() => setEditar(true)}>
-            <Pencil className="mr-1 h-3.5 w-3.5" /> Editar
+      {/* Acciones + última gestión + tiempo */}
+      <div className="mt-3 flex flex-wrap items-end justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" className="rounded-full" onClick={() => setVer(true)}>
+            <Eye className="mr-1 h-3.5 w-3.5" /> Ver caso
           </Button>
-        )}
-        {canEdit && (
-          <Button size="sm" className="rounded-full" onClick={() => setSeg(true)}>
-            <ClipboardCheck className="mr-1 h-3.5 w-3.5" /> Seguimiento
-          </Button>
-        )}
+          {canEdit && (
+            <Button variant="outline" size="sm" className="rounded-full" onClick={() => setEditar(true)}>
+              <Pencil className="mr-1 h-3.5 w-3.5" /> Editar
+            </Button>
+          )}
+          {canEdit && (
+            <Button size="sm" className="rounded-full" onClick={() => setSeg(true)}>
+              <ClipboardCheck className="mr-1 h-3.5 w-3.5" /> Seguimiento
+            </Button>
+          )}
+          <span className="text-[11px] text-muted-foreground">
+            <span className="font-semibold">Última gestión:</span>{" "}
+            {ultimaGestion
+              ? `${fmtFechaHora(ultimaGestion.fecha)} · ${ultimaGestion.responsable || "—"}`
+              : "Sin seguimientos registrados"}
+          </span>
+        </div>
+        <span
+          className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${tiempoChip(r.created_at)}`}
+        >
+          {fmtTranscurrido(r.created_at)}
+        </span>
       </div>
+
 
       {/* Ver caso */}
       <Dialog open={ver} onOpenChange={setVer}>
