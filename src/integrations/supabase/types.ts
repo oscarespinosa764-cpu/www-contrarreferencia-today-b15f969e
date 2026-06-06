@@ -844,12 +844,16 @@ export type Database = {
           evolucion_detalle: string | null
           evolucion_motivo: string | null
           fecha: string | null
+          fecha_inicio: string | null
+          fecha_radicado: string | null
           id: string
           observaciones: string | null
           paciente: string | null
           prioridad: string | null
           proveedor_prestador: string | null
           servicio: string | null
+          tipo_ambulancia: string | null
+          tipo_documento: string | null
           tipo_solicitud: string | null
           updated_at: string
         }
@@ -864,12 +868,16 @@ export type Database = {
           evolucion_detalle?: string | null
           evolucion_motivo?: string | null
           fecha?: string | null
+          fecha_inicio?: string | null
+          fecha_radicado?: string | null
           id?: string
           observaciones?: string | null
           paciente?: string | null
           prioridad?: string | null
           proveedor_prestador?: string | null
           servicio?: string | null
+          tipo_ambulancia?: string | null
+          tipo_documento?: string | null
           tipo_solicitud?: string | null
           updated_at?: string
         }
@@ -884,12 +892,16 @@ export type Database = {
           evolucion_detalle?: string | null
           evolucion_motivo?: string | null
           fecha?: string | null
+          fecha_inicio?: string | null
+          fecha_radicado?: string | null
           id?: string
           observaciones?: string | null
           paciente?: string | null
           prioridad?: string | null
           proveedor_prestador?: string | null
           servicio?: string | null
+          tipo_ambulancia?: string | null
+          tipo_documento?: string | null
           tipo_solicitud?: string | null
           updated_at?: string
         }

@@ -114,13 +114,16 @@ export function NuevoRegistroDialog({
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const { data: u } = await supabase.auth.getUser();
+    const inicioRaw = String(f.get("fecha_inicio") || "");
     const { error } = await supabase.from("referencia_interna").insert({
-      tipo_solicitud: String(f.get("tipo_solicitud")),
+      fecha_inicio: inicioRaw ? new Date(inicioRaw).toISOString() : null,
+      fecha_radicado: new Date().toISOString(),
       servicio: String(f.get("servicio")),
-      proveedor_prestador: String(f.get("proveedor_prestador")),
       paciente: String(f.get("paciente")),
+      tipo_documento: String(f.get("tipo_documento")),
       documento: String(f.get("documento")),
-      prioridad: String(f.get("prioridad")),
+      tipo_solicitud: String(f.get("tipo_solicitud")),
+      tipo_ambulancia: String(f.get("tipo_ambulancia")),
       observaciones: String(f.get("observaciones")),
       estado: "ACTIVO",
       evolucion: "sin",
@@ -128,6 +131,7 @@ export function NuevoRegistroDialog({
     });
     if (error) return toast.error(error.message);
     toast.success("Referencia interna registrada");
+    reset();
     onOpenChange(false);
     invalidate();
   };
@@ -352,13 +356,52 @@ export function NuevoRegistroDialog({
           {/* REF INTERNA */}
           <TabsContent value="interna" className="pt-4">
             <form onSubmit={handleRefInterna} className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field name="tipo_solicitud" label="Tipo solicitud" required />
-                <Field name="servicio" label="Servicio" required />
-                <Field name="proveedor_prestador" label="Proveedor / prestador" />
-                <Field name="paciente" label="Paciente" required />
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <Field
+                  name="fecha_inicio"
+                  label="Fecha y hora inicio trámite"
+                  type="datetime-local"
+                  required
+                />
+                <Field
+                  name="fecha_radicado_display"
+                  label="Fecha y hora radicación"
+                  defaultValue="Se asigna automáticamente al guardar"
+                  readOnly
+                />
+                <SelectField
+                  name="servicio"
+                  label="Servicio"
+                  options={["URGENCIAS", "HOSPITALIZACION", "UCI ADULTOS", "QUIROFANO"]}
+                  required
+                />
+                <Field name="paciente" label="Nombres y apellidos paciente" required />
+                <SelectField
+                  name="tipo_documento"
+                  label="Tipo de documento"
+                  options={["CC", "CE", "TI", "RC", "RNV", "ASI", "MSI"]}
+                  required
+                />
                 <Field name="documento" label="Documento" required />
-                <Field name="prioridad" label="Prioridad" />
+                <SelectField
+                  name="tipo_solicitud"
+                  label="Tipo de solicitud"
+                  options={[
+                    "RESONANCIA",
+                    "INTERCONSULTA",
+                    "ECOGRAFIA",
+                    "TAC",
+                    "RX",
+                    "URGENCIAS VITALES",
+                    "REMISIONES ESPECIALES",
+                  ]}
+                  required
+                />
+                <SelectField
+                  name="tipo_ambulancia"
+                  label="Tipo de ambulancia"
+                  options={["TAB", "TAM", "TAM-N"]}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="ri-obs" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
