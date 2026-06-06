@@ -7,8 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Eye, Pencil, ClipboardCheck, MapPin } from "lucide-react";
-import { Field } from "./form-bits";
+import { Field, SpecialtyList } from "./form-bits";
 import { SeguimientoDialog } from "./seguimiento-dialog";
+import { splitEspecialidades } from "@/lib/remisiones-utils";
 import {
   evolucionMeta,
   fmtFechaHora,
