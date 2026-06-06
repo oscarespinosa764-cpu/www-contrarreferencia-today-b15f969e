@@ -69,10 +69,12 @@ export function CasoRemisionCard({
   const [ver, setVer] = useState(false);
   const [editar, setEditar] = useState(false);
   const [seg, setSeg] = useState(false);
+  useTick(true);
 
   const evo = evolucionMeta[normEvolucion(r.evolucion)];
   const pendiente = /PENDIENTE/i.test(r.estado || "");
   const nombre = r.paciente || "Sin nombre";
+  const radicado = r.codigo_radicacion?.trim() || "No aplica";
 
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
