@@ -109,9 +109,8 @@ export function CasoRemisionCard({
         asegurador: String(f.get("asegurador")),
         prioridad: String(f.get("prioridad")),
         estado: String(f.get("estado")),
-        especialidades_tratantes: String(f.get("especialidades_tratantes")),
-        especialidades_receptoras: String(f.get("especialidades_receptoras")),
-        codigo_radicacion: String(f.get("codigo_radicacion")),
+        especialidades_tratantes: tratantes.join(", "),
+        especialidades_receptoras: receptoras.join(", "),
         observaciones: String(f.get("observaciones")),
       })
       .eq("id", r.id);
