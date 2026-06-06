@@ -154,16 +154,16 @@ export function NuevoRegistroDialog({
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <Field name="paciente" label="Paciente" required />
                 <Field name="documento" label="Documento" required />
-                <Field name="edad" label="Edad" />
-                <Field name="asegurador" label="Asegurador" />
-                <Field name="regimen" label="Régimen" />
-                <Field name="servicio" label="Servicio" />
-                <Field name="cama" label="Cama" />
-                <Field name="cie10" label="CIE-10" />
-                <Field name="prioridad" label="Prioridad" placeholder="Alta / Media / Baja" />
-                <Field name="remision_por" label="Remisión por" />
-                <Field name="tipo_tramite" label="Tipo trámite" />
-                <Field name="tipo_ambulancia" label="Ambulancia" />
+                <Field name="edad" label="Edad" required />
+                <Field name="asegurador" label="Asegurador" required />
+                <Field name="regimen" label="Régimen" required />
+                <Field name="servicio" label="Servicio" required />
+                <Field name="cama" label="Cama" required />
+                <Field name="cie10" label="CIE-10" required />
+                <Field name="prioridad" label="Prioridad" placeholder="Alta / Media / Baja" required />
+                <Field name="remision_por" label="Remisión por" required />
+                <Field name="tipo_tramite" label="Tipo trámite" required />
+                <Field name="tipo_ambulancia" label="Ambulancia" required />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <SpecialtyList label="Esp. tratantes" items={tratantes} onChange={setTratantes} />
@@ -179,29 +179,6 @@ export function NuevoRegistroDialog({
                   Observaciones
                 </Label>
                 <Textarea id="observaciones" name="observaciones" rows={3} />
-              </div>
-              <div className="space-y-2 rounded-md border border-border p-3">
-                <div className="flex items-center justify-between">
-                  <Label className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-primary" /> Texto generado por IA
-                  </Label>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    className="rounded-full"
-                    disabled={iaBusy}
-                    onClick={(e) => handleIA(e.currentTarget.closest("form") as HTMLFormElement)}
-                  >
-                    {iaBusy ? "Generando…" : "Generar resumen"}
-                  </Button>
-                </div>
-                <Textarea
-                  value={iaTexto}
-                  onChange={(e) => setIaTexto(e.target.value)}
-                  rows={4}
-                  placeholder="Pulsa «Generar resumen» para crear el texto del caso con IA."
-                />
               </div>
               <DialogFooter>
                 <Button type="submit" className="rounded-full">
