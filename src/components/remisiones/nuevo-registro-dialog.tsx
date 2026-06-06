@@ -421,10 +421,40 @@ export function NuevoRegistroDialog({
           <TabsContent value="pendiente" className="pt-4">
             <form onSubmit={handlePendiente} className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field name="tipo_pendiente" label="Tipo pendiente" required />
-                <Field name="ips_area" label="IPS / área" />
+                <Field
+                  name="fecha_hora_display"
+                  label="Fecha y hora"
+                  defaultValue="Se asigna automáticamente al guardar"
+                  readOnly
+                />
+                <SelectField
+                  name="tipo_pendiente"
+                  label="Tipo pendiente"
+                  options={[
+                    "DEFINICION MEDICA PARA RESPUESTA CORREO",
+                    "COORDINAR AMBULANCIA",
+                    "PROGRAMAR RESONANCIA",
+                    "PROGRAMAR TAC",
+                    "PROGRAMAR ECOGRAFIA",
+                    "PROGRAMAR INTERCONSULTA",
+                    "CONFIRMACION CON IPS",
+                    "RADICAR REMISION",
+                    "EVOLUCIONAR",
+                    "ORDENES EXTRAMURALES",
+                    "NEGACIONES",
+                    "AVERIGUAR",
+                    "CANCELAR",
+                  ]}
+                  required
+                />
                 <Field name="paciente_asunto" label="Paciente / asunto" required />
-                <Field name="prioridad" label="Prioridad" required />
+                <Field name="ips_area" label="IPS / área" />
+                <SelectField
+                  name="prioridad"
+                  label="Prioridad"
+                  options={["ALTA", "MEDIA", "BAJA"]}
+                  required
+                />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="pend-obs" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
