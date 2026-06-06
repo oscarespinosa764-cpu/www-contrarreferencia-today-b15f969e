@@ -192,12 +192,12 @@ export function NuevoRegistroDialog({
           <TabsContent value="phd" className="pt-4">
             <form onSubmit={handlePHD} className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field name="tipo_solicitud" label="Tipo solicitud" placeholder="PHD / PAD / O₂ / Especial" />
+                <Field name="tipo_solicitud" label="Tipo solicitud" placeholder="PHD / PAD / O₂ / Especial" required />
                 <Field name="unidad_especial" label="Unidad especial" />
                 <Field name="paciente" label="Paciente" required />
-                <Field name="documento" label="Documento" />
+                <Field name="documento" label="Documento" required />
                 <Field name="ips" label="IPS / prestador" />
-                <Field name="prioridad" label="Prioridad" />
+                <Field name="prioridad" label="Prioridad" required />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="phd-detalle" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
