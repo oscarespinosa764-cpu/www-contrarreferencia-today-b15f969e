@@ -115,22 +115,28 @@ export function CasoRemisionCard({
               .join(" · ") || "—"}
           </p>
         </div>
-        <div className="flex items-center gap-1.5">
-          {r.prioridad && (
-            <Badge
-              variant="outline"
-              className={
-                /alta|alto/i.test(r.prioridad) ? "border-status-red/40 text-status-red" : undefined
-              }
-            >
-              {r.prioridad}
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex items-center gap-1.5">
+            {r.prioridad && (
+              <Badge
+                variant="outline"
+                className={
+                  /alta|alto/i.test(r.prioridad) ? "border-status-red/40 text-status-red" : undefined
+                }
+              >
+                {r.prioridad}
+              </Badge>
+            )}
+            <Badge variant="secondary" className="font-mono text-[10px]">
+              Rad: {radicado}
             </Badge>
-          )}
+          </div>
           <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground">
             {fmtTranscurrido(r.created_at)}
           </span>
         </div>
       </div>
+
 
       {/* Datos compactos */}
       <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-4">
