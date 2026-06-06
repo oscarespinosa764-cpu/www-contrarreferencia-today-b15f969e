@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Field, SpecialtyList } from "./form-bits";
+import { Field, SelectField, SpecialtyList } from "./form-bits";
 import { toast } from "sonner";
 
 export function NuevoRegistroDialog({
