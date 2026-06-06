@@ -33,6 +33,7 @@ export function NuevoRegistroDialog({
   const reset = () => {
     setTratantes([]);
     setReceptoras([]);
+    setPhdTratantes([]);
   };
 
 
