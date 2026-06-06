@@ -250,18 +250,32 @@ export function SeguimientoDialog({
 
           {/* Evolución diaria por especialidad */}
           <div className="space-y-2 rounded-lg border border-border p-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Evolución diaria
               </Label>
-              <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${metaCalc.chip}`}>
-                <span className={`h-2 w-2 rounded-full ${metaCalc.dot}`} />
-                {metaCalc.label}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${metaCalc.chip}`}>
+                  <span className={`h-2 w-2 rounded-full ${metaCalc.dot}`} />
+                  {metaCalc.label}
+                </span>
+                {tabla && especialidadesList.length > 0 && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 rounded-full px-3 text-xs"
+                    disabled={busyEvo}
+                    onClick={guardarEvolucion}
+                  >
+                    {busyEvo ? "Guardando…" : "Guardar"}
+                  </Button>
+                )}
+              </div>
             </div>
             {especialidadesList.length === 0 ? (
               <p className="py-2 text-center text-xs italic text-muted-foreground">
-                No hay especialidades destino registradas en este caso.
+                No hay especialidades tratantes registradas en este caso.
               </p>
             ) : (
               <div className="space-y-2">
