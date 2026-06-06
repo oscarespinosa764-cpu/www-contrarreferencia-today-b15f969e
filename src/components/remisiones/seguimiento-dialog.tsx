@@ -27,7 +27,7 @@ type Props = {
   evolucionActual?: string | null;
   /** JSON con el detalle de evolución por especialidad. */
   evolucionDetalle?: string | null;
-  /** Especialidades receptoras (texto separado por comas). */
+  /** Especialidades tratantes/remisoras (texto separado por comas). */
   especialidades?: string | null;
   /** Radicado guardado en el caso. */
   radicadoCaso?: string | null;
