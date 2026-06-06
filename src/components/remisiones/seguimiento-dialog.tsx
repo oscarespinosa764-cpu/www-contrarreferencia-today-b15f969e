@@ -132,7 +132,11 @@ export function SeguimientoDialog({
     }
 
     if (tabla) {
-      const update: Record<string, unknown> = { evolucion: evolucionCalc };
+      const update: {
+        evolucion: string;
+        evolucion_detalle?: string;
+        codigo_radicacion?: string;
+      } = { evolucion: evolucionCalc };
       if (especialidadesList.length > 0) update.evolucion_detalle = JSON.stringify(evoDetalle);
       if (radicadoEnUso) update.codigo_radicacion = radicadoEnUso;
       await supabase
