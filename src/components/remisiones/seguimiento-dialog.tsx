@@ -67,6 +67,7 @@ export function SeguimientoDialog({
   const [detalle, setDetalle] = useState("");
   const [evoDetalle, setEvoDetalle] = useState<Record<string, EvoEspecialidad>>({});
   const [busy, setBusy] = useState(false);
+  const [busyEvo, setBusyEvo] = useState(false);
 
   // Inicializar el checklist por especialidad al abrir.
   useEffect(() => {
