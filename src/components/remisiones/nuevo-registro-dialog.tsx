@@ -20,6 +20,7 @@ export function NuevoRegistroDialog({
   const [tab, setTab] = useState("remision");
   const [tratantes, setTratantes] = useState<string[]>([]);
   const [receptoras, setReceptoras] = useState<string[]>([]);
+  const [phdTratantes, setPhdTratantes] = useState<string[]>([]);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["remisiones"] });
