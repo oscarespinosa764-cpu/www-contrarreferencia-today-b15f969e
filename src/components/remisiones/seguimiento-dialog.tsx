@@ -36,6 +36,7 @@ type Props = {
 };
 
 const TIPOS_SEG = [
+  "Radicado de trámite de remisión",
   "Llamada a IPS receptora",
   "Respuesta de IPS",
   "Gestión ambulancia",
