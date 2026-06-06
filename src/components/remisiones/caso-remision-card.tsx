@@ -9,7 +9,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Eye, Pencil, ClipboardCheck, MapPin } from "lucide-react";
 import { Field } from "./form-bits";
 import { SeguimientoDialog } from "./seguimiento-dialog";
-import { evolucionMeta, fmtFechaHora, fmtTranscurrido, normEvolucion } from "@/lib/remisiones-utils";
+import {
+  evolucionMeta,
+  fmtFechaHora,
+  fmtTranscurrido,
+  normEvolucion,
+  prioridadMeta,
+  tiempoChip,
+} from "@/lib/remisiones-utils";
 import { toast } from "sonner";
 
 export type Remision = {
