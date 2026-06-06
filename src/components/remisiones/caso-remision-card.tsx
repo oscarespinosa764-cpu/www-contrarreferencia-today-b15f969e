@@ -193,11 +193,6 @@ export function CasoRemisionCard({
             <Eye className="mr-1 h-3.5 w-3.5" /> Ver caso
           </Button>
           {canEdit && (
-            <Button variant="outline" size="sm" className="rounded-full" onClick={() => setEditar(true)}>
-              <Pencil className="mr-1 h-3.5 w-3.5" /> Editar
-            </Button>
-          )}
-          {canEdit && (
             <Button size="sm" className="rounded-full" onClick={() => setSeg(true)}>
               <ClipboardCheck className="mr-1 h-3.5 w-3.5" /> Seguimiento
             </Button>
