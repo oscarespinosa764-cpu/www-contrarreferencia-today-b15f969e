@@ -16,6 +16,9 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+/** Marca de pestaña viva: se borra al cerrar la pestaña/navegador (sessionStorage). */
+const TAB_KEY = "ref_tab_alive";
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -31,7 +34,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .then(({ data }) => setRoles((data ?? []).map((r) => r.role as AppRole)));
     };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, sess) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, sess) => {
+      // Al iniciar sesión activamente en esta pestaña, marcarla como viva.
+      if (event === "SIGNED_IN") sessionStorage.setItem(TAB_KEY, "1");
+      if (event === "SIGNED_OUT") sessionStorage.removeItem(TAB_KEY);
+
       setSession(sess);
       setUser(sess?.user ?? null);
       if (sess?.user) {
@@ -43,6 +50,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     supabase.auth.getSession().then(({ data }) => {
+      // Sesión restaurada desde almacenamiento sin marca de pestaña viva =
+      // la pestaña/navegador se cerró y se volvió a abrir → cerrar sesión.
+      if (data.session && !sessionStorage.getItem(TAB_KEY)) {
+        supabase.auth.signOut();
+        setSession(null);
+        setUser(null);
+        setRoles([]);
+        setLoading(false);
+        return;
+      }
+      if (data.session) sessionStorage.setItem(TAB_KEY, "1");
       setSession(data.session);
       setUser(data.session?.user ?? null);
       if (data.session?.user) loadRoles(data.session.user.id);

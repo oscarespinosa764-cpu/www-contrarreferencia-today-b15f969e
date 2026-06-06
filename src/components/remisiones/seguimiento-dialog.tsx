@@ -27,7 +27,7 @@ type Props = {
   evolucionActual?: string | null;
   /** JSON con el detalle de evolución por especialidad. */
   evolucionDetalle?: string | null;
-  /** Especialidades receptoras (texto separado por comas). */
+  /** Especialidades tratantes/remisoras (texto separado por comas). */
   especialidades?: string | null;
   /** Radicado guardado en el caso. */
   radicadoCaso?: string | null;
@@ -36,6 +36,7 @@ type Props = {
 };
 
 const TIPOS_SEG = [
+  "Radicado de trámite de remisión",
   "Llamada a IPS receptora",
   "Respuesta de IPS",
   "Gestión ambulancia",
@@ -66,6 +67,7 @@ export function SeguimientoDialog({
   const [detalle, setDetalle] = useState("");
   const [evoDetalle, setEvoDetalle] = useState<Record<string, EvoEspecialidad>>({});
   const [busy, setBusy] = useState(false);
+  const [busyEvo, setBusyEvo] = useState(false);
 
   // Inicializar el checklist por especialidad al abrir.
   useEffect(() => {
@@ -157,6 +159,31 @@ export function SeguimientoDialog({
     qc.invalidateQueries({ queryKey: ["seguimientos-ult"] });
   };
 
+  // Guarda únicamente la evolución por especialidad, sin exigir tipo de seguimiento.
+  const guardarEvolucion = async () => {
+    if (!tabla) return;
+    if (especialidadesList.length === 0) {
+      toast.error("No hay especialidades tratantes registradas en este caso.");
+      return;
+    }
+    setBusyEvo(true);
+    const { error } = await supabase
+      .from(tabla as "remisiones")
+      .update({ evolucion: evolucionCalc, evolucion_detalle: JSON.stringify(evoDetalle) })
+      .eq("id", casoId);
+    if (error) {
+      toast.error(error.message);
+      setBusyEvo(false);
+      return;
+    }
+    toast.success("Evolución guardada");
+    setBusyEvo(false);
+    qc.invalidateQueries({ queryKey: ["remisiones"] });
+    qc.invalidateQueries({ queryKey: ["domiciliarios"] });
+    qc.invalidateQueries({ queryKey: ["referencia-interna"] });
+    qc.invalidateQueries({ queryKey: ["pendientes-rem"] });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-auto sm:max-w-xl">
@@ -173,7 +200,13 @@ export function SeguimientoDialog({
             {radicadoExistente && !nuevoRadicado && !noAplicaRadicado ? (
               <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
                 <span className="text-sm font-medium">{radicadoExistente}</span>
-                <Button type="button" variant="ghost" size="sm" onClick={() => setNuevoRadicado(true)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => setNuevoRadicado(true)}
+                >
                   Agregar nuevo radicado
                 </Button>
               </div>
@@ -185,13 +218,16 @@ export function SeguimientoDialog({
                 disabled={noAplicaRadicado}
               />
             )}
-            <label className="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
-              <Checkbox
-                checked={noAplicaRadicado}
-                onCheckedChange={(v) => setNoAplicaRadicado(!!v)}
-              />
-              No aplica (esta EPS no genera radicado)
-            </label>
+            {/* "No aplica" solo cuando aún no hay radicado generado/guardado. */}
+            {!radicadoExistente && (
+              <label className="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
+                <Checkbox
+                  checked={noAplicaRadicado}
+                  onCheckedChange={(v) => setNoAplicaRadicado(!!v)}
+                />
+                No aplica (esta EPS no genera radicado)
+              </label>
+            )}
           </div>
 
           <div className="space-y-1.5">
@@ -214,18 +250,32 @@ export function SeguimientoDialog({
 
           {/* Evolución diaria por especialidad */}
           <div className="space-y-2 rounded-lg border border-border p-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Evolución diaria
               </Label>
-              <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${metaCalc.chip}`}>
-                <span className={`h-2 w-2 rounded-full ${metaCalc.dot}`} />
-                {metaCalc.label}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${metaCalc.chip}`}>
+                  <span className={`h-2 w-2 rounded-full ${metaCalc.dot}`} />
+                  {metaCalc.label}
+                </span>
+                {tabla && especialidadesList.length > 0 && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 rounded-full px-3 text-xs"
+                    disabled={busyEvo}
+                    onClick={guardarEvolucion}
+                  >
+                    {busyEvo ? "Guardando…" : "Guardar"}
+                  </Button>
+                )}
+              </div>
             </div>
             {especialidadesList.length === 0 ? (
               <p className="py-2 text-center text-xs italic text-muted-foreground">
-                No hay especialidades destino registradas en este caso.
+                No hay especialidades tratantes registradas en este caso.
               </p>
             ) : (
               <div className="space-y-2">

@@ -17,7 +17,7 @@ import { getTurno } from "@/lib/turno";
 import { CasoRemisionCard, type Remision } from "@/components/remisiones/caso-remision-card";
 import { NuevoRegistroDialog } from "@/components/remisiones/nuevo-registro-dialog";
 import { SeguimientoDialog } from "@/components/remisiones/seguimiento-dialog";
-import { fmtTranscurrido } from "@/lib/remisiones-utils";
+import { fmtTranscurrido, prioridadMeta, tiempoChip } from "@/lib/remisiones-utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/remisiones")({
@@ -558,8 +558,9 @@ function GenericoCard({
 }) {
   const [seg, setSeg] = useState(false);
   const nombre = it.nombre || "Sin nombre";
+  const prio = prioridadMeta(it.prioridad);
   return (
-    <div className="rounded-xl border border-border border-l-4 border-l-status-sky bg-card p-3.5 shadow-sm">
+    <div className={`rounded-xl border border-border border-l-4 ${prio.borderL} bg-card p-3.5 shadow-sm`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-sm font-bold uppercase text-foreground">{nombre}</p>
@@ -568,8 +569,8 @@ function GenericoCard({
           </p>
         </div>
         <div className="flex items-center gap-1.5">
-          {it.prioridad && <Badge variant="outline">{it.prioridad}</Badge>}
-          <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground">
+          {it.prioridad && <Badge variant="outline" className={prio.badge}>{it.prioridad}</Badge>}
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${tiempoChip(it.created_at)}`}>
             {fmtTranscurrido(it.created_at)}
           </span>
         </div>
