@@ -139,7 +139,7 @@ export function CasoRemisionCard({
 
 
       {/* Datos compactos */}
-      <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-4">
+      <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-3 lg:grid-cols-5">
         <Dato
           label="Ubicación"
           value={
@@ -157,6 +157,7 @@ export function CasoRemisionCard({
             </span>
           }
         />
+        <Dato label="Especialidad tratante" value={r.especialidades_tratantes} />
         <Dato label="Especialidad destino" value={r.especialidades_receptoras} />
         <Dato
           label="Evolución"
