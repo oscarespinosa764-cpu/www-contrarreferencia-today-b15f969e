@@ -155,27 +155,84 @@ export function NuevoRegistroDialog({
           <TabsContent value="remision" className="pt-4">
             <form onSubmit={handleRemision} className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <Field name="paciente" label="Paciente" required />
-                <Field name="documento" label="Documento" required />
-                <Field name="edad" label="Edad" required />
-                <Field name="asegurador" label="Asegurador" required />
-                <Field name="regimen" label="Régimen" required />
-                <Field name="servicio" label="Servicio" required />
+                <Field
+                  name="fecha_inicio"
+                  label="Fecha y hora inicio trámite"
+                  type="datetime-local"
+                  required
+                />
+                <Field
+                  name="fecha_radicado_display"
+                  label="Fecha y hora radicación"
+                  defaultValue="Se asigna automáticamente al guardar"
+                  readOnly
+                />
+                <SelectField
+                  name="servicio"
+                  label="Servicio"
+                  options={["URGENCIAS", "HOSPITALIZACION", "UCI ADULTOS", "QUIROFANO"]}
+                  required
+                />
                 <Field name="cama" label="Cama" required />
+                <Field name="paciente" label="Nombres y apellidos paciente" required />
+                <SelectField
+                  name="tipo_documento"
+                  label="Tipo de documento"
+                  options={["CC", "CE", "TI", "RC", "RNV", "ASI", "MSI"]}
+                  required
+                />
+                <Field name="documento" label="Documento" required />
+                <Field name="edad" label="Edad" placeholder="Ej: 15 años" required />
                 <Field name="cie10" label="CIE-10" required />
-                <Field name="prioridad" label="Prioridad" placeholder="Alta / Media / Baja" required />
-                <Field name="remision_por" label="Remisión por" required />
-                <Field name="tipo_tramite" label="Tipo trámite" required />
-                <Field name="tipo_ambulancia" label="Ambulancia" required />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <SpecialtyList label="Esp. tratantes" items={tratantes} onChange={setTratantes} />
                 <SpecialtyList label="Esp. receptoras" items={receptoras} onChange={setReceptoras} />
               </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <SelectField
+                  name="prioridad"
+                  label="Prioridad"
+                  options={["ALTA", "MEDIA", "BAJA"]}
+                  required
+                />
+                <SelectField
+                  name="remision_por"
+                  label="Remisión por"
+                  options={[
+                    "RED NO CONTRATADA",
+                    "NO RECURSO HUMANO",
+                    "NO DISPONIBILIDAD DE INSUMO O TECNOLOGIA",
+                    "NO DISPONIBILIDAD DE UNIDAD",
+                    "NO DISPONIBILIDAD DE CAMAS",
+                    "NIVEL DE COMPETENCIA",
+                    "PETICION VOLUNTARIA",
+                  ]}
+                  required
+                />
+                <SelectField
+                  name="tipo_tramite"
+                  label="Tipo trámite"
+                  options={["TRAMITE ADMINISTRATIVO", "PERTINENCIA MEDICA", "PETICION VOLUNTARIA"]}
+                  required
+                />
+                <SelectField
+                  name="tipo_ambulancia"
+                  label="Tipo de ambulancia"
+                  options={["TAB", "TAM", "TAM-N"]}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="especificacion" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Justificación remisión
+                </Label>
+                <Textarea id="especificacion" name="especificacion" rows={2} />
+              </div>
               <div className="grid gap-3 sm:grid-cols-3">
-                <Field name="contacto_nombre" label="Nombre familiar" />
-                <Field name="contacto_telefono" label="Teléfono" />
+                <Field name="contacto_nombre" label="Nombre y apellido familiar" />
                 <Field name="contacto_parentesco" label="Parentesco" />
+                <Field name="contacto_telefono" label="Número telefónico" />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="observaciones" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
