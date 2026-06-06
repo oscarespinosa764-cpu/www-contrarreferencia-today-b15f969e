@@ -20,9 +20,6 @@ export function NuevoRegistroDialog({
   const [tab, setTab] = useState("remision");
   const [tratantes, setTratantes] = useState<string[]>([]);
   const [receptoras, setReceptoras] = useState<string[]>([]);
-  const [iaTexto, setIaTexto] = useState("");
-  const [iaBusy, setIaBusy] = useState(false);
-  const generar = useServerFn(generarTextoCaso);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["remisiones"] });
@@ -35,21 +32,8 @@ export function NuevoRegistroDialog({
   const reset = () => {
     setTratantes([]);
     setReceptoras([]);
-    setIaTexto("");
   };
 
-  const handleIA = (form: HTMLFormElement) => {
-    const f = new FormData(form);
-    const datos = `Paciente: ${f.get("paciente")}\nDocumento: ${f.get("documento")}\nEdad: ${f.get("edad")}\nServicio: ${f.get("servicio")}\nCama: ${f.get("cama")}\nPrioridad: ${f.get("prioridad")}\nAsegurador: ${f.get("asegurador")}\nRégimen: ${f.get("regimen")}\nCIE-10: ${f.get("cie10")}\nEsp. tratantes: ${tratantes.join(", ")}\nEsp. receptoras: ${receptoras.join(", ")}\nObservaciones: ${f.get("observaciones")}`;
-    setIaBusy(true);
-    generar({ data: { tipoCaso: "remision", datos, formato: "resumen" } })
-      .then((r) => {
-        if (r.error) toast.error(r.error);
-        else setIaTexto(r.texto);
-      })
-      .catch(() => toast.error("No se pudo generar el texto"))
-      .finally(() => setIaBusy(false));
-  };
 
   const handleRemision = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
