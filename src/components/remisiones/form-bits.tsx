@@ -12,6 +12,7 @@ export function Field({
   defaultValue,
   type = "text",
   placeholder,
+  readOnly,
 }: {
   name: string;
   label: string;
@@ -19,11 +20,13 @@ export function Field({
   defaultValue?: string;
   type?: string;
   placeholder?: string;
+  readOnly?: boolean;
 }) {
   return (
     <div className="space-y-1.5">
       <Label htmlFor={name} className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
+        {required && <span className="ml-0.5 text-status-red">*</span>}
       </Label>
       <Input
         id={name}
@@ -32,6 +35,8 @@ export function Field({
         required={required}
         defaultValue={defaultValue}
         placeholder={placeholder}
+        readOnly={readOnly}
+        className={readOnly ? "cursor-not-allowed bg-muted text-muted-foreground" : undefined}
       />
     </div>
   );

@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Eye, Pencil, ClipboardCheck, MapPin } from "lucide-react";
-import { Field } from "./form-bits";
+import { Field, SpecialtyList } from "./form-bits";
 import { SeguimientoDialog } from "./seguimiento-dialog";
 import {
   evolucionMeta,
@@ -15,6 +15,7 @@ import {
   fmtTranscurrido,
   normEvolucion,
   prioridadMeta,
+  splitEspecialidades,
   tiempoChip,
 } from "@/lib/remisiones-utils";
 import { toast } from "sonner";
@@ -76,7 +77,17 @@ export function CasoRemisionCard({
   const [ver, setVer] = useState(false);
   const [editar, setEditar] = useState(false);
   const [seg, setSeg] = useState(false);
+  const [tratantes, setTratantes] = useState<string[]>([]);
+  const [receptoras, setReceptoras] = useState<string[]>([]);
   useTick(true);
+
+  // Al abrir el editor, precargar las especialidades actuales.
+  useEffect(() => {
+    if (editar) {
+      setTratantes(splitEspecialidades(r.especialidades_tratantes));
+      setReceptoras(splitEspecialidades(r.especialidades_receptoras));
+    }
+  }, [editar, r.especialidades_tratantes, r.especialidades_receptoras]);
 
   const evo = evolucionMeta[normEvolucion(r.evolucion)];
   const pendiente = /PENDIENTE/i.test(r.estado || "");
@@ -98,9 +109,8 @@ export function CasoRemisionCard({
         asegurador: String(f.get("asegurador")),
         prioridad: String(f.get("prioridad")),
         estado: String(f.get("estado")),
-        especialidades_tratantes: String(f.get("especialidades_tratantes")),
-        especialidades_receptoras: String(f.get("especialidades_receptoras")),
-        codigo_radicacion: String(f.get("codigo_radicacion")),
+        especialidades_tratantes: tratantes.join(", "),
+        especialidades_receptoras: receptoras.join(", "),
         observaciones: String(f.get("observaciones")),
       })
       .eq("id", r.id);
@@ -182,11 +192,6 @@ export function CasoRemisionCard({
           <Button variant="outline" size="sm" className="rounded-full" onClick={() => setVer(true)}>
             <Eye className="mr-1 h-3.5 w-3.5" /> Ver caso
           </Button>
-          {canEdit && (
-            <Button variant="outline" size="sm" className="rounded-full" onClick={() => setEditar(true)}>
-              <Pencil className="mr-1 h-3.5 w-3.5" /> Editar
-            </Button>
-          )}
           {canEdit && (
             <Button size="sm" className="rounded-full" onClick={() => setSeg(true)}>
               <ClipboardCheck className="mr-1 h-3.5 w-3.5" /> Seguimiento
@@ -273,20 +278,15 @@ export function CasoRemisionCard({
               <Field name="prioridad" label="Prioridad" defaultValue={r.prioridad ?? ""} />
               <Field name="estado" label="Estado" defaultValue={r.estado ?? ""} />
               <Field
-                name="especialidades_tratantes"
-                label="Especialidad tratante"
-                defaultValue={r.especialidades_tratantes ?? ""}
-              />
-              <Field
-                name="especialidades_receptoras"
-                label="Especialidad destino"
-                defaultValue={r.especialidades_receptoras ?? ""}
-              />
-              <Field
                 name="codigo_radicacion"
                 label="N° radicado"
                 defaultValue={r.codigo_radicacion ?? ""}
+                readOnly
               />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SpecialtyList label="Especialidad tratante" items={tratantes} onChange={setTratantes} />
+              <SpecialtyList label="Especialidad destino" items={receptoras} onChange={setReceptoras} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="observaciones" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
