@@ -238,6 +238,7 @@ function AuthenticatedLayout() {
       <main className="app-surface h-screen flex-1 overflow-auto p-6">
         <Outlet />
       </main>
+      <SessionTimeout />
     </div>
   );
 }
