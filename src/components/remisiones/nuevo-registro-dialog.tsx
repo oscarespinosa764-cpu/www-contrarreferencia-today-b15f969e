@@ -114,13 +114,16 @@ export function NuevoRegistroDialog({
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const { data: u } = await supabase.auth.getUser();
+    const inicioRaw = String(f.get("fecha_inicio") || "");
     const { error } = await supabase.from("referencia_interna").insert({
-      tipo_solicitud: String(f.get("tipo_solicitud")),
+      fecha_inicio: inicioRaw ? new Date(inicioRaw).toISOString() : null,
+      fecha_radicado: new Date().toISOString(),
       servicio: String(f.get("servicio")),
-      proveedor_prestador: String(f.get("proveedor_prestador")),
       paciente: String(f.get("paciente")),
+      tipo_documento: String(f.get("tipo_documento")),
       documento: String(f.get("documento")),
-      prioridad: String(f.get("prioridad")),
+      tipo_solicitud: String(f.get("tipo_solicitud")),
+      tipo_ambulancia: String(f.get("tipo_ambulancia")),
       observaciones: String(f.get("observaciones")),
       estado: "ACTIVO",
       evolucion: "sin",
@@ -128,6 +131,7 @@ export function NuevoRegistroDialog({
     });
     if (error) return toast.error(error.message);
     toast.success("Referencia interna registrada");
+    reset();
     onOpenChange(false);
     invalidate();
   };
