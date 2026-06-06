@@ -266,7 +266,9 @@ export type Database = {
           documento: string | null
           estado: string | null
           evolucion: string | null
+          evolucion_actualizada_at: string | null
           evolucion_detalle: string | null
+          evolucion_motivo: string | null
           fecha: string | null
           id: string
           ips: string | null
@@ -285,7 +287,9 @@ export type Database = {
           documento?: string | null
           estado?: string | null
           evolucion?: string | null
+          evolucion_actualizada_at?: string | null
           evolucion_detalle?: string | null
+          evolucion_motivo?: string | null
           fecha?: string | null
           id?: string
           ips?: string | null
@@ -304,7 +308,9 @@ export type Database = {
           documento?: string | null
           estado?: string | null
           evolucion?: string | null
+          evolucion_actualizada_at?: string | null
           evolucion_detalle?: string | null
+          evolucion_motivo?: string | null
           fecha?: string | null
           id?: string
           ips?: string | null
@@ -313,6 +319,45 @@ export type Database = {
           prioridad?: string | null
           tipo_solicitud?: string | null
           unidad_especial?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      entregas_turno: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          entrega_nombre: string | null
+          entrega_por: string | null
+          id: string
+          recibe_nombre: string | null
+          recibe_por: string | null
+          reinicio_evolucion: boolean
+          turno: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          entrega_nombre?: string | null
+          entrega_por?: string | null
+          id?: string
+          recibe_nombre?: string | null
+          recibe_por?: string | null
+          reinicio_evolucion?: boolean
+          turno: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          entrega_nombre?: string | null
+          entrega_por?: string | null
+          id?: string
+          recibe_nombre?: string | null
+          recibe_por?: string | null
+          reinicio_evolucion?: boolean
+          turno?: string
           updated_at?: string
         }
         Relationships: []
@@ -523,6 +568,7 @@ export type Database = {
       pendientes: {
         Row: {
           archivado: boolean
+          caso_id: string | null
           created_at: string
           created_by: string | null
           estado: string | null
@@ -530,13 +576,16 @@ export type Database = {
           id: string
           ips_area: string | null
           observacion_entrega: string | null
+          origen: string | null
           paciente_asunto: string | null
           prioridad: string | null
+          tipo_caso: string | null
           tipo_pendiente: string | null
           updated_at: string
         }
         Insert: {
           archivado?: boolean
+          caso_id?: string | null
           created_at?: string
           created_by?: string | null
           estado?: string | null
@@ -544,13 +593,16 @@ export type Database = {
           id?: string
           ips_area?: string | null
           observacion_entrega?: string | null
+          origen?: string | null
           paciente_asunto?: string | null
           prioridad?: string | null
+          tipo_caso?: string | null
           tipo_pendiente?: string | null
           updated_at?: string
         }
         Update: {
           archivado?: boolean
+          caso_id?: string | null
           created_at?: string
           created_by?: string | null
           estado?: string | null
@@ -558,8 +610,10 @@ export type Database = {
           id?: string
           ips_area?: string | null
           observacion_entrega?: string | null
+          origen?: string | null
           paciente_asunto?: string | null
           prioridad?: string | null
+          tipo_caso?: string | null
           tipo_pendiente?: string | null
           updated_at?: string
         }
@@ -741,7 +795,9 @@ export type Database = {
           documento: string | null
           estado: string | null
           evolucion: string | null
+          evolucion_actualizada_at: string | null
           evolucion_detalle: string | null
+          evolucion_motivo: string | null
           fecha: string | null
           id: string
           observaciones: string | null
@@ -759,7 +815,9 @@ export type Database = {
           documento?: string | null
           estado?: string | null
           evolucion?: string | null
+          evolucion_actualizada_at?: string | null
           evolucion_detalle?: string | null
+          evolucion_motivo?: string | null
           fecha?: string | null
           id?: string
           observaciones?: string | null
@@ -777,7 +835,9 @@ export type Database = {
           documento?: string | null
           estado?: string | null
           evolucion?: string | null
+          evolucion_actualizada_at?: string | null
           evolucion_detalle?: string | null
+          evolucion_motivo?: string | null
           fecha?: string | null
           id?: string
           observaciones?: string | null
@@ -863,7 +923,9 @@ export type Database = {
           especificacion: string | null
           estado: string | null
           evolucion: string | null
+          evolucion_actualizada_at: string | null
           evolucion_detalle: string | null
+          evolucion_motivo: string | null
           fecha_inicio: string | null
           fecha_radicado: string | null
           id: string
@@ -900,7 +962,9 @@ export type Database = {
           especificacion?: string | null
           estado?: string | null
           evolucion?: string | null
+          evolucion_actualizada_at?: string | null
           evolucion_detalle?: string | null
+          evolucion_motivo?: string | null
           fecha_inicio?: string | null
           fecha_radicado?: string | null
           id?: string
@@ -937,7 +1001,9 @@ export type Database = {
           especificacion?: string | null
           estado?: string | null
           evolucion?: string | null
+          evolucion_actualizada_at?: string | null
           evolucion_detalle?: string | null
+          evolucion_motivo?: string | null
           fecha_inicio?: string | null
           fecha_radicado?: string | null
           id?: string
