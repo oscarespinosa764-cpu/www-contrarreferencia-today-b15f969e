@@ -130,7 +130,7 @@ export function SeguimientoControl({ casos, catalogos, plantillas, tick }: Props
                           <Plus className="mr-1 h-3.5 w-3.5" /> Ampliar cupo
                         </Button>
                         <Button size="sm" variant="destructive" className="rounded-full" onClick={() => setAccion({ tipo: "archivar", caso: c })}>
-                          <Archive className="mr-1 h-3.5 w-3.5" /> Archivar (vencido)
+                          <Archive className="mr-1 h-3.5 w-3.5" /> Archivar Caso
                         </Button>
                       </>
                     )}

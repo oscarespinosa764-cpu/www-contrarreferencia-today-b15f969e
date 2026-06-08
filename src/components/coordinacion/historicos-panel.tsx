@@ -11,7 +11,7 @@ type Grupo = { titulo: string; items: ImportItem[] };
 
 const grupos: Grupo[] = [
   {
-    titulo: "Dashboard Operativo",
+    titulo: "Dashboard Operativo salientes",
     items: [
       { emoji: "🚑", label: "Importar remisiones salientes", destino: "remisiones" },
       { emoji: "🏠", label: "Importar PHD / PAD / Oxígeno y especiales", destino: "domiciliarios" },

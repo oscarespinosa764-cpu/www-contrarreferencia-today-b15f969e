@@ -80,7 +80,7 @@ function PlantillasPage() {
   return (
     <div>
       <AppHeader
-        title="Plantillas"
+        title="Plantillas Generales"
         subtitle="Genera textos estandarizados de casos con IA y guárdalos"
       />
 
