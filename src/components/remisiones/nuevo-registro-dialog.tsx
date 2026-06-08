@@ -212,20 +212,13 @@ export function NuevoRegistroDialog({
                   required
                 />
                 <Field name="cama" label="Cama" required />
-                <Field name="paciente" label="Nombres y apellidos paciente" required />
-                <SelectField
-                  name="tipo_documento"
-                  label="Tipo de documento"
-                  options={["CC", "CE", "TI", "RC", "RNV", "ASI", "MSI"]}
-                  required
-                />
-                <Field name="documento" label="Documento" required />
+                <PatientBlock key={`rem-pac-${resetKey}`} />
                 <Field name="edad" label="Edad" placeholder="Ej: 15 años" required />
-                <Field name="cie10" label="CIE-10" required />
+                <Cie10Field key={`rem-cie-${resetKey}`} required />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <SpecialtyList label="Esp. tratantes" items={tratantes} onChange={setTratantes} />
-                <SpecialtyList label="Esp. receptoras" items={receptoras} onChange={setReceptoras} />
+                <SpecialtyList label="Esp. tratantes" items={tratantes} onChange={setTratantes} suggestions={especialidades} />
+                <SpecialtyList label="Esp. receptoras" items={receptoras} onChange={setReceptoras} suggestions={especialidades} />
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <SelectField
