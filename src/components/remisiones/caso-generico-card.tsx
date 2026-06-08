@@ -214,7 +214,6 @@ export function CasoGenericoCard({
         tipo_ambulancia: String(f.get("tipo_ambulancia")),
         proveedor_prestador: String(f.get("proveedor_prestador")),
         prioridad: String(f.get("prioridad")),
-        estado: String(f.get("estado")),
         observaciones: String(f.get("observaciones")),
       };
     } else {
