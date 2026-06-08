@@ -304,7 +304,7 @@ export function CasoRemisionCard({
           <DialogHeader>
             <DialogTitle>Editar remisión · {nombre}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleUpdate} className="space-y-4">
+          <form key={editar ? "open" : "closed"} onSubmit={handleUpdate} className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <Field
                 name="fecha_inicio_display"
