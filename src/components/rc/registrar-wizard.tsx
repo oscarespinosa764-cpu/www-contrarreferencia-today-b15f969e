@@ -251,6 +251,12 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 placeholder="Número de documento…"
                 value={documento}
                 onChange={(e) => setDocumento(e.target.value.replace(/\D/g, ""))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && documento.trim().length >= 4) {
+                    e.preventDefault();
+                    setStep(2);
+                  }
+                }}
                 autoFocus
               />
             </div>
