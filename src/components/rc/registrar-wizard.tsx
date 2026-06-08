@@ -584,6 +584,45 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   );
 }
 
+function TipoCard({
+  label,
+  desc,
+  accent,
+  active,
+  onClick,
+  className,
+}: {
+  label: string;
+  desc?: string;
+  accent: "green" | "red" | "blue";
+  active: boolean;
+  onClick: () => void;
+  className?: string;
+}) {
+  const activeBorder =
+    accent === "green"
+      ? "border-status-green bg-status-green/10"
+      : accent === "red"
+        ? "border-status-red bg-status-red/10"
+        : "border-status-blue bg-status-blue/10";
+  const activeText =
+    accent === "green" ? "text-status-green" : accent === "red" ? "text-status-red" : "text-status-blue";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-2xl border-2 px-4 py-3 text-left transition ${
+        active ? activeBorder : "border-border hover:border-foreground/30"
+      } ${className || ""}`}
+    >
+      <p className={`text-sm font-bold ${active ? activeText : "text-foreground"}`}>{label}</p>
+      {desc && <p className="mt-0.5 text-[11px] text-muted-foreground">{desc}</p>}
+    </button>
+  );
+}
+
+
+
 function StepIndicator({ step }: { step: number }) {
   const labels = ["Documento", "Datos", "Clasificación"];
   return (
