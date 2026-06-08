@@ -53,6 +53,23 @@ export function NuevoRegistroDialog({
     setResetKey((k) => k + 1);
   };
 
+  // Al agregar/quitar en tratantes, migra automáticamente a receptoras
+  const handleTratantesChange = (next: string[]) => {
+    const added = next.filter((s) => !tratantes.includes(s));
+    const removed = tratantes.filter((s) => !next.includes(s));
+    setTratantes(next);
+    setReceptoras((prev) => {
+      let updated = [...prev];
+      // agrega los nuevos que no estén ya en receptoras
+      added.forEach((s) => {
+        if (!updated.includes(s)) updated.push(s);
+      });
+      // quita de receptoras los que se quitaron de tratantes (si seguían migrados)
+      updated = updated.filter((s) => !removed.includes(s));
+      return updated;
+    });
+  };
+
 
 
 
