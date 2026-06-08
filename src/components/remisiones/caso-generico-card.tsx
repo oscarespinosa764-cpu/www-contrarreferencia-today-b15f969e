@@ -222,7 +222,6 @@ export function CasoGenericoCard({
         tipo_pendiente: String(f.get("tipo_pendiente")),
         ips_area: String(f.get("ips_area")),
         prioridad: String(f.get("prioridad")),
-        estado: String(f.get("estado")),
         observacion_entrega: String(f.get("observacion_entrega")),
       };
     }
