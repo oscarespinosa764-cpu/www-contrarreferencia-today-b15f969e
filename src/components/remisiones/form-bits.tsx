@@ -87,14 +87,17 @@ export function SpecialtyList({
   label,
   items,
   onChange,
+  suggestions = [],
 }: {
   label: string;
   items: string[];
   onChange: (v: string[]) => void;
+  suggestions?: string[];
 }) {
   const [val, setVal] = useState("");
-  const add = () => {
-    const t = val.trim();
+  const listId = useId();
+  const add = (forced?: string) => {
+    const t = (forced ?? val).trim();
     if (!t) return;
     onChange([...items, t]);
     setVal("");
@@ -107,7 +110,13 @@ export function SpecialtyList({
       <div className="flex gap-2">
         <Input
           value={val}
-          onChange={(e) => setVal(e.target.value)}
+          list={suggestions.length > 0 ? listId : undefined}
+          onChange={(e) => {
+            const v = e.target.value;
+            setVal(v);
+            // datalist exact pick → add immediately
+            if (suggestions.includes(v)) add(v);
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
@@ -116,6 +125,13 @@ export function SpecialtyList({
           }}
           placeholder="Escribe y agrega…"
         />
+        {suggestions.length > 0 && (
+          <datalist id={listId}>
+            {suggestions.map((s) => (
+              <option key={s} value={s} />
+            ))}
+          </datalist>
+        )}
         <Button type="button" variant="outline" size="icon" className="shrink-0 rounded-full" onClick={add}>
           <Plus className="h-4 w-4" />
         </Button>
