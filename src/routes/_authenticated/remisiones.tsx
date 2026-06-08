@@ -476,59 +476,15 @@ function RemisionesPage() {
           </TabsContent>
 
           <TabsContent value="especiales" className="pt-4">
-            <ListaGenerica
-              items={(domiciliarios ?? []).map((d) => ({
-                id: d.id,
-                nombre: d.paciente,
-                doc: d.documento,
-                sub: [d.tipo_solicitud, d.ips].filter(Boolean).join(" · "),
-                prioridad: d.prioridad,
-                estado: d.estado,
-                created_at: d.created_at,
-                evolucion: d.evolucion,
-              }))}
-              tipoCaso="domiciliario"
-              tabla="domiciliarios"
-              canEdit={canEdit}
-              ultGestiones={ultGestiones}
-            />
+            <ListaGenerica tipo="phd" items={domiciliarios ?? []} canEdit={canEdit} ultGestiones={ultGestiones} />
           </TabsContent>
 
           <TabsContent value="internas" className="pt-4">
-            <ListaGenerica
-              items={(internas ?? []).map((d) => ({
-                id: d.id,
-                nombre: d.paciente,
-                doc: d.documento,
-                sub: [d.tipo_solicitud, d.servicio].filter(Boolean).join(" · "),
-                prioridad: d.prioridad,
-                estado: d.estado,
-                created_at: d.created_at,
-                evolucion: d.evolucion,
-              }))}
-              tipoCaso="referencia_interna"
-              tabla="referencia_interna"
-              canEdit={canEdit}
-              ultGestiones={ultGestiones}
-            />
+            <ListaGenerica tipo="interna" items={internas ?? []} canEdit={canEdit} ultGestiones={ultGestiones} />
           </TabsContent>
 
           <TabsContent value="pendientes" className="pt-4">
-            <ListaGenerica
-              items={(pendientes ?? []).map((d) => ({
-                id: d.id,
-                nombre: d.paciente_asunto,
-                doc: null,
-                sub: [d.tipo_pendiente, d.ips_area].filter(Boolean).join(" · "),
-                prioridad: d.prioridad,
-                estado: d.estado,
-                created_at: d.created_at,
-                evolucion: null,
-              }))}
-              tipoCaso="pendiente"
-              canEdit={canEdit}
-              ultGestiones={ultGestiones}
-            />
+            <ListaGenerica tipo="pendiente" items={pendientes ?? []} canEdit={canEdit} ultGestiones={ultGestiones} />
           </TabsContent>
         </Tabs>
       </div>
