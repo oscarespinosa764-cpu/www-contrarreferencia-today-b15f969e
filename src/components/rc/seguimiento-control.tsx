@@ -107,15 +107,23 @@ export function SeguimientoControl({ casos, catalogos, plantillas, tick }: Props
                     </div>
                   )}
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Doc: {c.documento || "—"} · {c.unidad || "—"} · {c.especialidad || "—"}
-                </p>
+                <div className="mt-1 flex flex-wrap items-start justify-between gap-x-3">
+                  <p className="text-xs text-muted-foreground">
+                    Doc: {c.documento || "—"} · {c.unidad || "—"} · {c.especialidad || "—"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {[c.eapb, c.regimen].filter(Boolean).join(" · ") || "—"}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-start justify-between gap-x-3">
+                  <p className="text-xs text-muted-foreground">
+                    IPS: {c.ips || "—"}
+                    {ven.amp ? ` · ampliado (${ven.amp.codigo})` : ""}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{ciudadIps || "—"}</p>
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  IPS: {c.ips || "—"}
-                  {ven.amp ? ` · ampliado (${ven.amp.codigo})` : ""}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Vence: {ven.fechaVence || "—"} · Registrado: {fechaCasoStr(c)}
+                  Aceptación: {fechaCasoStr(c)} · Vence: {ven.fechaVence || "—"}
                 </p>
 
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
