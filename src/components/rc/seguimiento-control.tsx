@@ -332,26 +332,32 @@ function AccionDialog({
       }
 
       if (accion === "cancelar" || accion === "archivar") {
-        const motivo = accion === "archivar" ? "NO INGRESO DEL PACIENTE" : motivoCan;
+        const esArchivar = accion === "archivar";
+        const motivo = esArchivar ? MOTIVO_VENC : motivoCan;
         if (accion === "cancelar" && !motivo) {
           setBusy(false);
           return toast.error("Selecciona el motivo de cancelación");
         }
-        const motCat = catalogos.motivosCancelacion.find((m) => m.nombre === motivo);
-        const codigo = nextCodigo(casos, "CAN", ahora);
-        const mensaje = buildMensaje(
-          plantillas,
-          catalogos.medicos,
-          { codigo, fecha: fmtFechaHora(ahora), fechaVence: "", hrsReserva: "" },
-          {
-            tipo: "CAN",
-            ...paciente,
-            codRef: caso.codigo,
-            motivoCancelacion: motivo,
-            justificacionCancelacion: motCat?.justificacion || "",
-            detalle,
-          } as any,
+        const motCat = catalogos.motivosCancelacion.find(
+          (m) => m.nombre === (esArchivar ? "NO INGRESO DEL PACIENTE" : motivo),
         );
+        const codigo = esArchivar && archivarInfo ? archivarInfo.codigo : nextCodigo(casos, "CAN", ahora);
+        const mensaje =
+          esArchivar && archivarInfo
+            ? archivarInfo.mensaje
+            : buildMensaje(
+                plantillas,
+                catalogos.medicos,
+                { codigo, fecha: fmtFechaHora(ahora), fechaVence: "", hrsReserva: "" },
+                {
+                  tipo: "CAN",
+                  ...paciente,
+                  codRef: caso.codigo,
+                  motivoCancelacion: motivo,
+                  justificacionCancelacion: motCat?.justificacion || "",
+                  detalle,
+                } as any,
+              );
         const { error: e1 } = await supabase.from("casos_entrantes").insert({
           ...paciente,
           codigo,
@@ -366,12 +372,16 @@ function AccionDialog({
         if (e1) throw e1;
         const { error: e2 } = await supabase
           .from("casos_entrantes")
-          .update({ estado: accion === "archivar" ? "CANCELADO_VENCIMIENTO" : "CANCELADO" })
+          .update({ estado: esArchivar ? "CANCELADO_VENCIMIENTO" : "CANCELADO" })
           .eq("id", caso.id);
         if (e2) throw e2;
-        toast.success(accion === "archivar" ? "Cupo archivado" : "Cupo cancelado");
+        toast.success(esArchivar ? "Caso archivado · enviado a historial" : "Cupo cancelado");
         refrescar();
-        setResultado({ tipo: "CAN", codigo, mensaje });
+        if (esArchivar) {
+          onClose();
+        } else {
+          setResultado({ tipo: "CAN", codigo, mensaje });
+        }
         return;
       }
     } catch (e) {
