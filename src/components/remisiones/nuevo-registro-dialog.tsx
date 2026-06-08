@@ -133,9 +133,8 @@ export function NuevoRegistroDialog({
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const { data: u } = await supabase.auth.getUser();
-    const inicioRaw = String(f.get("fecha_inicio") || "");
     const { error } = await supabase.from("referencia_interna").insert({
-      fecha_inicio: inicioRaw ? new Date(inicioRaw).toISOString() : null,
+      fecha_inicio: null,
       fecha_radicado: new Date().toISOString(),
       servicio: String(f.get("servicio")),
       paciente: String(f.get("paciente")),
