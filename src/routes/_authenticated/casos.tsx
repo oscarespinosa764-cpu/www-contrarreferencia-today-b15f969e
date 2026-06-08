@@ -1,32 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/app-header";
 import { Panel, StatCard } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Search } from "lucide-react";
+import { Plus, Bell, BellOff } from "lucide-react";
 import { useCasos, useCatalogos, usePlantillas } from "@/lib/use-rc-data";
+import { useNotifVencimientos } from "@/lib/use-notif-vencimientos";
 import { RegistrarWizard } from "@/components/rc/registrar-wizard";
-import { fechaCasoStr, TIPO_LABEL, type Caso } from "@/lib/rc-utils";
+import { SeguimientoControl } from "@/components/rc/seguimiento-control";
+import { type Caso } from "@/lib/rc-utils";
 
 export const Route = createFileRoute("/_authenticated/casos")({
   component: CasosPage,
 });
-
-const TIPO_BORDER: Record<string, string> = {
-  ACEP: "border-l-status-green",
-  NEG: "border-l-status-red",
-  AMP: "border-l-status-amber",
-  CAN: "border-l-status-red",
-  ING: "border-l-status-blue",
-  CRUE_ACEP: "border-l-status-blue",
-  CRUE_NR: "border-l-status-amber",
-  CRUE_NEG: "border-l-status-red",
-};
 
 function esteMes(c: Caso): boolean {
   const d = c.created_at ? new Date(c.created_at) : null;
@@ -39,11 +28,18 @@ function CasosPage() {
   const { canEdit } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [q, setQ] = useState("");
 
-  const { data: casos, isLoading } = useCasos();
+  const { data: casos } = useCasos();
   const { data: catalogos } = useCatalogos();
   const { data: plantillas } = usePlantillas();
+  const { enabled, setEnabled, perm, requestPermission } = useNotifVencimientos(casos);
+
+  // Reloj para refrescar cuentas regresivas
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 30000);
+    return () => clearInterval(id);
+  }, []);
 
   const stats = useMemo(() => {
     const mes = casos.filter(esteMes);
@@ -57,24 +53,14 @@ function CasosPage() {
     };
   }, [casos]);
 
-  const term = q.trim().toLowerCase();
-  const casosF = useMemo(
-    () =>
-      casos.filter((c) =>
-        term
-          ? [c.nombres, c.apellidos, c.documento, c.codigo, c.ips, c.especialidad, c.unidad, c.tipo]
-              .filter(Boolean)
-              .join(" ")
-              .toLowerCase()
-              .includes(term)
-          : true,
-      ),
-    [casos, term],
-  );
-
   const refrescar = () => {
     qc.invalidateQueries({ queryKey: ["rc-casos"] });
     qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+  };
+
+  const toggleNotif = () => {
+    if (!enabled && perm !== "granted") requestPermission();
+    setEnabled(!enabled);
   };
 
   return (
@@ -91,6 +77,18 @@ function CasosPage() {
 
       <Panel
         title="Casos registrados"
+        bodyMaxHeight={null}
+        leftAction={
+          <Button
+            size="sm"
+            variant={enabled ? "secondary" : "outline"}
+            className="rounded-full"
+            onClick={toggleNotif}
+          >
+            {enabled ? <Bell className="mr-1.5 h-4 w-4" /> : <BellOff className="mr-1.5 h-4 w-4" />}
+            {enabled ? "Alertas activas" : "Alertas apagadas"}
+          </Button>
+        }
         action={
           canEdit && (
             <Dialog open={open} onOpenChange={setOpen}>
@@ -112,46 +110,7 @@ function CasosPage() {
           )
         }
       >
-        <div className="relative mb-4 mx-auto max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="rounded-full pl-9"
-            placeholder="Buscar por nombre, documento, código…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-        </div>
-
-        {isLoading ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">Cargando…</p>
-        ) : casosF.length > 0 ? (
-          <div className="grid gap-3">
-            {casosF.slice(0, 200).map((c) => (
-              <div
-                key={c.id}
-                className={`rounded-xl border border-border border-l-4 ${TIPO_BORDER[c.tipo] || "border-l-border"} bg-card p-4 shadow-sm`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-bold text-foreground">
-                    {[c.nombres, c.apellidos].filter(Boolean).join(" ") || c.documento || "Sin nombre"}
-                  </p>
-                  <div className="flex items-center gap-1.5">
-                    <Badge variant="outline">{TIPO_LABEL[c.tipo]?.split(" ")[1] || c.tipo}</Badge>
-                    {c.estado && <Badge variant="secondary">{c.estado}</Badge>}
-                  </div>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Doc: {c.documento || "—"} · {c.especialidad || c.unidad || "—"} · {c.ips || "—"}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {c.codigo} · {fechaCasoStr(c)}
-                </p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="py-8 text-center text-sm text-muted-foreground">No hay casos registrados todavía.</p>
-        )}
+        <SeguimientoControl casos={casos} catalogos={catalogos} plantillas={plantillas} tick={tick} />
       </Panel>
     </div>
   );
