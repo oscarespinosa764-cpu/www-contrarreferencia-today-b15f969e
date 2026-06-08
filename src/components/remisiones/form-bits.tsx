@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, X } from "lucide-react";
+import { X } from "lucide-react";
 
 export function Field({
   name,
@@ -127,27 +126,22 @@ export function SpecialtyList({
       <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </Label>
-      <div className="flex gap-2">
-        <Input
-          value={val}
-          autoComplete="off"
-          onChange={(e) => {
-            setVal(e.target.value);
-            setOpen(e.target.value.trim().length > 0);
-          }}
-          onFocus={() => setOpen(val.trim().length > 0)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              add(matches[0]);
-            }
-          }}
-          placeholder="Escribe y agrega…"
-        />
-        <Button type="button" variant="outline" size="icon" className="shrink-0 rounded-full" onClick={() => add()}>
-          <Plus className="h-4 w-4" />
-        </Button>
-      </div>
+      <Input
+        value={val}
+        autoComplete="off"
+        onChange={(e) => {
+          setVal(e.target.value);
+          setOpen(e.target.value.trim().length > 0);
+        }}
+        onFocus={() => setOpen(val.trim().length > 0)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            add(matches[0]);
+          }
+        }}
+        placeholder="Escribe y agrega…"
+      />
       {open && matches.length > 0 && (
         <ul className="absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-md border border-border bg-popover p-1 shadow-md">
           {matches.map((s) => (
