@@ -228,9 +228,11 @@ export function CasoGenericoCard({
               {r.prioridad}
             </Badge>
           )}
-          <Badge variant="secondary" className="font-mono text-[10px]">
-            Rad: {radicado}
-          </Badge>
+          {tipo !== "pendiente" && (
+            <Badge variant="secondary" className="font-mono text-[10px]">
+              Rad: {radicado}
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -434,8 +436,8 @@ export function CasoGenericoCard({
                 <Field name="fecha_radicado_display" label="Fecha y hora radicación" defaultValue={fmtFechaHora(r.fecha_radicado)} readOnly />
                 <Field name="transcurrido_display" label="Tiempo del trámite" defaultValue={fmtTranscurrido(r.created_at)} readOnly />
                 <Field name="paciente" label="Paciente" required defaultValue={r.paciente ?? ""} />
-                <SelectField name="tipo_documento" label="Tipo de documento" options={TIPO_DOC_OPCIONES} defaultValue={r.tipo_documento ?? ""} />
-                <Field name="documento" label="Documento" defaultValue={r.documento ?? ""} />
+                <SelectField name="tipo_documento" label="Tipo de documento" options={TIPO_DOC_OPCIONES} required defaultValue={r.tipo_documento ?? ""} />
+                <Field name="documento" label="Documento" required defaultValue={r.documento ?? ""} />
                 <SelectField name="servicio" label="Servicio" options={SERVICIO_OPCIONES} required defaultValue={r.servicio ?? ""} />
                 <SelectField name="tipo_solicitud" label="Tipo de solicitud" options={INTERNA_SOLICITUD} required defaultValue={r.tipo_solicitud ?? ""} />
                 <SelectField name="tipo_ambulancia" label="Tipo de ambulancia" options={AMBULANCIA_OPCIONES} defaultValue={r.tipo_ambulancia ?? ""} />

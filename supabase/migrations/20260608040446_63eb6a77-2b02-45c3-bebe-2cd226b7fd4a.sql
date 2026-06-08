@@ -1,0 +1,1 @@
+UPDATE public.referencia_interna SET estado = 'ACTIVO' WHERE estado = 'PENDIENTE ACEPTACION';
