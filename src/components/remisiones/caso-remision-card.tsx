@@ -140,7 +140,6 @@ export function CasoRemisionCard({
         cama: String(f.get("cama")),
         asegurador: String(f.get("asegurador")),
         prioridad: String(f.get("prioridad")),
-        estado: String(f.get("estado")),
         especialidades_tratantes: tratantes.join(", "),
         especialidades_receptoras: receptoras.join(", "),
         observaciones: String(f.get("observaciones")),
