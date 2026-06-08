@@ -214,6 +214,7 @@ export function SeguimientoDialog({
         evolucion_actualizada_at?: string;
         evolucion_motivo?: string | null;
         codigo_radicacion?: string;
+        estado?: string;
       } = { evolucion: evolucionCalc };
       if (especialidadesList.length > 0) {
         update.evolucion_detalle = JSON.stringify(evoDetalle);
@@ -221,6 +222,7 @@ export function SeguimientoDialog({
         update.evolucion_motivo = requiereMotivo ? motivoEvo.trim() : null;
       }
       if (radicadoEnUso) update.codigo_radicacion = radicadoEnUso;
+      if (estadoOpciones && estadoCaso) update.estado = estadoCaso;
       await supabase
         .from(tabla as "remisiones")
         .update(update)
