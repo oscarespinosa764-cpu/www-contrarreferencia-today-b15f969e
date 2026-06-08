@@ -32,7 +32,9 @@ export function ImportarDialog({
   const [filas, setFilas] = useState<FilaImport[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [cargando, setCargando] = useState(false);
+  const [exportando, setExportando] = useState(false);
   const importar = useServerFn(importarMasivo);
+  const exportar = useServerFn(exportarMasivo);
 
   const reset = () => {
     setArchivo(null);
