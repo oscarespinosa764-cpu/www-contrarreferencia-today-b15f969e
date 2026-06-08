@@ -75,6 +75,30 @@ export function ImportarDialog({
     XLSX.writeFile(wb, `plantilla_${destino}.xlsx`);
   };
 
+  const exportarDatos = async () => {
+    setExportando(true);
+    try {
+      const res = await exportar({ data: { destino } });
+      if (!res.ok) {
+        toast.error(res.error ?? "No se pudo exportar.");
+        return;
+      }
+      const cols = res.columnas;
+      const matriz = [cols, ...res.filas.map((f) => cols.map((c) => f[c] ?? ""))];
+      const ws = XLSX.utils.aoa_to_sheet(matriz);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Datos");
+      XLSX.writeFile(wb, `export_${destino}.xlsx`);
+      toast.success(`${res.filas.length} registro(s) exportado(s).`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al exportar. Intenta de nuevo.");
+    } finally {
+      setExportando(false);
+    }
+  };
+
+
   const confirmar = async () => {
     if (filas.length === 0) return;
     setCargando(true);
