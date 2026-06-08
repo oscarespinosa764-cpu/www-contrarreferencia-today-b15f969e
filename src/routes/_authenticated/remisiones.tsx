@@ -529,27 +529,14 @@ function RemisionesPage() {
   );
 }
 
-type GenericoItem = {
-  id: string;
-  nombre: string | null;
-  doc: string | null;
-  sub: string;
-  prioridad: string | null;
-  estado: string | null;
-  created_at: string | null;
-  evolucion: string | null;
-};
-
 function ListaGenerica({
+  tipo,
   items,
-  tipoCaso,
-  tabla,
   canEdit,
   ultGestiones,
 }: {
-  items: GenericoItem[];
-  tipoCaso: string;
-  tabla?: string;
+  tipo: GenericoTipo;
+  items: Record<string, any>[];
   canEdit: boolean;
   ultGestiones?: Record<string, { fecha: string | null; responsable: string | null }>;
 }) {
@@ -557,72 +544,14 @@ function ListaGenerica({
   return (
     <div className="grid gap-3">
       {items.map((it) => (
-        <GenericoCard
+        <CasoGenericoCard
           key={it.id}
-          it={it}
-          tipoCaso={tipoCaso}
-          tabla={tabla}
+          tipo={tipo}
+          r={it}
           canEdit={canEdit}
           ultimaGestion={ultGestiones?.[it.id] ?? null}
         />
       ))}
-    </div>
-  );
-}
-
-function GenericoCard({
-  it,
-  tipoCaso,
-  tabla,
-  canEdit,
-  ultimaGestion,
-}: {
-  it: GenericoItem;
-  tipoCaso: string;
-  tabla?: string;
-  canEdit: boolean;
-  ultimaGestion?: { fecha: string | null; responsable: string | null } | null;
-}) {
-  const [seg, setSeg] = useState(false);
-  const nombre = it.nombre || "Sin nombre";
-  const prio = prioridadMeta(it.prioridad);
-  return (
-    <div className={`rounded-xl border border-border border-l-4 ${prio.borderL} bg-card p-3.5 shadow-sm`}>
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-sm font-bold uppercase text-foreground">{nombre}</p>
-          <p className="text-[11px] text-muted-foreground">
-            {[it.sub, it.doc && `Doc: ${it.doc}`].filter(Boolean).join(" · ") || "—"}
-          </p>
-        </div>
-        <div className="flex items-center gap-1.5">
-          {it.prioridad && <Badge variant="outline" className={prio.badge}>{it.prioridad}</Badge>}
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${tiempoChip(it.created_at)}`}>
-            {fmtTranscurrido(it.created_at)}
-          </span>
-        </div>
-      </div>
-      <p className="mt-1.5 text-xs text-muted-foreground">Estado: {it.estado || "—"}</p>
-      <p className="mt-1 text-[11px] text-muted-foreground">
-        <span className="font-semibold">Última gestión:</span>{" "}
-        {ultimaGestion ? `${ultimaGestion.responsable || "—"}` : "Sin seguimientos registrados"}
-      </p>
-      {canEdit && (
-        <div className="mt-3 flex gap-2">
-          <Button size="sm" className="rounded-full" onClick={() => setSeg(true)}>
-            <ClipboardCheck className="mr-1 h-3.5 w-3.5" /> Seguimiento
-          </Button>
-        </div>
-      )}
-      <SeguimientoDialog
-        open={seg}
-        onOpenChange={setSeg}
-        casoId={it.id}
-        tipoCaso={tipoCaso}
-        paciente={nombre}
-        evolucionActual={it.evolucion}
-        tabla={tabla}
-      />
     </div>
   );
 }
