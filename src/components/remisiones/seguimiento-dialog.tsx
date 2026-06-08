@@ -80,6 +80,7 @@ export function SeguimientoDialog({
   const [motivoEvo, setMotivoEvo] = useState("");
   const [busy, setBusy] = useState(false);
   const [busyEvo, setBusyEvo] = useState(false);
+  const [estadoCaso, setEstadoCaso] = useState("");
 
   // Inicializar el checklist por especialidad al abrir.
   useEffect(() => {
@@ -88,8 +89,9 @@ export function SeguimientoDialog({
       setEvoDetalle(parsed);
       setInicial(parseEvolucionDetalle(evolucionDetalle, especialidadesList));
       setMotivoEvo("");
+      setEstadoCaso(estadoActual ?? "");
     }
-  }, [open, evolucionDetalle, especialidadesList]);
+  }, [open, evolucionDetalle, especialidadesList, estadoActual]);
 
   const { data: historial } = useQuery({
     queryKey: ["seguimientos-caso", casoId],
