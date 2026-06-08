@@ -208,7 +208,7 @@ export const importarMasivo = createServerFn({ method: "POST" })
     }
 
     // El nombre de tabla es dinámico; el cliente tipado no lo infiere.
-    const { error } = await (supabase.from(def.tabla) as any).insert(registros);
+    const { error } = await (supabase as any).from(def.tabla).insert(registros);
     if (error) {
       console.error("importarMasivo error:", error);
       return { ok: false, insertadas: 0, omitidas, error: error.message };
