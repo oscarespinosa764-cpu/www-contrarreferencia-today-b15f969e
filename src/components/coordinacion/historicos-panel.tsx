@@ -1,19 +1,44 @@
+import { useState } from "react";
 import { Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+import { ImportarDialog } from "./importar-dialog";
+import type { DestinoKey } from "@/lib/importar.functions";
 
-const importaciones: { emoji: string; label: string }[] = [
-  { emoji: "📥", label: "Importar Excel inicial (operación)" },
-  { emoji: "📤", label: "Importar remisiones salientes" },
-  { emoji: "📨", label: "Importar remisiones entrantes R&C" },
-  { emoji: "📚", label: "Importar catálogo CEDIM" },
-  { emoji: "✉️", label: "Importar plantillas CEDIM" },
-  { emoji: "🔍", label: "Comparar catálogo Excel" },
-  { emoji: "🗄️", label: "Importar históricos" },
-  { emoji: "🔗", label: "Importar red / directorio" },
-  { emoji: "🩺", label: "Diagnosticar Casos R&C" },
-  { emoji: "🛠️", label: "Reparar Casos R&C con backup" },
+type ImportItem = { emoji: string; label: string; destino: DestinoKey };
+type Grupo = { titulo: string; items: ImportItem[] };
+
+const grupos: Grupo[] = [
+  {
+    titulo: "Dashboard Operativo",
+    items: [
+      { emoji: "🚑", label: "Importar remisiones salientes", destino: "remisiones" },
+      { emoji: "🏠", label: "Importar PHD / PAD / Oxígeno y especiales", destino: "domiciliarios" },
+      { emoji: "🔁", label: "Importar referencias internas", destino: "referencia_interna" },
+      { emoji: "📌", label: "Importar pendientes", destino: "pendientes" },
+    ],
+  },
+  {
+    titulo: "Red y disponibilidad",
+    items: [
+      { emoji: "🔗", label: "Importar red / disponibilidad IPS", destino: "red_operativa" },
+    ],
+  },
+  {
+    titulo: "Históricos",
+    items: [
+      { emoji: "📥", label: "Importar histórico de remisiones entrantes", destino: "historicos_entrante" },
+      { emoji: "📤", label: "Importar histórico de remisiones salientes", destino: "historicos_saliente" },
+    ],
+  },
+  {
+    titulo: "Catálogos y plantillas",
+    items: [
+      { emoji: "📚", label: "Importar catálogo", destino: "catalogos" },
+      { emoji: "✉️", label: "Importar plantillas", destino: "plantillas" },
+    ],
+  },
 ];
 
 function AdminBadge({ tone = "amber" }: { tone?: "amber" | "red" }) {
@@ -28,7 +53,7 @@ function AdminBadge({ tone = "amber" }: { tone?: "amber" | "red" }) {
 
 export function HistoricosPanel() {
   const { isAdmin } = useAuth();
-  const aviso = () => toast.info("Función de importación en preparación.");
+  const [activo, setActivo] = useState<ImportItem | null>(null);
 
   if (!isAdmin) {
     return (
@@ -43,22 +68,31 @@ export function HistoricosPanel() {
   return (
     <div className="space-y-5">
       <Panel title="Importaciones masivas" action={<AdminBadge />}>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {importaciones.map((it) => (
-            <Button
-              key={it.label}
-              variant="outline"
-              className="h-auto justify-start gap-2 whitespace-normal rounded-xl py-3 text-left text-sm font-semibold"
-              onClick={aviso}
-            >
-              <span className="text-base">{it.emoji}</span>
-              <span>{it.label}</span>
-            </Button>
+        <div className="space-y-5">
+          {grupos.map((g) => (
+            <div key={g.titulo}>
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                {g.titulo}
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {g.items.map((it) => (
+                  <Button
+                    key={it.destino}
+                    variant="outline"
+                    className="h-auto justify-start gap-2 whitespace-normal rounded-xl py-3 text-left text-sm font-semibold"
+                    onClick={() => setActivo(it)}
+                  >
+                    <span className="text-base">{it.emoji}</span>
+                    <span>{it.label}</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
         <p className="mt-4 text-center text-[12px] italic text-muted-foreground">
-          ⚠️ La importación valida duplicados por documento dentro de cada sección. Formatos
-          aceptados: .xlsx / .xlsm. Acción reservada a coordinación.
+          ⚠️ Descarga la plantilla de cada sección para conocer los encabezados. Formatos
+          aceptados: .xlsx / .xlsm / .csv. Acción reservada a coordinación.
         </p>
       </Panel>
 
@@ -81,6 +115,15 @@ export function HistoricosPanel() {
           </Button>
         </div>
       </Panel>
+
+      {activo && (
+        <ImportarDialog
+          open={!!activo}
+          onOpenChange={(v) => !v && setActivo(null)}
+          destino={activo.destino}
+          titulo={activo.label}
+        />
+      )}
     </div>
   );
 }
