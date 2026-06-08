@@ -26,12 +26,10 @@ import type { Plantilla } from "@/lib/rc-utils";
 
 type Tipo = "ACEP" | "NEG" | "CRUE_ACEP" | "CRUE_NR" | "CRUE_NEG";
 
-const TIPOS: { value: Tipo; label: string; color: string }[] = [
-  { value: "ACEP", label: "Aceptación de cupo", color: "border-status-green text-status-green" },
-  { value: "NEG", label: "Negación de cupo", color: "border-status-red text-status-red" },
-  { value: "CRUE_ACEP", label: "CRUE · Aceptación direccionamiento", color: "border-status-blue text-status-blue" },
-  { value: "CRUE_NR", label: "CRUE · No requerimiento", color: "border-status-amber text-status-amber" },
-  { value: "CRUE_NEG", label: "CRUE · Negación direccionamiento", color: "border-status-red text-status-red" },
+const CRUE_TIPOS: { value: Tipo; label: string }[] = [
+  { value: "CRUE_ACEP", label: "Aceptación direccionamiento" },
+  { value: "CRUE_NR", label: "No requerimiento" },
+  { value: "CRUE_NEG", label: "Negación direccionamiento" },
 ];
 
 const COMPLEJIDADES = ["MAYOR COMPLEJIDAD", "MENOR COMPLEJIDAD"];
@@ -58,9 +56,11 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const [eapb, setEapb] = useState("");
   const [regimen, setRegimen] = useState("");
   const [ips, setIps] = useState("");
+  const [ciudad, setCiudad] = useState("");
 
   // Paso 3 — clasificación
   const [tipo, setTipo] = useState<Tipo | "">("");
+  const [crueOpen, setCrueOpen] = useState(false);
   const [medico, setMedico] = useState("");
   const [especialidad, setEspecialidad] = useState("");
   const [unidad, setUnidad] = useState("");
@@ -85,6 +85,40 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const unidadOptions = catalogos.unidades.map((u) => u.nombre);
   const isCrue = tipo === "CRUE_ACEP" || tipo === "CRUE_NR" || tipo === "CRUE_NEG";
 
+  // ── Enlace IPS ⇄ Ciudad/Departamento ──
+  const ipsEntry = catalogos.ipsConCiudades.find((x) => x.nombre === ips);
+  const sedes = ipsEntry?.ciudades ?? [];
+  const ciudadKey = ciudad.trim().toLowerCase();
+  // Si hay una ciudad escrita, filtra las IPS relacionadas a esa ubicación
+  const ipsOptions = ciudadKey
+    ? catalogos.ipsConCiudades
+        .filter((x) => x.ciudades.some((c) => c.toLowerCase().includes(ciudadKey)))
+        .map((x) => x.nombre)
+    : catalogos.ips;
+
+  const onPickIps = (v: string) => {
+    setIps(v);
+    const e = catalogos.ipsConCiudades.find((x) => x.nombre === v);
+    if (e && e.ciudades.length === 1) setCiudad(e.ciudades[0]);
+  };
+
+  // ── Enlace Médico ⇄ Especialidad ──
+  const espKey = especialidad.trim().toLowerCase();
+  const medicoOptions = espKey
+    ? catalogos.medicos
+        .filter((m) => !m.especialidad || m.especialidad.toLowerCase().includes(espKey))
+        .map((m) => m.nombre)
+    : catalogos.medicos.map((m) => m.nombre);
+
+  const onPickMedico = (v: string) => {
+    setMedico(v);
+    const m = catalogos.medicos.find((x) => x.nombre === v);
+    if (m?.especialidad) setEspecialidad(m.especialidad);
+  };
+
+  // Tiempo reservado de la unidad seleccionada
+  const hrsUnidad = unidad ? calcHrsReserva(unidad, "ACEP", catalogos.unidades) : 0;
+
   const reset = () => {
     setStep(1);
     setDocumento("");
@@ -93,7 +127,9 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     setEapb("");
     setRegimen("");
     setIps("");
+    setCiudad("");
     setTipo("");
+    setCrueOpen(false);
     setMedico("");
     setEspecialidad("");
     setUnidad("");
@@ -213,6 +249,12 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 placeholder="Número de documento…"
                 value={documento}
                 onChange={(e) => setDocumento(e.target.value.replace(/\D/g, ""))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && documento.trim().length >= 4) {
+                    e.preventDefault();
+                    setStep(2);
+                  }
+                }}
                 autoFocus
               />
             </div>
@@ -274,7 +316,50 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
               </Select>
             </div>
             <div className="sm:col-span-2">
-              <AutoComplete label="IPS que remite" value={ips} onChange={setIps} options={catalogos.ips} />
+              <AutoComplete
+                label="IPS que remite"
+                value={ips}
+                onChange={setIps}
+                onPick={onPickIps}
+                options={ipsOptions}
+              />
+              {sedes.length > 1 && (
+                <div className="mt-1.5 rounded-lg border border-status-blue/40 bg-status-blue/10 p-2">
+                  <p className="text-[11px] font-bold text-status-blue">
+                    Tiene {sedes.length} sedes relacionadas — selecciona la ubicación
+                  </p>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {sedes.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setCiudad(s)}
+                        className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
+                          ciudad === s
+                            ? "border-status-blue bg-status-blue/20 text-status-blue"
+                            : "border-border text-muted-foreground hover:border-status-blue/50"
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="sm:col-span-2">
+              <AutoComplete
+                label="Ciudad / Departamento"
+                value={ciudad}
+                onChange={setCiudad}
+                options={catalogos.ciudades}
+                placeholder="Ej: FLORENCIA - CAQUETA"
+              />
+              {ciudad.trim() && ipsOptions.length > 0 && !ips && (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {ipsOptions.length} IPS relacionada{ipsOptions.length === 1 ? "" : "s"} a esta ubicación
+                </p>
+              )}
             </div>
           </div>
 
@@ -294,28 +379,64 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
         <section className="space-y-4">
           <div className="space-y-2">
             <Label>Tipo de caso</Label>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {TIPOS.map((t) => (
-                <button
-                  key={t.value}
-                  type="button"
-                  onClick={() => setTipo(t.value)}
-                  className={`rounded-xl border-2 px-3 py-2 text-left text-xs font-bold transition ${
-                    tipo === t.value ? `${t.color} bg-accent` : "border-border text-muted-foreground hover:border-foreground/30"
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <TipoCard
+                label="Aceptaciones"
+                desc="Aceptación de cupo"
+                accent="green"
+                active={tipo === "ACEP"}
+                onClick={() => {
+                  setTipo("ACEP");
+                  setCrueOpen(false);
+                  setMotivoNeg("");
+                  setComplejidad("");
+                }}
+              />
+              <TipoCard
+                label="Negaciones"
+                desc="Negación de cupo"
+                accent="red"
+                active={tipo === "NEG"}
+                onClick={() => {
+                  setTipo("NEG");
+                  setCrueOpen(false);
+                }}
+              />
+              <TipoCard
+                className="sm:col-span-2"
+                label="Direccionamientos CRUE"
+                desc="Aceptación · No requerimiento · Negación"
+                accent="blue"
+                active={isCrue || crueOpen}
+                onClick={() => setCrueOpen((o) => !o)}
+              />
             </div>
+            {crueOpen && (
+              <div className="grid gap-2 pt-1 sm:grid-cols-3">
+                {CRUE_TIPOS.map((t) => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => setTipo(t.value)}
+                    className={`rounded-xl border-2 px-3 py-2 text-left text-xs font-bold transition ${
+                      tipo === t.value
+                        ? "border-status-blue bg-status-blue/10 text-status-blue"
+                        : "border-border text-foreground hover:border-status-blue/40"
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {tipo === "ACEP" && (
             <div className="grid gap-4 sm:grid-cols-2">
-              <AutoComplete label="Médico que acepta" value={medico} onChange={setMedico} options={catalogos.medicos.map((m) => m.nombre)} />
+              <AutoComplete label="Médico que acepta" value={medico} onChange={setMedico} onPick={onPickMedico} options={medicoOptions} />
               <AutoComplete label="Especialidad" value={especialidad} onChange={setEspecialidad} options={catalogos.especialidades} />
               <div className="space-y-2">
-                <Label>Unidad / Servicio</Label>
+                <Label>Servicio / Unidad</Label>
                 <Select value={unidad} onValueChange={setUnidad}>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar…" />
@@ -328,6 +449,11 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                     ))}
                   </SelectContent>
                 </Select>
+                {unidad && (
+                  <span className="inline-block rounded-full bg-status-blue/10 px-2.5 py-0.5 text-[11px] font-semibold text-status-blue">
+                    Tiempo reservado: {hrsUnidad} horas
+                  </span>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Aseguramiento</Label>
@@ -348,43 +474,51 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
           )}
 
           {tipo === "NEG" && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <AutoComplete label="Médico" value={medico} onChange={setMedico} options={catalogos.medicos.map((m) => m.nombre)} />
-              <AutoComplete label="Especialidad" value={especialidad} onChange={setEspecialidad} options={catalogos.especialidades} />
-              <div className="space-y-2 sm:col-span-2">
-                <Label>Motivo de negación</Label>
-                <Select value={motivoNeg} onValueChange={(v) => { setMotivoNeg(v); setComplejidad(""); }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar motivo…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {catalogos.motivosNeg.map((m) => (
-                      <SelectItem key={m} value={m}>
-                        {m}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="space-y-2">
+              <Label>Motivo de negación</Label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {catalogos.motivosNeg.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => {
+                      setMotivoNeg(m);
+                      setComplejidad("");
+                    }}
+                    className={`rounded-xl border-2 px-3 py-2 text-left text-xs font-bold transition ${
+                      motivoNeg === m
+                        ? "border-status-red bg-status-red/10 text-status-red"
+                        : "border-border text-foreground hover:border-status-red/40"
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
               </div>
               {motivoNeg === "POR NIVEL DE COMPLEJIDAD" && (
-                <div className="space-y-2 sm:col-span-2">
-                  <Label>Complejidad</Label>
-                  <Select value={complejidad} onValueChange={setComplejidad}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {COMPLEJIDADES.map((c) => (
-                        <SelectItem key={c} value={c}>
-                          {c}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="pt-1">
+                  <Label className="text-[11px] text-muted-foreground">Complejidad</Label>
+                  <div className="mt-1 grid gap-2 sm:grid-cols-2">
+                    {COMPLEJIDADES.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setComplejidad(c)}
+                        className={`rounded-lg border px-3 py-1.5 text-left text-xs transition ${
+                          complejidad === c
+                            ? "border-status-red bg-status-red/10 font-semibold text-status-red"
+                            : "border-border text-muted-foreground hover:border-status-red/40"
+                        }`}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
           )}
+
 
           {isCrue && (
             <div className="grid gap-4 sm:grid-cols-2">
@@ -449,6 +583,45 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     </div>
   );
 }
+
+function TipoCard({
+  label,
+  desc,
+  accent,
+  active,
+  onClick,
+  className,
+}: {
+  label: string;
+  desc?: string;
+  accent: "green" | "red" | "blue";
+  active: boolean;
+  onClick: () => void;
+  className?: string;
+}) {
+  const activeBorder =
+    accent === "green"
+      ? "border-status-green bg-status-green/10"
+      : accent === "red"
+        ? "border-status-red bg-status-red/10"
+        : "border-status-blue bg-status-blue/10";
+  const activeText =
+    accent === "green" ? "text-status-green" : accent === "red" ? "text-status-red" : "text-status-blue";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-2xl border-2 px-4 py-3 text-left transition ${
+        active ? activeBorder : "border-border hover:border-foreground/30"
+      } ${className || ""}`}
+    >
+      <p className={`text-sm font-bold ${active ? activeText : "text-foreground"}`}>{label}</p>
+      {desc && <p className="mt-0.5 text-[11px] text-muted-foreground">{desc}</p>}
+    </button>
+  );
+}
+
+
 
 function StepIndicator({ step }: { step: number }) {
   const labels = ["Documento", "Datos", "Clasificación"];

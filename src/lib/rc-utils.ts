@@ -35,6 +35,7 @@ export interface UnidadCat {
 export interface MedicoCat {
   nombre: string;
   titulo: string;
+  especialidad?: string;
 }
 export interface MotivoCanCat {
   nombre: string;
