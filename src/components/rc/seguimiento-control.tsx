@@ -110,7 +110,7 @@ export function SeguimientoControl({ casos, catalogos, plantillas, tick }: Props
                     </div>
                   )}
                 </div>
-                <div className="mt-1 flex flex-wrap items-start gap-x-6">
+                <div className="mt-1 flex flex-wrap items-start justify-between gap-x-6">
                   <div className="min-w-0 flex-1 space-y-0.5">
                     <p className="text-xs text-muted-foreground">
                       Doc: {c.documento || "—"} · {c.unidad || "—"} · {c.especialidad || "—"}
@@ -123,7 +123,7 @@ export function SeguimientoControl({ casos, catalogos, plantillas, tick }: Props
                       Aceptación: {fechaCasoStr(c)} · Vence: {ven.fechaVence || "—"}
                     </p>
                   </div>
-                  <div className="flex flex-col items-center justify-center text-center">
+                  <div className="shrink-0 space-y-0.5 text-right">
                     <p className="text-xs font-medium text-muted-foreground">
                       {[c.eapb, c.regimen].filter(Boolean).join(" · ") || "—"}
                     </p>
