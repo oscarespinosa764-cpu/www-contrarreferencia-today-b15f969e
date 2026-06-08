@@ -207,7 +207,8 @@ export const importarMasivo = createServerFn({ method: "POST" })
       return { ok: false, insertadas: 0, omitidas, error: "No se encontraron filas válidas. Revisa los encabezados de la plantilla." };
     }
 
-    const { error } = await supabase.from(def.tabla).insert(registros);
+    // El nombre de tabla es dinámico; el cliente tipado no lo infiere.
+    const { error } = await (supabase.from(def.tabla) as any).insert(registros);
     if (error) {
       console.error("importarMasivo error:", error);
       return { ok: false, insertadas: 0, omitidas, error: error.message };
