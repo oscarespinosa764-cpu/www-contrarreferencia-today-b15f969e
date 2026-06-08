@@ -453,7 +453,7 @@ export function NuevoRegistroDialog({
                   required
                 />
                 <Field name="paciente_asunto" label="Paciente / asunto" required />
-                <Field name="ips_area" label="IPS / área" />
+                <Field name="ips_area" label="IPS / área" required />
                 <SelectField
                   name="prioridad"
                   label="Prioridad"
