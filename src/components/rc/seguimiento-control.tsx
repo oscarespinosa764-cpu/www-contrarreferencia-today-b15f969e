@@ -520,3 +520,12 @@ function AccionDialog({
     </Dialog>
   );
 }
+
+function DetRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <span className="font-semibold text-muted-foreground">{label}</span>
+      <span className="text-right text-foreground">{value}</span>
+    </div>
+  );
+}
