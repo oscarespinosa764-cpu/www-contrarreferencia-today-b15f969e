@@ -113,21 +113,21 @@ export function SeguimientoControl({ casos, catalogos, plantillas, tick }: Props
                 <div className="mt-1 flex flex-wrap items-start gap-x-6">
                   <div className="min-w-0 flex-1 space-y-0.5">
                     <p className="text-xs text-muted-foreground">
-                      DOCUMENTO: {c.documento || "—"} · UNIDAD: {c.unidad || "—"} · ESPECIALIDAD: {c.especialidad || "—"}
+                      <span className="font-bold text-foreground">DOCUMENTO:</span> {c.documento || "—"} · <span className="font-bold text-foreground">UNIDAD:</span> {c.unidad || "—"} · <span className="font-bold text-foreground">ESPECIALIDAD:</span> {c.especialidad || "—"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      IPS: {c.ips || "—"}
+                      <span className="font-bold text-foreground">IPS:</span> {c.ips || "—"}
                       {ven.amp ? ` · ampliado (${ven.amp.codigo})` : ""}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      ACEPTACION: {fechaCasoStr(c)} · VENCIMIENTO: {ven.fechaVence || "—"}
+                      <span className="font-bold text-foreground">ACEPTACION:</span> {fechaCasoStr(c)} · <span className="font-bold text-foreground">VENCIMIENTO:</span> {ven.fechaVence || "—"}
                     </p>
                   </div>
                   <div className="flex flex-1 flex-col items-center justify-center text-center">
                     <p className="text-xs font-medium text-muted-foreground">
-                      EAPB: {[c.eapb, c.regimen].filter(Boolean).join(" · ") || "—"}
+                      <span className="font-bold text-foreground">EAPB:</span> {[c.eapb, c.regimen].filter(Boolean).join(" · ") || "—"}
                     </p>
-                    <p className="text-xs text-muted-foreground">CIUDAD: {ciudadIps || "—"}</p>
+                    <p className="text-xs text-muted-foreground"><span className="font-bold text-foreground">CIUDAD:</span> {ciudadIps || "—"}</p>
                   </div>
                   <div className="hidden flex-1 sm:block" />
                 </div>
