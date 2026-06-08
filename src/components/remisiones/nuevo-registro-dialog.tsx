@@ -23,6 +23,20 @@ export function NuevoRegistroDialog({
   const [tratantes, setTratantes] = useState<string[]>([]);
   const [receptoras, setReceptoras] = useState<string[]>([]);
   const [phdTratantes, setPhdTratantes] = useState<string[]>([]);
+  const [resetKey, setResetKey] = useState(0);
+
+  const { data: especialidades = [] } = useQuery({
+    queryKey: ["cat-especialidad"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor")
+        .eq("tipo", "ESPECIALIDAD")
+        .eq("activo", true)
+        .order("valor");
+      return (data ?? []).map((d) => d.valor as string);
+    },
+  });
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["remisiones"] });
@@ -36,7 +50,10 @@ export function NuevoRegistroDialog({
     setTratantes([]);
     setReceptoras([]);
     setPhdTratantes([]);
+    setResetKey((k) => k + 1);
   };
+
+
 
 
   const handleRemision = async (e: React.FormEvent<HTMLFormElement>) => {
