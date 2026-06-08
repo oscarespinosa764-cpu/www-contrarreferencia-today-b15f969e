@@ -35,13 +35,13 @@ export function StatCard({
   color?: StatColor;
 }) {
   return (
-    <div className={`rounded-xl border border-border ${topBorder[color]} border-t-4 bg-card p-4 text-center shadow-sm`}>
-      <p className="mb-3 text-[11px] font-bold uppercase leading-tight tracking-wide text-muted-foreground">
+    <div className={`flex h-full flex-col rounded-xl border border-border ${topBorder[color]} border-t-4 bg-card p-3 text-center shadow-sm`}>
+      <p className="flex min-h-[2.4rem] items-center justify-center text-[12.5px] font-bold uppercase leading-tight tracking-wide text-muted-foreground">
         {title}
       </p>
-      <div className="rounded-lg border border-border/60 bg-background/40 py-3">
-        <p className={`text-3xl font-extrabold ${valueColor[color]}`}>{value ?? "—"}</p>
-        {caption && <p className="mt-1 text-[11px] text-muted-foreground">{caption}</p>}
+      <div className="mt-2 flex flex-1 flex-col justify-center rounded-lg border border-border/60 bg-background/40 px-1 py-2.5">
+        <p className={`text-3xl font-extrabold leading-none ${valueColor[color]}`}>{value ?? "—"}</p>
+        {caption && <p className="mt-1.5 text-[10.5px] leading-tight text-muted-foreground">{caption}</p>}
       </div>
     </div>
   );
@@ -58,15 +58,15 @@ export function SplitStatCard({
   parts: { label: string; value: ReactNode; color?: StatColor }[];
 }) {
   return (
-    <div className={`rounded-xl border border-border ${topBorder[color]} border-t-4 bg-card p-4 text-center shadow-sm`}>
-      <p className="mb-3 text-[11px] font-bold uppercase leading-tight tracking-wide text-muted-foreground">
+    <div className={`flex h-full flex-col rounded-xl border border-border ${topBorder[color]} border-t-4 bg-card p-3 text-center shadow-sm`}>
+      <p className="flex min-h-[2.4rem] items-center justify-center text-[12.5px] font-bold uppercase leading-tight tracking-wide text-muted-foreground">
         {title}
       </p>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="mt-2 grid flex-1 grid-cols-2 gap-2">
         {parts.map((p, i) => (
-          <div key={i} className="rounded-lg border border-border/60 bg-background/40 px-1 py-3">
-            <p className={`text-2xl font-extrabold ${valueColor[p.color ?? color]}`}>{p.value ?? "—"}</p>
-            <p className="mt-1 text-[10px] leading-tight text-muted-foreground">{p.label}</p>
+          <div key={i} className="flex flex-col justify-center rounded-lg border border-border/60 bg-background/40 px-1 py-2.5">
+            <p className={`text-2xl font-extrabold leading-none ${valueColor[p.color ?? color]}`}>{p.value ?? "—"}</p>
+            <p className="mt-1.5 text-[10px] leading-tight text-muted-foreground">{p.label}</p>
           </div>
         ))}
       </div>
