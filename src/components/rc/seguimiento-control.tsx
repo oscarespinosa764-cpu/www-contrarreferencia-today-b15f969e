@@ -78,64 +78,74 @@ export function SeguimientoControl({ casos, catalogos, plantillas, tick }: Props
           {filtrados.map(({ caso: c, ven }) => {
             const min = ven.minRest;
             const vencido = min === null || min <= 0;
-            const critico = !vencido && min !== null && min <= 60;
-            const barColor = vencido ? "border-l-status-red" : critico ? "border-l-status-amber" : "border-l-status-green";
+            const proximo = !vencido && min !== null && min <= 120;
+            const barColor = vencido ? "border-l-status-red" : proximo ? "border-l-status-amber" : "border-l-status-green";
             return (
               <div key={c.id} className={`rounded-xl border border-border border-l-4 ${barColor} bg-card p-4 shadow-sm`}>
-                <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-start justify-between gap-2">
                   <p className="text-sm font-bold text-foreground">
                     {[c.nombres, c.apellidos].filter(Boolean).join(" ") || c.documento || "Sin nombre"}
                   </p>
-                  <span
-                    className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-extrabold ${
-                      vencido
-                        ? "bg-status-red/15 text-status-red"
-                        : critico
-                          ? "bg-status-amber/15 text-status-amber"
-                          : "bg-status-green/15 text-status-green"
-                    }`}
-                  >
-                    {vencido ? <AlertTriangle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
-                    {vencido ? "TIEMPO DE INGRESO VENCIDO" : fmtMinutos(min)}
-                  </span>
+                  {vencido ? (
+                    <span className="flex items-center gap-1.5 rounded-full bg-status-red/15 px-3 py-1 text-xs font-extrabold text-status-red">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      TIEMPO DE INGRESO VENCIDO
+                    </span>
+                  ) : (
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="flex items-center gap-1.5 text-xs font-extrabold text-foreground">
+                        <Clock className="h-3.5 w-3.5" />
+                        {fmtMinutos(min)} restantes
+                      </span>
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                          proximo ? "bg-status-amber/15 text-status-amber" : "bg-status-green/15 text-status-green"
+                        }`}
+                      >
+                        {proximo ? "Próximo a vencer" : "Vigente"}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Doc: {c.documento || "—"} · {c.unidad || "—"} · {c.especialidad || "—"}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {c.codigo} · {c.ips || "—"}
+                  IPS: {c.ips || "—"}
                   {ven.amp ? ` · ampliado (${ven.amp.codigo})` : ""}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Vence: {ven.fechaVence || "—"} · Registrado: {fechaCasoStr(c)}
                 </p>
 
-                {canEdit && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {!vencido ? (
-                      <>
-                        <Button size="sm" className="rounded-full" onClick={() => setAccion({ tipo: "ingreso", caso: c })}>
-                          <LogIn className="mr-1 h-3.5 w-3.5" /> Confirmar ingreso
-                        </Button>
-                        <Button size="sm" variant="secondary" className="rounded-full" onClick={() => setAccion({ tipo: "ampliar", caso: c })}>
-                          <Plus className="mr-1 h-3.5 w-3.5" /> Ampliar cupo
-                        </Button>
-                        <Button size="sm" variant="outline" className="rounded-full" onClick={() => setAccion({ tipo: "cancelar", caso: c })}>
-                          <XCircle className="mr-1 h-3.5 w-3.5" /> Cancelar cupo
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Button size="sm" variant="secondary" className="rounded-full" onClick={() => setAccion({ tipo: "ampliar", caso: c })}>
-                          <Plus className="mr-1 h-3.5 w-3.5" /> Ampliar cupo
-                        </Button>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                  {canEdit ? (
+                    <div className="flex flex-wrap gap-2">
+                      {!vencido ? (
+                        <>
+                          <Button size="sm" className="rounded-full" onClick={() => setAccion({ tipo: "ingreso", caso: c })}>
+                            <LogIn className="mr-1 h-3.5 w-3.5" /> Confirmar ingreso
+                          </Button>
+                          <Button size="sm" variant="secondary" className="rounded-full" onClick={() => setAccion({ tipo: "ampliar", caso: c })}>
+                            <Plus className="mr-1 h-3.5 w-3.5" /> Ampliar cupo
+                          </Button>
+                          <Button size="sm" variant="outline" className="rounded-full" onClick={() => setAccion({ tipo: "cancelar", caso: c })}>
+                            <XCircle className="mr-1 h-3.5 w-3.5" /> Cancelar cupo
+                          </Button>
+                        </>
+                      ) : (
                         <Button size="sm" variant="destructive" className="rounded-full" onClick={() => setAccion({ tipo: "archivar", caso: c })}>
-                          <Archive className="mr-1 h-3.5 w-3.5" /> Archivar Caso
+                          <Archive className="mr-1 h-3.5 w-3.5" /> Archivar caso
                         </Button>
-                      </>
-                    )}
-                  </div>
-                )}
+                      )}
+                    </div>
+                  ) : (
+                    <span />
+                  )}
+                  <Badge variant="secondary" className="ml-auto font-mono text-xs">
+                    {c.codigo}
+                  </Badge>
+                </div>
               </div>
             );
           })}
