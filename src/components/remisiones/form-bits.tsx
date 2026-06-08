@@ -132,7 +132,7 @@ export function SpecialtyList({
             ))}
           </datalist>
         )}
-        <Button type="button" variant="outline" size="icon" className="shrink-0 rounded-full" onClick={add}>
+        <Button type="button" variant="outline" size="icon" className="shrink-0 rounded-full" onClick={() => add()}>
           <Plus className="h-4 w-4" />
         </Button>
       </div>
