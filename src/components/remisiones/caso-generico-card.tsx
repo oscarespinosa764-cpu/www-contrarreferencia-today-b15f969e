@@ -195,7 +195,6 @@ export function CasoGenericoCard({
         servicio: String(f.get("servicio")),
         cama: String(f.get("cama")),
         prioridad: String(f.get("prioridad")),
-        estado: String(f.get("estado")),
         tipo_solicitud: String(f.get("tipo_solicitud")),
         requiere_ambulancia: String(f.get("requiere_ambulancia")),
         codigo_radicacion: String(f.get("codigo_radicacion")),
