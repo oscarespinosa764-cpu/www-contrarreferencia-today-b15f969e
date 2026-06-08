@@ -58,9 +58,11 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const [eapb, setEapb] = useState("");
   const [regimen, setRegimen] = useState("");
   const [ips, setIps] = useState("");
+  const [ciudad, setCiudad] = useState("");
 
   // Paso 3 — clasificación
   const [tipo, setTipo] = useState<Tipo | "">("");
+  const [crueOpen, setCrueOpen] = useState(false);
   const [medico, setMedico] = useState("");
   const [especialidad, setEspecialidad] = useState("");
   const [unidad, setUnidad] = useState("");
