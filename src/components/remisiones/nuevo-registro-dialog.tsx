@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -7,6 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Field, SelectField, SpecialtyList } from "./form-bits";
+import { PatientBlock } from "./patient-block";
+import { Cie10Field } from "./cie10-field";
 import { toast } from "sonner";
 
 export function NuevoRegistroDialog({
@@ -21,6 +23,20 @@ export function NuevoRegistroDialog({
   const [tratantes, setTratantes] = useState<string[]>([]);
   const [receptoras, setReceptoras] = useState<string[]>([]);
   const [phdTratantes, setPhdTratantes] = useState<string[]>([]);
+  const [resetKey, setResetKey] = useState(0);
+
+  const { data: especialidades = [] } = useQuery({
+    queryKey: ["cat-especialidad"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor")
+        .eq("tipo", "ESPECIALIDAD")
+        .eq("activo", true)
+        .order("valor");
+      return (data ?? []).map((d) => d.valor as string);
+    },
+  });
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["remisiones"] });
@@ -34,7 +50,10 @@ export function NuevoRegistroDialog({
     setTratantes([]);
     setReceptoras([]);
     setPhdTratantes([]);
+    setResetKey((k) => k + 1);
   };
+
+
 
 
   const handleRemision = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -156,7 +175,13 @@ export function NuevoRegistroDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) reset();
+        onOpenChange(v);
+      }}
+    >
       <DialogContent className="max-h-[92vh] overflow-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Nuevo registro</DialogTitle>
@@ -193,20 +218,13 @@ export function NuevoRegistroDialog({
                   required
                 />
                 <Field name="cama" label="Cama" required />
-                <Field name="paciente" label="Nombres y apellidos paciente" required />
-                <SelectField
-                  name="tipo_documento"
-                  label="Tipo de documento"
-                  options={["CC", "CE", "TI", "RC", "RNV", "ASI", "MSI"]}
-                  required
-                />
-                <Field name="documento" label="Documento" required />
+                <PatientBlock key={`rem-pac-${resetKey}`} />
                 <Field name="edad" label="Edad" placeholder="Ej: 15 años" required />
-                <Field name="cie10" label="CIE-10" required />
+                <Cie10Field key={`rem-cie-${resetKey}`} required />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <SpecialtyList label="Esp. tratantes" items={tratantes} onChange={setTratantes} />
-                <SpecialtyList label="Esp. receptoras" items={receptoras} onChange={setReceptoras} />
+                <SpecialtyList label="Esp. tratantes" items={tratantes} onChange={setTratantes} suggestions={especialidades} />
+                <SpecialtyList label="Esp. receptoras" items={receptoras} onChange={setReceptoras} suggestions={especialidades} />
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <SelectField
@@ -290,21 +308,15 @@ export function NuevoRegistroDialog({
                   required
                 />
                 <Field name="cama" label="Cama" />
-                <Field name="paciente" label="Nombres y apellidos paciente" required />
-                <SelectField
-                  name="tipo_documento"
-                  label="Tipo de documento"
-                  options={["CC", "CE", "TI", "RC", "RNV", "ASI", "MSI"]}
-                  required
-                />
-                <Field name="documento" label="Documento" required />
+                <PatientBlock key={`phd-pac-${resetKey}`} />
                 <Field name="edad" label="Edad" placeholder="Ej: 15 años" />
-                <Field name="cie10" label="CIE-10" />
+                <Cie10Field key={`phd-cie-${resetKey}`} />
               </div>
               <SpecialtyList
                 label="Especialidades tratantes"
                 items={phdTratantes}
                 onChange={setPhdTratantes}
+                suggestions={especialidades}
               />
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <SelectField
@@ -375,14 +387,7 @@ export function NuevoRegistroDialog({
                   options={["URGENCIAS", "HOSPITALIZACION", "UCI ADULTOS", "QUIROFANO"]}
                   required
                 />
-                <Field name="paciente" label="Nombres y apellidos paciente" required />
-                <SelectField
-                  name="tipo_documento"
-                  label="Tipo de documento"
-                  options={["CC", "CE", "TI", "RC", "RNV", "ASI", "MSI"]}
-                  required
-                />
-                <Field name="documento" label="Documento" required />
+                <PatientBlock key={`ri-pac-${resetKey}`} />
                 <SelectField
                   name="tipo_solicitud"
                   label="Tipo de solicitud"
@@ -448,7 +453,7 @@ export function NuevoRegistroDialog({
                   required
                 />
                 <Field name="paciente_asunto" label="Paciente / asunto" required />
-                <Field name="ips_area" label="IPS / área" />
+                <Field name="ips_area" label="IPS / área" required />
                 <SelectField
                   name="prioridad"
                   label="Prioridad"
