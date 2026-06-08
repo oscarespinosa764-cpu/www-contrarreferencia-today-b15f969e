@@ -86,7 +86,7 @@ export function SeguimientoControl({ casos, catalogos, plantillas, tick }: Props
             return (
               <div key={c.id} className={`rounded-xl border border-border border-l-4 ${barColor} bg-card p-4 shadow-sm`}>
                 <div className="flex flex-wrap items-start justify-between gap-2">
-                  <p className="text-base font-bold text-foreground">
+                  <p className="text-lg font-bold text-foreground">
                     {[c.nombres, c.apellidos].filter(Boolean).join(" ") || c.documento || "Sin nombre"}
                   </p>
                   {vencido ? (
