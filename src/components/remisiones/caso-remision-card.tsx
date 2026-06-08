@@ -350,12 +350,11 @@ export function CasoRemisionCard({
                 required
                 defaultValue={r.prioridad ?? ""}
               />
-              <SelectField
-                name="estado"
-                label="Estado"
-                options={ESTADO_OPCIONES}
-                required
+              <Field
+                name="estado_display"
+                label="Estado (se cambia desde Seguimiento)"
                 defaultValue={r.estado ?? ""}
+                readOnly
               />
               <Field
                 name="codigo_radicacion"
