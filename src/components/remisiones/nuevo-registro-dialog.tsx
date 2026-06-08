@@ -381,14 +381,7 @@ export function NuevoRegistroDialog({
                   options={["URGENCIAS", "HOSPITALIZACION", "UCI ADULTOS", "QUIROFANO"]}
                   required
                 />
-                <Field name="paciente" label="Nombres y apellidos paciente" required />
-                <SelectField
-                  name="tipo_documento"
-                  label="Tipo de documento"
-                  options={["CC", "CE", "TI", "RC", "RNV", "ASI", "MSI"]}
-                  required
-                />
-                <Field name="documento" label="Documento" required />
+                <PatientBlock key={`ri-pac-${resetKey}`} />
                 <SelectField
                   name="tipo_solicitud"
                   label="Tipo de solicitud"
