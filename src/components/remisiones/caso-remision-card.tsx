@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,8 +7,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Eye, Pencil, ClipboardCheck, MapPin } from "lucide-react";
-import { Field, SpecialtyList } from "./form-bits";
+import { Field, SelectField, SpecialtyList } from "./form-bits";
+import { Cie10Field } from "./cie10-field";
 import { SeguimientoDialog } from "./seguimiento-dialog";
+
+const SERVICIO_OPCIONES = ["URGENCIAS", "HOSPITALIZACION", "UCI ADULTOS", "QUIROFANO"];
+const PRIORIDAD_OPCIONES = ["ALTA", "MEDIA", "BAJA"];
+const TIPO_DOC_OPCIONES = ["CC", "CE", "TI", "RC", "RNV", "ASI", "MSI"];
+const ESTADO_OPCIONES = [
+  "PENDIENTE ACEPTACION",
+  "ACEPTADO SIN PROGRAMACION DE AMBULANCIA",
+  "ACEPTADO CON AMBULANCIA COORDINADA",
+  "DESISTIMIENTO IPS",
+  "DESISTIMIENTO GENERAL",
+];
 import {
   evolucionMeta,
   fmtFechaHora,
@@ -24,13 +36,17 @@ export type Remision = {
   id: string;
   paciente: string | null;
   documento: string | null;
+  tipo_documento: string | null;
   edad: string | null;
+  cie10: string | null;
   servicio: string | null;
   cama: string | null;
   asegurador: string | null;
   prioridad: string | null;
   estado: string | null;
   tipo_tramite: string | null;
+  fecha_inicio: string | null;
+  fecha_radicado: string | null;
   especialidades_tratantes: string | null;
   especialidades_receptoras: string | null;
   codigo_radicacion: string | null;
