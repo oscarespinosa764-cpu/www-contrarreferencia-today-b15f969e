@@ -132,9 +132,29 @@ export function ImportarDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          <Button variant="outline" size="sm" className="rounded-full" onClick={descargarPlantilla}>
-            <Download className="mr-1.5 h-4 w-4" /> Descargar plantilla
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" className="rounded-full" onClick={descargarPlantilla}>
+              <Download className="mr-1.5 h-4 w-4" /> Descargar plantilla
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              onClick={exportarDatos}
+              disabled={exportando}
+            >
+              {exportando ? (
+                <>
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Exportando…
+                </>
+              ) : (
+                <>
+                  <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Exportar datos (Excel)
+                </>
+              )}
+            </Button>
+          </div>
+
 
           <input
             ref={inputRef}
