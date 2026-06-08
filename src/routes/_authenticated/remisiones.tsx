@@ -241,7 +241,7 @@ function RemisionesPage() {
 
   return (
     <div>
-      <AppHeader title="Bitácora de Remisiones Salientes" subtitle="Casos activos" />
+      <AppHeader title="DASHBOARD OPERATIVO SALIENTES" subtitle="Casos activos" />
 
       {/* Entrega de turno + Exportaciones */}
       <div className="grid gap-4 lg:grid-cols-2">
