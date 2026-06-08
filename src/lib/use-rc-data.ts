@@ -50,13 +50,20 @@ export function useCatalogos() {
       const ipsConCiudades: IpsCiudades[] = [];
       const ciudadesSet = new Set<string>();
       for (const r of ipsRows) {
-        const ciudad = (r.extra1 || "").trim();
-        const ciudades = ciudad ? [ciudad] : [];
-        if (ciudad) ciudadesSet.add(ciudad);
+        // extra1 puede traer varias sedes separadas por ";"
+        const ciudades = (r.extra1 || "")
+          .split(/[;\n]/)
+          .map((c) => c.trim())
+          .filter(Boolean);
+        ciudades.forEach((c) => ciudadesSet.add(c));
         ipsConCiudades.push({ nombre: r.valor, ciudades });
       }
       return {
-        medicos: byTipo("MEDICO").map((r) => ({ nombre: r.valor, titulo: (r.extra1 || "Dr(a).").trim() })),
+        medicos: byTipo("MEDICO").map((r) => ({
+          nombre: r.valor,
+          titulo: (r.extra1 || "Dr(a).").trim(),
+          especialidad: (r.extra2 || "").trim(),
+        })),
         especialidades: byTipo("ESPECIALIDAD").map((r) => r.valor),
         unidades: byTipo("UNIDAD").map((r) => ({
           nombre: r.valor,
@@ -67,7 +74,7 @@ export function useCatalogos() {
         regimenes: byTipo("REGIMEN").map((r) => r.valor),
         ips: ipsRows.map((r) => r.valor),
         ipsConCiudades,
-        ciudades: Array.from(ciudadesSet),
+        ciudades: Array.from(ciudadesSet).sort(),
         motivosNeg: byTipo("MOTIVO_NEG").map((r) => r.valor),
         motivosCancelacion: byTipo("MOTIVO_CANCELACION").map((r) => ({
           nombre: r.valor,
