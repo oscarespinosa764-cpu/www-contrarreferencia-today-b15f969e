@@ -379,28 +379,64 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
         <section className="space-y-4">
           <div className="space-y-2">
             <Label>Tipo de caso</Label>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {TIPOS.map((t) => (
-                <button
-                  key={t.value}
-                  type="button"
-                  onClick={() => setTipo(t.value)}
-                  className={`rounded-xl border-2 px-3 py-2 text-left text-xs font-bold transition ${
-                    tipo === t.value ? `${t.color} bg-accent` : "border-border text-muted-foreground hover:border-foreground/30"
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <TipoCard
+                label="Aceptaciones"
+                desc="Aceptación de cupo"
+                accent="green"
+                active={tipo === "ACEP"}
+                onClick={() => {
+                  setTipo("ACEP");
+                  setCrueOpen(false);
+                  setMotivoNeg("");
+                  setComplejidad("");
+                }}
+              />
+              <TipoCard
+                label="Negaciones"
+                desc="Negación de cupo"
+                accent="red"
+                active={tipo === "NEG"}
+                onClick={() => {
+                  setTipo("NEG");
+                  setCrueOpen(false);
+                }}
+              />
+              <TipoCard
+                className="sm:col-span-2"
+                label="Direccionamientos CRUE"
+                desc="Aceptación · No requerimiento · Negación"
+                accent="blue"
+                active={isCrue || crueOpen}
+                onClick={() => setCrueOpen((o) => !o)}
+              />
             </div>
+            {crueOpen && (
+              <div className="grid gap-2 pt-1 sm:grid-cols-3">
+                {CRUE_TIPOS.map((t) => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => setTipo(t.value)}
+                    className={`rounded-xl border-2 px-3 py-2 text-left text-xs font-bold transition ${
+                      tipo === t.value
+                        ? "border-status-blue bg-status-blue/10 text-status-blue"
+                        : "border-border text-foreground hover:border-status-blue/40"
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {tipo === "ACEP" && (
             <div className="grid gap-4 sm:grid-cols-2">
-              <AutoComplete label="Médico que acepta" value={medico} onChange={setMedico} options={catalogos.medicos.map((m) => m.nombre)} />
+              <AutoComplete label="Médico que acepta" value={medico} onChange={setMedico} onPick={onPickMedico} options={medicoOptions} />
               <AutoComplete label="Especialidad" value={especialidad} onChange={setEspecialidad} options={catalogos.especialidades} />
               <div className="space-y-2">
-                <Label>Unidad / Servicio</Label>
+                <Label>Servicio / Unidad</Label>
                 <Select value={unidad} onValueChange={setUnidad}>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar…" />
@@ -413,6 +449,11 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                     ))}
                   </SelectContent>
                 </Select>
+                {unidad && (
+                  <span className="inline-block rounded-full bg-status-blue/10 px-2.5 py-0.5 text-[11px] font-semibold text-status-blue">
+                    Tiempo reservado: {hrsUnidad} horas
+                  </span>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Aseguramiento</Label>
@@ -433,43 +474,51 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
           )}
 
           {tipo === "NEG" && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <AutoComplete label="Médico" value={medico} onChange={setMedico} options={catalogos.medicos.map((m) => m.nombre)} />
-              <AutoComplete label="Especialidad" value={especialidad} onChange={setEspecialidad} options={catalogos.especialidades} />
-              <div className="space-y-2 sm:col-span-2">
-                <Label>Motivo de negación</Label>
-                <Select value={motivoNeg} onValueChange={(v) => { setMotivoNeg(v); setComplejidad(""); }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar motivo…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {catalogos.motivosNeg.map((m) => (
-                      <SelectItem key={m} value={m}>
-                        {m}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="space-y-2">
+              <Label>Motivo de negación</Label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {catalogos.motivosNeg.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => {
+                      setMotivoNeg(m);
+                      setComplejidad("");
+                    }}
+                    className={`rounded-xl border-2 px-3 py-2 text-left text-xs font-bold transition ${
+                      motivoNeg === m
+                        ? "border-status-red bg-status-red/10 text-status-red"
+                        : "border-border text-foreground hover:border-status-red/40"
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
               </div>
               {motivoNeg === "POR NIVEL DE COMPLEJIDAD" && (
-                <div className="space-y-2 sm:col-span-2">
-                  <Label>Complejidad</Label>
-                  <Select value={complejidad} onValueChange={setComplejidad}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {COMPLEJIDADES.map((c) => (
-                        <SelectItem key={c} value={c}>
-                          {c}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="pt-1">
+                  <Label className="text-[11px] text-muted-foreground">Complejidad</Label>
+                  <div className="mt-1 grid gap-2 sm:grid-cols-2">
+                    {COMPLEJIDADES.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setComplejidad(c)}
+                        className={`rounded-lg border px-3 py-1.5 text-left text-xs transition ${
+                          complejidad === c
+                            ? "border-status-red bg-status-red/10 font-semibold text-status-red"
+                            : "border-border text-muted-foreground hover:border-status-red/40"
+                        }`}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
           )}
+
 
           {isCrue && (
             <div className="grid gap-4 sm:grid-cols-2">
