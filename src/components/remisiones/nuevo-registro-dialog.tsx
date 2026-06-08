@@ -309,7 +309,7 @@ export function NuevoRegistroDialog({
                 />
                 <Field name="cama" label="Cama" />
                 <PatientBlock key={`phd-pac-${resetKey}`} />
-                <Field name="edad" label="Edad" placeholder="Ej: 15 años" />
+                <EdadField key={`phd-edad-${resetKey}`} />
                 <Cie10Field key={`phd-cie-${resetKey}`} />
               </div>
               <SpecialtyList
