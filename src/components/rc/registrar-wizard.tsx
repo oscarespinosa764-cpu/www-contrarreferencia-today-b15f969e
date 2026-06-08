@@ -87,6 +87,40 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const unidadOptions = catalogos.unidades.map((u) => u.nombre);
   const isCrue = tipo === "CRUE_ACEP" || tipo === "CRUE_NR" || tipo === "CRUE_NEG";
 
+  // ── Enlace IPS ⇄ Ciudad/Departamento ──
+  const ipsEntry = catalogos.ipsConCiudades.find((x) => x.nombre === ips);
+  const sedes = ipsEntry?.ciudades ?? [];
+  const ciudadKey = ciudad.trim().toLowerCase();
+  // Si hay una ciudad escrita, filtra las IPS relacionadas a esa ubicación
+  const ipsOptions = ciudadKey
+    ? catalogos.ipsConCiudades
+        .filter((x) => x.ciudades.some((c) => c.toLowerCase().includes(ciudadKey)))
+        .map((x) => x.nombre)
+    : catalogos.ips;
+
+  const onPickIps = (v: string) => {
+    setIps(v);
+    const e = catalogos.ipsConCiudades.find((x) => x.nombre === v);
+    if (e && e.ciudades.length === 1) setCiudad(e.ciudades[0]);
+  };
+
+  // ── Enlace Médico ⇄ Especialidad ──
+  const espKey = especialidad.trim().toLowerCase();
+  const medicoOptions = espKey
+    ? catalogos.medicos
+        .filter((m) => !m.especialidad || m.especialidad.toLowerCase().includes(espKey))
+        .map((m) => m.nombre)
+    : catalogos.medicos.map((m) => m.nombre);
+
+  const onPickMedico = (v: string) => {
+    setMedico(v);
+    const m = catalogos.medicos.find((x) => x.nombre === v);
+    if (m?.especialidad) setEspecialidad(m.especialidad);
+  };
+
+  // Tiempo reservado de la unidad seleccionada
+  const hrsUnidad = unidad ? calcHrsReserva(unidad, "ACEP", catalogos.unidades) : 0;
+
   const reset = () => {
     setStep(1);
     setDocumento("");
