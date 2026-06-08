@@ -475,7 +475,7 @@ function HistorialPage() {
 
   return (
     <div>
-      <AppHeader title="Referencia y Contrarreferencia" subtitle="CEDIM IPS S.A.S — Control de Casos" />
+      <AppHeader title="Referencia y Contrarreferencia" subtitle="Control de Casos Entrantes y Salientes" />
 
       <Panel bodyMaxHeight={null}>
         {/* Selector de vista: Entrantes / Salientes */}
