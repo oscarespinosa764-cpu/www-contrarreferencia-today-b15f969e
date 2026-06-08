@@ -305,15 +305,59 @@ export function CasoRemisionCard({
             <DialogTitle>Editar remisión · {nombre}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleUpdate} className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <Field
+                name="fecha_inicio_display"
+                label="Fecha y hora inicio trámite"
+                defaultValue={fmtFechaHora(r.fecha_inicio)}
+                readOnly
+              />
+              <Field
+                name="fecha_radicado_display"
+                label="Fecha y hora radicación"
+                defaultValue={fmtFechaHora(r.fecha_radicado)}
+                readOnly
+              />
+              <Field
+                name="transcurrido_display"
+                label="Tiempo del trámite"
+                defaultValue={fmtTranscurrido(r.fecha_inicio ?? r.created_at)}
+                readOnly
+              />
               <Field name="paciente" label="Paciente" required defaultValue={r.paciente ?? ""} />
-              <Field name="documento" label="Documento" defaultValue={r.documento ?? ""} />
-              <Field name="edad" label="Edad" defaultValue={r.edad ?? ""} />
-              <Field name="asegurador" label="Asegurador" defaultValue={r.asegurador ?? ""} />
-              <Field name="servicio" label="Servicio" defaultValue={r.servicio ?? ""} />
-              <Field name="cama" label="Cama" defaultValue={r.cama ?? ""} />
-              <Field name="prioridad" label="Prioridad" defaultValue={r.prioridad ?? ""} />
-              <Field name="estado" label="Estado" defaultValue={r.estado ?? ""} />
+              <SelectField
+                name="tipo_documento"
+                label="Tipo de documento"
+                options={TIPO_DOC_OPCIONES}
+                required
+                defaultValue={r.tipo_documento ?? ""}
+              />
+              <Field name="documento" label="Documento" required defaultValue={r.documento ?? ""} />
+              <Field name="edad" label="Edad" required defaultValue={r.edad ?? ""} />
+              <Cie10Field name="cie10" label="CIE-10" defaultValue={r.cie10 ?? ""} />
+              <Field name="asegurador" label="Asegurador" required defaultValue={r.asegurador ?? ""} />
+              <SelectField
+                name="servicio"
+                label="Servicio"
+                options={SERVICIO_OPCIONES}
+                required
+                defaultValue={r.servicio ?? ""}
+              />
+              <Field name="cama" label="Cama" required defaultValue={r.cama ?? ""} />
+              <SelectField
+                name="prioridad"
+                label="Prioridad"
+                options={PRIORIDAD_OPCIONES}
+                required
+                defaultValue={r.prioridad ?? ""}
+              />
+              <SelectField
+                name="estado"
+                label="Estado"
+                options={ESTADO_OPCIONES}
+                required
+                defaultValue={r.estado ?? ""}
+              />
               <Field
                 name="codigo_radicacion"
                 label="N° radicado"
@@ -322,8 +366,8 @@ export function CasoRemisionCard({
               />
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <SpecialtyList label="Especialidad tratante" items={tratantes} onChange={setTratantes} />
-              <SpecialtyList label="Especialidad destino" items={receptoras} onChange={setReceptoras} />
+              <SpecialtyList label="Especialidad tratante" items={tratantes} onChange={setTratantes} suggestions={especialidades} />
+              <SpecialtyList label="Especialidad destino" items={receptoras} onChange={setReceptoras} suggestions={especialidades} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="observaciones" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
