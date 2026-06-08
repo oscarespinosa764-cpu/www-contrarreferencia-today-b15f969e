@@ -82,6 +82,23 @@ function Dato({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+function EstadoBadge({ estado }: { estado?: string | null }) {
+  const txt = (estado || "").trim();
+  const activo = txt.toUpperCase() === "ACTIVO";
+  return (
+    <Badge
+      variant="outline"
+      className={
+        activo
+          ? "border-status-green/40 bg-status-green/15 font-semibold text-status-green"
+          : "font-semibold"
+      }
+    >
+      {txt || "—"}
+    </Badge>
+  );
+}
+
 function useTick() {
   const [, setN] = useState(0);
   useEffect(() => {
