@@ -12,13 +12,11 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Search, RotateCw, FileSpreadsheet, FileText, FileDown, ClipboardCheck } from "lucide-react";
+import { Plus, Search, RotateCw, FileSpreadsheet, FileText, FileDown } from "lucide-react";
 import { getTurno } from "@/lib/turno";
 import { CasoRemisionCard, type Remision } from "@/components/remisiones/caso-remision-card";
 import { CasoGenericoCard, type GenericoTipo } from "@/components/remisiones/caso-generico-card";
 import { NuevoRegistroDialog } from "@/components/remisiones/nuevo-registro-dialog";
-import { SeguimientoDialog } from "@/components/remisiones/seguimiento-dialog";
-import { fmtTranscurrido, prioridadMeta, tiempoChip } from "@/lib/remisiones-utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/remisiones")({
