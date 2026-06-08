@@ -511,6 +511,8 @@ export function CasoGenericoCard({
         especialidades={tipo === "phd" ? r.especialidades_tratantes : null}
         radicadoCaso={cfg.tieneRadicado ? r.codigo_radicacion : null}
         tabla={cfg.tabla}
+        estadoOpciones={tipo === "phd" ? PHD_ESTADO_OPCIONES : undefined}
+        estadoActual={r.estado}
       />
     </div>
   );
