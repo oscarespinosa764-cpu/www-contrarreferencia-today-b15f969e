@@ -144,7 +144,7 @@ export function SeguimientoControl({ casos, catalogos, plantillas, tick }: Props
                         </>
                       ) : (
                         <Button size="sm" variant="destructive" className="rounded-full" onClick={() => setAccion({ tipo: "archivar", caso: c })}>
-                          <Archive className="mr-1 h-3.5 w-3.5" /> Archivar caso
+                          <Bell className="mr-1 h-3.5 w-3.5" /> Notificación vencimiento
                         </Button>
                       )}
                     </div>
