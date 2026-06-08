@@ -466,7 +466,7 @@ export function CasoGenericoCard({
                 <SelectField name="tipo_ambulancia" label="Tipo de ambulancia" options={AMBULANCIA_OPCIONES} defaultValue={r.tipo_ambulancia ?? ""} />
                 <Field name="proveedor_prestador" label="Proveedor / prestador" defaultValue={r.proveedor_prestador ?? ""} />
                 <SelectField name="prioridad" label="Prioridad" options={PRIORIDAD_OPCIONES} defaultValue={r.prioridad ?? ""} />
-                <Field name="estado" label="Estado" defaultValue={r.estado ?? ""} />
+                <Field name="estado_display" label="Estado" defaultValue={r.estado ?? ""} readOnly />
               </div>
             )}
             {tipo === "pendiente" && (
