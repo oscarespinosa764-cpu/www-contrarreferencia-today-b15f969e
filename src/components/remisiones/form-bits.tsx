@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -95,47 +95,74 @@ export function SpecialtyList({
   suggestions?: string[];
 }) {
   const [val, setVal] = useState("");
-  const listId = useId();
+  const [open, setOpen] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const term = val.trim().toLowerCase();
+  const matches =
+    term.length === 0
+      ? []
+      : suggestions
+          .filter((s) => s.toLowerCase().includes(term) && !items.includes(s))
+          .slice(0, 30);
+
   const add = (forced?: string) => {
     const t = (forced ?? val).trim();
     if (!t) return;
     onChange([...items, t]);
     setVal("");
+    setOpen(false);
   };
+
   return (
-    <div className="space-y-1.5">
+    <div className="relative space-y-1.5" ref={boxRef}>
       <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </Label>
       <div className="flex gap-2">
         <Input
           value={val}
-          list={suggestions.length > 0 ? listId : undefined}
+          autoComplete="off"
           onChange={(e) => {
-            const v = e.target.value;
-            setVal(v);
-            // datalist exact pick → add immediately
-            if (suggestions.includes(v)) add(v);
+            setVal(e.target.value);
+            setOpen(e.target.value.trim().length > 0);
           }}
+          onFocus={() => setOpen(val.trim().length > 0)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
-              add();
+              add(matches[0]);
             }
           }}
           placeholder="Escribe y agrega…"
         />
-        {suggestions.length > 0 && (
-          <datalist id={listId}>
-            {suggestions.map((s) => (
-              <option key={s} value={s} />
-            ))}
-          </datalist>
-        )}
         <Button type="button" variant="outline" size="icon" className="shrink-0 rounded-full" onClick={() => add()}>
           <Plus className="h-4 w-4" />
         </Button>
       </div>
+      {open && matches.length > 0 && (
+        <ul className="absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-md border border-border bg-popover p-1 shadow-md">
+          {matches.map((s) => (
+            <li key={s}>
+              <button
+                type="button"
+                onClick={() => add(s)}
+                className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+              >
+                {s}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       {items.length > 0 && (
         <div className="flex flex-wrap gap-1.5 pt-1">
           {items.map((it, i) => (
@@ -152,6 +179,84 @@ export function SpecialtyList({
             </Badge>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+export function EdadField({
+  name = "edad",
+  label = "Edad",
+  required,
+}: {
+  name?: string;
+  label?: string;
+  required?: boolean;
+}) {
+  const [val, setVal] = useState("");
+  const [open, setOpen] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const numMatch = val.trim().match(/^(\d+)\s*([a-zA-Záéíóú]*)$/);
+  const num = numMatch?.[1];
+  const partial = (numMatch?.[2] ?? "").toLowerCase();
+  const units = ["años", "meses", "días"];
+  const matches = num
+    ? units.filter((u) => u.startsWith(partial)).map((u) => `${num} ${u}`)
+    : [];
+
+  const pick = (s: string) => {
+    setVal(s);
+    setOpen(false);
+  };
+
+  return (
+    <div className="relative space-y-1.5" ref={boxRef}>
+      <Label htmlFor={name} className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+        {required && <span className="ml-0.5 text-status-red">*</span>}
+      </Label>
+      <Input
+        id={name}
+        name={name}
+        value={val}
+        required={required}
+        autoComplete="off"
+        placeholder="Ej: 15 años"
+        onChange={(e) => {
+          setVal(e.target.value);
+          setOpen(e.target.value.trim().length > 0);
+        }}
+        onFocus={() => setOpen(matches.length > 0)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && matches.length > 0) {
+            e.preventDefault();
+            pick(matches[0]);
+          }
+        }}
+      />
+      {open && matches.length > 0 && (
+        <ul className="absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-md border border-border bg-popover p-1 shadow-md">
+          {matches.map((s) => (
+            <li key={s}>
+              <button
+                type="button"
+                onClick={() => pick(s)}
+                className="w-full rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent"
+              >
+                {s}
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

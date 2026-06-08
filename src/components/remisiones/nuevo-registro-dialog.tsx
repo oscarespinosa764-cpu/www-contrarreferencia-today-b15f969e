@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Field, SelectField, SpecialtyList } from "./form-bits";
+import { Field, SelectField, SpecialtyList, EdadField } from "./form-bits";
 import { PatientBlock } from "./patient-block";
 import { Cie10Field } from "./cie10-field";
 import { toast } from "sonner";
@@ -133,9 +133,8 @@ export function NuevoRegistroDialog({
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const { data: u } = await supabase.auth.getUser();
-    const inicioRaw = String(f.get("fecha_inicio") || "");
     const { error } = await supabase.from("referencia_interna").insert({
-      fecha_inicio: inicioRaw ? new Date(inicioRaw).toISOString() : null,
+      fecha_inicio: null,
       fecha_radicado: new Date().toISOString(),
       servicio: String(f.get("servicio")),
       paciente: String(f.get("paciente")),
@@ -219,7 +218,7 @@ export function NuevoRegistroDialog({
                 />
                 <Field name="cama" label="Cama" required />
                 <PatientBlock key={`rem-pac-${resetKey}`} />
-                <Field name="edad" label="Edad" placeholder="Ej: 15 años" required />
+                <EdadField key={`rem-edad-${resetKey}`} required />
                 <Cie10Field key={`rem-cie-${resetKey}`} required />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -309,7 +308,7 @@ export function NuevoRegistroDialog({
                 />
                 <Field name="cama" label="Cama" />
                 <PatientBlock key={`phd-pac-${resetKey}`} />
-                <Field name="edad" label="Edad" placeholder="Ej: 15 años" />
+                <EdadField key={`phd-edad-${resetKey}`} />
                 <Cie10Field key={`phd-cie-${resetKey}`} />
               </div>
               <SpecialtyList
@@ -370,14 +369,8 @@ export function NuevoRegistroDialog({
             <form onSubmit={handleRefInterna} className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <Field
-                  name="fecha_inicio"
-                  label="Fecha y hora inicio trámite"
-                  type="datetime-local"
-                  required
-                />
-                <Field
-                  name="fecha_radicado_display"
-                  label="Fecha y hora radicación"
+                  name="fecha_hora_display"
+                  label="Fecha y hora"
                   defaultValue="Se asigna automáticamente al guardar"
                   readOnly
                 />
