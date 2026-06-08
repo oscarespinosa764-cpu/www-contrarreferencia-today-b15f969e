@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Search, RotateCw, FileSpreadsheet, FileText, FileDown, ClipboardCheck } from "lucide-react";
 import { getTurno } from "@/lib/turno";
 import { CasoRemisionCard, type Remision } from "@/components/remisiones/caso-remision-card";
+import { CasoGenericoCard, type GenericoTipo } from "@/components/remisiones/caso-generico-card";
 import { NuevoRegistroDialog } from "@/components/remisiones/nuevo-registro-dialog";
 import { SeguimientoDialog } from "@/components/remisiones/seguimiento-dialog";
 import { fmtTranscurrido, prioridadMeta, tiempoChip } from "@/lib/remisiones-utils";
