@@ -239,7 +239,7 @@ export function NuevoRegistroDialog({
                 <Cie10Field key={`rem-cie-${resetKey}`} required />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <SpecialtyList label="Esp. tratantes" items={tratantes} onChange={setTratantes} suggestions={especialidades} />
+                <SpecialtyList label="Esp. tratantes" items={tratantes} onChange={handleTratantesChange} suggestions={especialidades} />
                 <SpecialtyList label="Esp. receptoras" items={receptoras} onChange={setReceptoras} suggestions={especialidades} />
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
