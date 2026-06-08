@@ -175,7 +175,13 @@ export function NuevoRegistroDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) reset();
+        onOpenChange(v);
+      }}
+    >
       <DialogContent className="max-h-[92vh] overflow-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Nuevo registro</DialogTitle>
