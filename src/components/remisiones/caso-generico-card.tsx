@@ -204,7 +204,7 @@ export function CasoGenericoCard({
         observacion_entrega: String(f.get("observacion_entrega")),
       };
     }
-    const { error } = await supabase.from(cfg.tabla).update(payload).eq("id", r.id);
+    const { error } = await (supabase.from(cfg.tabla as any) as any).update(payload).eq("id", r.id);
     if (error) {
       toast.error(error.message);
       return;
