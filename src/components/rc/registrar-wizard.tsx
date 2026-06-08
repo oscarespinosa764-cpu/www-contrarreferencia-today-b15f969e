@@ -318,7 +318,50 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
               </Select>
             </div>
             <div className="sm:col-span-2">
-              <AutoComplete label="IPS que remite" value={ips} onChange={setIps} options={catalogos.ips} />
+              <AutoComplete
+                label="IPS que remite"
+                value={ips}
+                onChange={setIps}
+                onPick={onPickIps}
+                options={ipsOptions}
+              />
+              {sedes.length > 1 && (
+                <div className="mt-1.5 rounded-lg border border-status-blue/40 bg-status-blue/10 p-2">
+                  <p className="text-[11px] font-bold text-status-blue">
+                    Tiene {sedes.length} sedes relacionadas — selecciona la ubicación
+                  </p>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {sedes.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setCiudad(s)}
+                        className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
+                          ciudad === s
+                            ? "border-status-blue bg-status-blue/20 text-status-blue"
+                            : "border-border text-muted-foreground hover:border-status-blue/50"
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="sm:col-span-2">
+              <AutoComplete
+                label="Ciudad / Departamento"
+                value={ciudad}
+                onChange={setCiudad}
+                options={catalogos.ciudades}
+                placeholder="Ej: FLORENCIA - CAQUETA"
+              />
+              {ciudad.trim() && ipsOptions.length > 0 && !ips && (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {ipsOptions.length} IPS relacionada{ipsOptions.length === 1 ? "" : "s"} a esta ubicación
+                </p>
+              )}
             </div>
           </div>
 
