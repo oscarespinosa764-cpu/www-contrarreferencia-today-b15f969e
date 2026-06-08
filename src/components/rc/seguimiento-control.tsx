@@ -80,6 +80,7 @@ export function SeguimientoControl({ casos, catalogos, plantillas, tick }: Props
             const vencido = min === null || min <= 0;
             const proximo = !vencido && min !== null && min <= 120;
             const barColor = vencido ? "border-l-status-red" : proximo ? "border-l-status-amber" : "border-l-status-green";
+            const ciudadIps = catalogos.ipsConCiudades.find((x) => x.nombre === c.ips)?.ciudades[0] || "";
             return (
               <div key={c.id} className={`rounded-xl border border-border border-l-4 ${barColor} bg-card p-4 shadow-sm`}>
                 <div className="flex flex-wrap items-start justify-between gap-2">
