@@ -268,8 +268,10 @@ export function CasoRemisionCard({
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3">
             <Dato label="Paciente" value={r.paciente} />
+            <Dato label="Tipo documento" value={r.tipo_documento} />
             <Dato label="Documento" value={r.documento} />
             <Dato label="Edad" value={r.edad} />
+            <Dato label="CIE-10" value={r.cie10} />
             <Dato label="Asegurador" value={r.asegurador} />
             <Dato label="Servicio" value={r.servicio} />
             <Dato label="Cama" value={r.cama} />
@@ -277,6 +279,9 @@ export function CasoRemisionCard({
             <Dato label="N° radicado" value={radicado} />
             <Dato label="Tipo trámite" value={r.tipo_tramite} />
             <Dato label="Estado" value={r.estado} />
+            <Dato label="Fecha y hora inicio trámite" value={fmtFechaHora(r.fecha_inicio)} />
+            <Dato label="Fecha y hora radicación" value={fmtFechaHora(r.fecha_radicado)} />
+            <Dato label="Tiempo del trámite" value={fmtTranscurrido(r.fecha_inicio ?? r.created_at)} />
             <Dato label="Especialidad tratante" value={r.especialidades_tratantes} />
             <Dato label="Especialidad destino" value={r.especialidades_receptoras} />
             <Dato label="Familiar" value={r.contacto_nombre} />
