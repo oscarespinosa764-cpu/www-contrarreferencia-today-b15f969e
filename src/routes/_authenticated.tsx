@@ -62,7 +62,6 @@ const groups: NavGroup[] = [
     abbr: "ENT",
     items: [
       { to: "/casos", label: "Registrar Caso", icon: PlusCircle },
-      { to: "/seguimientos", label: "Seguimientos", icon: ClipboardCheck, badge: "seguimientos" },
       { to: "/plantillas", label: "Plantillas", icon: Mail },
     ],
   },
