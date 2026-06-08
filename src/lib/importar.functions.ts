@@ -239,7 +239,7 @@ export const exportarMasivo = createServerFn({ method: "POST" })
       _role: "admin",
     });
     if (adminErr || !esAdmin) {
-      return { ok: false, columnas: def.columnas, filas: [] as Record<string, unknown>[], error: "Acción reservada a coordinación." };
+      return { ok: false, columnas: def.columnas, filas: [] as Record<string, string>[], error: "Acción reservada a coordinación." as string | null };
     }
 
     const seleccion = def.columnas.join(",");
@@ -251,13 +251,23 @@ export const exportarMasivo = createServerFn({ method: "POST" })
     const { data: rows, error } = await query;
     if (error) {
       console.error("exportarMasivo error:", error);
-      return { ok: false, columnas: def.columnas, filas: [] as Record<string, unknown>[], error: error.message };
+      return { ok: false, columnas: def.columnas, filas: [] as Record<string, string>[], error: error.message as string | null };
     }
+
+    // Normalizamos los valores a strings serializables, respetando el orden de columnas.
+    const filas: Record<string, string>[] = ((rows ?? []) as Record<string, unknown>[]).map((r) => {
+      const out: Record<string, string> = {};
+      for (const col of def.columnas) {
+        const v = r[col];
+        out[col] = v == null ? "" : String(v);
+      }
+      return out;
+    });
 
     return {
       ok: true,
       columnas: def.columnas,
-      filas: (rows ?? []) as Record<string, unknown>[],
+      filas,
       error: null as string | null,
     };
   });
