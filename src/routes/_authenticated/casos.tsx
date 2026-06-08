@@ -65,7 +65,7 @@ function CasosPage() {
 
   return (
     <div>
-      <AppHeader title="Registrar Caso (R&C)" subtitle="Aceptaciones, negaciones y direccionamientos CRUE del mes" />
+      <AppHeader title="DASHBOARD OPERATIVO ENTRANTES" subtitle="Registro de casos referencias entrantes" />
 
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <StatCard title="Aceptados" value={stats.aceptados} caption="Cupos aceptados" color="green" />
@@ -76,7 +76,7 @@ function CasosPage() {
       </div>
 
       <Panel
-        title="Casos registrados"
+        title="SEGUIMIENTOS"
         bodyMaxHeight={null}
         leftAction={
           <Button
