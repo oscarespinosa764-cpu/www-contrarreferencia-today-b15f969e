@@ -219,7 +219,7 @@ export function NuevoRegistroDialog({
                 />
                 <Field name="cama" label="Cama" required />
                 <PatientBlock key={`rem-pac-${resetKey}`} />
-                <Field name="edad" label="Edad" placeholder="Ej: 15 años" required />
+                <EdadField key={`rem-edad-${resetKey}`} required />
                 <Cie10Field key={`rem-cie-${resetKey}`} required />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
