@@ -48,8 +48,8 @@ export function PatientBlock({ requireDoc = true }: { requireDoc?: boolean }) {
   const [paciente, setPaciente] = useState("");
   const [documento, setDocumento] = useState("");
   const [tipoDoc, setTipoDoc] = useState("");
-  const tName = useRef<ReturnType<typeof setTimeout>>();
-  const tDoc = useRef<ReturnType<typeof setTimeout>>();
+  const tName = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const tDoc = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const onDocChange = (v: string) => {
     setDocumento(v);
