@@ -12,12 +12,11 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Search, RotateCw, FileSpreadsheet, FileText, FileDown, ClipboardCheck } from "lucide-react";
+import { Plus, Search, RotateCw, FileSpreadsheet, FileText, FileDown } from "lucide-react";
 import { getTurno } from "@/lib/turno";
 import { CasoRemisionCard, type Remision } from "@/components/remisiones/caso-remision-card";
+import { CasoGenericoCard, type GenericoTipo } from "@/components/remisiones/caso-generico-card";
 import { NuevoRegistroDialog } from "@/components/remisiones/nuevo-registro-dialog";
-import { SeguimientoDialog } from "@/components/remisiones/seguimiento-dialog";
-import { fmtTranscurrido, prioridadMeta, tiempoChip } from "@/lib/remisiones-utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/remisiones")({
@@ -476,59 +475,15 @@ function RemisionesPage() {
           </TabsContent>
 
           <TabsContent value="especiales" className="pt-4">
-            <ListaGenerica
-              items={(domiciliarios ?? []).map((d) => ({
-                id: d.id,
-                nombre: d.paciente,
-                doc: d.documento,
-                sub: [d.tipo_solicitud, d.ips].filter(Boolean).join(" · "),
-                prioridad: d.prioridad,
-                estado: d.estado,
-                created_at: d.created_at,
-                evolucion: d.evolucion,
-              }))}
-              tipoCaso="domiciliario"
-              tabla="domiciliarios"
-              canEdit={canEdit}
-              ultGestiones={ultGestiones}
-            />
+            <ListaGenerica tipo="phd" items={domiciliarios ?? []} canEdit={canEdit} ultGestiones={ultGestiones} />
           </TabsContent>
 
           <TabsContent value="internas" className="pt-4">
-            <ListaGenerica
-              items={(internas ?? []).map((d) => ({
-                id: d.id,
-                nombre: d.paciente,
-                doc: d.documento,
-                sub: [d.tipo_solicitud, d.servicio].filter(Boolean).join(" · "),
-                prioridad: d.prioridad,
-                estado: d.estado,
-                created_at: d.created_at,
-                evolucion: d.evolucion,
-              }))}
-              tipoCaso="referencia_interna"
-              tabla="referencia_interna"
-              canEdit={canEdit}
-              ultGestiones={ultGestiones}
-            />
+            <ListaGenerica tipo="interna" items={internas ?? []} canEdit={canEdit} ultGestiones={ultGestiones} />
           </TabsContent>
 
           <TabsContent value="pendientes" className="pt-4">
-            <ListaGenerica
-              items={(pendientes ?? []).map((d) => ({
-                id: d.id,
-                nombre: d.paciente_asunto,
-                doc: null,
-                sub: [d.tipo_pendiente, d.ips_area].filter(Boolean).join(" · "),
-                prioridad: d.prioridad,
-                estado: d.estado,
-                created_at: d.created_at,
-                evolucion: null,
-              }))}
-              tipoCaso="pendiente"
-              canEdit={canEdit}
-              ultGestiones={ultGestiones}
-            />
+            <ListaGenerica tipo="pendiente" items={pendientes ?? []} canEdit={canEdit} ultGestiones={ultGestiones} />
           </TabsContent>
         </Tabs>
       </div>
@@ -573,27 +528,14 @@ function RemisionesPage() {
   );
 }
 
-type GenericoItem = {
-  id: string;
-  nombre: string | null;
-  doc: string | null;
-  sub: string;
-  prioridad: string | null;
-  estado: string | null;
-  created_at: string | null;
-  evolucion: string | null;
-};
-
 function ListaGenerica({
+  tipo,
   items,
-  tipoCaso,
-  tabla,
   canEdit,
   ultGestiones,
 }: {
-  items: GenericoItem[];
-  tipoCaso: string;
-  tabla?: string;
+  tipo: GenericoTipo;
+  items: Record<string, any>[];
   canEdit: boolean;
   ultGestiones?: Record<string, { fecha: string | null; responsable: string | null }>;
 }) {
@@ -601,72 +543,14 @@ function ListaGenerica({
   return (
     <div className="grid gap-3">
       {items.map((it) => (
-        <GenericoCard
+        <CasoGenericoCard
           key={it.id}
-          it={it}
-          tipoCaso={tipoCaso}
-          tabla={tabla}
+          tipo={tipo}
+          r={it}
           canEdit={canEdit}
           ultimaGestion={ultGestiones?.[it.id] ?? null}
         />
       ))}
-    </div>
-  );
-}
-
-function GenericoCard({
-  it,
-  tipoCaso,
-  tabla,
-  canEdit,
-  ultimaGestion,
-}: {
-  it: GenericoItem;
-  tipoCaso: string;
-  tabla?: string;
-  canEdit: boolean;
-  ultimaGestion?: { fecha: string | null; responsable: string | null } | null;
-}) {
-  const [seg, setSeg] = useState(false);
-  const nombre = it.nombre || "Sin nombre";
-  const prio = prioridadMeta(it.prioridad);
-  return (
-    <div className={`rounded-xl border border-border border-l-4 ${prio.borderL} bg-card p-3.5 shadow-sm`}>
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-sm font-bold uppercase text-foreground">{nombre}</p>
-          <p className="text-[11px] text-muted-foreground">
-            {[it.sub, it.doc && `Doc: ${it.doc}`].filter(Boolean).join(" · ") || "—"}
-          </p>
-        </div>
-        <div className="flex items-center gap-1.5">
-          {it.prioridad && <Badge variant="outline" className={prio.badge}>{it.prioridad}</Badge>}
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${tiempoChip(it.created_at)}`}>
-            {fmtTranscurrido(it.created_at)}
-          </span>
-        </div>
-      </div>
-      <p className="mt-1.5 text-xs text-muted-foreground">Estado: {it.estado || "—"}</p>
-      <p className="mt-1 text-[11px] text-muted-foreground">
-        <span className="font-semibold">Última gestión:</span>{" "}
-        {ultimaGestion ? `${ultimaGestion.responsable || "—"}` : "Sin seguimientos registrados"}
-      </p>
-      {canEdit && (
-        <div className="mt-3 flex gap-2">
-          <Button size="sm" className="rounded-full" onClick={() => setSeg(true)}>
-            <ClipboardCheck className="mr-1 h-3.5 w-3.5" /> Seguimiento
-          </Button>
-        </div>
-      )}
-      <SeguimientoDialog
-        open={seg}
-        onOpenChange={setSeg}
-        casoId={it.id}
-        tipoCaso={tipoCaso}
-        paciente={nombre}
-        evolucionActual={it.evolucion}
-        tabla={tabla}
-      />
     </div>
   );
 }
