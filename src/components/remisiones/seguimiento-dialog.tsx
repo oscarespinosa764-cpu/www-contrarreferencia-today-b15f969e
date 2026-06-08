@@ -317,6 +317,31 @@ export function SeguimientoDialog({
             )}
           </div>
 
+          {/* Estado del caso (solo remisiones y PHD) */}
+          {estadoOpciones && estadoOpciones.length > 0 && (
+            <div className="space-y-1.5">
+              <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Estado del caso
+              </Label>
+              <Select value={estadoCaso} onValueChange={setEstadoCaso}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar estado…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {estadoOpciones.map((e) => (
+                    <SelectItem key={e} value={e}>
+                      {e}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground">
+                El estado del caso solo se cambia desde aquí.
+              </p>
+            </div>
+          )}
+
+
           <div className="space-y-1.5">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               Tipo de seguimiento
