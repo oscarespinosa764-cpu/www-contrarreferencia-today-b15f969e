@@ -403,6 +403,59 @@ function AccionDialog({
 
         {resultado ? (
           <ResultadoCard tipo={resultado.tipo} codigo={resultado.codigo} mensaje={resultado.mensaje} onNuevo={onClose} />
+        ) : accion === "archivar" ? (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-status-red/40 bg-status-red/10 p-3 text-xs text-foreground">
+              Tiempo de ingreso vencido. Revisa el mensaje, cópialo y archiva el caso.
+            </div>
+            <div className="grid gap-1.5 rounded-xl border border-border bg-muted/30 p-3 text-xs">
+              <DetRow label="Código" value={caso.codigo} />
+              <DetRow label="Paciente" value={[caso.nombres, caso.apellidos].filter(Boolean).join(" ") || "—"} />
+              <DetRow label="Documento" value={caso.documento || "—"} />
+              <DetRow label="EAPB / Régimen" value={[caso.eapb, caso.regimen].filter(Boolean).join(" · ") || "—"} />
+              <DetRow label="IPS" value={caso.ips || "—"} />
+              <DetRow label="Ciudad de la IPS" value={ciudadIps || "—"} />
+              <DetRow label="Fecha y hora de aceptación" value={fechaCasoStr(caso)} />
+              <DetRow label="Fecha y hora de vencimiento" value={archivarInfo?.ven.fechaVence || "—"} />
+            </div>
+            {archivarInfo?.mensaje ? (
+              <div className="space-y-2">
+                <Label>Mensaje de cancelación</Label>
+                <div
+                  className="max-h-60 overflow-auto whitespace-pre-wrap rounded-xl border border-border bg-card p-3 text-sm leading-relaxed text-foreground"
+                  dangerouslySetInnerHTML={{ __html: formatearMensajeHTML(archivarInfo.mensaje) }}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full rounded-full"
+                  onClick={async () => {
+                    const ok = await copiarDual(archivarInfo.mensaje);
+                    if (ok) {
+                      setCopied(true);
+                      toast.success("Mensaje copiado");
+                      setTimeout(() => setCopied(false), 2000);
+                    } else {
+                      toast.error("No se pudo copiar");
+                    }
+                  }}
+                >
+                  {copied ? <Check className="mr-1.5 h-4 w-4" /> : <Copy className="mr-1.5 h-4 w-4" />}
+                  Copiar mensaje
+                </Button>
+              </div>
+            ) : (
+              <p className="rounded-xl border border-dashed border-border p-3 text-center text-xs text-muted-foreground">
+                No hay plantilla de cancelación configurada. Igual puedes archivar el caso.
+              </p>
+            )}
+            <DialogFooter>
+              <Button type="button" variant="destructive" disabled={busy} onClick={ejecutar}>
+                {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Archive className="mr-1.5 h-4 w-4" />}
+                Archivar caso
+              </Button>
+            </DialogFooter>
+          </div>
         ) : (
           <div className="space-y-4">
             {accion === "ingreso" && (
@@ -445,13 +498,6 @@ function AccionDialog({
                   </SelectContent>
                 </Select>
               </div>
-            )}
-
-            {accion === "archivar" && (
-              <p className="rounded-lg border border-status-red/40 bg-status-red/10 p-3 text-xs text-foreground">
-                El cupo está vencido. Se registrará la cancelación por <strong>no ingreso del paciente</strong> y se
-                archivará.
-              </p>
             )}
 
             <div className="space-y-2">
