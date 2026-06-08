@@ -82,6 +82,23 @@ function Dato({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+function EstadoBadge({ estado }: { estado?: string | null }) {
+  const txt = (estado || "").trim();
+  const activo = txt.toUpperCase() === "ACTIVO";
+  return (
+    <Badge
+      variant="outline"
+      className={
+        activo
+          ? "border-status-green/40 bg-status-green/15 font-semibold text-status-green"
+          : "font-semibold"
+      }
+    >
+      {txt || "—"}
+    </Badge>
+  );
+}
+
 function useTick() {
   const [, setN] = useState(0);
   useEffect(() => {
@@ -228,11 +245,12 @@ export function CasoGenericoCard({
               {r.prioridad}
             </Badge>
           )}
-          {tipo !== "pendiente" && (
+          {tipo === "phd" && (
             <Badge variant="secondary" className="font-mono text-[10px]">
               Rad: {radicado}
             </Badge>
           )}
+          {(tipo === "interna" || tipo === "pendiente") && <EstadoBadge estado={r.estado} />}
         </div>
       </div>
 
@@ -242,7 +260,6 @@ export function CasoGenericoCard({
           <>
             <Dato label="Tipo pendiente" value={r.tipo_pendiente} />
             <Dato label="IPS / área" value={r.ips_area} />
-            <Dato label="Estado" value={<span className="font-semibold text-foreground">{r.estado || "—"}</span>} />
             <Dato label="Prioridad" value={r.prioridad} />
           </>
         ) : (
@@ -256,7 +273,9 @@ export function CasoGenericoCard({
                 </span>
               }
             />
-            <Dato label="Estado" value={<span className="font-semibold text-foreground">{r.estado || "—"}</span>} />
+            {tipo === "phd" && (
+              <Dato label="Estado" value={<span className="font-semibold text-foreground">{r.estado || "—"}</span>} />
+            )}
             {tipo === "phd" ? (
               <Dato label="Especialidad tratante" value={r.especialidades_tratantes} />
             ) : (
