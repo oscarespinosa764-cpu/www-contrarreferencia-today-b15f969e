@@ -476,7 +476,7 @@ export function CasoGenericoCard({
                 <Field name="paciente_asunto" label="Paciente / asunto" required defaultValue={r.paciente_asunto ?? ""} />
                 <Field name="ips_area" label="IPS / área" required defaultValue={r.ips_area ?? ""} />
                 <SelectField name="prioridad" label="Prioridad" options={PRIORIDAD_OPCIONES} required defaultValue={r.prioridad ?? ""} />
-                <Field name="estado" label="Estado" defaultValue={r.estado ?? ""} />
+                <Field name="estado_display" label="Estado" defaultValue={r.estado ?? ""} readOnly />
               </div>
             )}
             <div className="space-y-1.5">
