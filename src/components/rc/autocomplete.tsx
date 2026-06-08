@@ -6,21 +6,24 @@ interface Props {
   label?: string;
   value: string;
   onChange: (v: string) => void;
+  /** Se dispara solo cuando el usuario elige una sugerencia */
+  onPick?: (v: string) => void;
   options: string[];
   placeholder?: string;
   required?: boolean;
   id?: string;
 }
 
-export function AutoComplete({ label, value, onChange, options, placeholder, required, id }: Props) {
+export function AutoComplete({ label, value, onChange, onPick, options, placeholder, required, id }: Props) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const tokens = value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  // Sugerencia inteligente: solo muestra opciones cuando el usuario escribe.
   const filtered =
     tokens.length === 0
-      ? options.slice(0, 30)
+      ? []
       : options.filter((o) => {
           const low = o.toLowerCase();
           return tokens.every((t) => low.includes(t));
@@ -29,6 +32,7 @@ export function AutoComplete({ label, value, onChange, options, placeholder, req
 
   const pick = (v: string) => {
     onChange(v);
+    onPick?.(v);
     setOpen(false);
     setActive(-1);
   };
