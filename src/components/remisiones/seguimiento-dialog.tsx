@@ -36,6 +36,10 @@ type Props = {
   radicadoCaso?: string | null;
   /** Tabla a actualizar para la evolución del caso (remisiones, domiciliarios, etc.). */
   tabla?: string;
+  /** Opciones de estado del caso (solo remisiones y PHD lo cambian desde aquí). */
+  estadoOpciones?: string[];
+  /** Estado actual del caso. */
+  estadoActual?: string | null;
 };
 
 const TIPOS_SEG = [
