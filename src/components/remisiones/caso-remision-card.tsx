@@ -140,7 +140,6 @@ export function CasoRemisionCard({
         cama: String(f.get("cama")),
         asegurador: String(f.get("asegurador")),
         prioridad: String(f.get("prioridad")),
-        estado: String(f.get("estado")),
         especialidades_tratantes: tratantes.join(", "),
         especialidades_receptoras: receptoras.join(", "),
         observaciones: String(f.get("observaciones")),
@@ -351,12 +350,11 @@ export function CasoRemisionCard({
                 required
                 defaultValue={r.prioridad ?? ""}
               />
-              <SelectField
-                name="estado"
-                label="Estado"
-                options={ESTADO_OPCIONES}
-                required
+              <Field
+                name="estado_display"
+                label="Estado (se cambia desde Seguimiento)"
                 defaultValue={r.estado ?? ""}
+                readOnly
               />
               <Field
                 name="codigo_radicacion"
@@ -397,6 +395,8 @@ export function CasoRemisionCard({
         especialidades={r.especialidades_tratantes}
         radicadoCaso={r.codigo_radicacion}
         tabla="remisiones"
+        estadoOpciones={ESTADO_OPCIONES}
+        estadoActual={r.estado}
       />
     </div>
   );

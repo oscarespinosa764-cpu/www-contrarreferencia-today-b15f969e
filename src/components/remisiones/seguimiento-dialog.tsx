@@ -36,6 +36,10 @@ type Props = {
   radicadoCaso?: string | null;
   /** Tabla a actualizar para la evolución del caso (remisiones, domiciliarios, etc.). */
   tabla?: string;
+  /** Opciones de estado del caso (solo remisiones y PHD lo cambian desde aquí). */
+  estadoOpciones?: string[];
+  /** Estado actual del caso. */
+  estadoActual?: string | null;
 };
 
 const TIPOS_SEG = [
@@ -59,6 +63,8 @@ export function SeguimientoDialog({
   especialidades,
   radicadoCaso,
   tabla,
+  estadoOpciones,
+  estadoActual,
 }: Props) {
   const qc = useQueryClient();
   const especialidadesList = useMemo(() => splitEspecialidades(especialidades), [especialidades]);
@@ -74,6 +80,7 @@ export function SeguimientoDialog({
   const [motivoEvo, setMotivoEvo] = useState("");
   const [busy, setBusy] = useState(false);
   const [busyEvo, setBusyEvo] = useState(false);
+  const [estadoCaso, setEstadoCaso] = useState("");
 
   // Inicializar el checklist por especialidad al abrir.
   useEffect(() => {
@@ -82,8 +89,9 @@ export function SeguimientoDialog({
       setEvoDetalle(parsed);
       setInicial(parseEvolucionDetalle(evolucionDetalle, especialidadesList));
       setMotivoEvo("");
+      setEstadoCaso(estadoActual ?? "");
     }
-  }, [open, evolucionDetalle, especialidadesList]);
+  }, [open, evolucionDetalle, especialidadesList, estadoActual]);
 
   const { data: historial } = useQuery({
     queryKey: ["seguimientos-caso", casoId],
@@ -206,6 +214,7 @@ export function SeguimientoDialog({
         evolucion_actualizada_at?: string;
         evolucion_motivo?: string | null;
         codigo_radicacion?: string;
+        estado?: string;
       } = { evolucion: evolucionCalc };
       if (especialidadesList.length > 0) {
         update.evolucion_detalle = JSON.stringify(evoDetalle);
@@ -213,6 +222,7 @@ export function SeguimientoDialog({
         update.evolucion_motivo = requiereMotivo ? motivoEvo.trim() : null;
       }
       if (radicadoEnUso) update.codigo_radicacion = radicadoEnUso;
+      if (estadoOpciones && estadoCaso) update.estado = estadoCaso;
       await supabase
         .from(tabla as "remisiones")
         .update(update)
@@ -306,6 +316,31 @@ export function SeguimientoDialog({
               </label>
             )}
           </div>
+
+          {/* Estado del caso (solo remisiones y PHD) */}
+          {estadoOpciones && estadoOpciones.length > 0 && (
+            <div className="space-y-1.5">
+              <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Estado del caso
+              </Label>
+              <Select value={estadoCaso} onValueChange={setEstadoCaso}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar estado…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {estadoOpciones.map((e) => (
+                    <SelectItem key={e} value={e}>
+                      {e}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground">
+                El estado del caso solo se cambia desde aquí.
+              </p>
+            </div>
+          )}
+
 
           <div className="space-y-1.5">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
