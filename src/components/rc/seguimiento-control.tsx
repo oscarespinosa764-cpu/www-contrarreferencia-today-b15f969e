@@ -125,9 +125,9 @@ export function SeguimientoControl({ casos, catalogos, plantillas, tick }: Props
                   </div>
                   <div className="flex flex-1 flex-col items-center justify-center text-center">
                     <p className="text-xs font-medium text-muted-foreground">
-                      {[c.eapb, c.regimen].filter(Boolean).join(" · ") || "—"}
+                      EAPB: {[c.eapb, c.regimen].filter(Boolean).join(" · ") || "—"}
                     </p>
-                    <p className="text-xs text-muted-foreground">{ciudadIps || "—"}</p>
+                    <p className="text-xs text-muted-foreground">CIUDAD: {ciudadIps || "—"}</p>
                   </div>
                   <div className="hidden flex-1 sm:block" />
                 </div>
