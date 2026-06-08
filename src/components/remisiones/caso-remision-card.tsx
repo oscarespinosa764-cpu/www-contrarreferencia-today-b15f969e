@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,8 +7,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Eye, Pencil, ClipboardCheck, MapPin } from "lucide-react";
-import { Field, SpecialtyList } from "./form-bits";
+import { Field, SelectField, SpecialtyList } from "./form-bits";
+import { Cie10Field } from "./cie10-field";
 import { SeguimientoDialog } from "./seguimiento-dialog";
+
+const SERVICIO_OPCIONES = ["URGENCIAS", "HOSPITALIZACION", "UCI ADULTOS", "QUIROFANO"];
+const PRIORIDAD_OPCIONES = ["ALTA", "MEDIA", "BAJA"];
+const TIPO_DOC_OPCIONES = ["CC", "CE", "TI", "RC", "RNV", "ASI", "MSI"];
+const ESTADO_OPCIONES = [
+  "PENDIENTE ACEPTACION",
+  "ACEPTADO SIN PROGRAMACION DE AMBULANCIA",
+  "ACEPTADO CON AMBULANCIA COORDINADA",
+  "DESISTIMIENTO IPS",
+  "DESISTIMIENTO GENERAL",
+];
 import {
   evolucionMeta,
   fmtFechaHora,
@@ -24,13 +36,17 @@ export type Remision = {
   id: string;
   paciente: string | null;
   documento: string | null;
+  tipo_documento: string | null;
   edad: string | null;
+  cie10: string | null;
   servicio: string | null;
   cama: string | null;
   asegurador: string | null;
   prioridad: string | null;
   estado: string | null;
   tipo_tramite: string | null;
+  fecha_inicio: string | null;
+  fecha_radicado: string | null;
   especialidades_tratantes: string | null;
   especialidades_receptoras: string | null;
   codigo_radicacion: string | null;
@@ -81,6 +97,19 @@ export function CasoRemisionCard({
   const [receptoras, setReceptoras] = useState<string[]>([]);
   useTick(true);
 
+  const { data: especialidades = [] } = useQuery({
+    queryKey: ["cat-especialidad"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor")
+        .eq("tipo", "ESPECIALIDAD")
+        .eq("activo", true)
+        .order("valor");
+      return (data ?? []).map((d) => d.valor as string);
+    },
+  });
+
   // Al abrir el editor, precargar las especialidades actuales.
   useEffect(() => {
     if (editar) {
@@ -104,7 +133,9 @@ export function CasoRemisionCard({
       .update({
         paciente: String(f.get("paciente")),
         documento: String(f.get("documento")),
+        tipo_documento: String(f.get("tipo_documento")),
         edad: String(f.get("edad")),
+        cie10: String(f.get("cie10")),
         servicio: String(f.get("servicio")),
         cama: String(f.get("cama")),
         asegurador: String(f.get("asegurador")),
@@ -237,8 +268,10 @@ export function CasoRemisionCard({
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3">
             <Dato label="Paciente" value={r.paciente} />
+            <Dato label="Tipo documento" value={r.tipo_documento} />
             <Dato label="Documento" value={r.documento} />
             <Dato label="Edad" value={r.edad} />
+            <Dato label="CIE-10" value={r.cie10} />
             <Dato label="Asegurador" value={r.asegurador} />
             <Dato label="Servicio" value={r.servicio} />
             <Dato label="Cama" value={r.cama} />
@@ -246,6 +279,9 @@ export function CasoRemisionCard({
             <Dato label="N° radicado" value={radicado} />
             <Dato label="Tipo trámite" value={r.tipo_tramite} />
             <Dato label="Estado" value={r.estado} />
+            <Dato label="Fecha y hora inicio trámite" value={fmtFechaHora(r.fecha_inicio)} />
+            <Dato label="Fecha y hora radicación" value={fmtFechaHora(r.fecha_radicado)} />
+            <Dato label="Tiempo del trámite" value={fmtTranscurrido(r.fecha_inicio ?? r.created_at)} />
             <Dato label="Especialidad tratante" value={r.especialidades_tratantes} />
             <Dato label="Especialidad destino" value={r.especialidades_receptoras} />
             <Dato label="Familiar" value={r.contacto_nombre} />
@@ -268,16 +304,60 @@ export function CasoRemisionCard({
           <DialogHeader>
             <DialogTitle>Editar remisión · {nombre}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleUpdate} className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
+          <form key={editar ? "open" : "closed"} onSubmit={handleUpdate} className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <Field
+                name="fecha_inicio_display"
+                label="Fecha y hora inicio trámite"
+                defaultValue={fmtFechaHora(r.fecha_inicio)}
+                readOnly
+              />
+              <Field
+                name="fecha_radicado_display"
+                label="Fecha y hora radicación"
+                defaultValue={fmtFechaHora(r.fecha_radicado)}
+                readOnly
+              />
+              <Field
+                name="transcurrido_display"
+                label="Tiempo del trámite"
+                defaultValue={fmtTranscurrido(r.fecha_inicio ?? r.created_at)}
+                readOnly
+              />
               <Field name="paciente" label="Paciente" required defaultValue={r.paciente ?? ""} />
-              <Field name="documento" label="Documento" defaultValue={r.documento ?? ""} />
-              <Field name="edad" label="Edad" defaultValue={r.edad ?? ""} />
-              <Field name="asegurador" label="Asegurador" defaultValue={r.asegurador ?? ""} />
-              <Field name="servicio" label="Servicio" defaultValue={r.servicio ?? ""} />
-              <Field name="cama" label="Cama" defaultValue={r.cama ?? ""} />
-              <Field name="prioridad" label="Prioridad" defaultValue={r.prioridad ?? ""} />
-              <Field name="estado" label="Estado" defaultValue={r.estado ?? ""} />
+              <SelectField
+                name="tipo_documento"
+                label="Tipo de documento"
+                options={TIPO_DOC_OPCIONES}
+                required
+                defaultValue={r.tipo_documento ?? ""}
+              />
+              <Field name="documento" label="Documento" required defaultValue={r.documento ?? ""} />
+              <Field name="edad" label="Edad" required defaultValue={r.edad ?? ""} />
+              <Cie10Field name="cie10" label="CIE-10" defaultValue={r.cie10 ?? ""} />
+              <Field name="asegurador" label="Asegurador" required defaultValue={r.asegurador ?? ""} />
+              <SelectField
+                name="servicio"
+                label="Servicio"
+                options={SERVICIO_OPCIONES}
+                required
+                defaultValue={r.servicio ?? ""}
+              />
+              <Field name="cama" label="Cama" required defaultValue={r.cama ?? ""} />
+              <SelectField
+                name="prioridad"
+                label="Prioridad"
+                options={PRIORIDAD_OPCIONES}
+                required
+                defaultValue={r.prioridad ?? ""}
+              />
+              <SelectField
+                name="estado"
+                label="Estado"
+                options={ESTADO_OPCIONES}
+                required
+                defaultValue={r.estado ?? ""}
+              />
               <Field
                 name="codigo_radicacion"
                 label="N° radicado"
@@ -286,8 +366,8 @@ export function CasoRemisionCard({
               />
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <SpecialtyList label="Especialidad tratante" items={tratantes} onChange={setTratantes} />
-              <SpecialtyList label="Especialidad destino" items={receptoras} onChange={setReceptoras} />
+              <SpecialtyList label="Especialidad tratante" items={tratantes} onChange={setTratantes} suggestions={especialidades} />
+              <SpecialtyList label="Especialidad destino" items={receptoras} onChange={setReceptoras} suggestions={especialidades} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="observaciones" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
