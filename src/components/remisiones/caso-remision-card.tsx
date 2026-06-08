@@ -97,6 +97,19 @@ export function CasoRemisionCard({
   const [receptoras, setReceptoras] = useState<string[]>([]);
   useTick(true);
 
+  const { data: especialidades = [] } = useQuery({
+    queryKey: ["cat-especialidad"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor")
+        .eq("tipo", "ESPECIALIDAD")
+        .eq("activo", true)
+        .order("valor");
+      return (data ?? []).map((d) => d.valor as string);
+    },
+  });
+
   // Al abrir el editor, precargar las especialidades actuales.
   useEffect(() => {
     if (editar) {
@@ -120,7 +133,9 @@ export function CasoRemisionCard({
       .update({
         paciente: String(f.get("paciente")),
         documento: String(f.get("documento")),
+        tipo_documento: String(f.get("tipo_documento")),
         edad: String(f.get("edad")),
+        cie10: String(f.get("cie10")),
         servicio: String(f.get("servicio")),
         cama: String(f.get("cama")),
         asegurador: String(f.get("asegurador")),
