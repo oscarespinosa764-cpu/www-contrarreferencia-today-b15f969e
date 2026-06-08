@@ -228,9 +228,11 @@ export function CasoGenericoCard({
               {r.prioridad}
             </Badge>
           )}
-          <Badge variant="secondary" className="font-mono text-[10px]">
-            Rad: {radicado}
-          </Badge>
+          {tipo !== "pendiente" && (
+            <Badge variant="secondary" className="font-mono text-[10px]">
+              Rad: {radicado}
+            </Badge>
+          )}
         </div>
       </div>
 
