@@ -129,7 +129,9 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     setEapb("");
     setRegimen("");
     setIps("");
+    setCiudad("");
     setTipo("");
+    setCrueOpen(false);
     setMedico("");
     setEspecialidad("");
     setUnidad("");
