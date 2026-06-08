@@ -302,21 +302,15 @@ export function NuevoRegistroDialog({
                   required
                 />
                 <Field name="cama" label="Cama" />
-                <Field name="paciente" label="Nombres y apellidos paciente" required />
-                <SelectField
-                  name="tipo_documento"
-                  label="Tipo de documento"
-                  options={["CC", "CE", "TI", "RC", "RNV", "ASI", "MSI"]}
-                  required
-                />
-                <Field name="documento" label="Documento" required />
+                <PatientBlock key={`phd-pac-${resetKey}`} />
                 <Field name="edad" label="Edad" placeholder="Ej: 15 años" />
-                <Field name="cie10" label="CIE-10" />
+                <Cie10Field key={`phd-cie-${resetKey}`} />
               </div>
               <SpecialtyList
                 label="Especialidades tratantes"
                 items={phdTratantes}
                 onChange={setPhdTratantes}
+                suggestions={especialidades}
               />
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <SelectField
