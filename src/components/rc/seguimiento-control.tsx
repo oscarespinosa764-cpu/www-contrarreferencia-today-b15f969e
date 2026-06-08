@@ -11,15 +11,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AutoComplete } from "@/components/rc/autocomplete";
 import { ResultadoCard } from "@/components/rc/resultado-card";
-import { Clock, LogIn, Plus, XCircle, Archive, AlertTriangle, Loader2 } from "lucide-react";
+import { Clock, LogIn, Plus, XCircle, Archive, AlertTriangle, Loader2, Bell, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import {
   buildMensaje,
   calcHrsReserva,
   calcularVencimiento,
+  copiarDual,
   fechaCasoStr,
   fmtFechaHora,
   fmtMinutos,
+  formatearMensajeHTML,
   nextCodigo,
   type Caso,
 } from "@/lib/rc-utils";
@@ -80,6 +82,7 @@ export function SeguimientoControl({ casos, catalogos, plantillas, tick }: Props
             const vencido = min === null || min <= 0;
             const proximo = !vencido && min !== null && min <= 120;
             const barColor = vencido ? "border-l-status-red" : proximo ? "border-l-status-amber" : "border-l-status-green";
+            const ciudadIps = catalogos.ipsConCiudades.find((x) => x.nombre === c.ips)?.ciudades[0] || "";
             return (
               <div key={c.id} className={`rounded-xl border border-border border-l-4 ${barColor} bg-card p-4 shadow-sm`}>
                 <div className="flex flex-wrap items-start justify-between gap-2">
@@ -107,15 +110,23 @@ export function SeguimientoControl({ casos, catalogos, plantillas, tick }: Props
                     </div>
                   )}
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Doc: {c.documento || "—"} · {c.unidad || "—"} · {c.especialidad || "—"}
-                </p>
+                <div className="mt-1 flex flex-wrap items-start justify-between gap-x-3">
+                  <p className="text-xs text-muted-foreground">
+                    Doc: {c.documento || "—"} · {c.unidad || "—"} · {c.especialidad || "—"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {[c.eapb, c.regimen].filter(Boolean).join(" · ") || "—"}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-start justify-between gap-x-3">
+                  <p className="text-xs text-muted-foreground">
+                    IPS: {c.ips || "—"}
+                    {ven.amp ? ` · ampliado (${ven.amp.codigo})` : ""}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{ciudadIps || "—"}</p>
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  IPS: {c.ips || "—"}
-                  {ven.amp ? ` · ampliado (${ven.amp.codigo})` : ""}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Vence: {ven.fechaVence || "—"} · Registrado: {fechaCasoStr(c)}
+                  Aceptación: {fechaCasoStr(c)} · Vence: {ven.fechaVence || "—"}
                 </p>
 
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
@@ -135,7 +146,7 @@ export function SeguimientoControl({ casos, catalogos, plantillas, tick }: Props
                         </>
                       ) : (
                         <Button size="sm" variant="destructive" className="rounded-full" onClick={() => setAccion({ tipo: "archivar", caso: c })}>
-                          <Archive className="mr-1 h-3.5 w-3.5" /> Archivar caso
+                          <Bell className="mr-1 h-3.5 w-3.5" /> Notificación vencimiento
                         </Button>
                       )}
                     </div>
@@ -195,13 +206,46 @@ function AccionDialog({
   const [motivoCan, setMotivoCan] = useState("");
   // común
   const [detalle, setDetalle] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const titulos: Record<Accion, string> = {
     ingreso: "Confirmar ingreso del paciente",
     ampliar: "Ampliar cupo",
     cancelar: "Cancelar cupo",
-    archivar: "Archivar cupo vencido",
+    archivar: "Notificación de vencimiento",
   };
+
+  const MOTIVO_VENC = "NO INGRESO DEL PACIENTE POR VENCIMIENTO DE CUPO";
+  const ciudadIps = catalogos.ipsConCiudades.find((x) => x.nombre === caso.ips)?.ciudades[0] || "";
+
+  // Datos para la notificación de vencimiento (modal de archivar)
+  const archivarInfo = useMemo(() => {
+    if (accion !== "archivar") return null;
+    const ahora = new Date();
+    const ven = calcularVencimiento(caso, casos);
+    const codigo = nextCodigo(casos, "CAN", ahora);
+    const motCat = catalogos.motivosCancelacion.find((m) => m.nombre === "NO INGRESO DEL PACIENTE");
+    const mensaje = buildMensaje(
+      plantillas,
+      catalogos.medicos,
+      { codigo, fecha: fmtFechaHora(ahora), fechaVence: "", hrsReserva: "" },
+      {
+        tipo: "CAN",
+        documento: caso.documento ?? undefined,
+        ips: caso.ips ?? undefined,
+        medico: caso.medico ?? undefined,
+        especialidad: caso.especialidad ?? undefined,
+        unidad: caso.unidad ?? undefined,
+        eapb: caso.eapb ?? undefined,
+        regimen: caso.regimen ?? undefined,
+        codRef: caso.codigo,
+        motivoCancelacion: MOTIVO_VENC,
+        justificacionCancelacion: motCat?.justificacion || "",
+      } as any,
+    );
+    return { ven, codigo, mensaje };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accion]);
 
   const refrescar = () => {
     qc.invalidateQueries({ queryKey: ["rc-casos"] });
@@ -288,26 +332,32 @@ function AccionDialog({
       }
 
       if (accion === "cancelar" || accion === "archivar") {
-        const motivo = accion === "archivar" ? "NO INGRESO DEL PACIENTE" : motivoCan;
+        const esArchivar = accion === "archivar";
+        const motivo = esArchivar ? MOTIVO_VENC : motivoCan;
         if (accion === "cancelar" && !motivo) {
           setBusy(false);
           return toast.error("Selecciona el motivo de cancelación");
         }
-        const motCat = catalogos.motivosCancelacion.find((m) => m.nombre === motivo);
-        const codigo = nextCodigo(casos, "CAN", ahora);
-        const mensaje = buildMensaje(
-          plantillas,
-          catalogos.medicos,
-          { codigo, fecha: fmtFechaHora(ahora), fechaVence: "", hrsReserva: "" },
-          {
-            tipo: "CAN",
-            ...paciente,
-            codRef: caso.codigo,
-            motivoCancelacion: motivo,
-            justificacionCancelacion: motCat?.justificacion || "",
-            detalle,
-          } as any,
+        const motCat = catalogos.motivosCancelacion.find(
+          (m) => m.nombre === (esArchivar ? "NO INGRESO DEL PACIENTE" : motivo),
         );
+        const codigo = esArchivar && archivarInfo ? archivarInfo.codigo : nextCodigo(casos, "CAN", ahora);
+        const mensaje =
+          esArchivar && archivarInfo
+            ? archivarInfo.mensaje
+            : buildMensaje(
+                plantillas,
+                catalogos.medicos,
+                { codigo, fecha: fmtFechaHora(ahora), fechaVence: "", hrsReserva: "" },
+                {
+                  tipo: "CAN",
+                  ...paciente,
+                  codRef: caso.codigo,
+                  motivoCancelacion: motivo,
+                  justificacionCancelacion: motCat?.justificacion || "",
+                  detalle,
+                } as any,
+              );
         const { error: e1 } = await supabase.from("casos_entrantes").insert({
           ...paciente,
           codigo,
@@ -322,12 +372,16 @@ function AccionDialog({
         if (e1) throw e1;
         const { error: e2 } = await supabase
           .from("casos_entrantes")
-          .update({ estado: accion === "archivar" ? "CANCELADO_VENCIMIENTO" : "CANCELADO" })
+          .update({ estado: esArchivar ? "CANCELADO_VENCIMIENTO" : "CANCELADO" })
           .eq("id", caso.id);
         if (e2) throw e2;
-        toast.success(accion === "archivar" ? "Cupo archivado" : "Cupo cancelado");
+        toast.success(esArchivar ? "Caso archivado · enviado a historial" : "Cupo cancelado");
         refrescar();
-        setResultado({ tipo: "CAN", codigo, mensaje });
+        if (esArchivar) {
+          onClose();
+        } else {
+          setResultado({ tipo: "CAN", codigo, mensaje });
+        }
         return;
       }
     } catch (e) {
@@ -349,6 +403,59 @@ function AccionDialog({
 
         {resultado ? (
           <ResultadoCard tipo={resultado.tipo} codigo={resultado.codigo} mensaje={resultado.mensaje} onNuevo={onClose} />
+        ) : accion === "archivar" ? (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-status-red/40 bg-status-red/10 p-3 text-xs text-foreground">
+              Tiempo de ingreso vencido. Revisa el mensaje, cópialo y archiva el caso.
+            </div>
+            <div className="grid gap-1.5 rounded-xl border border-border bg-muted/30 p-3 text-xs">
+              <DetRow label="Código" value={caso.codigo} />
+              <DetRow label="Paciente" value={[caso.nombres, caso.apellidos].filter(Boolean).join(" ") || "—"} />
+              <DetRow label="Documento" value={caso.documento || "—"} />
+              <DetRow label="EAPB / Régimen" value={[caso.eapb, caso.regimen].filter(Boolean).join(" · ") || "—"} />
+              <DetRow label="IPS" value={caso.ips || "—"} />
+              <DetRow label="Ciudad de la IPS" value={ciudadIps || "—"} />
+              <DetRow label="Fecha y hora de aceptación" value={fechaCasoStr(caso)} />
+              <DetRow label="Fecha y hora de vencimiento" value={archivarInfo?.ven.fechaVence || "—"} />
+            </div>
+            {archivarInfo?.mensaje ? (
+              <div className="space-y-2">
+                <Label>Mensaje de cancelación</Label>
+                <div
+                  className="max-h-60 overflow-auto whitespace-pre-wrap rounded-xl border border-border bg-card p-3 text-sm leading-relaxed text-foreground"
+                  dangerouslySetInnerHTML={{ __html: formatearMensajeHTML(archivarInfo.mensaje) }}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="w-full rounded-full"
+                  onClick={async () => {
+                    const ok = await copiarDual(archivarInfo.mensaje);
+                    if (ok) {
+                      setCopied(true);
+                      toast.success("Mensaje copiado");
+                      setTimeout(() => setCopied(false), 2000);
+                    } else {
+                      toast.error("No se pudo copiar");
+                    }
+                  }}
+                >
+                  {copied ? <Check className="mr-1.5 h-4 w-4" /> : <Copy className="mr-1.5 h-4 w-4" />}
+                  Copiar mensaje
+                </Button>
+              </div>
+            ) : (
+              <p className="rounded-xl border border-dashed border-border p-3 text-center text-xs text-muted-foreground">
+                No hay plantilla de cancelación configurada. Igual puedes archivar el caso.
+              </p>
+            )}
+            <DialogFooter>
+              <Button type="button" variant="destructive" disabled={busy} onClick={ejecutar}>
+                {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Archive className="mr-1.5 h-4 w-4" />}
+                Archivar caso
+              </Button>
+            </DialogFooter>
+          </div>
         ) : (
           <div className="space-y-4">
             {accion === "ingreso" && (
@@ -393,13 +500,6 @@ function AccionDialog({
               </div>
             )}
 
-            {accion === "archivar" && (
-              <p className="rounded-lg border border-status-red/40 bg-status-red/10 p-3 text-xs text-foreground">
-                El cupo está vencido. Se registrará la cancelación por <strong>no ingreso del paciente</strong> y se
-                archivará.
-              </p>
-            )}
-
             <div className="space-y-2">
               <Label htmlFor="obs">Observaciones</Label>
               <Textarea id="obs" rows={3} value={detalle} onChange={(e) => setDetalle(e.target.value)} placeholder="Información adicional…" />
@@ -418,5 +518,14 @@ function AccionDialog({
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function DetRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <span className="font-semibold text-muted-foreground">{label}</span>
+      <span className="text-right text-foreground">{value}</span>
+    </div>
   );
 }
