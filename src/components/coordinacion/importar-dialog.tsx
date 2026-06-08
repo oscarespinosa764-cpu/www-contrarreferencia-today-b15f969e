@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Upload, Download, FileSpreadsheet, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { importarMasivo, columnasDe, type DestinoKey } from "@/lib/importar.functions";
+import { importarMasivo, exportarMasivo, columnasDe, type DestinoKey } from "@/lib/importar.functions";
 
 type FilaImport = Record<string, unknown>;
 
@@ -32,7 +32,9 @@ export function ImportarDialog({
   const [filas, setFilas] = useState<FilaImport[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [cargando, setCargando] = useState(false);
+  const [exportando, setExportando] = useState(false);
   const importar = useServerFn(importarMasivo);
+  const exportar = useServerFn(exportarMasivo);
 
   const reset = () => {
     setArchivo(null);
@@ -73,6 +75,30 @@ export function ImportarDialog({
     XLSX.writeFile(wb, `plantilla_${destino}.xlsx`);
   };
 
+  const exportarDatos = async () => {
+    setExportando(true);
+    try {
+      const res = await exportar({ data: { destino } });
+      if (!res.ok) {
+        toast.error(res.error ?? "No se pudo exportar.");
+        return;
+      }
+      const cols = res.columnas;
+      const matriz = [cols, ...res.filas.map((f) => cols.map((c) => f[c] ?? ""))];
+      const ws = XLSX.utils.aoa_to_sheet(matriz);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Datos");
+      XLSX.writeFile(wb, `export_${destino}.xlsx`);
+      toast.success(`${res.filas.length} registro(s) exportado(s).`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al exportar. Intenta de nuevo.");
+    } finally {
+      setExportando(false);
+    }
+  };
+
+
   const confirmar = async () => {
     if (filas.length === 0) return;
     setCargando(true);
@@ -101,14 +127,35 @@ export function ImportarDialog({
           <DialogTitle>{titulo}</DialogTitle>
           <DialogDescription>
             Sube un archivo .xlsx / .xlsm / .csv. Los encabezados deben coincidir con la
-            plantilla. Las columnas no reconocidas se ignoran.
+            plantilla. Usa <strong>Exportar datos</strong> para descargar la información actual
+            con el formato exacto y reutilizarla como base.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <Button variant="outline" size="sm" className="rounded-full" onClick={descargarPlantilla}>
-            <Download className="mr-1.5 h-4 w-4" /> Descargar plantilla
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" className="rounded-full" onClick={descargarPlantilla}>
+              <Download className="mr-1.5 h-4 w-4" /> Descargar plantilla
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              onClick={exportarDatos}
+              disabled={exportando}
+            >
+              {exportando ? (
+                <>
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Exportando…
+                </>
+              ) : (
+                <>
+                  <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Exportar datos (Excel)
+                </>
+              )}
+            </Button>
+          </div>
+
 
           <input
             ref={inputRef}
