@@ -110,24 +110,26 @@ export function SeguimientoControl({ casos, catalogos, plantillas, tick }: Props
                     </div>
                   )}
                 </div>
-                <div className="mt-1 flex flex-wrap items-start justify-between gap-x-3">
-                  <p className="text-xs text-muted-foreground">
-                    Doc: {c.documento || "—"} · {c.unidad || "—"} · {c.especialidad || "—"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {[c.eapb, c.regimen].filter(Boolean).join(" · ") || "—"}
-                  </p>
+                <div className="mt-1 flex flex-wrap items-start gap-x-6">
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <p className="text-xs text-muted-foreground">
+                      Doc: {c.documento || "—"} · {c.unidad || "—"} · {c.especialidad || "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      IPS: {c.ips || "—"}
+                      {ven.amp ? ` · ampliado (${ven.amp.codigo})` : ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Aceptación: {fechaCasoStr(c)} · Vence: {ven.fechaVence || "—"}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-center justify-center text-center">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      {[c.eapb, c.regimen].filter(Boolean).join(" · ") || "—"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{ciudadIps || "—"}</p>
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-start justify-between gap-x-3">
-                  <p className="text-xs text-muted-foreground">
-                    IPS: {c.ips || "—"}
-                    {ven.amp ? ` · ampliado (${ven.amp.codigo})` : ""}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{ciudadIps || "—"}</p>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Aceptación: {fechaCasoStr(c)} · Vence: {ven.fechaVence || "—"}
-                </p>
 
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                   {canEdit ? (
