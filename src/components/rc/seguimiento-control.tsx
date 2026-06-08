@@ -113,14 +113,14 @@ export function SeguimientoControl({ casos, catalogos, plantillas, tick }: Props
                 <div className="mt-1 flex flex-wrap items-start gap-x-6">
                   <div className="min-w-0 flex-1 space-y-0.5">
                     <p className="text-xs text-muted-foreground">
-                      Doc: {c.documento || "—"} · {c.unidad || "—"} · {c.especialidad || "—"}
+                      Doc: {c.documento || "—"} · UNIDAD: {c.unidad || "—"} · ESPECIALIDAD: {c.especialidad || "—"}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       IPS: {c.ips || "—"}
                       {ven.amp ? ` · ampliado (${ven.amp.codigo})` : ""}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Aceptación: {fechaCasoStr(c)} · Vence: {ven.fechaVence || "—"}
+                      ACEPTACION: {fechaCasoStr(c)} · VENCIMIENTO: {ven.fechaVence || "—"}
                     </p>
                   </div>
                   <div className="flex flex-1 flex-col items-center justify-center text-center">
