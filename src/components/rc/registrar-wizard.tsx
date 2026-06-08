@@ -26,12 +26,10 @@ import type { Plantilla } from "@/lib/rc-utils";
 
 type Tipo = "ACEP" | "NEG" | "CRUE_ACEP" | "CRUE_NR" | "CRUE_NEG";
 
-const TIPOS: { value: Tipo; label: string; color: string }[] = [
-  { value: "ACEP", label: "Aceptación de cupo", color: "border-status-green text-status-green" },
-  { value: "NEG", label: "Negación de cupo", color: "border-status-red text-status-red" },
-  { value: "CRUE_ACEP", label: "CRUE · Aceptación direccionamiento", color: "border-status-blue text-status-blue" },
-  { value: "CRUE_NR", label: "CRUE · No requerimiento", color: "border-status-amber text-status-amber" },
-  { value: "CRUE_NEG", label: "CRUE · Negación direccionamiento", color: "border-status-red text-status-red" },
+const CRUE_TIPOS: { value: Tipo; label: string }[] = [
+  { value: "CRUE_ACEP", label: "Aceptación direccionamiento" },
+  { value: "CRUE_NR", label: "No requerimiento" },
+  { value: "CRUE_NEG", label: "Negación direccionamiento" },
 ];
 
 const COMPLEJIDADES = ["MAYOR COMPLEJIDAD", "MENOR COMPLEJIDAD"];
