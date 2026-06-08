@@ -441,7 +441,7 @@ export function CasoGenericoCard({
                   <SelectField name="servicio" label="Servicio" options={SERVICIO_OPCIONES} required defaultValue={r.servicio ?? ""} />
                   <Field name="cama" label="Cama" defaultValue={r.cama ?? ""} />
                   <SelectField name="prioridad" label="Prioridad" options={PRIORIDAD_OPCIONES} defaultValue={r.prioridad ?? ""} />
-                  <Field name="estado" label="Estado" defaultValue={r.estado ?? ""} />
+                  <Field name="estado_display" label="Estado (se cambia desde Seguimiento)" defaultValue={r.estado ?? ""} readOnly />
                   <SelectField name="tipo_solicitud" label="Tipo de solicitud" options={PHD_SOLICITUD} required defaultValue={r.tipo_solicitud ?? ""} />
                   <SelectField name="requiere_ambulancia" label="Requiere ambulancia" options={SI_NO} defaultValue={r.requiere_ambulancia ?? ""} />
                   <Field name="codigo_radicacion" label="Código de radicación" defaultValue={r.codigo_radicacion ?? ""} />
