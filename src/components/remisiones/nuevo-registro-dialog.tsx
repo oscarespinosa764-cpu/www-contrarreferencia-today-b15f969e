@@ -370,14 +370,8 @@ export function NuevoRegistroDialog({
             <form onSubmit={handleRefInterna} className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <Field
-                  name="fecha_inicio"
-                  label="Fecha y hora inicio trámite"
-                  type="datetime-local"
-                  required
-                />
-                <Field
-                  name="fecha_radicado_display"
-                  label="Fecha y hora radicación"
+                  name="fecha_hora_display"
+                  label="Fecha y hora"
                   defaultValue="Se asigna automáticamente al guardar"
                   readOnly
                 />
