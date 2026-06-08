@@ -127,7 +127,8 @@ export function ImportarDialog({
           <DialogTitle>{titulo}</DialogTitle>
           <DialogDescription>
             Sube un archivo .xlsx / .xlsm / .csv. Los encabezados deben coincidir con la
-            plantilla. Las columnas no reconocidas se ignoran.
+            plantilla. Usa <strong>Exportar datos</strong> para descargar la información actual
+            con el formato exacto y reutilizarla como base.
           </DialogDescription>
         </DialogHeader>
 
