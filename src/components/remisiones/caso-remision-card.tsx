@@ -395,6 +395,8 @@ export function CasoRemisionCard({
         especialidades={r.especialidades_tratantes}
         radicadoCaso={r.codigo_radicacion}
         tabla="remisiones"
+        estadoOpciones={ESTADO_OPCIONES}
+        estadoActual={r.estado}
       />
     </div>
   );
