@@ -5,11 +5,17 @@ import { Label } from "@/components/ui/label";
 type Cie = { c: string; d: string };
 
 let cache: Cie[] | null = null;
+let loading: Promise<Cie[]> | null = null;
 async function loadCie(): Promise<Cie[]> {
   if (cache) return cache;
-  const mod = await import("@/data/cie10.json");
-  cache = ((mod as { default?: Cie[] }).default ?? (mod as unknown as Cie[])) as Cie[];
-  return cache;
+  if (loading) return loading;
+  loading = fetch("/cie10.json")
+    .then((r) => r.json())
+    .then((data: Cie[]) => {
+      cache = data;
+      return data;
+    });
+  return loading;
 }
 
 export function Cie10Field({
