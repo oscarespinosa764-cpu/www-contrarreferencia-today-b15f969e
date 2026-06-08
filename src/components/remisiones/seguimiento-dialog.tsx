@@ -63,6 +63,8 @@ export function SeguimientoDialog({
   especialidades,
   radicadoCaso,
   tabla,
+  estadoOpciones,
+  estadoActual,
 }: Props) {
   const qc = useQueryClient();
   const especialidadesList = useMemo(() => splitEspecialidades(especialidades), [especialidades]);
