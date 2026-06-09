@@ -30,6 +30,20 @@ import type { Plantilla } from "@/lib/rc-utils";
 
 type Accion = "ingreso" | "ampliar" | "cancelar" | "archivar";
 
+const CARGO_OPTIONS = [
+  "Médico general",
+  "Médico especialista",
+  "Médico hospitalario",
+  "Médico de urgencias",
+  "Enfermero(a) jefe",
+  "Auxiliar de enfermería",
+  "Coordinador(a) de enfermería",
+  "Jefe de urgencias",
+  "Regente de servicio",
+  "Terapeuta respiratorio",
+  "Referente de referencia y contrarreferencia",
+];
+
 interface Props {
   casos: Caso[];
   catalogos: Catalogos;
@@ -205,6 +219,14 @@ function AccionDialog({
   const [profesional, setProfesional] = useState("");
   const [cargo, setCargo] = useState("");
   const [placa, setPlaca] = useState("");
+  // sugerencias inteligentes para ingreso (solo al escribir)
+  const profesionalOptions = Array.from(
+    new Set(
+      catalogos.medicos
+        .map((m) => [m.titulo, m.nombre].filter(Boolean).join(" ").trim())
+        .filter(Boolean),
+    ),
+  ).sort();
   // cancelar
   const [motivoCan, setMotivoCan] = useState("");
   // común
@@ -466,14 +488,8 @@ function AccionDialog({
                 <AutoComplete label="Empresa de transporte (TEP)" value={empresaTep} onChange={setEmpresaTep} options={catalogos.empresasTep} />
                 <AutoComplete label="Placa del vehículo" value={placa} onChange={setPlaca} options={catalogos.placas} />
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="prof">Profesional que recibe</Label>
-                    <Input id="prof" value={profesional} onChange={(e) => setProfesional(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="cargo">Cargo</Label>
-                    <Input id="cargo" value={cargo} onChange={(e) => setCargo(e.target.value)} />
-                  </div>
+                  <AutoComplete id="prof" label="Profesional que recibe" value={profesional} onChange={setProfesional} options={profesionalOptions} />
+                  <AutoComplete id="cargo" label="Cargo" value={cargo} onChange={setCargo} options={CARGO_OPTIONS} />
                 </div>
               </>
             )}
