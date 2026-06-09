@@ -466,14 +466,8 @@ function AccionDialog({
                 <AutoComplete label="Empresa de transporte (TEP)" value={empresaTep} onChange={setEmpresaTep} options={catalogos.empresasTep} />
                 <AutoComplete label="Placa del vehículo" value={placa} onChange={setPlaca} options={catalogos.placas} />
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="prof">Profesional que recibe</Label>
-                    <Input id="prof" value={profesional} onChange={(e) => setProfesional(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="cargo">Cargo</Label>
-                    <Input id="cargo" value={cargo} onChange={(e) => setCargo(e.target.value)} />
-                  </div>
+                  <AutoComplete id="prof" label="Profesional que recibe" value={profesional} onChange={setProfesional} options={profesionalOptions} />
+                  <AutoComplete id="cargo" label="Cargo" value={cargo} onChange={setCargo} options={CARGO_OPTIONS} />
                 </div>
               </>
             )}
