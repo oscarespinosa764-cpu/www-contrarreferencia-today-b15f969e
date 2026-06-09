@@ -219,6 +219,14 @@ function AccionDialog({
   const [profesional, setProfesional] = useState("");
   const [cargo, setCargo] = useState("");
   const [placa, setPlaca] = useState("");
+  // sugerencias inteligentes para ingreso (solo al escribir)
+  const profesionalOptions = Array.from(
+    new Set(
+      catalogos.medicos
+        .map((m) => [m.titulo, m.nombre].filter(Boolean).join(" ").trim())
+        .filter(Boolean),
+    ),
+  ).sort();
   // cancelar
   const [motivoCan, setMotivoCan] = useState("");
   // común
