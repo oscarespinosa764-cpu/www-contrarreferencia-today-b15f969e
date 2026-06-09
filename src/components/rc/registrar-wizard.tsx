@@ -242,6 +242,8 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
           contactoIps,
           eapb,
           regimen,
+          fechaRecontacto: negCamasSel ? fechaRec : undefined,
+          horaRecontacto: negCamasSel ? horaRec : undefined,
           motivosCrue: isCrue ? motivosCrue.filter(Boolean) : null,
         },
       );
