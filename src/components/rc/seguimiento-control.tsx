@@ -489,7 +489,7 @@ function AccionDialog({
                 <AutoComplete label="Empresa de transporte (TEP)" value={empresaTep} onChange={setEmpresaTep} options={catalogos.empresasTep} />
                 <AutoComplete label="Placa del vehículo" value={placa} onChange={setPlaca} options={catalogos.placas} />
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <AutoComplete id="prof" label="Profesional que recibe" value={profesional} onChange={setProfesional} options={profesionalOptions} />
+                  <AutoComplete id="prof" label="Profesional que recibe" value={profesional} onChange={setProfesional} onPick={onPickProfesional} options={profesionalOptions} />
                   <AutoComplete id="cargo" label="Cargo" value={cargo} onChange={setCargo} options={CARGO_OPTIONS} />
                 </div>
               </>
