@@ -219,14 +219,39 @@ function AccionDialog({
   const [profesional, setProfesional] = useState("");
   const [cargo, setCargo] = useState("");
   const [placa, setPlaca] = useState("");
-  // sugerencias inteligentes para ingreso (solo al escribir)
-  const profesionalOptions = Array.from(
-    new Set(catalogos.medicos.map((m) => m.nombre.trim()).filter(Boolean)),
-  ).sort();
-  // Al elegir un profesional del listado, autocompleta el cargo con su especialidad
+  // Mapa nombre del profesional -> especialidad más frecuente (a partir del histórico de casos
+  // y de la especialidad del catálogo de médicos cuando exista).
+  const medicoEspecialidad = useMemo(() => {
+    const counts: Record<string, Record<string, number>> = {};
+    const add = (nombre?: string | null, esp?: string | null) => {
+      const n = (nombre || "").trim();
+      const e = (esp || "").trim();
+      if (!n || !e) return;
+      const key = n.toLowerCase();
+      counts[key] = counts[key] || {};
+      counts[key][e] = (counts[key][e] || 0) + 1;
+    };
+    casos.forEach((c) => add(c.medico, c.especialidad));
+    catalogos.medicos.forEach((m) => add(m.nombre, m.especialidad));
+    const best: Record<string, string> = {};
+    for (const key of Object.keys(counts)) {
+      best[key] = Object.entries(counts[key]).sort((a, b) => b[1] - a[1])[0][0];
+    }
+    return best;
+  }, [casos, catalogos.medicos]);
+
+  // Sugerencias de profesional: catálogo de médicos + nombres vistos en casos.
+  const profesionalOptions = useMemo(() => {
+    const set = new Set<string>();
+    catalogos.medicos.forEach((m) => m.nombre.trim() && set.add(m.nombre.trim()));
+    casos.forEach((c) => c.medico?.trim() && set.add(c.medico.trim()));
+    return Array.from(set).sort();
+  }, [casos, catalogos.medicos]);
+
+  // Al elegir/escribir un profesional, autocompleta el cargo con su especialidad.
   const onPickProfesional = (v: string) => {
-    const m = catalogos.medicos.find((x) => x.nombre === v);
-    if (m?.especialidad) setCargo(m.especialidad);
+    const esp = medicoEspecialidad[v.trim().toLowerCase()];
+    if (esp) setCargo(esp);
   };
   // cancelar
   const [motivoCan, setMotivoCan] = useState("");
