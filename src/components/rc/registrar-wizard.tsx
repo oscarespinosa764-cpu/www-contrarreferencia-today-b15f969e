@@ -78,8 +78,16 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const reincidente = useMemo(() => {
     const doc = documento.trim();
     if (!doc) return null;
+    return buscarAcepReciente(casos, doc);
+  }, [documento, casos]);
+
+  // Cupo activo = existe una aceptación vigente (con tiempo restante)
+  const cupoActivoCaso = useMemo(() => {
+    const doc = documento.trim();
+    if (!doc) return null;
     return buscarAcepActivo(casos, doc);
   }, [documento, casos]);
+  const cupoActivo = !!cupoActivoCaso;
 
   const reincVen = reincidente ? calcularVencimiento(reincidente, casos) : null;
 
