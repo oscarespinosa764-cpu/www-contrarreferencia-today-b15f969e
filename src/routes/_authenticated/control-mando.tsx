@@ -18,10 +18,10 @@ function ControlMandoPage() {
       />
 
       <Tabs defaultValue="control" className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="control">Control de Mando</TabsTrigger>
-          <TabsTrigger value="historicos">Históricos</TabsTrigger>
-          <TabsTrigger value="usuarios">Usuarios</TabsTrigger>
+        <TabsList className="mb-4 grid h-auto w-full grid-cols-3">
+          <TabsTrigger className="whitespace-normal" value="control">Control de Mando</TabsTrigger>
+          <TabsTrigger className="whitespace-normal" value="historicos">Históricos</TabsTrigger>
+          <TabsTrigger className="whitespace-normal" value="usuarios">Usuarios</TabsTrigger>
         </TabsList>
 
         <TabsContent value="control">
