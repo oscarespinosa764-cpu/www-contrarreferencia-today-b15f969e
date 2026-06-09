@@ -153,6 +153,14 @@ export function buscarAcepActivo(todos: Caso[], doc: string): Caso | null {
   return cand;
 }
 
+/** Devuelve la aceptación más reciente del paciente, sin importar si el cupo sigue vigente. */
+export function buscarAcepReciente(todos: Caso[], doc: string): Caso | null {
+  const aceps = todos.filter((c) => c.documento === doc && c.tipo === "ACEP");
+  if (!aceps.length) return null;
+  aceps.sort((a, b) => (b.codigo || "").localeCompare(a.codigo || ""));
+  return aceps[0];
+}
+
 // ─── Plantillas ──────────────────────────────────────────────────
 export function formatearMensajeHTML(texto: string): string {
   if (!texto) return "";

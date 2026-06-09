@@ -12,6 +12,7 @@ import { ArrowLeft, ArrowRight, Search, AlertTriangle, Loader2 } from "lucide-re
 import { toast } from "sonner";
 import {
   buscarAcepActivo,
+  buscarAcepReciente,
   buildMensaje,
   calcHrsReserva,
   calcularVencimiento,
@@ -77,8 +78,16 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const reincidente = useMemo(() => {
     const doc = documento.trim();
     if (!doc) return null;
+    return buscarAcepReciente(casos, doc);
+  }, [documento, casos]);
+
+  // Cupo activo = existe una aceptación vigente (con tiempo restante)
+  const cupoActivoCaso = useMemo(() => {
+    const doc = documento.trim();
+    if (!doc) return null;
     return buscarAcepActivo(casos, doc);
   }, [documento, casos]);
+  const cupoActivo = !!cupoActivoCaso;
 
   const reincVen = reincidente ? calcularVencimiento(reincidente, casos) : null;
 
@@ -250,7 +259,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 value={documento}
                 onChange={(e) => setDocumento(e.target.value.replace(/\D/g, ""))}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && documento.trim().length >= 4) {
+                  if (e.key === "Enter" && documento.trim().length >= 4 && !cupoActivo) {
                     e.preventDefault();
                     setStep(2);
                   }
@@ -260,16 +269,31 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
             </div>
           </div>
 
-          {reincidente && reincVen && (
-            <div className="flex items-start gap-3 rounded-xl border border-status-amber/50 bg-status-amber/10 p-3">
-              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-status-amber" />
+          {reincidente && (
+            <div
+              className={`flex items-start gap-3 rounded-xl border p-3 ${
+                cupoActivo
+                  ? "border-status-red/50 bg-status-red/10"
+                  : "border-status-amber/50 bg-status-amber/10"
+              }`}
+            >
+              <AlertTriangle
+                className={`mt-0.5 h-5 w-5 shrink-0 ${cupoActivo ? "text-status-red" : "text-status-amber"}`}
+              />
               <div className="text-xs text-foreground">
-                <p className="font-bold text-status-amber">Paciente reincidente — cupo activo</p>
+                <p className={`font-bold ${cupoActivo ? "text-status-red" : "text-status-amber"}`}>
+                  {cupoActivo ? "Paciente reincidente — cupo activo" : "Paciente reincidente"}
+                </p>
                 <p className="mt-0.5">
-                  {reincidente.codigo} · {reincidente.unidad || "—"} ·{" "}
-                  {reincVen.minRest !== null ? fmtMinutos(reincVen.minRest) : "vigente"}
+                  {reincidente.codigo} · {reincidente.unidad || "—"}
+                  {cupoActivo && reincVen?.minRest != null ? ` · ${fmtMinutos(reincVen.minRest)}` : ""}
                 </p>
                 <p className="text-muted-foreground">Registrado el {fechaCasoStr(reincidente)}</p>
+                {cupoActivo && (
+                  <p className="mt-1 font-semibold text-status-red">
+                    No se puede continuar: el cupo sigue vigente.
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -278,7 +302,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
             <Button
               type="button"
               className="rounded-full"
-              disabled={documento.trim().length < 4}
+              disabled={documento.trim().length < 4 || cupoActivo}
               onClick={() => setStep(2)}
             >
               Continuar <ArrowRight className="ml-1.5 h-4 w-4" />
