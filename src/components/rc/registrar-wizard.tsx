@@ -359,6 +359,28 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
       {/* ───── PASO 2 ───── */}
       {step === 2 && (
         <section className="space-y-4">
+          {!reincidente && (
+            <div className="flex items-start gap-3 rounded-xl border border-status-amber/50 bg-status-amber/10 p-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-status-amber" />
+              <div className="flex-1 text-xs text-foreground">
+                <p className="font-bold text-status-amber">Paciente nuevo</p>
+                <p className="mt-0.5">
+                  Consulte ADRES y transcriba los 4 datos. Ingrese la IPS remitente.
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="shrink-0 gap-1.5 rounded-full"
+                onClick={consultarAdres}
+              >
+                <Search className="h-3.5 w-3.5" /> Consultar ADRES
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="nom">Nombres</Label>
@@ -391,29 +413,13 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 onChange={setIps}
                 onPick={onPickIps}
                 options={ipsOptions}
+                openAllOnFocus={!!ciudad.trim()}
+                placeholder="Escribe o selecciona la IPS…"
               />
-              {sedes.length > 1 && (
-                <div className="mt-1.5 rounded-lg border border-status-blue/40 bg-status-blue/10 p-2">
-                  <p className="text-[11px] font-bold text-status-blue">
-                    Tiene {sedes.length} sedes relacionadas — selecciona la ubicación
-                  </p>
-                  <div className="mt-1 flex flex-wrap gap-1.5">
-                    {sedes.map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => setCiudad(s)}
-                        className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
-                          ciudad === s
-                            ? "border-status-blue bg-status-blue/20 text-status-blue"
-                            : "border-border text-muted-foreground hover:border-status-blue/50"
-                        }`}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+              {ciudad.trim() && ipsOptions.length > 0 && !ips && (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {ipsOptions.length} IPS relacionada{ipsOptions.length === 1 ? "" : "s"} a esta ubicación
+                </p>
               )}
             </div>
             <div className="sm:col-span-2">
@@ -421,12 +427,13 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 label="Ciudad / Departamento"
                 value={ciudad}
                 onChange={setCiudad}
-                options={catalogos.ciudades}
+                options={ciudadOptions}
+                openAllOnFocus={sedes.length > 1}
                 placeholder="Ej: FLORENCIA - CAQUETA"
               />
-              {ciudad.trim() && ipsOptions.length > 0 && !ips && (
+              {sedes.length > 1 && !sedes.some((s) => s.toLowerCase() === ciudad.trim().toLowerCase()) && (
                 <p className="mt-1 text-[11px] text-muted-foreground">
-                  {ipsOptions.length} IPS relacionada{ipsOptions.length === 1 ? "" : "s"} a esta ubicación
+                  {sedes.length} ubicaciones relacionadas a esta IPS — selecciónala arriba
                 </p>
               )}
             </div>
