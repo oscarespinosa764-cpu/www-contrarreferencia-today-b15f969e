@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { AutoComplete } from "@/components/rc/autocomplete";
@@ -8,7 +8,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, ArrowRight, Search, AlertTriangle, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Search,
+  AlertTriangle,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Siren,
+  ExternalLink,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   buscarAcepActivo,
@@ -74,6 +84,9 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const [contactoIps, setContactoIps] = useState("");
   const [unidadReq, setUnidadReq] = useState("");
   const [motivosCrue, setMotivosCrue] = useState<string[]>(["", "", ""]);
+  // Negación — recontacto (sobreocupación)
+  const [fechaRec, setFechaRec] = useState("");
+  const [horaRec, setHoraRec] = useState("");
 
   const reincidente = useMemo(() => {
     const doc = documento.trim();
@@ -104,12 +117,34 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
         .filter((x) => x.ciudades.some((c) => c.toLowerCase().includes(ciudadKey)))
         .map((x) => x.nombre)
     : catalogos.ips;
+  // Si la IPS tiene varias sedes, esas son las ubicaciones sugeridas para Ciudad
+  const ciudadOptions = sedes.length > 1 ? sedes : catalogos.ciudades;
 
   const onPickIps = (v: string) => {
     setIps(v);
     const e = catalogos.ipsConCiudades.find((x) => x.nombre === v);
     if (e && e.ciudades.length === 1) setCiudad(e.ciudades[0]);
   };
+
+  // ── Consultar ADRES: copia el documento y abre la ventana de ADRES ──
+  const consultarAdres = async () => {
+    const doc = documento.trim();
+    try {
+      await navigator.clipboard.writeText(doc);
+      toast.success("Documento copiado — pégalo en ADRES con Ctrl+V");
+    } catch {
+      toast.message("Copia el documento manualmente: " + doc);
+    }
+    window.open("https://www.adres.gov.co/consulte-su-eps", "_blank", "noopener,noreferrer");
+  };
+
+  // ── Lógica de campos según el motivo de negación ──
+  const mNeg = motivoNeg.toUpperCase();
+  const negEspecialidad = mNeg.includes("RECURSO HUMANO");
+  const negUnidad = mNeg.includes("DISPONIBILIDAD DE UNIDAD");
+  const negCamas = mNeg.includes("SOBREOCUPAC") || mNeg.includes("CAMAS");
+  const negComplejidad = mNeg.includes("COMPLEJIDAD");
+  const negDetalleOpcional = mNeg.includes("RED NO CONTRATADA") || mNeg.includes("AFILIACI");
 
   // ── Enlace Médico ⇄ Especialidad ──
   const espKey = especialidad.trim().toLowerCase();
@@ -150,14 +185,20 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     setContactoIps("");
     setUnidadReq("");
     setMotivosCrue(["", "", ""]);
+    setFechaRec("");
+    setHoraRec("");
     setResultado(null);
   };
 
   const guardar = async () => {
     if (!tipo) return toast.error("Selecciona el tipo de caso");
     if (tipo === "NEG" && !motivoNeg) return toast.error("Selecciona el motivo de negación");
-    if (tipo === "NEG" && motivoNeg === "POR NIVEL DE COMPLEJIDAD" && !complejidad)
-      return toast.error("Selecciona la complejidad");
+    if (tipo === "NEG" && negComplejidad && !complejidad) return toast.error("Selecciona la complejidad");
+    if (tipo === "NEG" && negEspecialidad && !especialidad.trim())
+      return toast.error("Indica la especialidad requerida");
+    if (tipo === "NEG" && negUnidad && !unidad.trim()) return toast.error("Indica la unidad requerida");
+    if (tipo === "NEG" && negComplejidad && complejidad === "MAYOR COMPLEJIDAD" && !especialidad.trim())
+      return toast.error("Indica la especialidad requerida");
 
     setBusy(true);
     try {
@@ -181,6 +222,8 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
           ? `POR NIVEL DE COMPLEJIDAD - ${complejidad}`
           : motivoNeg;
 
+      const negCamasSel = tipo === "NEG" && negCamas;
+
       const mensaje = buildMensaje(
         plantillas,
         catalogos.medicos,
@@ -199,6 +242,8 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
           contactoIps,
           eapb,
           regimen,
+          fechaRecontacto: negCamasSel ? fechaRec : undefined,
+          horaRecontacto: negCamasSel ? horaRec : undefined,
           motivosCrue: isCrue ? motivosCrue.filter(Boolean) : null,
         },
       );
@@ -314,6 +359,28 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
       {/* ───── PASO 2 ───── */}
       {step === 2 && (
         <section className="space-y-4">
+          {!reincidente && (
+            <div className="flex items-start gap-3 rounded-xl border border-status-amber/50 bg-status-amber/10 p-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-status-amber" />
+              <div className="flex-1 text-xs text-foreground">
+                <p className="font-bold text-status-amber">Paciente nuevo</p>
+                <p className="mt-0.5">
+                  Consulte ADRES y transcriba los 4 datos. Ingrese la IPS remitente.
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="shrink-0 gap-1.5 rounded-full"
+                onClick={consultarAdres}
+              >
+                <Search className="h-3.5 w-3.5" /> Consultar ADRES
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="nom">Nombres</Label>
@@ -346,29 +413,13 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 onChange={setIps}
                 onPick={onPickIps}
                 options={ipsOptions}
+                openAllOnFocus={!!ciudad.trim()}
+                placeholder="Escribe o selecciona la IPS…"
               />
-              {sedes.length > 1 && (
-                <div className="mt-1.5 rounded-lg border border-status-blue/40 bg-status-blue/10 p-2">
-                  <p className="text-[11px] font-bold text-status-blue">
-                    Tiene {sedes.length} sedes relacionadas — selecciona la ubicación
-                  </p>
-                  <div className="mt-1 flex flex-wrap gap-1.5">
-                    {sedes.map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => setCiudad(s)}
-                        className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
-                          ciudad === s
-                            ? "border-status-blue bg-status-blue/20 text-status-blue"
-                            : "border-border text-muted-foreground hover:border-status-blue/50"
-                        }`}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+              {ciudad.trim() && ipsOptions.length > 0 && !ips && (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {ipsOptions.length} IPS relacionada{ipsOptions.length === 1 ? "" : "s"} a esta ubicación
+                </p>
               )}
             </div>
             <div className="sm:col-span-2">
@@ -376,12 +427,13 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 label="Ciudad / Departamento"
                 value={ciudad}
                 onChange={setCiudad}
-                options={catalogos.ciudades}
+                options={ciudadOptions}
+                openAllOnFocus={sedes.length > 1}
                 placeholder="Ej: FLORENCIA - CAQUETA"
               />
-              {ciudad.trim() && ipsOptions.length > 0 && !ips && (
+              {sedes.length > 1 && !sedes.some((s) => s.toLowerCase() === ciudad.trim().toLowerCase()) && (
                 <p className="mt-1 text-[11px] text-muted-foreground">
-                  {ipsOptions.length} IPS relacionada{ipsOptions.length === 1 ? "" : "s"} a esta ubicación
+                  {sedes.length} ubicaciones relacionadas a esta IPS — selecciónala arriba
                 </p>
               )}
             </div>
@@ -403,10 +455,10 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
         <section className="space-y-4">
           <div className="space-y-2">
             <Label>Tipo de caso</Label>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-3">
               <TipoCard
-                label="Aceptaciones"
-                desc="Aceptación de cupo"
+                label="Aceptación"
+                icon={<CheckCircle2 className="h-5 w-5" />}
                 accent="green"
                 active={tipo === "ACEP"}
                 onClick={() => {
@@ -417,8 +469,8 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 }}
               />
               <TipoCard
-                label="Negaciones"
-                desc="Negación de cupo"
+                label="Negación"
+                icon={<XCircle className="h-5 w-5" />}
                 accent="red"
                 active={tipo === "NEG"}
                 onClick={() => {
@@ -427,10 +479,9 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 }}
               />
               <TipoCard
-                className="sm:col-span-2"
-                label="Direccionamientos CRUE"
-                desc="Aceptación · No requerimiento · Negación"
-                accent="blue"
+                label="Caso CRUE"
+                icon={<Siren className="h-5 w-5" />}
+                accent="amber"
                 active={isCrue || crueOpen}
                 onClick={() => setCrueOpen((o) => !o)}
               />
@@ -444,8 +495,8 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                     onClick={() => setTipo(t.value)}
                     className={`rounded-xl border-2 px-3 py-2 text-left text-xs font-bold transition ${
                       tipo === t.value
-                        ? "border-status-blue bg-status-blue/10 text-status-blue"
-                        : "border-border text-foreground hover:border-status-blue/40"
+                        ? "border-status-amber bg-status-amber/10 text-status-amber"
+                        : "border-border text-foreground hover:border-status-amber/40"
                     }`}
                   >
                     {t.label}
@@ -498,9 +549,11 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
           )}
 
           {tipo === "NEG" && (
-            <div className="space-y-2">
-              <Label>Motivo de negación</Label>
-              <div className="grid gap-2 sm:grid-cols-2">
+            <div className="rounded-2xl border border-status-red/30 bg-status-red/5 p-3 space-y-3">
+              <Label className="text-xs font-bold uppercase tracking-wide text-status-red">
+                Motivo de negación
+              </Label>
+              <div className="flex flex-wrap gap-2">
                 {catalogos.motivosNeg.map((m) => (
                   <button
                     key={m}
@@ -508,10 +561,22 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                     onClick={() => {
                       setMotivoNeg(m);
                       setComplejidad("");
+                      setEspecialidad("");
+                      setUnidad("");
+                      const up = m.toUpperCase();
+                      if (up.includes("SOBREOCUPAC") || up.includes("CAMAS")) {
+                        const now = new Date();
+                        const p = (n: number) => String(n).padStart(2, "0");
+                        setFechaRec(`${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`);
+                        setHoraRec(`${p(now.getHours())}:${p(now.getMinutes())}`);
+                      } else {
+                        setFechaRec("");
+                        setHoraRec("");
+                      }
                     }}
-                    className={`rounded-xl border-2 px-3 py-2 text-left text-xs font-bold transition ${
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
                       motivoNeg === m
-                        ? "border-status-red bg-status-red/10 text-status-red"
+                        ? "border-status-red bg-status-red/15 text-status-red"
                         : "border-border text-foreground hover:border-status-red/40"
                     }`}
                   >
@@ -519,16 +584,85 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                   </button>
                 ))}
               </div>
-              {motivoNeg === "POR NIVEL DE COMPLEJIDAD" && (
-                <div className="pt-1">
-                  <Label className="text-[11px] text-muted-foreground">Complejidad</Label>
-                  <div className="mt-1 grid gap-2 sm:grid-cols-2">
+
+              {/* RED NO CONTRATADA / AFILIACIÓN DE OFICIO → detalle opcional */}
+              {negDetalleOpcional && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="negdet" className="text-[11px] text-muted-foreground">
+                    Detalles (opcional)
+                  </Label>
+                  <Textarea
+                    id="negdet"
+                    rows={3}
+                    value={detalle}
+                    onChange={(e) => setDetalle(e.target.value)}
+                    placeholder="Nota adicional que se incluirá en el texto…"
+                  />
+                </div>
+              )}
+
+              {/* NO RECURSO HUMANO → especialidad requerida */}
+              {negEspecialidad && (
+                <AutoComplete
+                  label="Especialidad requerida"
+                  value={especialidad}
+                  onChange={setEspecialidad}
+                  options={catalogos.especialidades}
+                  required
+                  placeholder="Escribe la especialidad…"
+                />
+              )}
+
+              {/* NO DISPONIBILIDAD DE UNIDAD → unidad requerida */}
+              {negUnidad && (
+                <AutoComplete
+                  label="Unidad requerida"
+                  value={unidad}
+                  onChange={setUnidad}
+                  options={
+                    catalogos.unidadesRequeridas.length
+                      ? catalogos.unidadesRequeridas
+                      : catalogos.unidades.map((u) => u.nombre)
+                  }
+                  required
+                  placeholder="Ej: UCI Pediátrica, Hemodinamia…"
+                />
+              )}
+
+              {/* SOBREOCUPACIÓN → fecha y hora de recontacto */}
+              {negCamas && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="frec" className="text-[11px] text-muted-foreground">
+                      Fecha de recontacto sugerida
+                    </Label>
+                    <Input id="frec" type="date" value={fechaRec} onChange={(e) => setFechaRec(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="hrec" className="text-[11px] text-muted-foreground">
+                      Hora de recontacto
+                    </Label>
+                    <Input id="hrec" type="time" value={horaRec} onChange={(e) => setHoraRec(e.target.value)} />
+                  </div>
+                </div>
+              )}
+
+              {/* POR NIVEL DE COMPLEJIDAD → mayor / menor */}
+              {negComplejidad && (
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] text-muted-foreground">
+                    ¿El caso requiere mayor o menor nivel de complejidad?
+                  </Label>
+                  <div className="grid gap-2 sm:grid-cols-2">
                     {COMPLEJIDADES.map((c) => (
                       <button
                         key={c}
                         type="button"
-                        onClick={() => setComplejidad(c)}
-                        className={`rounded-lg border px-3 py-1.5 text-left text-xs transition ${
+                        onClick={() => {
+                          setComplejidad(c);
+                          if (c !== "MAYOR COMPLEJIDAD") setEspecialidad("");
+                        }}
+                        className={`rounded-lg border px-3 py-1.5 text-xs transition ${
                           complejidad === c
                             ? "border-status-red bg-status-red/10 font-semibold text-status-red"
                             : "border-border text-muted-foreground hover:border-status-red/40"
@@ -538,6 +672,16 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                       </button>
                     ))}
                   </div>
+                  {complejidad === "MAYOR COMPLEJIDAD" && (
+                    <AutoComplete
+                      label="Especialidad requerida"
+                      value={especialidad}
+                      onChange={setEspecialidad}
+                      options={catalogos.especialidades}
+                      required
+                      placeholder="Escribe la especialidad…"
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -586,7 +730,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
             </div>
           )}
 
-          {tipo && (
+          {(tipo === "ACEP" || isCrue) && (
             <div className="space-y-2">
               <Label htmlFor="det">Observaciones / Detalle</Label>
               <Textarea id="det" rows={3} value={detalle} onChange={(e) => setDetalle(e.target.value)} placeholder="Información adicional…" />
@@ -611,6 +755,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
 function TipoCard({
   label,
   desc,
+  icon,
   accent,
   active,
   onClick,
@@ -618,7 +763,8 @@ function TipoCard({
 }: {
   label: string;
   desc?: string;
-  accent: "green" | "red" | "blue";
+  icon?: ReactNode;
+  accent: "green" | "red" | "blue" | "amber";
   active: boolean;
   onClick: () => void;
   className?: string;
@@ -628,19 +774,28 @@ function TipoCard({
       ? "border-status-green bg-status-green/10"
       : accent === "red"
         ? "border-status-red bg-status-red/10"
-        : "border-status-blue bg-status-blue/10";
+        : accent === "amber"
+          ? "border-status-amber bg-status-amber/10"
+          : "border-status-blue bg-status-blue/10";
   const activeText =
-    accent === "green" ? "text-status-green" : accent === "red" ? "text-status-red" : "text-status-blue";
+    accent === "green"
+      ? "text-status-green"
+      : accent === "red"
+        ? "text-status-red"
+        : accent === "amber"
+          ? "text-status-amber"
+          : "text-status-blue";
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-2xl border-2 px-4 py-3 text-left transition ${
+      className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl border-2 px-4 py-4 text-center transition ${
         active ? activeBorder : "border-border hover:border-foreground/30"
       } ${className || ""}`}
     >
+      {icon && <span className={active ? activeText : "text-muted-foreground"}>{icon}</span>}
       <p className={`text-sm font-bold ${active ? activeText : "text-foreground"}`}>{label}</p>
-      {desc && <p className="mt-0.5 text-[11px] text-muted-foreground">{desc}</p>}
+      {desc && <p className="text-[11px] text-muted-foreground">{desc}</p>}
     </button>
   );
 }
