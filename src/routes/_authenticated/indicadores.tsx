@@ -63,7 +63,7 @@ function IndicadoresPage() {
   const [q, setQ] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Indicador | null>(null);
-  const [importOpen, setImportOpen] = useState(false);
+  
 
   const { data: indicadores, isLoading } = useQuery({
     queryKey: ["indicadores-cfg"],
