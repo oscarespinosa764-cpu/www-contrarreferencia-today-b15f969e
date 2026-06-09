@@ -80,15 +80,160 @@ const groups: NavGroup[] = [
   },
 ];
 
+function SidebarContent({
+  collapsed,
+  allowCollapse,
+  onCollapse,
+  onExpand,
+  onNavigate,
+  isAdmin,
+  path,
+  pendientes,
+  nombre,
+  inicial,
+  rolLabel,
+  cargo,
+}: {
+  collapsed: boolean;
+  allowCollapse: boolean;
+  onCollapse: () => void;
+  onExpand: () => void;
+  onNavigate?: () => void;
+  isAdmin: boolean;
+  path: string;
+  pendientes: number;
+  nombre: string;
+  inicial: string;
+  rolLabel: string;
+  cargo?: string | null;
+}) {
+  return (
+    <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
+      <div
+        className={`flex items-center border-b border-sidebar-border py-4 ${
+          collapsed ? "justify-center px-2" : "gap-3 px-5"
+        }`}
+      >
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-1">
+          <img src={cedimLogo} alt="Logo CEDIM IPS" className="h-full w-full object-contain" />
+        </div>
+        {!collapsed && (
+          <div className="min-w-0 flex-1">
+            <p className="text-base font-bold leading-tight">CEDIM IPS</p>
+            <p className="text-[11px] text-sidebar-foreground/60">Referencia y Contrarreferencia</p>
+          </div>
+        )}
+        {!collapsed && allowCollapse && (
+          <button
+            type="button"
+            onClick={onCollapse}
+            title="Colapsar menú"
+            aria-label="Colapsar menú"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          >
+            <PanelLeftClose className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {collapsed && allowCollapse && (
+        <div className="flex justify-center border-b border-sidebar-border py-2">
+          <button
+            type="button"
+            onClick={onExpand}
+            title="Expandir menú"
+            aria-label="Expandir menú"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          >
+            <PanelLeftOpen className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      <nav className="flex-1 space-y-5 overflow-auto p-3">
+        {groups
+          .filter((g) => !g.adminOnly || isAdmin)
+          .map((group) => (
+            <div key={group.label}>
+              {collapsed ? (
+                <p className="pb-1.5 text-center text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/45">
+                  {group.abbr}
+                </p>
+              ) : (
+                <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/45">
+                  {group.label}
+                </p>
+              )}
+              <div className="space-y-0.5">
+                {group.items.map((item) => {
+                  const active = path === item.to;
+                  return (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      onClick={onNavigate}
+                      title={collapsed ? item.label : undefined}
+                      className={`relative flex items-center rounded-md text-sm transition-colors ${
+                        collapsed ? "justify-center px-2 py-2" : "gap-3 px-3 py-2"
+                      } ${
+                        active
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                          : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      }`}
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      {!collapsed && <span className="flex-1">{item.label}</span>}
+                      {!collapsed && item.badge === "seguimientos" && (pendientes ?? 0) > 0 && (
+                        <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                          {pendientes}
+                        </span>
+                      )}
+                      {collapsed && item.badge === "seguimientos" && (pendientes ?? 0) > 0 && (
+                        <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-primary" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+      </nav>
+
+      <div className="border-t border-sidebar-border p-3">
+        <div className={`flex items-center ${collapsed ? "justify-center" : "gap-3 px-1"}`}>
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground text-sm font-bold">
+            {inicial}
+          </div>
+          {!collapsed && (
+            <div className="min-w-0">
+              <p className="truncate text-xs font-semibold">{nombre}</p>
+              <p className="truncate text-[10px] uppercase tracking-wide text-sidebar-foreground/60">
+                {rolLabel}
+                {cargo ? ` · ${cargo}` : ""}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AuthenticatedLayout() {
   const { user, loading, roles, isAdmin } = useAuth();
   const navigate = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login", replace: true });
   }, [user, loading, navigate]);
+
+  // Cierra el menú móvil al cambiar de ruta.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [path]);
 
   const { data: profile } = useQuery({
     queryKey: ["mi-perfil", user?.id],
@@ -125,120 +270,68 @@ function AuthenticatedLayout() {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
+      {/* Barra lateral fija (escritorio) */}
       <aside
-        className={`flex h-screen shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-[width] duration-200 ${
+        className={`hidden h-screen shrink-0 transition-[width] duration-200 lg:flex ${
           collapsed ? "w-16" : "w-64"
         }`}
       >
-        <div
-          className={`flex items-center border-b border-sidebar-border py-4 ${
-            collapsed ? "justify-center px-2" : "gap-3 px-5"
-          }`}
-        >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-1">
+        <SidebarContent
+          collapsed={collapsed}
+          allowCollapse
+          onCollapse={() => setCollapsed(true)}
+          onExpand={() => setCollapsed(false)}
+          isAdmin={isAdmin}
+          path={path}
+          pendientes={pendientes ?? 0}
+          nombre={nombre}
+          inicial={inicial}
+          rolLabel={rolLabel}
+          cargo={profile?.cargo}
+        />
+      </aside>
+
+      {/* Menú desplegable (móvil / tablet) */}
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetContent side="left" className="w-72 border-sidebar-border bg-sidebar p-0">
+          <SidebarContent
+            collapsed={false}
+            allowCollapse={false}
+            onCollapse={() => {}}
+            onExpand={() => {}}
+            onNavigate={() => setMobileOpen(false)}
+            isAdmin={isAdmin}
+            path={path}
+            pendientes={pendientes ?? 0}
+            nombre={nombre}
+            inicial={inicial}
+            rolLabel={rolLabel}
+            cargo={profile?.cargo}
+          />
+        </SheetContent>
+      </Sheet>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Barra superior con botón de menú (móvil / tablet) */}
+        <div className="flex items-center gap-3 border-b border-sidebar-border bg-sidebar px-4 py-3 text-sidebar-foreground lg:hidden">
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Abrir menú"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-1">
             <img src={cedimLogo} alt="Logo CEDIM IPS" className="h-full w-full object-contain" />
           </div>
-          {!collapsed && (
-            <div className="min-w-0 flex-1">
-              <p className="text-base font-bold leading-tight">CEDIM IPS</p>
-              <p className="text-[11px] text-sidebar-foreground/60">Referencia y Contrarreferencia</p>
-            </div>
-          )}
-          {!collapsed && (
-            <button
-              type="button"
-              onClick={() => setCollapsed(true)}
-              title="Colapsar menú"
-              aria-label="Colapsar menú"
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            >
-              <PanelLeftClose className="h-4 w-4" />
-            </button>
-          )}
+          <p className="text-sm font-bold">CEDIM IPS</p>
         </div>
 
-        {collapsed && (
-          <div className="flex justify-center border-b border-sidebar-border py-2">
-            <button
-              type="button"
-              onClick={() => setCollapsed(false)}
-              title="Expandir menú"
-              aria-label="Expandir menú"
-              className="flex h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            >
-              <PanelLeftOpen className="h-4 w-4" />
-            </button>
-          </div>
-        )}
-
-        <nav className="flex-1 space-y-5 overflow-auto p-3">
-          {groups
-            .filter((g) => !g.adminOnly || isAdmin)
-            .map((group) => (
-              <div key={group.label}>
-                {collapsed ? (
-                  <p className="pb-1.5 text-center text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/45">
-                    {group.abbr}
-                  </p>
-                ) : (
-                  <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/45">
-                    {group.label}
-                  </p>
-                )}
-                <div className="space-y-0.5">
-                  {group.items.map((item) => {
-                    const active = path === item.to;
-                    return (
-                      <Link
-                        key={item.to}
-                        to={item.to}
-                        title={collapsed ? item.label : undefined}
-                        className={`relative flex items-center rounded-md text-sm transition-colors ${
-                          collapsed ? "justify-center px-2 py-2" : "gap-3 px-3 py-2"
-                        } ${
-                          active
-                            ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                            : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                        }`}
-                      >
-                        <item.icon className="h-4 w-4 shrink-0" />
-                        {!collapsed && <span className="flex-1">{item.label}</span>}
-                        {!collapsed && item.badge === "seguimientos" && (pendientes ?? 0) > 0 && (
-                          <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
-                            {pendientes}
-                          </span>
-                        )}
-                        {collapsed && item.badge === "seguimientos" && (pendientes ?? 0) > 0 && (
-                          <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-primary" />
-                        )}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-        </nav>
-
-        <div className="border-t border-sidebar-border p-3">
-          <div className={`flex items-center ${collapsed ? "justify-center" : "gap-3 px-1"}`}>
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground text-sm font-bold">
-              {inicial}
-            </div>
-            {!collapsed && (
-              <div className="min-w-0">
-                <p className="truncate text-xs font-semibold">{nombre}</p>
-                <p className="truncate text-[10px] uppercase tracking-wide text-sidebar-foreground/60">
-                  {rolLabel}
-                  {profile?.cargo ? ` · ${profile.cargo}` : ""}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </aside>
-      <main className="app-surface h-screen flex-1 overflow-auto p-6">
-        <Outlet />
-      </main>
+        <main className="app-surface flex-1 overflow-auto p-4 sm:p-6">
+          <Outlet />
+        </main>
+      </div>
       <SessionTimeout />
     </div>
   );
