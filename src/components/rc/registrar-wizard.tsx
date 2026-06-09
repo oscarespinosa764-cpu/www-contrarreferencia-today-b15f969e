@@ -117,12 +117,34 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
         .filter((x) => x.ciudades.some((c) => c.toLowerCase().includes(ciudadKey)))
         .map((x) => x.nombre)
     : catalogos.ips;
+  // Si la IPS tiene varias sedes, esas son las ubicaciones sugeridas para Ciudad
+  const ciudadOptions = sedes.length > 1 ? sedes : catalogos.ciudades;
 
   const onPickIps = (v: string) => {
     setIps(v);
     const e = catalogos.ipsConCiudades.find((x) => x.nombre === v);
     if (e && e.ciudades.length === 1) setCiudad(e.ciudades[0]);
   };
+
+  // ── Consultar ADRES: copia el documento y abre la ventana de ADRES ──
+  const consultarAdres = async () => {
+    const doc = documento.trim();
+    try {
+      await navigator.clipboard.writeText(doc);
+      toast.success("Documento copiado — pégalo en ADRES con Ctrl+V");
+    } catch {
+      toast.message("Copia el documento manualmente: " + doc);
+    }
+    window.open("https://www.adres.gov.co/consulte-su-eps", "_blank", "noopener,noreferrer");
+  };
+
+  // ── Lógica de campos según el motivo de negación ──
+  const mNeg = motivoNeg.toUpperCase();
+  const negEspecialidad = mNeg.includes("RECURSO HUMANO");
+  const negUnidad = mNeg.includes("DISPONIBILIDAD DE UNIDAD");
+  const negCamas = mNeg.includes("SOBREOCUPAC") || mNeg.includes("CAMAS");
+  const negComplejidad = mNeg.includes("COMPLEJIDAD");
+  const negDetalleOpcional = mNeg.includes("RED NO CONTRATADA") || mNeg.includes("AFILIACI");
 
   // ── Enlace Médico ⇄ Especialidad ──
   const espKey = especialidad.trim().toLowerCase();
