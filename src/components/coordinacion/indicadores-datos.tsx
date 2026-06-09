@@ -292,7 +292,9 @@ function ImportarMedicionesDialog({
         toast.error("No se encontraron filas válidas. Revisa la columna 'periodo'.");
         return;
       }
-      const { error } = await supabase.from("mediciones_indicadores").insert(registros);
+      const { error } = await supabase
+        .from("mediciones_indicadores")
+        .insert(registros as never);
       if (error) throw error;
       toast.success(
         `${registros.length} medición(es) importada(s)${omitidas ? `, ${omitidas} omitida(s)` : ""}.`,
