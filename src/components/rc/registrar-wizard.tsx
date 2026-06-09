@@ -259,7 +259,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 value={documento}
                 onChange={(e) => setDocumento(e.target.value.replace(/\D/g, ""))}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && documento.trim().length >= 4) {
+                  if (e.key === "Enter" && documento.trim().length >= 4 && !cupoActivo) {
                     e.preventDefault();
                     setStep(2);
                   }
