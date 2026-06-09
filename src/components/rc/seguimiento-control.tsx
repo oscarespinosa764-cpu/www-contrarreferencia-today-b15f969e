@@ -30,6 +30,20 @@ import type { Plantilla } from "@/lib/rc-utils";
 
 type Accion = "ingreso" | "ampliar" | "cancelar" | "archivar";
 
+const CARGO_OPTIONS = [
+  "Médico general",
+  "Médico especialista",
+  "Médico hospitalario",
+  "Médico de urgencias",
+  "Enfermero(a) jefe",
+  "Auxiliar de enfermería",
+  "Coordinador(a) de enfermería",
+  "Jefe de urgencias",
+  "Regente de servicio",
+  "Terapeuta respiratorio",
+  "Referente de referencia y contrarreferencia",
+];
+
 interface Props {
   casos: Caso[];
   catalogos: Catalogos;
