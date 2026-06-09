@@ -185,6 +185,8 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     setContactoIps("");
     setUnidadReq("");
     setMotivosCrue(["", "", ""]);
+    setFechaRec("");
+    setHoraRec("");
     setResultado(null);
   };
 
