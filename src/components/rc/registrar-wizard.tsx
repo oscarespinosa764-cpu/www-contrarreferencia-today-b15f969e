@@ -670,7 +670,7 @@ function TipoCard({
 }: {
   label: string;
   desc?: string;
-  icon?: React.ReactNode;
+  icon?: ReactNode;
   accent: "green" | "red" | "blue" | "amber";
   active: boolean;
   onClick: () => void;
