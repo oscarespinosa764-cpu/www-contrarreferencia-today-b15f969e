@@ -299,8 +299,8 @@ function ImportarMedicionesDialog({
       toast.success(
         `${registros.length} medición(es) importada(s)${omitidas ? `, ${omitidas} omitida(s)` : ""}.`,
       );
-      qc.invalidateQueries({ queryKey: ["indicadores-med"] });
-      qc.invalidateQueries({ queryKey: ["mediciones-indicadores"] });
+      qc.invalidateQueries({ queryKey: ["mediciones-ind"] });
+      qc.invalidateQueries({ queryKey: ["indicadores-cfg"] });
       cerrar(false);
     } catch (e) {
       console.error(e);
