@@ -336,14 +336,8 @@ function IndicadoresPage() {
         editing={editing}
         onSubmit={onGuardarIndicador}
       />
-
-      <ImportarDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        destino="historicos_entrante"
-        titulo="Importar históricos para indicadores"
-      />
     </div>
+
   );
 }
 
