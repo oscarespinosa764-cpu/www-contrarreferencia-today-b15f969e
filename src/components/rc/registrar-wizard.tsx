@@ -193,8 +193,12 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const guardar = async () => {
     if (!tipo) return toast.error("Selecciona el tipo de caso");
     if (tipo === "NEG" && !motivoNeg) return toast.error("Selecciona el motivo de negación");
-    if (tipo === "NEG" && motivoNeg === "POR NIVEL DE COMPLEJIDAD" && !complejidad)
-      return toast.error("Selecciona la complejidad");
+    if (tipo === "NEG" && negComplejidad && !complejidad) return toast.error("Selecciona la complejidad");
+    if (tipo === "NEG" && negEspecialidad && !especialidad.trim())
+      return toast.error("Indica la especialidad requerida");
+    if (tipo === "NEG" && negUnidad && !unidad.trim()) return toast.error("Indica la unidad requerida");
+    if (tipo === "NEG" && negComplejidad && complejidad === "MAYOR COMPLEJIDAD" && !especialidad.trim())
+      return toast.error("Indica la especialidad requerida");
 
     setBusy(true);
     try {
