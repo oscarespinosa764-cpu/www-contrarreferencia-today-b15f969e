@@ -416,6 +416,34 @@ function HistorialPage() {
     if (base.codigo) {
       await supabase.from("casos_entrantes").update({ estado: "INGRESADO" }).eq("codigo", base.codigo);
     }
+    // Si el ingreso se confirma cuando el caso ya estaba cerrado (cancelado o vencido,
+    // dentro de la ventana de 24h), se genera una alerta en Coordinación para la visita IPS.
+    if (!g.activa) {
+      const paciente = [base.nombres, base.apellidos].filter(Boolean).join(" ") || null;
+      const { error: alertaErr } = await supabase.from("coordinacion").insert({
+        tipo: "VISITA IPS",
+        estado: "ABIERTA",
+        caso_id: base.id,
+        paciente,
+        documento: base.documento,
+        detalle:
+          `Ingreso confirmado fuera de tiempo (ventana de 24h) para el caso ${base.codigo ?? "—"}. ` +
+          `Programar visita IPS a ${base.ips || "—"}. ` +
+          `Recibe: ${datos.profesional || "—"}${datos.cargo ? ` (${datos.cargo})` : ""}.`,
+        fecha_alerta: ahora.toISOString(),
+        created_by: u.user?.id,
+      });
+      if (alertaErr) {
+        toast.error(`Ingreso confirmado, pero no se pudo crear la alerta: ${alertaErr.message}`);
+      } else {
+        toast.success("Ingreso confirmado · alerta de visita IPS enviada a Coordinación");
+        setIngresoFor(null);
+        qc.invalidateQueries({ queryKey: ["historial-casos"] });
+        qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+        qc.invalidateQueries({ queryKey: ["coordinacion-alertas"] });
+        return;
+      }
+    }
     toast.success("Ingreso confirmado");
     setIngresoFor(null);
     qc.invalidateQueries({ queryKey: ["historial-casos"] });

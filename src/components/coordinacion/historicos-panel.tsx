@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { ImportarDialog } from "./importar-dialog";
+import { IndicadoresDatos } from "./indicadores-datos";
 import type { DestinoKey } from "@/lib/importar.functions";
 
 type ImportItem = { emoji: string; label: string; destino: DestinoKey };
@@ -95,6 +96,10 @@ export function HistoricosPanel() {
           aceptados: .xlsx / .xlsm / .csv. Acción reservada a coordinación.
         </p>
       </Panel>
+
+      <IndicadoresDatos />
+
+
 
       <Panel
         title={<span className="text-status-red">⚠️ Zona de borrado — dejar en ceros</span>}

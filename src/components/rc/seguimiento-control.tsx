@@ -355,7 +355,15 @@ function AccionDialog({
       if (accion === "ampliar") {
         const codigo = nextCodigo(casos, "AMP", ahora);
         const hrs = calcHrsReserva(caso.unidad || "", "AMP", catalogos.unidades);
-        const venceD = new Date(ahora.getTime() + hrs * 3600000);
+        // Acumula el tiempo restante del cupo vigente + las horas de ampliación.
+        // (vencimiento vigente = ahora + tiempo restante) → nuevo vencimiento = vigente + horas.
+        const venActual = calcularVencimiento(caso, casos);
+        const baseVence = venActual.fechaVenceDate;
+        if (!baseVence || (venActual.minRest ?? 0) <= 0) {
+          setBusy(false);
+          return toast.error("El tiempo del cupo ya venció. No es posible ampliar.");
+        }
+        const venceD = new Date(baseVence.getTime() + hrs * 3600000);
         const mensaje = buildMensaje(
           plantillas,
           catalogos.medicos,
@@ -522,8 +530,10 @@ function AccionDialog({
 
             {accion === "ampliar" && (
               <p className="rounded-lg border border-status-amber/40 bg-status-amber/10 p-3 text-xs text-foreground">
-                Se ampliará el tiempo de reserva según la unidad <strong>{caso.unidad || "—"}</strong>. Se generará un
-                nuevo código AMP y el texto de notificación.
+                Se sumará el <strong>tiempo restante</strong> del cupo vigente más las horas de
+                ampliación según la unidad <strong>{caso.unidad || "—"}</strong>. Se generará un
+                nuevo código AMP y el texto de notificación. El conteo regresivo arranca desde ese
+                total.
               </p>
             )}
 
