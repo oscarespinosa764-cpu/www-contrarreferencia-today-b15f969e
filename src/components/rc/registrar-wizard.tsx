@@ -455,10 +455,10 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
         <section className="space-y-4">
           <div className="space-y-2">
             <Label>Tipo de caso</Label>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-3">
               <TipoCard
-                label="Aceptaciones"
-                desc="Aceptación de cupo"
+                label="Aceptación"
+                icon={<CheckCircle2 className="h-5 w-5" />}
                 accent="green"
                 active={tipo === "ACEP"}
                 onClick={() => {
@@ -469,8 +469,8 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 }}
               />
               <TipoCard
-                label="Negaciones"
-                desc="Negación de cupo"
+                label="Negación"
+                icon={<XCircle className="h-5 w-5" />}
                 accent="red"
                 active={tipo === "NEG"}
                 onClick={() => {
@@ -479,10 +479,9 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 }}
               />
               <TipoCard
-                className="sm:col-span-2"
-                label="Direccionamientos CRUE"
-                desc="Aceptación · No requerimiento · Negación"
-                accent="blue"
+                label="Caso CRUE"
+                icon={<Siren className="h-5 w-5" />}
+                accent="amber"
                 active={isCrue || crueOpen}
                 onClick={() => setCrueOpen((o) => !o)}
               />
@@ -496,8 +495,8 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                     onClick={() => setTipo(t.value)}
                     className={`rounded-xl border-2 px-3 py-2 text-left text-xs font-bold transition ${
                       tipo === t.value
-                        ? "border-status-blue bg-status-blue/10 text-status-blue"
-                        : "border-border text-foreground hover:border-status-blue/40"
+                        ? "border-status-amber bg-status-amber/10 text-status-amber"
+                        : "border-border text-foreground hover:border-status-amber/40"
                     }`}
                   >
                     {t.label}
