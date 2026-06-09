@@ -112,19 +112,29 @@ export function useNotifVencimientos(casos: Caso[]) {
       if (doneRef.current[key]) continue;
       doneRef.current[key] = true;
       changed = true;
-      const paciente = [c.nombres, c.apellidos].filter(Boolean).join(" ") || c.documento || "";
+      const paciente = [c.nombres, c.apellidos].filter(Boolean).join(" ") || c.documento || "Sin nombre";
       if (nivel === "crit") {
         soundCrit();
-        toast.error(`⏰ Cupo VENCIDO — ${c.codigo}`, {
-          description: `${paciente} · ${c.unidad || ""} · ${c.ips || ""}`,
-          duration: 10000,
+        notifVencimiento({
+          nivel: "crit",
+          paciente,
+          codigo: c.codigo,
+          documento: c.documento,
+          unidad: c.unidad,
+          ips: c.ips,
+          tiempo: fmtMinutos(min),
         });
         nativeNotif("Cupo vencido", `${c.codigo} — ${paciente}`, c.codigo);
       } else {
         soundWarn();
-        toast.warning(`⏳ Próximo a vencer — ${c.codigo}`, {
-          description: `${paciente} · ${fmtMinutos(min)}`,
-          duration: 8000,
+        notifVencimiento({
+          nivel: "warn",
+          paciente,
+          codigo: c.codigo,
+          documento: c.documento,
+          unidad: c.unidad,
+          ips: c.ips,
+          tiempo: fmtMinutos(min),
         });
         nativeNotif("Cupo próximo a vencer", `${c.codigo} — ${fmtMinutos(min)}`, c.codigo);
       }
