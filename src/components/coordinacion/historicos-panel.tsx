@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { ImportarDialog } from "./importar-dialog";
+import { IndicadoresDatos } from "./indicadores-datos";
 import type { DestinoKey } from "@/lib/importar.functions";
 
 type ImportItem = { emoji: string; label: string; destino: DestinoKey };
