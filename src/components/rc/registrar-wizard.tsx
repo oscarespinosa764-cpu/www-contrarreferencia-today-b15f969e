@@ -549,9 +549,11 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
           )}
 
           {tipo === "NEG" && (
-            <div className="space-y-2">
-              <Label>Motivo de negación</Label>
-              <div className="grid gap-2 sm:grid-cols-2">
+            <div className="rounded-2xl border border-status-red/30 bg-status-red/5 p-3 space-y-3">
+              <Label className="text-xs font-bold uppercase tracking-wide text-status-red">
+                Motivo de negación
+              </Label>
+              <div className="flex flex-wrap gap-2">
                 {catalogos.motivosNeg.map((m) => (
                   <button
                     key={m}
@@ -559,10 +561,22 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                     onClick={() => {
                       setMotivoNeg(m);
                       setComplejidad("");
+                      setEspecialidad("");
+                      setUnidad("");
+                      const up = m.toUpperCase();
+                      if (up.includes("SOBREOCUPAC") || up.includes("CAMAS")) {
+                        const now = new Date();
+                        const p = (n: number) => String(n).padStart(2, "0");
+                        setFechaRec(`${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`);
+                        setHoraRec(`${p(now.getHours())}:${p(now.getMinutes())}`);
+                      } else {
+                        setFechaRec("");
+                        setHoraRec("");
+                      }
                     }}
-                    className={`rounded-xl border-2 px-3 py-2 text-left text-xs font-bold transition ${
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
                       motivoNeg === m
-                        ? "border-status-red bg-status-red/10 text-status-red"
+                        ? "border-status-red bg-status-red/15 text-status-red"
                         : "border-border text-foreground hover:border-status-red/40"
                     }`}
                   >
@@ -570,16 +584,85 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                   </button>
                 ))}
               </div>
-              {motivoNeg === "POR NIVEL DE COMPLEJIDAD" && (
-                <div className="pt-1">
-                  <Label className="text-[11px] text-muted-foreground">Complejidad</Label>
-                  <div className="mt-1 grid gap-2 sm:grid-cols-2">
+
+              {/* RED NO CONTRATADA / AFILIACIÓN DE OFICIO → detalle opcional */}
+              {negDetalleOpcional && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="negdet" className="text-[11px] text-muted-foreground">
+                    Detalles (opcional)
+                  </Label>
+                  <Textarea
+                    id="negdet"
+                    rows={3}
+                    value={detalle}
+                    onChange={(e) => setDetalle(e.target.value)}
+                    placeholder="Nota adicional que se incluirá en el texto…"
+                  />
+                </div>
+              )}
+
+              {/* NO RECURSO HUMANO → especialidad requerida */}
+              {negEspecialidad && (
+                <AutoComplete
+                  label="Especialidad requerida"
+                  value={especialidad}
+                  onChange={setEspecialidad}
+                  options={catalogos.especialidades}
+                  required
+                  placeholder="Escribe la especialidad…"
+                />
+              )}
+
+              {/* NO DISPONIBILIDAD DE UNIDAD → unidad requerida */}
+              {negUnidad && (
+                <AutoComplete
+                  label="Unidad requerida"
+                  value={unidad}
+                  onChange={setUnidad}
+                  options={
+                    catalogos.unidadesRequeridas.length
+                      ? catalogos.unidadesRequeridas
+                      : catalogos.unidades.map((u) => u.nombre)
+                  }
+                  required
+                  placeholder="Ej: UCI Pediátrica, Hemodinamia…"
+                />
+              )}
+
+              {/* SOBREOCUPACIÓN → fecha y hora de recontacto */}
+              {negCamas && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="frec" className="text-[11px] text-muted-foreground">
+                      Fecha de recontacto sugerida
+                    </Label>
+                    <Input id="frec" type="date" value={fechaRec} onChange={(e) => setFechaRec(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="hrec" className="text-[11px] text-muted-foreground">
+                      Hora de recontacto
+                    </Label>
+                    <Input id="hrec" type="time" value={horaRec} onChange={(e) => setHoraRec(e.target.value)} />
+                  </div>
+                </div>
+              )}
+
+              {/* POR NIVEL DE COMPLEJIDAD → mayor / menor */}
+              {negComplejidad && (
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] text-muted-foreground">
+                    ¿El caso requiere mayor o menor nivel de complejidad?
+                  </Label>
+                  <div className="grid gap-2 sm:grid-cols-2">
                     {COMPLEJIDADES.map((c) => (
                       <button
                         key={c}
                         type="button"
-                        onClick={() => setComplejidad(c)}
-                        className={`rounded-lg border px-3 py-1.5 text-left text-xs transition ${
+                        onClick={() => {
+                          setComplejidad(c);
+                          if (c !== "MAYOR COMPLEJIDAD") setEspecialidad("");
+                        }}
+                        className={`rounded-lg border px-3 py-1.5 text-xs transition ${
                           complejidad === c
                             ? "border-status-red bg-status-red/10 font-semibold text-status-red"
                             : "border-border text-muted-foreground hover:border-status-red/40"
@@ -589,6 +672,16 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                       </button>
                     ))}
                   </div>
+                  {complejidad === "MAYOR COMPLEJIDAD" && (
+                    <AutoComplete
+                      label="Especialidad requerida"
+                      value={especialidad}
+                      onChange={setEspecialidad}
+                      options={catalogos.especialidades}
+                      required
+                      placeholder="Escribe la especialidad…"
+                    />
+                  )}
                 </div>
               )}
             </div>
