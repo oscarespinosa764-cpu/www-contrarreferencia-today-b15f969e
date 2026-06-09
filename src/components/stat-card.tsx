@@ -121,7 +121,7 @@ export function Panel({
   bodyMaxHeight?: string | null;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+    <div className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-sm">
       {(title || action || leftAction) && (
         <div className="mb-3 flex flex-col items-center gap-2 sm:relative sm:flex-row sm:justify-center">
           {leftAction && <div className="sm:absolute sm:left-0">{leftAction}</div>}
