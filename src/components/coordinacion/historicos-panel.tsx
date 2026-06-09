@@ -97,6 +97,10 @@ export function HistoricosPanel() {
         </p>
       </Panel>
 
+      <IndicadoresDatos />
+
+
+
       <Panel
         title={<span className="text-status-red">⚠️ Zona de borrado — dejar en ceros</span>}
         action={<AdminBadge tone="red" />}
