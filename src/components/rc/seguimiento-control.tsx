@@ -221,12 +221,13 @@ function AccionDialog({
   const [placa, setPlaca] = useState("");
   // sugerencias inteligentes para ingreso (solo al escribir)
   const profesionalOptions = Array.from(
-    new Set(
-      catalogos.medicos
-        .map((m) => [m.titulo, m.nombre].filter(Boolean).join(" ").trim())
-        .filter(Boolean),
-    ),
+    new Set(catalogos.medicos.map((m) => m.nombre.trim()).filter(Boolean)),
   ).sort();
+  // Al elegir un profesional del listado, autocompleta el cargo con su especialidad
+  const onPickProfesional = (v: string) => {
+    const m = catalogos.medicos.find((x) => x.nombre === v);
+    if (m?.especialidad) setCargo(m.especialidad);
+  };
   // cancelar
   const [motivoCan, setMotivoCan] = useState("");
   // común
