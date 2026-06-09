@@ -355,7 +355,15 @@ function AccionDialog({
       if (accion === "ampliar") {
         const codigo = nextCodigo(casos, "AMP", ahora);
         const hrs = calcHrsReserva(caso.unidad || "", "AMP", catalogos.unidades);
-        const venceD = new Date(ahora.getTime() + hrs * 3600000);
+        // Acumula el tiempo restante del cupo vigente + las horas de ampliación.
+        // (vencimiento vigente = ahora + tiempo restante) → nuevo vencimiento = vigente + horas.
+        const venActual = calcularVencimiento(caso, casos);
+        const baseVence = venActual.fechaVenceDate;
+        if (!baseVence || (venActual.minRest ?? 0) <= 0) {
+          setBusy(false);
+          return toast.error("El tiempo del cupo ya venció. No es posible ampliar.");
+        }
+        const venceD = new Date(baseVence.getTime() + hrs * 3600000);
         const mensaje = buildMensaje(
           plantillas,
           catalogos.medicos,
