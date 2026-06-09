@@ -662,6 +662,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
 function TipoCard({
   label,
   desc,
+  icon,
   accent,
   active,
   onClick,
@@ -669,7 +670,8 @@ function TipoCard({
 }: {
   label: string;
   desc?: string;
-  accent: "green" | "red" | "blue";
+  icon?: React.ReactNode;
+  accent: "green" | "red" | "blue" | "amber";
   active: boolean;
   onClick: () => void;
   className?: string;
@@ -679,19 +681,28 @@ function TipoCard({
       ? "border-status-green bg-status-green/10"
       : accent === "red"
         ? "border-status-red bg-status-red/10"
-        : "border-status-blue bg-status-blue/10";
+        : accent === "amber"
+          ? "border-status-amber bg-status-amber/10"
+          : "border-status-blue bg-status-blue/10";
   const activeText =
-    accent === "green" ? "text-status-green" : accent === "red" ? "text-status-red" : "text-status-blue";
+    accent === "green"
+      ? "text-status-green"
+      : accent === "red"
+        ? "text-status-red"
+        : accent === "amber"
+          ? "text-status-amber"
+          : "text-status-blue";
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-2xl border-2 px-4 py-3 text-left transition ${
+      className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl border-2 px-4 py-4 text-center transition ${
         active ? activeBorder : "border-border hover:border-foreground/30"
       } ${className || ""}`}
     >
+      {icon && <span className={active ? activeText : "text-muted-foreground"}>{icon}</span>}
       <p className={`text-sm font-bold ${active ? activeText : "text-foreground"}`}>{label}</p>
-      {desc && <p className="mt-0.5 text-[11px] text-muted-foreground">{desc}</p>}
+      {desc && <p className="text-[11px] text-muted-foreground">{desc}</p>}
     </button>
   );
 }
