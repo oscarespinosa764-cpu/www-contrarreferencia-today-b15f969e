@@ -12,6 +12,7 @@ import { ArrowLeft, ArrowRight, Search, AlertTriangle, Loader2 } from "lucide-re
 import { toast } from "sonner";
 import {
   buscarAcepActivo,
+  buscarAcepReciente,
   buildMensaje,
   calcHrsReserva,
   calcularVencimiento,
