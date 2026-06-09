@@ -16,8 +16,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ImportarDialog } from "@/components/coordinacion/importar-dialog";
-import { Plus, Search, RefreshCw, Database, Pencil, Archive } from "lucide-react";
+import { Plus, Search, Pencil, Archive } from "lucide-react";
 import { toast } from "sonner";
 import {
   type Indicador,
