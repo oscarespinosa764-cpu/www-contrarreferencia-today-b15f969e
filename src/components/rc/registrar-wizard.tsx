@@ -222,6 +222,8 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
           ? `POR NIVEL DE COMPLEJIDAD - ${complejidad}`
           : motivoNeg;
 
+      const negCamasSel = tipo === "NEG" && negCamas;
+
       const mensaje = buildMensaje(
         plantillas,
         catalogos.medicos,
