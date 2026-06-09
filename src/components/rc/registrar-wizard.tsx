@@ -84,6 +84,9 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const [contactoIps, setContactoIps] = useState("");
   const [unidadReq, setUnidadReq] = useState("");
   const [motivosCrue, setMotivosCrue] = useState<string[]>(["", "", ""]);
+  // Negación — recontacto (sobreocupación)
+  const [fechaRec, setFechaRec] = useState("");
+  const [horaRec, setHoraRec] = useState("");
 
   const reincidente = useMemo(() => {
     const doc = documento.trim();
