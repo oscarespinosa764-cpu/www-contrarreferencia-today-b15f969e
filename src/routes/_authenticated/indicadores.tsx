@@ -227,29 +227,7 @@ function IndicadoresPage() {
         <StatCard title="Sin medición" value={resumen.sinDato} caption="Pendientes de registrar" color="sky" />
       </div>
 
-      {/* Datos para indicadores */}
-      <div className="mt-5">
-        <Panel bodyMaxHeight={null}>
-          <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-            <div className="flex items-start gap-3">
-              <Database className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-              <div>
-                <p className="text-sm font-bold uppercase tracking-wide text-foreground">
-                  Datos para indicadores
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Cargue históricos para consulta e indicadores con control de duplicados.
-                </p>
-              </div>
-            </div>
-            {canEdit && (
-              <Button size="sm" className="rounded-full" onClick={() => setImportOpen(true)}>
-                <RefreshCw className="mr-1.5 h-4 w-4" /> Importar históricos
-              </Button>
-            )}
-          </div>
-        </Panel>
-      </div>
+
 
       {/* Buscador + nuevo indicador */}
       <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
