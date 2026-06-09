@@ -730,7 +730,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
             </div>
           )}
 
-          {tipo && (
+          {(tipo === "ACEP" || isCrue) && (
             <div className="space-y-2">
               <Label htmlFor="det">Observaciones / Detalle</Label>
               <Textarea id="det" rows={3} value={detalle} onChange={(e) => setDetalle(e.target.value)} placeholder="Información adicional…" />
