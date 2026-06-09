@@ -530,8 +530,10 @@ function AccionDialog({
 
             {accion === "ampliar" && (
               <p className="rounded-lg border border-status-amber/40 bg-status-amber/10 p-3 text-xs text-foreground">
-                Se ampliará el tiempo de reserva según la unidad <strong>{caso.unidad || "—"}</strong>. Se generará un
-                nuevo código AMP y el texto de notificación.
+                Se sumará el <strong>tiempo restante</strong> del cupo vigente más las horas de
+                ampliación según la unidad <strong>{caso.unidad || "—"}</strong>. Se generará un
+                nuevo código AMP y el texto de notificación. El conteo regresivo arranca desde ese
+                total.
               </p>
             )}
 
