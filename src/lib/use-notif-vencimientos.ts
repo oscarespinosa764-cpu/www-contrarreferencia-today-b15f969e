@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { toast } from "sonner";
 import { calcularVencimiento, fmtMinutos, type Caso } from "@/lib/rc-utils";
+import { notifVencimiento } from "@/components/rc/notif-vencimiento-toast";
 
 const LS_ENABLED = "rc-notif-enabled";
 const LS_DONE = "rc-notif-done";
