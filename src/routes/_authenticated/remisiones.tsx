@@ -382,7 +382,7 @@ function RemisionesPage() {
       <div className="mt-5">
         <Tabs value={tab} onValueChange={setTab}>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <TabsList>
+            <TabsList className="flex h-auto flex-wrap">
               <TabsTrigger value="remisiones">📋 Remisiones</TabsTrigger>
               <TabsTrigger value="especiales">🚑 PHD/PAD/O2/Especiales</TabsTrigger>
               <TabsTrigger value="internas">🏥 Ref. Internas</TabsTrigger>

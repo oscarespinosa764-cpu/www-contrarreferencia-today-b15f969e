@@ -17,9 +17,9 @@ function ReglasPage() {
       />
 
       <Tabs defaultValue="alertas" className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="alertas">Alertas de Coordinación</TabsTrigger>
-          <TabsTrigger value="reglas">Reglas Operativas</TabsTrigger>
+        <TabsList className="mb-4 grid h-auto w-full grid-cols-2">
+          <TabsTrigger className="whitespace-normal" value="alertas">Alertas de Coordinación</TabsTrigger>
+          <TabsTrigger className="whitespace-normal" value="reglas">Reglas Operativas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="alertas">
