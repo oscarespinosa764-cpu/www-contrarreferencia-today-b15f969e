@@ -805,7 +805,7 @@ function TipoCard({
 function StepIndicator({ step }: { step: number }) {
   const labels = ["Documento", "Datos", "Clasificación"];
   return (
-    <div className="flex items-center justify-center gap-2">
+    <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
       {labels.map((l, i) => {
         const n = i + 1;
         const active = n === step;
