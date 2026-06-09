@@ -516,14 +516,17 @@ export type Database = {
         Row: {
           activo: boolean
           archivado: boolean
+          codigo: string | null
           created_at: string
           created_by: string | null
           denominador: string | null
+          descripcion: string | null
           fuente: string | null
           id: string
           meta: number | null
           nombre: string | null
           numerador: string | null
+          responsable: string | null
           sentido: string | null
           tipo: string | null
           unidad: string | null
@@ -532,14 +535,17 @@ export type Database = {
         Insert: {
           activo?: boolean
           archivado?: boolean
+          codigo?: string | null
           created_at?: string
           created_by?: string | null
           denominador?: string | null
+          descripcion?: string | null
           fuente?: string | null
           id?: string
           meta?: number | null
           nombre?: string | null
           numerador?: string | null
+          responsable?: string | null
           sentido?: string | null
           tipo?: string | null
           unidad?: string | null
@@ -548,14 +554,17 @@ export type Database = {
         Update: {
           activo?: boolean
           archivado?: boolean
+          codigo?: string | null
           created_at?: string
           created_by?: string | null
           denominador?: string | null
+          descripcion?: string | null
           fuente?: string | null
           id?: string
           meta?: number | null
           nombre?: string | null
           numerador?: string | null
+          responsable?: string | null
           sentido?: string | null
           tipo?: string | null
           unidad?: string | null
@@ -565,39 +574,51 @@ export type Database = {
       }
       mediciones_indicadores: {
         Row: {
+          comentario: string | null
           created_at: string
           created_by: string | null
           denominador_valor: number | null
           fecha: string | null
           id: string
           indicador_id: string
+          meta: number | null
           numerador_valor: number | null
+          periodo: string | null
           resultado: number | null
           semaforo: string | null
+          unidad: string | null
           updated_at: string
         }
         Insert: {
+          comentario?: string | null
           created_at?: string
           created_by?: string | null
           denominador_valor?: number | null
           fecha?: string | null
           id?: string
           indicador_id: string
+          meta?: number | null
           numerador_valor?: number | null
+          periodo?: string | null
           resultado?: number | null
           semaforo?: string | null
+          unidad?: string | null
           updated_at?: string
         }
         Update: {
+          comentario?: string | null
           created_at?: string
           created_by?: string | null
           denominador_valor?: number | null
           fecha?: string | null
           id?: string
           indicador_id?: string
+          meta?: number | null
           numerador_valor?: number | null
+          periodo?: string | null
           resultado?: number | null
           semaforo?: string | null
+          unidad?: string | null
           updated_at?: string
         }
         Relationships: [
