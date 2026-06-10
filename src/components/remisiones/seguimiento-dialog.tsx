@@ -208,6 +208,9 @@ export function SeguimientoDialog({
       radicado: radicadoEnUso || null,
       tipo_seguimiento: tipoSeg,
       detalle: detalle || null,
+      estado_solicitud: estadoSolicitud || null,
+      nombre_contacto: nombreContacto.trim() || null,
+      telefono: telefono.trim() || null,
       nombre_usuario: perfil?.nombre || u.user?.email || null,
       created_by: u.user?.id,
     });
