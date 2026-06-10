@@ -1,9 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { resolverEmailPorDocumento } from "@/lib/auth-doc.functions";
 import { getTurno } from "@/lib/turno";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +13,7 @@ import {
   ArrowLeftRight,
   BarChart3,
   Globe,
-  IdCard,
+  Mail,
   Lock,
   ArrowRight,
 } from "lucide-react";
