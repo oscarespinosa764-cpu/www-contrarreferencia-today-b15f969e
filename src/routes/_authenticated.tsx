@@ -64,7 +64,6 @@ const groups: NavGroup[] = [
     abbr: "ENT",
     items: [
       { to: "/casos", label: "Dashboard Operativo Entrantes", icon: PlusCircle },
-      { to: "/plantillas", label: "Plantillas Generales", icon: Mail },
     ],
   },
   {
