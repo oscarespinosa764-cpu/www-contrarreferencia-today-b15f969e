@@ -525,7 +525,18 @@ export function SeguimientoDialog({
                       <span className="text-xs font-semibold text-foreground">{h.tipo_seguimiento || "Seguimiento"}</span>
                       <span className="text-[11px] text-muted-foreground">{fmtFechaHora(h.created_at)}</span>
                     </div>
+                    {h.estado_solicitud && (
+                      <span className="mt-1 inline-block rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-foreground">
+                        {h.estado_solicitud}
+                      </span>
+                    )}
                     {h.detalle && <p className="mt-1 text-xs text-muted-foreground">{h.detalle}</p>}
+                    {(h.nombre_contacto || h.telefono) && (
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        Contacto: {h.nombre_contacto || "—"}
+                        {h.telefono ? ` · ${h.telefono}` : ""}
+                      </p>
+                    )}
                     <p className="mt-1 text-[11px] text-muted-foreground">
                       {h.radicado ? `Radicado ${h.radicado} · ` : ""}
                       {h.nombre_usuario || "—"}
