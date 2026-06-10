@@ -15,6 +15,7 @@ import {
   Globe,
   Mail,
   Lock,
+  User,
   ArrowRight,
 } from "lucide-react";
 
