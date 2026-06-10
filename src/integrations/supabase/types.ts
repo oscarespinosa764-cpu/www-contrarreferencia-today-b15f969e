@@ -1112,9 +1112,12 @@ export type Database = {
           created_at: string
           created_by: string | null
           detalle: string | null
+          estado_solicitud: string | null
           id: string
+          nombre_contacto: string | null
           nombre_usuario: string | null
           radicado: string | null
+          telefono: string | null
           tipo_caso: string
           tipo_seguimiento: string | null
           updated_at: string
@@ -1125,9 +1128,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           detalle?: string | null
+          estado_solicitud?: string | null
           id?: string
+          nombre_contacto?: string | null
           nombre_usuario?: string | null
           radicado?: string | null
+          telefono?: string | null
           tipo_caso: string
           tipo_seguimiento?: string | null
           updated_at?: string
@@ -1138,9 +1144,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           detalle?: string | null
+          estado_solicitud?: string | null
           id?: string
+          nombre_contacto?: string | null
           nombre_usuario?: string | null
           radicado?: string | null
+          telefono?: string | null
           tipo_caso?: string
           tipo_seguimiento?: string | null
           updated_at?: string
