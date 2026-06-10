@@ -81,6 +81,9 @@ export function SeguimientoDialog({
   const [radicado, setRadicado] = useState("");
   const [tipoSeg, setTipoSeg] = useState("");
   const [detalle, setDetalle] = useState("");
+  const [estadoSolicitud, setEstadoSolicitud] = useState("");
+  const [nombreContacto, setNombreContacto] = useState("");
+  const [telefono, setTelefono] = useState("");
   const [evoDetalle, setEvoDetalle] = useState<Record<string, EvoEspecialidad>>({});
   // Snapshot de lo ya guardado: los canales en true quedan bloqueados.
   const [inicial, setInicial] = useState<Record<string, EvoEspecialidad>>({});
