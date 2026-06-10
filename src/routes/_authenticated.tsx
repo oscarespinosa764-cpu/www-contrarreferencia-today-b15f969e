@@ -13,7 +13,6 @@ import {
   Network,
   PlusCircle,
   ClipboardCheck,
-  Mail,
   BarChart3,
   Zap,
   BookOpen,
