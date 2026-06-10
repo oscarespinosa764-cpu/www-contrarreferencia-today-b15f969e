@@ -246,6 +246,9 @@ export function SeguimientoDialog({
     toast.success("Seguimiento registrado");
     setDetalle("");
     setTipoSeg("");
+    setEstadoSolicitud("");
+    setNombreContacto("");
+    setTelefono("");
     setNuevoRadicado(false);
     setBusy(false);
     refrescar();
