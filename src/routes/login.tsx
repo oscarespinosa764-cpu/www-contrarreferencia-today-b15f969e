@@ -65,29 +65,10 @@ function LoginPage() {
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
-    const documento = String(form.get("documento")).trim();
+    const email = String(form.get("email")).trim();
     const password = String(form.get("password"));
-    if (!documento) return toast.error("Ingresa tu número de documento");
+    if (!email) return toast.error("Ingresa tu correo institucional");
     setBusy(true);
-
-    // El campo acepta documento o correo. Si trae "@" se usa como correo;
-    // de lo contrario se resuelve el correo institucional a partir del documento.
-    let email = documento;
-    if (!documento.includes("@")) {
-      try {
-        const r = await resolverEmail({ data: { documento } });
-        if (!r.email) {
-          setBusy(false);
-          toast.error("No encontramos un usuario con ese número de documento.");
-          return;
-        }
-        email = r.email;
-      } catch {
-        setBusy(false);
-        toast.error("No se pudo validar el documento. Intenta de nuevo.");
-        return;
-      }
-    }
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
