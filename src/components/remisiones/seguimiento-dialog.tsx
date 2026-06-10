@@ -42,8 +42,13 @@ type Props = {
   estadoActual?: string | null;
 };
 
+// Lista fusionada: tipos de seguimiento del sistema actual + modalidades de gestión de Indigo.
 const TIPOS_SEG = [
-  "Radicado de trámite de remisión",
+  "Radicado / inicio trámite de remisión",
+  "Telefónico / celular",
+  "Correo electrónico",
+  "Plataforma web",
+  "Físico o presencial",
   "Llamada a IPS receptora",
   "Respuesta de IPS",
   "Gestión ambulancia",
@@ -51,6 +56,8 @@ const TIPOS_SEG = [
   "Contacto familiar",
   "Otro",
 ];
+
+const ESTADOS_SOLICITUD = ["Sí acepta", "No acepta", "Pendiente", "No aplica"];
 
 export function SeguimientoDialog({
   open,
