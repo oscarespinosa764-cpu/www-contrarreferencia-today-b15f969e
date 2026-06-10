@@ -51,7 +51,6 @@ const pad = (n: number) => String(n).padStart(2, "0");
 function LoginPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const resolverEmail = useServerFn(resolverEmailPorDocumento);
   const [busy, setBusy] = useState(false);
 
   const turnoLabel = useMemo(() => {
