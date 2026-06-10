@@ -142,20 +142,20 @@ function LoginPage() {
           <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-1.5">
               <Label
-                htmlFor="l-doc"
+                htmlFor="l-email"
                 className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
               >
-                Número de documento
+                Correo institucional
               </Label>
               <div className="relative">
-                <IdCard className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  id="l-doc"
-                  name="documento"
-                  type="text"
+                  id="l-email"
+                  name="email"
+                  type="email"
                   required
                   autoComplete="username"
-                  placeholder="Ej: 1117545825"
+                  placeholder="nombre@cedimips.com"
                   className="h-12 pl-11"
                 />
               </div>
