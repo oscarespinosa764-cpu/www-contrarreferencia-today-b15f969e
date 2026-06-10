@@ -108,7 +108,6 @@ export function useNotifVencimientos(casos: Caso[]) {
           ips: c.ips,
           tiempo: fmtMinutos(min),
         });
-        nativeNotif("Cupo vencido", `${c.codigo} — ${paciente}`, c.codigo);
       } else {
         soundWarn();
         notifVencimiento({
