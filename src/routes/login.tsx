@@ -52,6 +52,7 @@ function LoginPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
+  const [mode, setMode] = useState<"login" | "register">("login");
 
   const turnoLabel = useMemo(() => {
     const t = getTurno();
@@ -75,6 +76,41 @@ function LoginPage() {
     if (error) toast.error("Credenciales incorrectas. Verifica tus datos.");
     else navigate({ to: "/dashboard", replace: true });
   };
+
+  const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    const nombre = String(form.get("nombre")).trim();
+    const email = String(form.get("email")).trim();
+    const password = String(form.get("password"));
+    const confirm = String(form.get("confirm"));
+    if (!nombre) return toast.error("Ingresa tu nombre completo");
+    if (!email) return toast.error("Ingresa tu correo institucional");
+    if (password.length < 6) return toast.error("La contraseña debe tener al menos 6 caracteres");
+    if (password !== confirm) return toast.error("Las contraseñas no coinciden");
+    setBusy(true);
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/login`,
+        data: { nombre },
+      },
+    });
+    setBusy(false);
+    if (error) {
+      toast.error(
+        error.message.includes("already")
+          ? "Ya existe una cuenta con ese correo."
+          : "No se pudo crear la cuenta. Intenta de nuevo.",
+      );
+      return;
+    }
+    toast.success("Cuenta creada. Un administrador debe activar tu acceso antes de ingresar.");
+    setMode("login");
+  };
+
 
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden bg-background lg:flex-row">
