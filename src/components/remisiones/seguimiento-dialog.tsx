@@ -42,8 +42,13 @@ type Props = {
   estadoActual?: string | null;
 };
 
+// Lista fusionada: tipos de seguimiento del sistema actual + modalidades de gestión de Indigo.
 const TIPOS_SEG = [
-  "Radicado de trámite de remisión",
+  "Radicado / inicio trámite de remisión",
+  "Telefónico / celular",
+  "Correo electrónico",
+  "Plataforma web",
+  "Físico o presencial",
   "Llamada a IPS receptora",
   "Respuesta de IPS",
   "Gestión ambulancia",
@@ -51,6 +56,8 @@ const TIPOS_SEG = [
   "Contacto familiar",
   "Otro",
 ];
+
+const ESTADOS_SOLICITUD = ["Sí acepta", "No acepta", "Pendiente", "No aplica"];
 
 export function SeguimientoDialog({
   open,
@@ -74,6 +81,9 @@ export function SeguimientoDialog({
   const [radicado, setRadicado] = useState("");
   const [tipoSeg, setTipoSeg] = useState("");
   const [detalle, setDetalle] = useState("");
+  const [estadoSolicitud, setEstadoSolicitud] = useState("");
+  const [nombreContacto, setNombreContacto] = useState("");
+  const [telefono, setTelefono] = useState("");
   const [evoDetalle, setEvoDetalle] = useState<Record<string, EvoEspecialidad>>({});
   // Snapshot de lo ya guardado: los canales en true quedan bloqueados.
   const [inicial, setInicial] = useState<Record<string, EvoEspecialidad>>({});
@@ -198,6 +208,9 @@ export function SeguimientoDialog({
       radicado: radicadoEnUso || null,
       tipo_seguimiento: tipoSeg,
       detalle: detalle || null,
+      estado_solicitud: estadoSolicitud || null,
+      nombre_contacto: nombreContacto.trim() || null,
+      telefono: telefono.trim() || null,
       nombre_usuario: perfil?.nombre || u.user?.email || null,
       created_by: u.user?.id,
     });
@@ -233,6 +246,9 @@ export function SeguimientoDialog({
     toast.success("Seguimiento registrado");
     setDetalle("");
     setTipoSeg("");
+    setEstadoSolicitud("");
+    setNombreContacto("");
+    setTelefono("");
     setNuevoRadicado(false);
     setBusy(false);
     refrescar();
@@ -360,9 +376,55 @@ export function SeguimientoDialog({
             </Select>
           </div>
 
+          {/* Estado de la solicitud (Indigo) */}
           <div className="space-y-1.5">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Detalle del seguimiento
+              Estado de la solicitud
+            </Label>
+            <Select value={estadoSolicitud} onValueChange={setEstadoSolicitud}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar…" />
+              </SelectTrigger>
+              <SelectContent>
+                {ESTADOS_SOLICITUD.map((e) => (
+                  <SelectItem key={e} value={e}>
+                    {e}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Contacto y teléfono (Indigo) */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Nombre de contacto
+              </Label>
+              <Input
+                value={nombreContacto}
+                onChange={(e) => setNombreContacto(e.target.value)}
+                placeholder="Nombre del contacto"
+                maxLength={120}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Teléfono
+              </Label>
+              <Input
+                value={telefono}
+                onChange={(e) => setTelefono(e.target.value)}
+                placeholder="Teléfono"
+                inputMode="tel"
+                maxLength={30}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Observaciones
             </Label>
             <Textarea value={detalle} onChange={(e) => setDetalle(e.target.value)} rows={3} />
           </div>
@@ -463,7 +525,18 @@ export function SeguimientoDialog({
                       <span className="text-xs font-semibold text-foreground">{h.tipo_seguimiento || "Seguimiento"}</span>
                       <span className="text-[11px] text-muted-foreground">{fmtFechaHora(h.created_at)}</span>
                     </div>
+                    {h.estado_solicitud && (
+                      <span className="mt-1 inline-block rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-foreground">
+                        {h.estado_solicitud}
+                      </span>
+                    )}
                     {h.detalle && <p className="mt-1 text-xs text-muted-foreground">{h.detalle}</p>}
+                    {(h.nombre_contacto || h.telefono) && (
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        Contacto: {h.nombre_contacto || "—"}
+                        {h.telefono ? ` · ${h.telefono}` : ""}
+                      </p>
+                    )}
                     <p className="mt-1 text-[11px] text-muted-foreground">
                       {h.radicado ? `Radicado ${h.radicado} · ` : ""}
                       {h.nombre_usuario || "—"}
