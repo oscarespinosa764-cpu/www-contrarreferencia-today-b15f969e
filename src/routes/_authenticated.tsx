@@ -48,21 +48,15 @@ const groups: NavGroup[] = [
     items: [
       { to: "/dashboard", label: "Dashboard General", icon: LayoutDashboard },
       { to: "/historial", label: "Historial de Casos E & S", icon: Search },
-    ],
-  },
-  {
-    label: "Remisiones salientes",
-    abbr: "SAL",
-    items: [
-      { to: "/remisiones", label: "Dashboard Operativo salientes", icon: ClipboardList },
       { to: "/red-ips", label: "Red / Disponibilidad IPS", icon: Network },
     ],
   },
   {
-    label: "Remisiones entrantes",
-    abbr: "ENT",
+    label: "Remisiones",
+    abbr: "REM",
     items: [
       { to: "/casos", label: "Dashboard Operativo Entrantes", icon: PlusCircle },
+      { to: "/remisiones", label: "Dashboard Operativo salientes", icon: ClipboardList },
     ],
   },
   {
