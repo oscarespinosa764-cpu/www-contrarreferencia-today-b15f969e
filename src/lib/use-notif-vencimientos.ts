@@ -119,7 +119,6 @@ export function useNotifVencimientos(casos: Caso[]) {
           ips: c.ips,
           tiempo: fmtMinutos(min),
         });
-        nativeNotif("Cupo próximo a vencer", `${c.codigo} — ${fmtMinutos(min)}`, c.codigo);
       }
     }
     if (changed) saveDone(doneRef.current);
