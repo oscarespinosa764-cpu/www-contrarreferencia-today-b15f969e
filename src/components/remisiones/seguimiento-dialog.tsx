@@ -376,9 +376,55 @@ export function SeguimientoDialog({
             </Select>
           </div>
 
+          {/* Estado de la solicitud (Indigo) */}
           <div className="space-y-1.5">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Detalle del seguimiento
+              Estado de la solicitud
+            </Label>
+            <Select value={estadoSolicitud} onValueChange={setEstadoSolicitud}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar…" />
+              </SelectTrigger>
+              <SelectContent>
+                {ESTADOS_SOLICITUD.map((e) => (
+                  <SelectItem key={e} value={e}>
+                    {e}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Contacto y teléfono (Indigo) */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Nombre de contacto
+              </Label>
+              <Input
+                value={nombreContacto}
+                onChange={(e) => setNombreContacto(e.target.value)}
+                placeholder="Nombre del contacto"
+                maxLength={120}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Teléfono
+              </Label>
+              <Input
+                value={telefono}
+                onChange={(e) => setTelefono(e.target.value)}
+                placeholder="Teléfono"
+                inputMode="tel"
+                maxLength={30}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Observaciones
             </Label>
             <Textarea value={detalle} onChange={(e) => setDetalle(e.target.value)} rows={3} />
           </div>
