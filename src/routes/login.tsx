@@ -1,23 +1,22 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { resolverEmailPorDocumento } from "@/lib/auth-doc.functions";
+import { getTurno } from "@/lib/turno";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import cedimLogo from "@/assets/cedim-logo.png";
 import {
-  Headphones,
-  Users,
-  PieChart,
-  FileText,
-  CalendarCheck,
-  FolderLock,
-  Mail,
+  Home,
+  ArrowLeftRight,
+  BarChart3,
+  Globe,
+  IdCard,
   Lock,
-  User,
   ArrowRight,
 } from "lucide-react";
 
@@ -25,7 +24,7 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
   head: () => ({
     meta: [
-      { title: "Ingresar — CEDIM IPS Referencia" },
+      { title: "Ingresar — CEDIM IPS Referencia y Contrarreferencia" },
       {
         name: "description",
         content:
@@ -43,18 +42,24 @@ export const Route = createFileRoute("/login")({
 });
 
 const features = [
-  { icon: Headphones, label: "PQRS y Atención al Usuario" },
-  { icon: Users, label: "Recursos Humanos" },
-  { icon: PieChart, label: "Estadísticas e Informes" },
-  { icon: FileText, label: "Solicitud de Historias Clínicas" },
-  { icon: CalendarCheck, label: "Solicitud de Citas" },
-  { icon: FolderLock, label: "Gestión Documental" },
+  { icon: Home, label: "Remisiones" },
+  { icon: ArrowLeftRight, label: "Gestión Interna y Externa" },
+  { icon: BarChart3, label: "Indicadores, Estadísticas e Informes" },
+  { icon: Globe, label: "Directorio de Red Local y Nacional" },
 ];
+
+const pad = (n: number) => String(n).padStart(2, "0");
 
 function LoginPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const resolverEmail = useServerFn(resolverEmailPorDocumento);
   const [busy, setBusy] = useState(false);
+
+  const turnoLabel = useMemo(() => {
+    const t = getTurno();
+    return `${t.nombre} · ${pad(t.inicio)}:00 – ${pad(t.fin)}:00`;
+  }, []);
 
   useEffect(() => {
     if (!loading && user) navigate({ to: "/dashboard", replace: true });
@@ -63,63 +68,63 @@ function LoginPage() {
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
+    const documento = String(form.get("documento")).trim();
+    const password = String(form.get("password"));
+    if (!documento) return toast.error("Ingresa tu número de documento");
     setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: String(form.get("email")),
-      password: String(form.get("password")),
-    });
-    setBusy(false);
-    if (error) toast.error(error.message);
-    else navigate({ to: "/dashboard", replace: true });
-  };
 
-  const handleSignup = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    setBusy(true);
-    const { error } = await supabase.auth.signUp({
-      email: String(form.get("email")),
-      password: String(form.get("password")),
-      options: {
-        emailRedirectTo: window.location.origin,
-        data: { nombre: String(form.get("nombre")) },
-      },
-    });
+    // El campo acepta documento o correo. Si trae "@" se usa como correo;
+    // de lo contrario se resuelve el correo institucional a partir del documento.
+    let email = documento;
+    if (!documento.includes("@")) {
+      try {
+        const r = await resolverEmail({ data: { documento } });
+        if (!r.email) {
+          setBusy(false);
+          toast.error("No encontramos un usuario con ese número de documento.");
+          return;
+        }
+        email = r.email;
+      } catch {
+        setBusy(false);
+        toast.error("No se pudo validar el documento. Intenta de nuevo.");
+        return;
+      }
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
-    if (error) toast.error(error.message);
-    else
-      toast.success(
-        "Cuenta creada. Revisa tu correo para confirmar el registro. Un administrador debe asignarte un rol antes de poder acceder a la información.",
-      );
+    if (error) toast.error("Credenciales incorrectas. Verifica tus datos.");
+    else navigate({ to: "/dashboard", replace: true });
   };
 
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden bg-background lg:flex-row">
       {/* Left brand panel */}
-      <div className="relative hidden items-center justify-center overflow-hidden bg-gradient-brand p-8 lg:flex lg:w-7/12 xl:p-12">
+      <div className="relative hidden items-center overflow-hidden bg-gradient-brand p-8 lg:flex lg:w-7/12 xl:p-12">
         <div className="pointer-events-none absolute inset-0 opacity-40 [background-image:radial-gradient(circle_at_20%_30%,color-mix(in_oklab,var(--vitalis-blue)_35%,transparent),transparent_40%),radial-gradient(circle_at_80%_70%,color-mix(in_oklab,var(--vitalis-teal)_25%,transparent),transparent_45%)]" />
 
-        <div className="relative z-20 flex w-full max-w-3xl flex-col items-center text-center">
-          <div className="mb-8 flex flex-row items-center justify-center gap-5">
-            <div className="glass-panel shrink-0 rounded-2xl p-4">
-              <img
-                src={cedimLogo}
-                alt="Logo CEDIM IPS"
-                className="h-24 w-auto rounded-xl bg-white/95 p-3 shadow-lg"
-              />
-            </div>
-            <h1 className="text-left font-display text-4xl font-extrabold leading-tight tracking-tight text-white xl:text-5xl">
-              Gestión Integral <br />
-              <span className="text-gradient-accent">Inteligente.</span>
-            </h1>
+        <div className="relative z-20 flex w-full max-w-2xl flex-col text-left">
+          <div className="glass-panel mb-8 w-fit rounded-2xl p-3">
+            <img
+              src={cedimLogo}
+              alt="Logo CEDIM IPS"
+              className="h-20 w-auto rounded-xl bg-white/95 p-3 shadow-lg"
+            />
           </div>
 
-          <p className="mx-auto mb-10 max-w-2xl text-lg font-light leading-relaxed text-blue-100/90">
-            Plataforma unificada para la optimización clínica y administrativa de CEDIM IPS.
-            Acceso seguro a todos los recursos institucionales.
+          <h1 className="font-display text-4xl font-extrabold leading-tight tracking-tight text-white xl:text-5xl">
+            Sistema de <br />
+            Referencia y <br />
+            <span className="text-gradient-accent">Contrarreferencia.</span>
+          </h1>
+
+          <p className="mb-10 mt-6 max-w-xl text-base font-light leading-relaxed text-blue-100/90">
+            Plataforma unificada para la gestión, coordinación y seguimiento de los procesos de
+            Referencia y Contrarreferencia de CEDIM IPS. Acceso seguro a todos los recursos del área.
           </p>
 
-          <div className="grid w-full max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid w-full max-w-xl grid-cols-1 gap-4 sm:grid-cols-2">
             {features.map(({ icon: Icon, label }) => (
               <div
                 key={label}
@@ -144,11 +149,7 @@ function LoginPage() {
 
         <div className="z-10 w-full max-w-md rounded-[2rem] border border-border bg-card p-8 shadow-modern lg:p-10">
           <div className="mb-8 text-center lg:hidden">
-            <img
-              src={cedimLogo}
-              alt="Logo CEDIM IPS"
-              className="mx-auto h-16 w-auto"
-            />
+            <img src={cedimLogo} alt="Logo CEDIM IPS" className="mx-auto h-16 w-auto" />
           </div>
 
           <div className="mb-8">
@@ -156,135 +157,66 @@ function LoginPage() {
               Bienvenido
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Ingresa tus credenciales institucionales.
+              Ingresa tus credenciales institucionales para iniciar el turno.
             </p>
           </div>
 
-          <Tabs defaultValue="login">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Ingresar</TabsTrigger>
-              <TabsTrigger value="signup">Registrarse</TabsTrigger>
-            </TabsList>
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="l-doc"
+                className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
+              >
+                Número de documento
+              </Label>
+              <div className="relative">
+                <IdCard className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="l-doc"
+                  name="documento"
+                  type="text"
+                  required
+                  autoComplete="username"
+                  placeholder="Ej: 1117545825"
+                  className="h-12 pl-11"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="l-pass"
+                className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
+              >
+                Contraseña
+              </Label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="l-pass"
+                  name="password"
+                  type="password"
+                  required
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  className="h-12 pl-11"
+                />
+              </div>
+            </div>
+            <Button
+              type="submit"
+              className="h-12 w-full text-sm font-bold uppercase tracking-wide shadow-elegant"
+              disabled={busy}
+            >
+              {busy ? "Ingresando…" : "Iniciar sesión"}
+              {!busy && <ArrowRight className="ml-1 h-4 w-4" />}
+            </Button>
+          </form>
 
-            <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-5 pt-5">
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="l-email"
-                    className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
-                  >
-                    Correo Electrónico
-                  </Label>
-                  <div className="relative">
-                    <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id="l-email"
-                      name="email"
-                      type="email"
-                      required
-                      placeholder="usuario@cedimips.com"
-                      className="h-12 pl-11"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="l-pass"
-                    className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
-                  >
-                    Contraseña
-                  </Label>
-                  <div className="relative">
-                    <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id="l-pass"
-                      name="password"
-                      type="password"
-                      required
-                      placeholder="••••••••"
-                      className="h-12 pl-11"
-                    />
-                  </div>
-                </div>
-                <Button
-                  type="submit"
-                  className="h-12 w-full text-sm font-bold uppercase tracking-wide shadow-elegant"
-                  disabled={busy}
-                >
-                  {busy ? "Ingresando…" : "Iniciar sesión"}
-                  {!busy && <ArrowRight className="ml-1 h-4 w-4" />}
-                </Button>
-              </form>
-            </TabsContent>
-
-            <TabsContent value="signup">
-              <form onSubmit={handleSignup} className="space-y-5 pt-5">
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="s-nombre"
-                    className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
-                  >
-                    Nombre completo
-                  </Label>
-                  <div className="relative">
-                    <User className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input id="s-nombre" name="nombre" type="text" required className="h-12 pl-11" />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="s-email"
-                    className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
-                  >
-                    Correo Electrónico
-                  </Label>
-                  <div className="relative">
-                    <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id="s-email"
-                      name="email"
-                      type="email"
-                      required
-                      placeholder="usuario@cedimips.com"
-                      className="h-12 pl-11"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="s-pass"
-                    className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
-                  >
-                    Contraseña
-                  </Label>
-                  <div className="relative">
-                    <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id="s-pass"
-                      name="password"
-                      type="password"
-                      minLength={6}
-                      required
-                      placeholder="••••••••"
-                      className="h-12 pl-11"
-                    />
-                  </div>
-                </div>
-                <Button
-                  type="submit"
-                  className="h-12 w-full text-sm font-bold uppercase tracking-wide shadow-elegant"
-                  disabled={busy}
-                >
-                  {busy ? "Creando…" : "Crear cuenta"}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
-
-          <div className="mt-8 text-center">
+          <div className="mt-8 space-y-2 text-center">
             <p className="text-xs font-medium text-muted-foreground">
-              © 2026 CEDIM IPS — Referencia y Contrarreferencia
+              Horario de turno: {turnoLabel}
             </p>
+            <p className="text-xs font-medium text-muted-foreground">© 2026 CEDIM IPS</p>
           </div>
         </div>
       </div>

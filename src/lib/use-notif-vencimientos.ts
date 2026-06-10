@@ -46,16 +46,6 @@ function soundCrit() {
   setTimeout(() => tone(660, 0.22, "square"), 240);
 }
 
-function nativeNotif(title: string, body: string, tag: string) {
-  try {
-    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-      new Notification(title, { body, tag });
-    }
-  } catch {
-    /* ignore */
-  }
-}
-
 export function useNotifVencimientos(casos: Caso[]) {
   const [enabled, setEnabledState] = useState<boolean>(() => {
     try {
@@ -64,9 +54,9 @@ export function useNotifVencimientos(casos: Caso[]) {
       return true;
     }
   });
-  const [perm, setPerm] = useState<NotificationPermission>(
-    typeof Notification !== "undefined" ? Notification.permission : "default",
-  );
+  // Las alertas son 100% internas (toast push). No se usan notificaciones nativas
+  // del navegador, por eso `perm` queda como "granted" y no se solicita permiso.
+  const perm: NotificationPermission = "granted";
   const [tick, setTick] = useState(0);
   const doneRef = useRef<Record<string, boolean>>(loadDone());
 
@@ -80,13 +70,7 @@ export function useNotifVencimientos(casos: Caso[]) {
   }, []);
 
   const requestPermission = useCallback(async () => {
-    if (typeof Notification === "undefined") return;
-    try {
-      const p = await Notification.requestPermission();
-      setPerm(p);
-    } catch {
-      /* ignore */
-    }
+    /* Sin notificaciones nativas: no se solicita permiso al navegador. */
   }, []);
 
   // temporizador
@@ -124,7 +108,6 @@ export function useNotifVencimientos(casos: Caso[]) {
           ips: c.ips,
           tiempo: fmtMinutos(min),
         });
-        nativeNotif("Cupo vencido", `${c.codigo} — ${paciente}`, c.codigo);
       } else {
         soundWarn();
         notifVencimiento({
@@ -136,7 +119,6 @@ export function useNotifVencimientos(casos: Caso[]) {
           ips: c.ips,
           tiempo: fmtMinutos(min),
         });
-        nativeNotif("Cupo próximo a vencer", `${c.codigo} — ${fmtMinutos(min)}`, c.codigo);
       }
     }
     if (changed) saveDone(doneRef.current);
