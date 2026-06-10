@@ -17,7 +17,6 @@ import { Route as AuthenticatedSeguimientosRouteImport } from './routes/_authent
 import { Route as AuthenticatedRemisionesRouteImport } from './routes/_authenticated/remisiones'
 import { Route as AuthenticatedReglasRouteImport } from './routes/_authenticated/reglas'
 import { Route as AuthenticatedRedIpsRouteImport } from './routes/_authenticated/red-ips'
-import { Route as AuthenticatedPlantillasRouteImport } from './routes/_authenticated/plantillas'
 import { Route as AuthenticatedIndicadoresRouteImport } from './routes/_authenticated/indicadores'
 import { Route as AuthenticatedHistorialRouteImport } from './routes/_authenticated/historial'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -65,11 +64,6 @@ const AuthenticatedRedIpsRoute = AuthenticatedRedIpsRouteImport.update({
   path: '/red-ips',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedPlantillasRoute = AuthenticatedPlantillasRouteImport.update({
-  id: '/plantillas',
-  path: '/plantillas',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 const AuthenticatedIndicadoresRoute =
   AuthenticatedIndicadoresRouteImport.update({
     id: '/indicadores',
@@ -113,7 +107,6 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/historial': typeof AuthenticatedHistorialRoute
   '/indicadores': typeof AuthenticatedIndicadoresRoute
-  '/plantillas': typeof AuthenticatedPlantillasRoute
   '/red-ips': typeof AuthenticatedRedIpsRoute
   '/reglas': typeof AuthenticatedReglasRoute
   '/remisiones': typeof AuthenticatedRemisionesRoute
@@ -129,7 +122,6 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/historial': typeof AuthenticatedHistorialRoute
   '/indicadores': typeof AuthenticatedIndicadoresRoute
-  '/plantillas': typeof AuthenticatedPlantillasRoute
   '/red-ips': typeof AuthenticatedRedIpsRoute
   '/reglas': typeof AuthenticatedReglasRoute
   '/remisiones': typeof AuthenticatedRemisionesRoute
@@ -147,7 +139,6 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/historial': typeof AuthenticatedHistorialRoute
   '/_authenticated/indicadores': typeof AuthenticatedIndicadoresRoute
-  '/_authenticated/plantillas': typeof AuthenticatedPlantillasRoute
   '/_authenticated/red-ips': typeof AuthenticatedRedIpsRoute
   '/_authenticated/reglas': typeof AuthenticatedReglasRoute
   '/_authenticated/remisiones': typeof AuthenticatedRemisionesRoute
@@ -165,7 +156,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/historial'
     | '/indicadores'
-    | '/plantillas'
     | '/red-ips'
     | '/reglas'
     | '/remisiones'
@@ -181,7 +171,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/historial'
     | '/indicadores'
-    | '/plantillas'
     | '/red-ips'
     | '/reglas'
     | '/remisiones'
@@ -198,7 +187,6 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/historial'
     | '/_authenticated/indicadores'
-    | '/_authenticated/plantillas'
     | '/_authenticated/red-ips'
     | '/_authenticated/reglas'
     | '/_authenticated/remisiones'
@@ -270,13 +258,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRedIpsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/plantillas': {
-      id: '/_authenticated/plantillas'
-      path: '/plantillas'
-      fullPath: '/plantillas'
-      preLoaderRoute: typeof AuthenticatedPlantillasRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/_authenticated/indicadores': {
       id: '/_authenticated/indicadores'
       path: '/indicadores'
@@ -329,7 +310,6 @@ interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedHistorialRoute: typeof AuthenticatedHistorialRoute
   AuthenticatedIndicadoresRoute: typeof AuthenticatedIndicadoresRoute
-  AuthenticatedPlantillasRoute: typeof AuthenticatedPlantillasRoute
   AuthenticatedRedIpsRoute: typeof AuthenticatedRedIpsRoute
   AuthenticatedReglasRoute: typeof AuthenticatedReglasRoute
   AuthenticatedRemisionesRoute: typeof AuthenticatedRemisionesRoute
@@ -343,7 +323,6 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedHistorialRoute: AuthenticatedHistorialRoute,
   AuthenticatedIndicadoresRoute: AuthenticatedIndicadoresRoute,
-  AuthenticatedPlantillasRoute: AuthenticatedPlantillasRoute,
   AuthenticatedRedIpsRoute: AuthenticatedRedIpsRoute,
   AuthenticatedReglasRoute: AuthenticatedReglasRoute,
   AuthenticatedRemisionesRoute: AuthenticatedRemisionesRoute,
@@ -363,3 +342,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

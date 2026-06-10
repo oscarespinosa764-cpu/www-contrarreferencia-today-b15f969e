@@ -1,9 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { resolverEmailPorDocumento } from "@/lib/auth-doc.functions";
 import { getTurno } from "@/lib/turno";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +13,7 @@ import {
   ArrowLeftRight,
   BarChart3,
   Globe,
-  IdCard,
+  Mail,
   Lock,
   ArrowRight,
 } from "lucide-react";
@@ -53,7 +51,6 @@ const pad = (n: number) => String(n).padStart(2, "0");
 function LoginPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const resolverEmail = useServerFn(resolverEmailPorDocumento);
   const [busy, setBusy] = useState(false);
 
   const turnoLabel = useMemo(() => {
@@ -68,29 +65,10 @@ function LoginPage() {
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
-    const documento = String(form.get("documento")).trim();
+    const email = String(form.get("email")).trim();
     const password = String(form.get("password"));
-    if (!documento) return toast.error("Ingresa tu número de documento");
+    if (!email) return toast.error("Ingresa tu correo institucional");
     setBusy(true);
-
-    // El campo acepta documento o correo. Si trae "@" se usa como correo;
-    // de lo contrario se resuelve el correo institucional a partir del documento.
-    let email = documento;
-    if (!documento.includes("@")) {
-      try {
-        const r = await resolverEmail({ data: { documento } });
-        if (!r.email) {
-          setBusy(false);
-          toast.error("No encontramos un usuario con ese número de documento.");
-          return;
-        }
-        email = r.email;
-      } catch {
-        setBusy(false);
-        toast.error("No se pudo validar el documento. Intenta de nuevo.");
-        return;
-      }
-    }
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
@@ -164,20 +142,20 @@ function LoginPage() {
           <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-1.5">
               <Label
-                htmlFor="l-doc"
+                htmlFor="l-email"
                 className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
               >
-                Número de documento
+                Correo institucional
               </Label>
               <div className="relative">
-                <IdCard className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  id="l-doc"
-                  name="documento"
-                  type="text"
+                  id="l-email"
+                  name="email"
+                  type="email"
                   required
                   autoComplete="username"
-                  placeholder="Ej: 1117545825"
+                  placeholder="nombre@cedimips.com"
                   className="h-12 pl-11"
                 />
               </div>

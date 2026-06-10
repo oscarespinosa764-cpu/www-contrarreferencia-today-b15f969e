@@ -13,7 +13,6 @@ import {
   Network,
   PlusCircle,
   ClipboardCheck,
-  Mail,
   BarChart3,
   Zap,
   BookOpen,
@@ -64,7 +63,6 @@ const groups: NavGroup[] = [
     abbr: "ENT",
     items: [
       { to: "/casos", label: "Dashboard Operativo Entrantes", icon: PlusCircle },
-      { to: "/plantillas", label: "Plantillas Generales", icon: Mail },
     ],
   },
   {
