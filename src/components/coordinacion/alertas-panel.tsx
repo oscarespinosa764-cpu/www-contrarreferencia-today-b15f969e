@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { ProgramarAlertasDialog, useAlertasConfig } from "@/components/coordinacion/programar-alertas-dialog";
 import { Search, CalendarClock, BellRing, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { PlantillasEnPaso } from "@/components/coordinacion/plantillas-en-paso";
 
 function estadoBadge(estado: string) {
   const e = estado.toUpperCase();
