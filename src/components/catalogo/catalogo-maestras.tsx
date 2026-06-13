@@ -14,7 +14,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Search, Pencil, X, SearchCheck, Loader2, ArrowRight } from "lucide-react";
+import { Plus, Search, Pencil, X, SearchCheck } from "lucide-react";
 import { toast } from "sonner";
 
 type CatRow = {
