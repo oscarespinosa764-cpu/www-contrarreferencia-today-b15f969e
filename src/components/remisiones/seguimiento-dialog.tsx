@@ -19,6 +19,7 @@ import {
   type EvoEspecialidad,
 } from "@/lib/remisiones-utils";
 import { toast } from "sonner";
+import { PlantillasEnPaso } from "@/components/coordinacion/plantillas-en-paso";
 
 type Props = {
   open: boolean;
@@ -423,15 +424,30 @@ export function SeguimientoDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Observaciones
-            </Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Observaciones
+              </Label>
+              <PlantillasEnPaso
+                paso="salientes_seguimiento"
+                condicion={tipoSeg}
+                datos={{
+                  PACIENTE: paciente,
+                  DOCUMENTO: documento,
+                  RADICADO: radicadoEnUso,
+                  ESPECIALIDAD: especialidadesList.join(", "),
+                  ESTADO: estadoCaso,
+                }}
+                onUsar={(texto) => setDetalle((d) => (d.trim() ? `${d}\n${texto}` : texto))}
+              />
+            </div>
             <Textarea value={detalle} onChange={(e) => setDetalle(e.target.value)} rows={3} />
           </div>
 
           <Button className="w-full rounded-full" disabled={busy} onClick={guardar}>
             {busy ? "Guardando…" : "Registrar seguimiento"}
           </Button>
+
 
           {/* Evolución diaria por especialidad */}
           <div className="space-y-2 rounded-lg border border-border p-3">

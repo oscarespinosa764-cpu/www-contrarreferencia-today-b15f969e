@@ -1,8 +1,11 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -25,8 +28,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Plus, Copy, Pencil, Trash2 } from "lucide-react";
+import { Search, Plus, Copy, Pencil, Trash2, Sparkles, Tag } from "lucide-react";
 import { toast } from "sonner";
+import { PASOS, VARIABLES, pasosLabels } from "@/lib/plantillas-variables";
+import { generarPlantillaTexto } from "@/lib/ai.functions";
 
 type Plantilla = {
   id: string;
@@ -38,6 +43,8 @@ type Plantilla = {
   variables: string | null;
   activo: boolean;
   archivado: boolean;
+  pasos: string[] | null;
+  condicion: string | null;
 };
 
 const ALL = "__all__";
@@ -48,6 +55,8 @@ const emptyForm = {
   subcategoria: "",
   indicativo: "",
   mensaje: "",
+  pasos: [] as string[],
+  condicion: "",
 };
 
 export function PlantillasBiblioteca() {
@@ -63,13 +72,17 @@ export function PlantillasBiblioteca() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [delId, setDelId] = useState<string | null>(null);
+  const [genDesc, setGenDesc] = useState("");
+  const [generando, setGenerando] = useState(false);
+  const msgRef = useRef<HTMLTextAreaElement>(null);
+  const generar = useServerFn(generarPlantillaTexto);
 
   const { data: plantillas, isLoading } = useQuery({
     queryKey: ["plantillas-biblioteca"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("plantillas")
-        .select("id, categoria, subcategoria, indicativo, nombre, mensaje, variables, activo, archivado")
+        .select("id, categoria, subcategoria, indicativo, nombre, mensaje, variables, activo, archivado, pasos, condicion")
         .eq("archivado", false)
         .order("categoria")
         .order("nombre");
@@ -109,6 +122,7 @@ export function PlantillasBiblioteca() {
   const openNueva = () => {
     setEditId(null);
     setForm(emptyForm);
+    setGenDesc("");
     setDialogOpen(true);
   };
 
@@ -120,8 +134,60 @@ export function PlantillasBiblioteca() {
       subcategoria: p.subcategoria ?? "",
       indicativo: p.indicativo ?? "",
       mensaje: p.mensaje ?? "",
+      pasos: p.pasos ?? [],
+      condicion: p.condicion ?? "",
     });
+    setGenDesc("");
     setDialogOpen(true);
+  };
+
+  const togglePaso = (id: string) => {
+    setForm((f) => ({
+      ...f,
+      pasos: f.pasos.includes(id) ? f.pasos.filter((p) => p !== id) : [...f.pasos, id],
+    }));
+  };
+
+  const insertarVariable = (token: string) => {
+    const el = msgRef.current;
+    const ins = `{{${token}}}`;
+    if (!el) {
+      setForm((f) => ({ ...f, mensaje: f.mensaje + ins }));
+      return;
+    }
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? el.value.length;
+    const next = el.value.slice(0, start) + ins + el.value.slice(end);
+    setForm((f) => ({ ...f, mensaje: next }));
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + ins.length;
+      el.setSelectionRange(pos, pos);
+    });
+  };
+
+  const generarBorrador = async () => {
+    if (!genDesc.trim()) return toast.error("Describe qué texto necesitas para generarlo");
+    setGenerando(true);
+    try {
+      const pasoLabel = pasosLabels(form.pasos).join(", ");
+      const res = await generar({
+        data: {
+          descripcion: genDesc.trim(),
+          paso: pasoLabel,
+          variables: VARIABLES.map((v) => v.token),
+        },
+      });
+      if (res.error) toast.error(res.error);
+      else if (res.texto) {
+        setForm((f) => ({ ...f, mensaje: res.texto }));
+        toast.success("Borrador generado. Revísalo y ajústalo.");
+      }
+    } catch {
+      toast.error("No se pudo generar el borrador");
+    } finally {
+      setGenerando(false);
+    }
   };
 
   const guardar = async () => {
@@ -135,6 +201,8 @@ export function PlantillasBiblioteca() {
       subcategoria: form.subcategoria.trim() || null,
       indicativo: form.indicativo.trim() || null,
       mensaje: form.mensaje,
+      pasos: form.pasos,
+      condicion: form.condicion.trim() || null,
     };
     const { error } = editId
       ? await supabase.from("plantillas").update(payload).eq("id", editId)
@@ -144,6 +212,7 @@ export function PlantillasBiblioteca() {
     toast.success(editId ? "Plantilla actualizada" : "Plantilla creada");
     setDialogOpen(false);
     qc.invalidateQueries({ queryKey: ["plantillas-biblioteca"] });
+    qc.invalidateQueries({ queryKey: ["plantillas-paso"] });
   };
 
   const eliminar = async () => {
@@ -234,6 +303,20 @@ export function PlantillasBiblioteca() {
                 {p.mensaje}
               </p>
 
+              {p.pasos && p.pasos.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {pasosLabels(p.pasos).map((lbl) => (
+                    <Badge
+                      key={lbl}
+                      variant="outline"
+                      className="rounded-full text-[9px] font-medium text-status-blue"
+                    >
+                      <Tag className="mr-1 h-2.5 w-2.5" /> {lbl}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
               <div className="mt-3 flex flex-wrap gap-1.5 border-t border-border pt-2.5">
                 <Button size="sm" className="h-8 flex-1 rounded-md text-xs" onClick={() => copiar(p.mensaje)}>
                   <Copy className="mr-1 h-3.5 w-3.5" /> Copiar
@@ -270,7 +353,7 @@ export function PlantillasBiblioteca() {
 
       {/* Diálogo nuevo / editar */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-h-[92vh] max-w-lg overflow-auto">
           <DialogHeader>
             <DialogTitle>{editId ? "Editar plantilla" : "Nueva plantilla"}</DialogTitle>
           </DialogHeader>
@@ -325,18 +408,95 @@ export function PlantillasBiblioteca() {
                 placeholder="Ej: SOAT/ADRES"
               />
             </div>
+            {/* ¿En qué paso(s) del sistema aparece? */}
+            <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+              <Label className="text-xs font-semibold">¿En qué paso(s) del sistema aparece?</Label>
+              <p className="text-[11px] text-muted-foreground">
+                Marca dónde quieres que esta plantilla esté disponible. Si no marcas ninguno,
+                solo vivirá en esta biblioteca.
+              </p>
+              <div className="grid gap-1.5 sm:grid-cols-2">
+                {PASOS.map((p) => (
+                  <label
+                    key={p.id}
+                    className="flex cursor-pointer items-start gap-2 rounded-md border border-border bg-card p-2 text-xs"
+                  >
+                    <Checkbox
+                      checked={form.pasos.includes(p.id)}
+                      onCheckedChange={() => togglePaso(p.id)}
+                      className="mt-0.5"
+                    />
+                    <span className="leading-tight">
+                      <span className="font-semibold text-foreground">{p.label}</span>
+                      <span className="block text-[10px] text-muted-foreground">{p.ayuda}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <div className="space-y-1.5 pt-1">
+                <Label htmlFor="pl-cond" className="text-[11px] text-muted-foreground">
+                  Condición (opcional)
+                </Label>
+                <Input
+                  id="pl-cond"
+                  value={form.condicion}
+                  onChange={(e) => setForm((f) => ({ ...f, condicion: e.target.value }))}
+                  placeholder="Ej: tipo de seguimiento o de alerta donde se sugiere"
+                />
+              </div>
+            </div>
+
+            {/* Generador de texto con IA */}
+            <div className="space-y-2 rounded-lg border border-dashed border-status-blue/40 bg-status-blue/5 p-3">
+              <Label className="flex items-center gap-1.5 text-xs font-semibold">
+                <Sparkles className="h-3.5 w-3.5 text-status-blue" /> Generar texto con asistente
+              </Label>
+              <Textarea
+                rows={2}
+                value={genDesc}
+                onChange={(e) => setGenDesc(e.target.value)}
+                placeholder="Describe qué texto necesitas. Ej: aviso a la EPS de que el paciente ya fue aceptado y se espera ambulancia."
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="rounded-full"
+                disabled={generando}
+                onClick={generarBorrador}
+              >
+                <Sparkles className="mr-1.5 h-4 w-4" />
+                {generando ? "Generando…" : "Generar borrador"}
+              </Button>
+            </div>
+
             <div className="space-y-1.5">
               <Label htmlFor="pl-msg">Mensaje</Label>
               <Textarea
                 id="pl-msg"
+                ref={msgRef}
                 rows={7}
                 value={form.mensaje}
                 onChange={(e) => setForm((f) => ({ ...f, mensaje: e.target.value }))}
-                placeholder="Texto de la plantilla. Usa variables como {{IPS}}, {{CODIGO}}, {{CIUDAD}}…"
+                placeholder="Texto de la plantilla. Usa variables como {{PACIENTE}}, {{RADICADO}}, {{IPS}}…"
               />
               <p className="text-[11px] text-muted-foreground">
-                Usa variables entre llaves dobles para reutilizar: {"{{IPS}}"}, {"{{CODIGO}}"}, {"{{CIUDAD}}"}.
+                Toca una variable para insertarla donde está el cursor. Al usar la plantilla, se
+                reemplaza automáticamente con los datos del caso.
               </p>
+              <div className="flex flex-wrap gap-1">
+                {VARIABLES.map((v) => (
+                  <button
+                    key={v.token}
+                    type="button"
+                    onClick={() => insertarVariable(v.token)}
+                    title={v.label}
+                    className="rounded-full border border-border bg-card px-2 py-0.5 text-[10px] font-medium text-foreground hover:bg-muted"
+                  >
+                    {"{{"}{v.token}{"}}"}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           <DialogFooter>

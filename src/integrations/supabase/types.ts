@@ -690,12 +690,14 @@ export type Database = {
           activo: boolean
           archivado: boolean
           categoria: string | null
+          condicion: string | null
           created_at: string
           created_by: string | null
           id: string
           indicativo: string | null
           mensaje: string | null
           nombre: string | null
+          pasos: string[]
           subcategoria: string | null
           updated_at: string
           variables: string | null
@@ -704,12 +706,14 @@ export type Database = {
           activo?: boolean
           archivado?: boolean
           categoria?: string | null
+          condicion?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           indicativo?: string | null
           mensaje?: string | null
           nombre?: string | null
+          pasos?: string[]
           subcategoria?: string | null
           updated_at?: string
           variables?: string | null
@@ -718,12 +722,14 @@ export type Database = {
           activo?: boolean
           archivado?: boolean
           categoria?: string | null
+          condicion?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           indicativo?: string | null
           mensaje?: string | null
           nombre?: string | null
+          pasos?: string[]
           subcategoria?: string | null
           updated_at?: string
           variables?: string | null

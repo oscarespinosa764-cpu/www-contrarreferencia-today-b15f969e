@@ -65,3 +65,68 @@ export const generarTextoCaso = createServerFn({ method: "POST" })
       return { texto: "", error: "El servicio de IA no está disponible." };
     }
   });
+
+// Generador de texto para plantillas reutilizables.
+// Recibe una descripción de lo que se necesita y la lista de variables disponibles,
+// y devuelve un borrador con las variables ya colocadas entre llaves dobles ({{VARIABLE}}).
+const plantillaSchema = z.object({
+  descripcion: z.string().min(1).max(2000),
+  paso: z.string().max(200).optional().default(""),
+  variables: z.array(z.string().max(40)).max(40).default([]),
+});
+
+export const generarPlantillaTexto = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => plantillaSchema.parse(input))
+  .handler(async ({ data }) => {
+    const apiKey = process.env.LOVABLE_API_KEY;
+    if (!apiKey) {
+      return { texto: "", error: "La IA no está configurada." };
+    }
+
+    const vars = data.variables.length
+      ? data.variables.map((v) => `{{${v}}}`).join(", ")
+      : "{{PACIENTE}}, {{DOCUMENTO}}, {{RADICADO}}, {{IPS}}, {{FECHA}}";
+
+    try {
+      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            {
+              role: "system",
+              content:
+                "Eres asistente de coordinación de Referencia y Contrarreferencia de una IPS en Colombia. " +
+                "Redactas plantillas de texto reutilizables, claras y profesionales, en español. " +
+                "Para los datos que cambian en cada caso DEBES usar variables entre llaves dobles, " +
+                `exactamente con esta sintaxis y solo de esta lista cuando apliquen: ${vars}. ` +
+                "No inventes datos concretos (nombres, documentos, fechas): en su lugar usa la variable correspondiente. " +
+                "Devuelve únicamente el texto de la plantilla, sin explicaciones ni comillas.",
+            },
+            {
+              role: "user",
+              content:
+                (data.paso ? `Paso del sistema donde se usará: ${data.paso}.\n\n` : "") +
+                `Necesito una plantilla para: ${data.descripcion}`,
+            },
+          ],
+        }),
+      });
+
+      if (res.status === 429) return { texto: "", error: "Límite de uso de IA alcanzado. Intenta más tarde." };
+      if (res.status === 402) return { texto: "", error: "Se agotaron los créditos de IA." };
+      if (!res.ok) return { texto: "", error: `Error de IA (${res.status}).` };
+
+      const json = await res.json();
+      const texto = json?.choices?.[0]?.message?.content ?? "";
+      return { texto, error: null as string | null };
+    } catch (e) {
+      console.error("generarPlantillaTexto error:", e);
+      return { texto: "", error: "El servicio de IA no está disponible." };
+    }
+  });

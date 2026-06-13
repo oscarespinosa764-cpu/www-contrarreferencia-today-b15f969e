@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { ProgramarAlertasDialog, useAlertasConfig } from "@/components/coordinacion/programar-alertas-dialog";
 import { Search, CalendarClock, BellRing, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { PlantillasEnPaso } from "@/components/coordinacion/plantillas-en-paso";
 
 function estadoBadge(estado: string) {
   const e = estado.toUpperCase();
@@ -124,12 +125,22 @@ export function AlertasPanel() {
                     <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${estadoBadge(estado)}`}>
                       {estado}
                     </span>
+                    <PlantillasEnPaso
+                      paso="alertas_gestion"
+                      condicion={a.tipo}
+                      datos={{
+                        PACIENTE: a.paciente,
+                        DOCUMENTO: a.documento,
+                        ESTADO: estado,
+                      }}
+                    />
                     {estado === "ABIERTA" && isAdmin && (
                       <Button variant="outline" size="sm" className="h-7 rounded-full text-xs" onClick={() => cerrar(a.id)}>
                         Cerrar
                       </Button>
                     )}
                   </div>
+
                 </div>
               );
             })}

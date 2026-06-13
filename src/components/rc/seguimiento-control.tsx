@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AutoComplete } from "@/components/rc/autocomplete";
 import { ResultadoCard } from "@/components/rc/resultado-card";
+import { PlantillasEnPaso } from "@/components/coordinacion/plantillas-en-paso";
 import { Clock, LogIn, Plus, XCircle, Archive, AlertTriangle, Loader2, Bell, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -556,9 +557,23 @@ function AccionDialog({
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="obs">Observaciones</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="obs">Observaciones</Label>
+                <PlantillasEnPaso
+                  paso="entrantes_respuesta"
+                  datos={{
+                    PACIENTE: [caso.nombres, caso.apellidos].filter(Boolean).join(" "),
+                    DOCUMENTO: caso.documento,
+                    IPS: caso.ips,
+                    ESPECIALIDAD: caso.especialidad,
+                    RADICADO: caso.codigo,
+                  }}
+                  onUsar={(texto) => setDetalle((d) => (d.trim() ? `${d}\n${texto}` : texto))}
+                />
+              </div>
               <Textarea id="obs" rows={3} value={detalle} onChange={(e) => setDetalle(e.target.value)} placeholder="Información adicional…" />
             </div>
+
 
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={onClose}>
