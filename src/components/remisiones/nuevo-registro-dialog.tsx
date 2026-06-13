@@ -10,6 +10,7 @@ import { Field, SelectField, SpecialtyList, EdadField } from "./form-bits";
 import { PatientBlock } from "./patient-block";
 import { Cie10Field } from "./cie10-field";
 import { toast } from "sonner";
+import { PlantillasEnPaso } from "@/components/coordinacion/plantillas-en-paso";
 
 export function NuevoRegistroDialog({
   open,
