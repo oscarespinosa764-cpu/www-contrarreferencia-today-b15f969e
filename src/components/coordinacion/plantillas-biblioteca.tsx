@@ -28,9 +28,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Plus, Copy, Pencil, Trash2, Sparkles, Tag } from "lucide-react";
+import { Search, Plus, Copy, Pencil, Trash2, Sparkles, Tag, ChevronDown, FolderOpen, Layers } from "lucide-react";
 import { toast } from "sonner";
-import { PASOS, VARIABLES, pasosLabels } from "@/lib/plantillas-variables";
+import { PASOS, PASO_LABEL, VARIABLES, pasosLabels } from "@/lib/plantillas-variables";
 import { generarPlantillaTexto } from "@/lib/ai.functions";
 
 type Plantilla = {
@@ -48,6 +48,8 @@ type Plantilla = {
 };
 
 const ALL = "__all__";
+const SIN_IND = "Sin agrupador";
+const SIN_PASO = "__sin_paso__";
 
 const emptyForm = {
   nombre: "",
@@ -66,6 +68,7 @@ export function PlantillasBiblioteca() {
   const [q, setQ] = useState("");
   const [catFilter, setCatFilter] = useState<string>(ALL);
   const [indFilter, setIndFilter] = useState<string>(ALL);
+  const [colapsados, setColapsados] = useState<Set<string>>(new Set());
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -113,6 +116,74 @@ export function PlantillasBiblioteca() {
         .includes(term);
     });
   }, [plantillas, catFilter, indFilter, term]);
+
+  // Conteo por agrupador (indicativo) sobre TODAS las plantillas, para los chips.
+  const chips = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of plantillas ?? []) {
+      const k = p.indicativo?.trim() || SIN_IND;
+      m.set(k, (m.get(k) ?? 0) + 1);
+    }
+    return Array.from(m.entries())
+      .sort((a, b) => {
+        if (a[0] === SIN_IND) return 1;
+        if (b[0] === SIN_IND) return -1;
+        return a[0].localeCompare(b[0], "es");
+      });
+  }, [plantillas]);
+
+  // Estructura agrupada: agrupador (indicativo) -> subdivisor (módulo/paso) -> plantillas.
+  const grupos = useMemo(() => {
+    const byInd = new Map<string, Plantilla[]>();
+    for (const p of filtradas) {
+      const key = p.indicativo?.trim() || SIN_IND;
+      const arr = byInd.get(key) ?? [];
+      arr.push(p);
+      byInd.set(key, arr);
+    }
+    const ordInd = Array.from(byInd.keys()).sort((a, b) => {
+      if (a === SIN_IND) return 1;
+      if (b === SIN_IND) return -1;
+      return a.localeCompare(b, "es");
+    });
+    return ordInd.map((ind) => {
+      const items = byInd.get(ind)!;
+      const bySub = new Map<string, Plantilla[]>();
+      for (const p of items) {
+        const ps = p.pasos && p.pasos.length > 0 ? p.pasos : [SIN_PASO];
+        for (const pid of ps) {
+          const arr = bySub.get(pid) ?? [];
+          arr.push(p);
+          bySub.set(pid, arr);
+        }
+      }
+      const ordSub = Array.from(bySub.keys()).sort((a, b) => {
+        if (a === SIN_PASO) return 1;
+        if (b === SIN_PASO) return -1;
+        const ia = PASOS.findIndex((x) => x.id === a);
+        const ib = PASOS.findIndex((x) => x.id === b);
+        return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+      });
+      return {
+        indicativo: ind,
+        total: items.length,
+        subgrupos: ordSub.map((sid) => ({
+          id: sid,
+          label: sid === SIN_PASO ? "Sin anclar a un módulo del sistema" : PASO_LABEL[sid] ?? sid,
+          items: bySub.get(sid)!,
+        })),
+      };
+    });
+  }, [filtradas]);
+
+  const toggleColapsado = (ind: string) => {
+    setColapsados((prev) => {
+      const next = new Set(prev);
+      if (next.has(ind)) next.delete(ind);
+      else next.add(ind);
+      return next;
+    });
+  };
 
   const copiar = (txt: string | null) => {
     navigator.clipboard.writeText(txt ?? "");
@@ -224,6 +295,64 @@ export function PlantillasBiblioteca() {
     qc.invalidateQueries({ queryKey: ["plantillas-biblioteca"] });
   };
 
+  const renderCard = (p: Plantilla) => (
+    <div
+      key={p.id}
+      className="flex flex-col rounded-xl border border-border border-t-4 border-t-status-blue bg-card p-3.5 shadow-sm"
+    >
+      {p.categoria && (
+        <Badge variant="secondary" className="mb-1.5 w-fit rounded-md text-[10px] uppercase tracking-wide">
+          {p.categoria}
+        </Badge>
+      )}
+      <p className="text-sm font-bold leading-snug text-foreground">{p.nombre}</p>
+      {(p.subcategoria || p.indicativo) && (
+        <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {p.subcategoria || p.indicativo}
+        </p>
+      )}
+      <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
+        {p.mensaje}
+      </p>
+
+      {p.pasos && p.pasos.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {pasosLabels(p.pasos).map((lbl) => (
+            <Badge key={lbl} variant="outline" className="rounded-full text-[9px] font-medium text-status-blue">
+              <Tag className="mr-1 h-2.5 w-2.5" /> {lbl}
+            </Badge>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-3 flex flex-wrap gap-1.5 border-t border-border pt-2.5">
+        <Button size="sm" className="h-8 flex-1 rounded-md text-xs" onClick={() => copiar(p.mensaje)}>
+          <Copy className="mr-1 h-3.5 w-3.5" /> Copiar
+        </Button>
+        {canEdit && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 flex-1 rounded-md text-xs"
+            onClick={() => openEditar(p)}
+          >
+            <Pencil className="mr-1 h-3.5 w-3.5" /> Editar
+          </Button>
+        )}
+        {isAdmin && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 flex-1 rounded-md text-xs text-status-red hover:text-status-red"
+            onClick={() => setDelId(p.id)}
+          >
+            <Trash2 className="mr-1 h-3.5 w-3.5" /> Eliminar
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-4">
       {/* Barra de búsqueda y filtros */}
@@ -232,25 +361,11 @@ export function PlantillasBiblioteca() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="rounded-full pl-9"
-            placeholder="Buscar por nombre, indicativo o contenido…"
+            placeholder="Buscar por nombre, agrupador o contenido…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
         </div>
-
-        <Select value={indFilter} onValueChange={setIndFilter}>
-          <SelectTrigger className="w-full rounded-full lg:w-52">
-            <SelectValue placeholder="Todos los indicativos" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>Todos los indicativos</SelectItem>
-            {indicativos.map((i) => (
-              <SelectItem key={i} value={i}>
-                {i}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
 
         <Select value={catFilter} onValueChange={setCatFilter}>
           <SelectTrigger className="w-full rounded-full lg:w-56">
@@ -278,72 +393,97 @@ export function PlantillasBiblioteca() {
         </div>
       </div>
 
-      {/* Cuadrícula de tarjetas */}
+      {/* Chips de agrupadores */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => setIndFilter(ALL)}
+          className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+            indFilter === ALL
+              ? "border-status-blue bg-status-blue text-white"
+              : "border-border bg-card text-muted-foreground hover:bg-muted"
+          }`}
+        >
+          <Layers className="h-3.5 w-3.5" /> Todos los agrupadores
+        </button>
+        {chips.map(([ind, count]) => (
+          <button
+            key={ind}
+            type="button"
+            onClick={() => setIndFilter(indFilter === ind ? ALL : ind)}
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+              indFilter === ind
+                ? "border-status-blue bg-status-blue text-white"
+                : "border-border bg-card text-foreground hover:bg-muted"
+            }`}
+          >
+            <FolderOpen className="h-3.5 w-3.5" /> {ind}
+            <span
+              className={`rounded-full px-1.5 text-[10px] ${
+                indFilter === ind ? "bg-white/20" : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {count}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Vista agrupada */}
       {isLoading ? (
         <p className="py-10 text-center text-sm text-muted-foreground">Cargando…</p>
-      ) : filtradas.length > 0 ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-          {filtradas.map((p) => (
-            <div
-              key={p.id}
-              className="flex flex-col rounded-xl border border-border border-t-4 border-t-status-blue bg-card p-3.5 shadow-sm"
-            >
-              {p.categoria && (
-                <Badge variant="secondary" className="mb-1.5 w-fit rounded-md text-[10px] uppercase tracking-wide">
-                  {p.categoria}
-                </Badge>
-              )}
-              <p className="text-sm font-bold leading-snug text-foreground">{p.nombre}</p>
-              {(p.subcategoria || p.indicativo) && (
-                <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {p.subcategoria || p.indicativo}
-                </p>
-              )}
-              <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
-                {p.mensaje}
-              </p>
+      ) : grupos.length > 0 ? (
+        <div className="space-y-4">
+          {grupos.map((g) => {
+            const abierto = !colapsados.has(g.indicativo);
+            return (
+              <section
+                key={g.indicativo}
+                className="overflow-hidden rounded-xl border border-border bg-muted/20"
+              >
+                {/* Divisor general (agrupador) */}
+                <button
+                  type="button"
+                  onClick={() => toggleColapsado(g.indicativo)}
+                  className="flex w-full items-center gap-2 border-b border-border bg-card px-4 py-2.5 text-left"
+                >
+                  <ChevronDown
+                    className={`h-4 w-4 shrink-0 text-status-blue transition-transform ${abierto ? "" : "-rotate-90"}`}
+                  />
+                  <FolderOpen className="h-4 w-4 shrink-0 text-status-blue" />
+                  <span className="text-sm font-bold uppercase tracking-wide text-foreground">
+                    {g.indicativo}
+                  </span>
+                  <Badge variant="secondary" className="ml-auto rounded-full text-[10px]">
+                    {g.total} plantilla{g.total === 1 ? "" : "s"}
+                  </Badge>
+                </button>
 
-              {p.pasos && p.pasos.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {pasosLabels(p.pasos).map((lbl) => (
-                    <Badge
-                      key={lbl}
-                      variant="outline"
-                      className="rounded-full text-[9px] font-medium text-status-blue"
-                    >
-                      <Tag className="mr-1 h-2.5 w-2.5" /> {lbl}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-
-              <div className="mt-3 flex flex-wrap gap-1.5 border-t border-border pt-2.5">
-                <Button size="sm" className="h-8 flex-1 rounded-md text-xs" onClick={() => copiar(p.mensaje)}>
-                  <Copy className="mr-1 h-3.5 w-3.5" /> Copiar
-                </Button>
-                {canEdit && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 flex-1 rounded-md text-xs"
-                    onClick={() => openEditar(p)}
-                  >
-                    <Pencil className="mr-1 h-3.5 w-3.5" /> Editar
-                  </Button>
+                {abierto && (
+                  <div className="space-y-4 p-4">
+                    {g.subgrupos.map((sub) => (
+                      <div key={sub.id}>
+                        {/* Subdivisor interno (módulo / paso) */}
+                        <div className="mb-2 flex items-center gap-2">
+                          <span className="h-px flex-1 bg-border" />
+                          <span className="flex items-center gap-1 whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            <Tag className="h-3 w-3" /> {sub.label}
+                            <span className="rounded-full bg-muted px-1.5 text-[10px] font-medium normal-case">
+                              {sub.items.length}
+                            </span>
+                          </span>
+                          <span className="h-px flex-1 bg-border" />
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                          {sub.items.map((p) => renderCard(p))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
-                {isAdmin && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 flex-1 rounded-md text-xs text-status-red hover:text-status-red"
-                    onClick={() => setDelId(p.id)}
-                  >
-                    <Trash2 className="mr-1 h-3.5 w-3.5" /> Eliminar
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))}
+              </section>
+            );
+          })}
         </div>
       ) : (
         <p className="py-10 text-center text-sm text-muted-foreground">
@@ -384,12 +524,12 @@ export function PlantillasBiblioteca() {
                 </datalist>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="pl-ind">Indicativo</Label>
+                <Label htmlFor="pl-ind">Agrupador</Label>
                 <Input
                   id="pl-ind"
                   value={form.indicativo}
                   onChange={(e) => setForm((f) => ({ ...f, indicativo: e.target.value }))}
-                  placeholder="Ej: TRAZABILIDAD INDIGO"
+                  placeholder="Ej: ACEPTACIONES, NEGACIONES, SOLICITUDES…"
                   list="ind-list"
                 />
                 <datalist id="ind-list">
@@ -397,6 +537,9 @@ export function PlantillasBiblioteca() {
                     <option key={i} value={i} />
                   ))}
                 </datalist>
+                <p className="text-[11px] text-muted-foreground">
+                  Carpeta donde se agrupa la plantilla. Elige uno existente o escribe uno nuevo.
+                </p>
               </div>
             </div>
             <div className="space-y-1.5">
