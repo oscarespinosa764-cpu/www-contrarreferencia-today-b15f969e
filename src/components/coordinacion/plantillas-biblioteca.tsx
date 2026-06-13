@@ -48,6 +48,8 @@ type Plantilla = {
 };
 
 const ALL = "__all__";
+const SIN_IND = "Sin agrupador";
+const SIN_PASO = "__sin_paso__";
 
 const emptyForm = {
   nombre: "",
