@@ -303,6 +303,20 @@ export function PlantillasBiblioteca() {
                 {p.mensaje}
               </p>
 
+              {p.pasos && p.pasos.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {pasosLabels(p.pasos).map((lbl) => (
+                    <Badge
+                      key={lbl}
+                      variant="outline"
+                      className="rounded-full text-[9px] font-medium text-status-blue"
+                    >
+                      <Tag className="mr-1 h-2.5 w-2.5" /> {lbl}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
               <div className="mt-3 flex flex-wrap gap-1.5 border-t border-border pt-2.5">
                 <Button size="sm" className="h-8 flex-1 rounded-md text-xs" onClick={() => copiar(p.mensaje)}>
                   <Copy className="mr-1 h-3.5 w-3.5" /> Copiar
