@@ -408,18 +408,95 @@ export function PlantillasBiblioteca() {
                 placeholder="Ej: SOAT/ADRES"
               />
             </div>
+            {/* ¿En qué paso(s) del sistema aparece? */}
+            <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+              <Label className="text-xs font-semibold">¿En qué paso(s) del sistema aparece?</Label>
+              <p className="text-[11px] text-muted-foreground">
+                Marca dónde quieres que esta plantilla esté disponible. Si no marcas ninguno,
+                solo vivirá en esta biblioteca.
+              </p>
+              <div className="grid gap-1.5 sm:grid-cols-2">
+                {PASOS.map((p) => (
+                  <label
+                    key={p.id}
+                    className="flex cursor-pointer items-start gap-2 rounded-md border border-border bg-card p-2 text-xs"
+                  >
+                    <Checkbox
+                      checked={form.pasos.includes(p.id)}
+                      onCheckedChange={() => togglePaso(p.id)}
+                      className="mt-0.5"
+                    />
+                    <span className="leading-tight">
+                      <span className="font-semibold text-foreground">{p.label}</span>
+                      <span className="block text-[10px] text-muted-foreground">{p.ayuda}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <div className="space-y-1.5 pt-1">
+                <Label htmlFor="pl-cond" className="text-[11px] text-muted-foreground">
+                  Condición (opcional)
+                </Label>
+                <Input
+                  id="pl-cond"
+                  value={form.condicion}
+                  onChange={(e) => setForm((f) => ({ ...f, condicion: e.target.value }))}
+                  placeholder="Ej: tipo de seguimiento o de alerta donde se sugiere"
+                />
+              </div>
+            </div>
+
+            {/* Generador de texto con IA */}
+            <div className="space-y-2 rounded-lg border border-dashed border-status-blue/40 bg-status-blue/5 p-3">
+              <Label className="flex items-center gap-1.5 text-xs font-semibold">
+                <Sparkles className="h-3.5 w-3.5 text-status-blue" /> Generar texto con asistente
+              </Label>
+              <Textarea
+                rows={2}
+                value={genDesc}
+                onChange={(e) => setGenDesc(e.target.value)}
+                placeholder="Describe qué texto necesitas. Ej: aviso a la EPS de que el paciente ya fue aceptado y se espera ambulancia."
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="rounded-full"
+                disabled={generando}
+                onClick={generarBorrador}
+              >
+                <Sparkles className="mr-1.5 h-4 w-4" />
+                {generando ? "Generando…" : "Generar borrador"}
+              </Button>
+            </div>
+
             <div className="space-y-1.5">
               <Label htmlFor="pl-msg">Mensaje</Label>
               <Textarea
                 id="pl-msg"
+                ref={msgRef}
                 rows={7}
                 value={form.mensaje}
                 onChange={(e) => setForm((f) => ({ ...f, mensaje: e.target.value }))}
-                placeholder="Texto de la plantilla. Usa variables como {{IPS}}, {{CODIGO}}, {{CIUDAD}}…"
+                placeholder="Texto de la plantilla. Usa variables como {{PACIENTE}}, {{RADICADO}}, {{IPS}}…"
               />
               <p className="text-[11px] text-muted-foreground">
-                Usa variables entre llaves dobles para reutilizar: {"{{IPS}}"}, {"{{CODIGO}}"}, {"{{CIUDAD}}"}.
+                Toca una variable para insertarla donde está el cursor. Al usar la plantilla, se
+                reemplaza automáticamente con los datos del caso.
               </p>
+              <div className="flex flex-wrap gap-1">
+                {VARIABLES.map((v) => (
+                  <button
+                    key={v.token}
+                    type="button"
+                    onClick={() => insertarVariable(v.token)}
+                    title={v.label}
+                    className="rounded-full border border-border bg-card px-2 py-0.5 text-[10px] font-medium text-foreground hover:bg-muted"
+                  >
+                    {"{{"}{v.token}{"}}"}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           <DialogFooter>
