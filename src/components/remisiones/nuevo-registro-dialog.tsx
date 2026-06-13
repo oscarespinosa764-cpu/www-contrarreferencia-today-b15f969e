@@ -288,11 +288,15 @@ export function NuevoRegistroDialog({
                 <Field name="contacto_telefono" label="Número telefónico" />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="observaciones" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Observaciones
-                </Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="observaciones" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Observaciones
+                  </Label>
+                  <PlantillasEnPaso paso="salientes_inicio" datos={{}} />
+                </div>
                 <Textarea id="observaciones" name="observaciones" rows={3} />
               </div>
+
               <DialogFooter>
                 <Button type="submit" className="rounded-full">
                   Guardar remisión
