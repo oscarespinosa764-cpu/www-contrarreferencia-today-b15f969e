@@ -117,6 +117,74 @@ export function PlantillasBiblioteca() {
     });
   }, [plantillas, catFilter, indFilter, term]);
 
+  // Conteo por agrupador (indicativo) sobre TODAS las plantillas, para los chips.
+  const chips = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of plantillas ?? []) {
+      const k = p.indicativo?.trim() || SIN_IND;
+      m.set(k, (m.get(k) ?? 0) + 1);
+    }
+    return Array.from(m.entries())
+      .sort((a, b) => {
+        if (a[0] === SIN_IND) return 1;
+        if (b[0] === SIN_IND) return -1;
+        return a[0].localeCompare(b[0], "es");
+      });
+  }, [plantillas]);
+
+  // Estructura agrupada: agrupador (indicativo) -> subdivisor (módulo/paso) -> plantillas.
+  const grupos = useMemo(() => {
+    const byInd = new Map<string, Plantilla[]>();
+    for (const p of filtradas) {
+      const key = p.indicativo?.trim() || SIN_IND;
+      const arr = byInd.get(key) ?? [];
+      arr.push(p);
+      byInd.set(key, arr);
+    }
+    const ordInd = Array.from(byInd.keys()).sort((a, b) => {
+      if (a === SIN_IND) return 1;
+      if (b === SIN_IND) return -1;
+      return a.localeCompare(b, "es");
+    });
+    return ordInd.map((ind) => {
+      const items = byInd.get(ind)!;
+      const bySub = new Map<string, Plantilla[]>();
+      for (const p of items) {
+        const ps = p.pasos && p.pasos.length > 0 ? p.pasos : [SIN_PASO];
+        for (const pid of ps) {
+          const arr = bySub.get(pid) ?? [];
+          arr.push(p);
+          bySub.set(pid, arr);
+        }
+      }
+      const ordSub = Array.from(bySub.keys()).sort((a, b) => {
+        if (a === SIN_PASO) return 1;
+        if (b === SIN_PASO) return -1;
+        const ia = PASOS.findIndex((x) => x.id === a);
+        const ib = PASOS.findIndex((x) => x.id === b);
+        return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+      });
+      return {
+        indicativo: ind,
+        total: items.length,
+        subgrupos: ordSub.map((sid) => ({
+          id: sid,
+          label: sid === SIN_PASO ? "Sin anclar a un módulo del sistema" : PASO_LABEL[sid] ?? sid,
+          items: bySub.get(sid)!,
+        })),
+      };
+    });
+  }, [filtradas]);
+
+  const toggleColapsado = (ind: string) => {
+    setColapsados((prev) => {
+      const next = new Set(prev);
+      if (next.has(ind)) next.delete(ind);
+      else next.add(ind);
+      return next;
+    });
+  };
+
   const copiar = (txt: string | null) => {
     navigator.clipboard.writeText(txt ?? "");
     toast.success("Plantilla copiada");
