@@ -122,6 +122,7 @@ export function PlantillasBiblioteca() {
   const openNueva = () => {
     setEditId(null);
     setForm(emptyForm);
+    setGenDesc("");
     setDialogOpen(true);
   };
 
@@ -133,8 +134,60 @@ export function PlantillasBiblioteca() {
       subcategoria: p.subcategoria ?? "",
       indicativo: p.indicativo ?? "",
       mensaje: p.mensaje ?? "",
+      pasos: p.pasos ?? [],
+      condicion: p.condicion ?? "",
     });
+    setGenDesc("");
     setDialogOpen(true);
+  };
+
+  const togglePaso = (id: string) => {
+    setForm((f) => ({
+      ...f,
+      pasos: f.pasos.includes(id) ? f.pasos.filter((p) => p !== id) : [...f.pasos, id],
+    }));
+  };
+
+  const insertarVariable = (token: string) => {
+    const el = msgRef.current;
+    const ins = `{{${token}}}`;
+    if (!el) {
+      setForm((f) => ({ ...f, mensaje: f.mensaje + ins }));
+      return;
+    }
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? el.value.length;
+    const next = el.value.slice(0, start) + ins + el.value.slice(end);
+    setForm((f) => ({ ...f, mensaje: next }));
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + ins.length;
+      el.setSelectionRange(pos, pos);
+    });
+  };
+
+  const generarBorrador = async () => {
+    if (!genDesc.trim()) return toast.error("Describe qué texto necesitas para generarlo");
+    setGenerando(true);
+    try {
+      const pasoLabel = pasosLabels(form.pasos).join(", ");
+      const res = await generar({
+        data: {
+          descripcion: genDesc.trim(),
+          paso: pasoLabel,
+          variables: VARIABLES.map((v) => v.token),
+        },
+      });
+      if (res.error) toast.error(res.error);
+      else if (res.texto) {
+        setForm((f) => ({ ...f, mensaje: res.texto }));
+        toast.success("Borrador generado. Revísalo y ajústalo.");
+      }
+    } catch {
+      toast.error("No se pudo generar el borrador");
+    } finally {
+      setGenerando(false);
+    }
   };
 
   const guardar = async () => {
@@ -148,6 +201,8 @@ export function PlantillasBiblioteca() {
       subcategoria: form.subcategoria.trim() || null,
       indicativo: form.indicativo.trim() || null,
       mensaje: form.mensaje,
+      pasos: form.pasos,
+      condicion: form.condicion.trim() || null,
     };
     const { error } = editId
       ? await supabase.from("plantillas").update(payload).eq("id", editId)
@@ -157,6 +212,7 @@ export function PlantillasBiblioteca() {
     toast.success(editId ? "Plantilla actualizada" : "Plantilla creada");
     setDialogOpen(false);
     qc.invalidateQueries({ queryKey: ["plantillas-biblioteca"] });
+    qc.invalidateQueries({ queryKey: ["plantillas-paso"] });
   };
 
   const eliminar = async () => {
