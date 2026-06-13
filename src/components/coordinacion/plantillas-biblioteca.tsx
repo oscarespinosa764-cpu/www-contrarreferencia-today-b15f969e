@@ -68,6 +68,7 @@ export function PlantillasBiblioteca() {
   const [q, setQ] = useState("");
   const [catFilter, setCatFilter] = useState<string>(ALL);
   const [indFilter, setIndFilter] = useState<string>(ALL);
+  const [colapsados, setColapsados] = useState<Set<string>>(new Set());
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
