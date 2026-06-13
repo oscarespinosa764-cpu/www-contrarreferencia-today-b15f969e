@@ -353,7 +353,7 @@ export function PlantillasBiblioteca() {
 
       {/* Diálogo nuevo / editar */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-h-[92vh] max-w-lg overflow-auto">
           <DialogHeader>
             <DialogTitle>{editId ? "Editar plantilla" : "Nueva plantilla"}</DialogTitle>
           </DialogHeader>
