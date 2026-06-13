@@ -28,9 +28,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Plus, Copy, Pencil, Trash2, Sparkles, Tag } from "lucide-react";
+import { Search, Plus, Copy, Pencil, Trash2, Sparkles, Tag, ChevronDown, FolderOpen, Layers } from "lucide-react";
 import { toast } from "sonner";
-import { PASOS, VARIABLES, pasosLabels } from "@/lib/plantillas-variables";
+import { PASOS, PASO_LABEL, VARIABLES, pasosLabels } from "@/lib/plantillas-variables";
 import { generarPlantillaTexto } from "@/lib/ai.functions";
 
 type Plantilla = {
