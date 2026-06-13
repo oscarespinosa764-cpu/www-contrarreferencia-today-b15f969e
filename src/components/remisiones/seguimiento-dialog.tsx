@@ -19,6 +19,7 @@ import {
   type EvoEspecialidad,
 } from "@/lib/remisiones-utils";
 import { toast } from "sonner";
+import { PlantillasEnPaso } from "@/components/coordinacion/plantillas-en-paso";
 
 type Props = {
   open: boolean;
