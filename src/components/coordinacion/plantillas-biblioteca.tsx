@@ -524,12 +524,12 @@ export function PlantillasBiblioteca() {
                 </datalist>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="pl-ind">Indicativo</Label>
+                <Label htmlFor="pl-ind">Agrupador</Label>
                 <Input
                   id="pl-ind"
                   value={form.indicativo}
                   onChange={(e) => setForm((f) => ({ ...f, indicativo: e.target.value }))}
-                  placeholder="Ej: TRAZABILIDAD INDIGO"
+                  placeholder="Ej: ACEPTACIONES, NEGACIONES, SOLICITUDES…"
                   list="ind-list"
                 />
                 <datalist id="ind-list">
@@ -537,6 +537,9 @@ export function PlantillasBiblioteca() {
                     <option key={i} value={i} />
                   ))}
                 </datalist>
+                <p className="text-[11px] text-muted-foreground">
+                  Carpeta donde se agrupa la plantilla. Elige uno existente o escribe uno nuevo.
+                </p>
               </div>
             </div>
             <div className="space-y-1.5">
