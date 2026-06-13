@@ -72,13 +72,17 @@ export function PlantillasBiblioteca() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [delId, setDelId] = useState<string | null>(null);
+  const [genDesc, setGenDesc] = useState("");
+  const [generando, setGenerando] = useState(false);
+  const msgRef = useRef<HTMLTextAreaElement>(null);
+  const generar = useServerFn(generarPlantillaTexto);
 
   const { data: plantillas, isLoading } = useQuery({
     queryKey: ["plantillas-biblioteca"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("plantillas")
-        .select("id, categoria, subcategoria, indicativo, nombre, mensaje, variables, activo, archivado")
+        .select("id, categoria, subcategoria, indicativo, nombre, mensaje, variables, activo, archivado, pasos, condicion")
         .eq("archivado", false)
         .order("categoria")
         .order("nombre");
