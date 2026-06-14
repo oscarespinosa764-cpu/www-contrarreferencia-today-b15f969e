@@ -37,7 +37,13 @@ const norm = (v: unknown) =>
 
 type FilaImport = Record<string, unknown>;
 
-export function IndicadoresDatos() {
+export function IndicadoresDatosDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
   const { canEdit, isAdmin } = useAuth();
   const [expSel, setExpSel] = useState<string>("ALL");
   const [exportando, setExportando] = useState(false);
