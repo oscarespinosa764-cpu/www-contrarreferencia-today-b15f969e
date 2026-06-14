@@ -225,12 +225,17 @@ export function CatalogoMaestras() {
     e.preventDefault();
     if (!editing) return;
     const f = new FormData(e.currentTarget);
+    const isIPS = editing.tipo === "IPS";
+    const extra1 = isIPS
+      ? sedes.map((s) => s.trim()).filter(Boolean).join(" ; ") || null
+      : ((String(f.get("extra1")).trim() || null) as string | null);
+    const extra2 = isIPS ? null : ((String(f.get("extra2")).trim() || null) as string | null);
     const { error } = await supabase
       .from("catalogos")
       .update({
         valor: String(f.get("valor")).trim(),
-        extra1: (String(f.get("extra1")).trim() || null) as string | null,
-        extra2: (String(f.get("extra2")).trim() || null) as string | null,
+        extra1,
+        extra2,
       })
       .eq("id", editing.id);
     if (error) return toast.error(error.message);
