@@ -3,7 +3,7 @@ import * as XLSX from "xlsx";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { Panel } from "@/components/stat-card";
+
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -37,7 +37,13 @@ const norm = (v: unknown) =>
 
 type FilaImport = Record<string, unknown>;
 
-export function IndicadoresDatos() {
+export function IndicadoresDatosDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
   const { canEdit, isAdmin } = useAuth();
   const [expSel, setExpSel] = useState<string>("ALL");
   const [exportando, setExportando] = useState(false);
@@ -122,74 +128,71 @@ export function IndicadoresDatos() {
   };
 
   return (
-    <Panel
-      title="Indicadores"
-      action={
-        <span className="rounded-full bg-status-amber/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-status-amber">
-          Solo ADMIN
-        </span>
-      }
-    >
-      {!isAdmin ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">
-          La carga y exportación de indicadores está reservada a coordinación (ADMIN).
-        </p>
-      ) : (
-        <div className="space-y-4">
-          <div className="flex items-start gap-3">
-            <BarChart3 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-            <p className="text-xs text-muted-foreground">
-              Importa las mediciones mensuales de cada indicador y exporta la información actual
-              (un indicador específico o todos) con el formato exacto de la plantilla.
-            </p>
-          </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-primary" /> Indicadores y mediciones
+          </DialogTitle>
+          <DialogDescription>
+            Importa las mediciones mensuales de cada indicador y exporta la información actual
+            (un indicador específico o todos) con el formato exacto de la plantilla.
+          </DialogDescription>
+        </DialogHeader>
 
-          <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Exportar</Label>
-              <select
-                className={selectCls}
-                value={expSel}
-                onChange={(e) => setExpSel(e.target.value)}
+        {!isAdmin ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            La carga y exportación de indicadores está reservada a coordinación (ADMIN).
+          </p>
+        ) : (
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Exportar</Label>
+                <select
+                  className={selectCls}
+                  value={expSel}
+                  onChange={(e) => setExpSel(e.target.value)}
+                >
+                  <option value="ALL">Todos los indicadores</option>
+                  {inds.map((i) => (
+                    <option key={i.id} value={i.id}>
+                      {i.codigo} · {i.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <Button
+                variant="outline"
+                className="rounded-full"
+                onClick={exportar}
+                disabled={exportando}
               >
-                <option value="ALL">Todos los indicadores</option>
-                {inds.map((i) => (
-                  <option key={i.id} value={i.id}>
-                    {i.codigo} · {i.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <Button
-              variant="outline"
-              className="rounded-full"
-              onClick={exportar}
-              disabled={exportando}
-            >
-              {exportando ? (
-                <>
-                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Exportando…
-                </>
-              ) : (
-                <>
-                  <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Exportar (Excel)
-                </>
-              )}
-            </Button>
-          </div>
-
-          {canEdit && (
-            <div className="flex justify-start">
-              <Button size="sm" className="rounded-full" onClick={() => setImportOpen(true)}>
-                <Upload className="mr-1.5 h-4 w-4" /> Importar mediciones
+                {exportando ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Exportando…
+                  </>
+                ) : (
+                  <>
+                    <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Exportar (Excel)
+                  </>
+                )}
               </Button>
             </div>
-          )}
-        </div>
-      )}
 
-      <ImportarMedicionesDialog open={importOpen} onOpenChange={setImportOpen} indicadores={inds} />
-    </Panel>
+            {canEdit && (
+              <div className="flex justify-start">
+                <Button size="sm" className="rounded-full" onClick={() => setImportOpen(true)}>
+                  <Upload className="mr-1.5 h-4 w-4" /> Importar mediciones
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
+        <ImportarMedicionesDialog open={importOpen} onOpenChange={setImportOpen} indicadores={inds} />
+      </DialogContent>
+    </Dialog>
   );
 }
 

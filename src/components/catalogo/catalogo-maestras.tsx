@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Search, Pencil, X, SearchCheck } from "lucide-react";
+import { Plus, Search, Pencil, X, SearchCheck, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 type CatRow = {
@@ -142,6 +142,19 @@ export function CatalogoMaestras() {
   const [editing, setEditing] = useState<CatRow | null>(null);
   const [borrar, setBorrar] = useState<CatRow | null>(null);
   const [simOpen, setSimOpen] = useState(false);
+  // Sedes/detalles dinámicos (solo IPS): se almacenan juntos en extra1 separados por " ; ".
+  const [sedes, setSedes] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (editing && editing.tipo === "IPS") {
+      const parts = [editing.extra1, editing.extra2]
+        .filter(Boolean)
+        .flatMap((s) => String(s).split(/\s*;\s*/))
+        .map((s) => s.trim())
+        .filter(Boolean);
+      setSedes(parts.length ? parts : [""]);
+    }
+  }, [editing]);
 
   const { data: items, isLoading } = useQuery({
     queryKey: ["catalogo-todos"],
@@ -212,12 +225,17 @@ export function CatalogoMaestras() {
     e.preventDefault();
     if (!editing) return;
     const f = new FormData(e.currentTarget);
+    const isIPS = editing.tipo === "IPS";
+    const extra1 = isIPS
+      ? sedes.map((s) => s.trim()).filter(Boolean).join(" ; ") || null
+      : ((String(f.get("extra1")).trim() || null) as string | null);
+    const extra2 = isIPS ? null : ((String(f.get("extra2")).trim() || null) as string | null);
     const { error } = await supabase
       .from("catalogos")
       .update({
         valor: String(f.get("valor")).trim(),
-        extra1: (String(f.get("extra1")).trim() || null) as string | null,
-        extra2: (String(f.get("extra2")).trim() || null) as string | null,
+        extra1,
+        extra2,
       })
       .eq("id", editing.id);
     if (error) return toast.error(error.message);
@@ -421,14 +439,69 @@ export function CatalogoMaestras() {
                 <Label htmlFor="valor">Nombre / valor</Label>
                 <Input id="valor" name="valor" defaultValue={editing.valor} required />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="extra1">{metaOf(editing.tipo).extra1Label ?? "Detalle (opcional)"}</Label>
-                <Input id="extra1" name="extra1" defaultValue={editing.extra1 ?? ""} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="extra2">{metaOf(editing.tipo).extra2Label ?? "Detalle 2 (opcional)"}</Label>
-                <Input id="extra2" name="extra2" defaultValue={editing.extra2 ?? ""} />
-              </div>
+
+              {editing.tipo === "IPS" ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Sedes / detalles</Label>
+                    <span className="text-[11px] text-muted-foreground">
+                      {sedes.filter((s) => s.trim()).length} agregada(s)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Agrega una casilla por cada sede (ciudad – departamento). Usa el botón para
+                    añadir las que necesites.
+                  </p>
+                  <div className="space-y-2">
+                    {sedes.map((s, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <Input
+                          value={s}
+                          placeholder={`Sede / detalle ${idx + 1}`}
+                          onChange={(e) =>
+                            setSedes((prev) => prev.map((v, i) => (i === idx ? e.target.value : v)))
+                          }
+                        />
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-9 w-9 shrink-0 text-destructive hover:text-destructive"
+                          disabled={sedes.length <= 1}
+                          onClick={() => setSedes((prev) => prev.filter((_, i) => i !== idx))}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => setSedes((prev) => [...prev, ""])}
+                  >
+                    <Plus className="h-4 w-4" /> Agregar sede / detalle
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="extra1">
+                      {metaOf(editing.tipo).extra1Label ?? "Detalle (opcional)"}
+                    </Label>
+                    <Input id="extra1" name="extra1" defaultValue={editing.extra1 ?? ""} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="extra2">
+                      {metaOf(editing.tipo).extra2Label ?? "Detalle 2 (opcional)"}
+                    </Label>
+                    <Input id="extra2" name="extra2" defaultValue={editing.extra2 ?? ""} />
+                  </div>
+                </>
+              )}
+
               <DialogFooter>
                 <Button type="button" variant="ghost" onClick={() => setEditing(null)}>
                   Cancelar
