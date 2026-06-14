@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Search, Pencil, X, SearchCheck } from "lucide-react";
+import { Plus, Search, Pencil, X, SearchCheck, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 type CatRow = {
@@ -142,6 +142,19 @@ export function CatalogoMaestras() {
   const [editing, setEditing] = useState<CatRow | null>(null);
   const [borrar, setBorrar] = useState<CatRow | null>(null);
   const [simOpen, setSimOpen] = useState(false);
+  // Sedes/detalles dinámicos (solo IPS): se almacenan juntos en extra1 separados por " ; ".
+  const [sedes, setSedes] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (editing && editing.tipo === "IPS") {
+      const parts = [editing.extra1, editing.extra2]
+        .filter(Boolean)
+        .flatMap((s) => String(s).split(/\s*;\s*/))
+        .map((s) => s.trim())
+        .filter(Boolean);
+      setSedes(parts.length ? parts : [""]);
+    }
+  }, [editing]);
 
   const { data: items, isLoading } = useQuery({
     queryKey: ["catalogo-todos"],
