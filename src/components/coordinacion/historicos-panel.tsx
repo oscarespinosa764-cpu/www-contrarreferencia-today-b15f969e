@@ -2,9 +2,10 @@ import { useState } from "react";
 import { Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
-import { toast } from "sonner";
+import { BarChart3 } from "lucide-react";
 import { ImportarDialog } from "./importar-dialog";
-import { IndicadoresDatos } from "./indicadores-datos";
+import { IndicadoresDatosDialog } from "./indicadores-datos";
+import { BorradoSeguroDialog } from "./borrado-seguro-dialog";
 import type { DestinoKey } from "@/lib/importar.functions";
 
 type ImportItem = { emoji: string; label: string; destino: DestinoKey };
@@ -55,6 +56,8 @@ function AdminBadge({ tone = "amber" }: { tone?: "amber" | "red" }) {
 export function HistoricosPanel() {
   const { isAdmin } = useAuth();
   const [activo, setActivo] = useState<ImportItem | null>(null);
+  const [indOpen, setIndOpen] = useState(false);
+  const [borradoOpen, setBorradoOpen] = useState(false);
 
   if (!isAdmin) {
     return (
@@ -90,16 +93,29 @@ export function HistoricosPanel() {
               </div>
             </div>
           ))}
+
+          {/* Indicadores: misma lógica de importar/exportar, dentro del mismo panel */}
+          <div>
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Indicadores y mediciones
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <Button
+                variant="outline"
+                className="h-auto justify-start gap-2 whitespace-normal rounded-xl py-3 text-left text-sm font-semibold"
+                onClick={() => setIndOpen(true)}
+              >
+                <BarChart3 className="h-4 w-4 text-primary" />
+                <span>Importar / exportar mediciones de indicadores</span>
+              </Button>
+            </div>
+          </div>
         </div>
         <p className="mt-4 text-center text-[12px] italic text-muted-foreground">
           ⚠️ Descarga la plantilla de cada sección para conocer los encabezados. Formatos
           aceptados: .xlsx / .xlsm / .csv. Acción reservada a coordinación.
         </p>
       </Panel>
-
-      <IndicadoresDatos />
-
-
 
       <Panel
         title={<span className="text-status-red">⚠️ Zona de borrado — dejar en ceros</span>}
@@ -114,7 +130,7 @@ export function HistoricosPanel() {
           <Button
             variant="outline"
             className="rounded-xl border-status-red/40 text-status-red hover:bg-status-red/10"
-            onClick={() => toast.warning("Panel de borrado seguro en preparación.")}
+            onClick={() => setBorradoOpen(true)}
           >
             🗑️ Abrir panel de borrado seguro
           </Button>
@@ -129,6 +145,9 @@ export function HistoricosPanel() {
           titulo={activo.label}
         />
       )}
+
+      <IndicadoresDatosDialog open={indOpen} onOpenChange={setIndOpen} />
+      <BorradoSeguroDialog open={borradoOpen} onOpenChange={setBorradoOpen} />
     </div>
   );
 }
