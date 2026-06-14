@@ -439,14 +439,69 @@ export function CatalogoMaestras() {
                 <Label htmlFor="valor">Nombre / valor</Label>
                 <Input id="valor" name="valor" defaultValue={editing.valor} required />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="extra1">{metaOf(editing.tipo).extra1Label ?? "Detalle (opcional)"}</Label>
-                <Input id="extra1" name="extra1" defaultValue={editing.extra1 ?? ""} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="extra2">{metaOf(editing.tipo).extra2Label ?? "Detalle 2 (opcional)"}</Label>
-                <Input id="extra2" name="extra2" defaultValue={editing.extra2 ?? ""} />
-              </div>
+
+              {editing.tipo === "IPS" ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Sedes / detalles</Label>
+                    <span className="text-[11px] text-muted-foreground">
+                      {sedes.filter((s) => s.trim()).length} agregada(s)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Agrega una casilla por cada sede (ciudad – departamento). Usa el botón para
+                    añadir las que necesites.
+                  </p>
+                  <div className="space-y-2">
+                    {sedes.map((s, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <Input
+                          value={s}
+                          placeholder={`Sede / detalle ${idx + 1}`}
+                          onChange={(e) =>
+                            setSedes((prev) => prev.map((v, i) => (i === idx ? e.target.value : v)))
+                          }
+                        />
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-9 w-9 shrink-0 text-destructive hover:text-destructive"
+                          disabled={sedes.length <= 1}
+                          onClick={() => setSedes((prev) => prev.filter((_, i) => i !== idx))}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => setSedes((prev) => [...prev, ""])}
+                  >
+                    <Plus className="h-4 w-4" /> Agregar sede / detalle
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="extra1">
+                      {metaOf(editing.tipo).extra1Label ?? "Detalle (opcional)"}
+                    </Label>
+                    <Input id="extra1" name="extra1" defaultValue={editing.extra1 ?? ""} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="extra2">
+                      {metaOf(editing.tipo).extra2Label ?? "Detalle 2 (opcional)"}
+                    </Label>
+                    <Input id="extra2" name="extra2" defaultValue={editing.extra2 ?? ""} />
+                  </div>
+                </>
+              )}
+
               <DialogFooter>
                 <Button type="button" variant="ghost" onClick={() => setEditing(null)}>
                   Cancelar
