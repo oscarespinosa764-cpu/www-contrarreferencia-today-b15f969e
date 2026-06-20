@@ -15,8 +15,8 @@ import {
   Globe,
   Mail,
   Lock,
-  User,
   ArrowRight,
+  ShieldCheck,
 } from "lucide-react";
 
 export const Route = createFileRoute("/login")({
@@ -24,18 +24,12 @@ export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
       { title: "Ingresar — CEDIM IPS Referencia y Contrarreferencia" },
+      { name: "robots", content: "noindex, nofollow" },
       {
         name: "description",
         content:
-          "Acceso al sistema de coordinación de referencia y contrarreferencia de CEDIM IPS para el equipo autorizado.",
+          "Acceso restringido al sistema interno de coordinación de referencia y contrarreferencia de CEDIM IPS.",
       },
-      { property: "og:title", content: "Ingresar — CEDIM IPS Referencia" },
-      {
-        property: "og:description",
-        content:
-          "Acceso al sistema de coordinación de referencia y contrarreferencia de CEDIM IPS.",
-      },
-      { property: "og:type", content: "website" },
     ],
   }),
 });
@@ -53,7 +47,6 @@ function LoginPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
-  const [mode, setMode] = useState<"login" | "register">("login");
 
   const turnoLabel = useMemo(() => {
     const t = getTurno();
@@ -74,44 +67,10 @@ function LoginPage() {
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
+    // Mensaje genérico: no revela si el correo existe o no.
     if (error) toast.error("Credenciales incorrectas. Verifica tus datos.");
     else navigate({ to: "/dashboard", replace: true });
   };
-
-  const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    const nombre = String(form.get("nombre")).trim();
-    const email = String(form.get("email")).trim();
-    const password = String(form.get("password"));
-    const confirm = String(form.get("confirm"));
-    if (!nombre) return toast.error("Ingresa tu nombre completo");
-    if (!email) return toast.error("Ingresa tu correo institucional");
-    if (password.length < 6) return toast.error("La contraseña debe tener al menos 6 caracteres");
-    if (password !== confirm) return toast.error("Las contraseñas no coinciden");
-    setBusy(true);
-
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/login`,
-        data: { nombre },
-      },
-    });
-    setBusy(false);
-    if (error) {
-      toast.error(
-        error.message.includes("already")
-          ? "Ya existe una cuenta con ese correo."
-          : "No se pudo crear la cuenta. Intenta de nuevo.",
-      );
-      return;
-    }
-    toast.success("Cuenta creada. Un administrador debe activar tu acceso antes de ingresar.");
-    setMode("login");
-  };
-
 
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden bg-background lg:flex-row">
@@ -169,159 +128,71 @@ function LoginPage() {
 
           <div className="mb-8">
             <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
-              {mode === "login" ? "Bienvenido" : "Crear cuenta"}
+              Bienvenido
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              {mode === "login"
-                ? "Ingresa tus credenciales institucionales para iniciar el turno."
-                : "Regístrate con tu correo institucional. Un administrador activará tu acceso."}
+              Ingresa con las credenciales institucionales asignadas por el administrador.
             </p>
           </div>
 
-          {mode === "login" ? (
-            <form onSubmit={handleLogin} className="space-y-5">
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="l-email"
-                  className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
-                >
-                  Correo institucional
-                </Label>
-                <div className="relative">
-                  <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="l-email"
-                    name="email"
-                    type="email"
-                    required
-                    autoComplete="username"
-                    placeholder="nombre@cedimips.com"
-                    className="h-12 pl-11"
-                  />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="l-pass"
-                  className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
-                >
-                  Contraseña
-                </Label>
-                <div className="relative">
-                  <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="l-pass"
-                    name="password"
-                    type="password"
-                    required
-                    autoComplete="current-password"
-                    placeholder="••••••••"
-                    className="h-12 pl-11"
-                  />
-                </div>
-              </div>
-              <Button
-                type="submit"
-                className="h-12 w-full text-sm font-bold uppercase tracking-wide shadow-elegant"
-                disabled={busy}
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="l-email"
+                className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
               >
-                {busy ? "Ingresando…" : "Iniciar sesión"}
-                {!busy && <ArrowRight className="ml-1 h-4 w-4" />}
-              </Button>
-            </form>
-          ) : (
-            <form onSubmit={handleRegister} className="space-y-5">
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="r-nombre"
-                  className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
-                >
-                  Nombre completo
-                </Label>
-                <div className="relative">
-                  <User className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input id="r-nombre" name="nombre" type="text" required placeholder="Tu nombre" className="h-12 pl-11" />
-                </div>
+                Correo institucional
+              </Label>
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="l-email"
+                  name="email"
+                  type="email"
+                  required
+                  autoComplete="username"
+                  placeholder="nombre@cedimips.com"
+                  className="h-12 pl-11"
+                />
               </div>
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="r-email"
-                  className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
-                >
-                  Correo institucional
-                </Label>
-                <div className="relative">
-                  <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="r-email"
-                    name="email"
-                    type="email"
-                    required
-                    autoComplete="email"
-                    placeholder="nombre@cedimips.com"
-                    className="h-12 pl-11"
-                  />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="r-pass"
-                  className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
-                >
-                  Contraseña
-                </Label>
-                <div className="relative">
-                  <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="r-pass"
-                    name="password"
-                    type="password"
-                    required
-                    autoComplete="new-password"
-                    placeholder="Mínimo 6 caracteres"
-                    className="h-12 pl-11"
-                  />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="r-confirm"
-                  className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
-                >
-                  Confirmar contraseña
-                </Label>
-                <div className="relative">
-                  <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="r-confirm"
-                    name="confirm"
-                    type="password"
-                    required
-                    autoComplete="new-password"
-                    placeholder="••••••••"
-                    className="h-12 pl-11"
-                  />
-                </div>
-              </div>
-              <Button
-                type="submit"
-                className="h-12 w-full text-sm font-bold uppercase tracking-wide shadow-elegant"
-                disabled={busy}
+            </div>
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="l-pass"
+                className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
               >
-                {busy ? "Creando cuenta…" : "Crear cuenta"}
-                {!busy && <ArrowRight className="ml-1 h-4 w-4" />}
-              </Button>
-            </form>
-          )}
-
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => setMode(mode === "login" ? "register" : "login")}
-              className="text-sm font-semibold text-primary transition-colors hover:underline"
+                Contraseña
+              </Label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="l-pass"
+                  name="password"
+                  type="password"
+                  required
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  className="h-12 pl-11"
+                />
+              </div>
+            </div>
+            <Button
+              type="submit"
+              className="h-12 w-full text-sm font-bold uppercase tracking-wide shadow-elegant"
+              disabled={busy}
             >
-              {mode === "login" ? "¿No tienes cuenta? Regístrate" : "¿Ya tienes cuenta? Inicia sesión"}
-            </button>
+              {busy ? "Ingresando…" : "Iniciar sesión"}
+              {!busy && <ArrowRight className="ml-1 h-4 w-4" />}
+            </Button>
+          </form>
+
+          <div className="mt-6 flex items-start gap-2 rounded-xl border border-border bg-muted/40 p-3">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Acceso exclusivo para personal autorizado. Las cuentas las crea y administra
+              únicamente el administrador. Si necesitas acceso o restablecer tu contraseña,
+              contacta al administrador del sistema.
+            </p>
           </div>
 
           <div className="mt-6 space-y-2 text-center">
