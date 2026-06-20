@@ -1,10 +1,20 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Panel } from "@/components/stat-card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -12,8 +22,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, UserPlus } from "lucide-react";
+import { Search, UserPlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { crearUsuario, cambiarRolUsuario, cambiarEstadoUsuario } from "@/lib/usuarios.functions";
 
 type Rol = "admin" | "operativa" | "temporal";
 
@@ -29,11 +40,27 @@ const rolBadge: Record<Rol, string> = {
   temporal: "bg-status-amber/15 text-status-amber",
 };
 
+const emptyForm = {
+  nombre: "",
+  email: "",
+  cargo: "",
+  password: "",
+  rol: "operativa" as Rol,
+  activo: true,
+};
+
 export function UsuariosPanel() {
   const { isAdmin, user } = useAuth();
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [filtroRol, setFiltroRol] = useState<"todos" | Rol>("todos");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+  const [guardando, setGuardando] = useState(false);
+
+  const crear = useServerFn(crearUsuario);
+  const cambiarRolFn = useServerFn(cambiarRolUsuario);
+  const cambiarEstadoFn = useServerFn(cambiarEstadoUsuario);
 
   const { data: usuarios, isLoading } = useQuery({
     queryKey: ["usuarios"],
@@ -52,18 +79,49 @@ export function UsuariosPanel() {
   });
 
   const cambiarRol = async (userId: string, nuevoRol: Rol) => {
-    const del = await supabase.from("user_roles").delete().eq("user_id", userId);
-    if (del.error) return toast.error(del.error.message);
-    const ins = await supabase.from("user_roles").insert({ user_id: userId, role: nuevoRol });
-    if (ins.error) return toast.error(ins.error.message);
+    const res = await cambiarRolFn({ data: { userId, rol: nuevoRol } });
+    if (!res.ok) return toast.error(res.error ?? "No se pudo actualizar el rol.");
     toast.success("Rol actualizado");
     qc.invalidateQueries({ queryKey: ["usuarios"] });
   };
 
-  const toggleActivo = async (profileId: string, activo: boolean) => {
-    const { error } = await supabase.from("profiles").update({ activo }).eq("id", profileId);
-    if (error) return toast.error(error.message);
+  const toggleActivo = async (userId: string, activo: boolean) => {
+    const res = await cambiarEstadoFn({ data: { userId, activo } });
+    if (!res.ok) return toast.error(res.error ?? "No se pudo actualizar el estado.");
+    toast.success(activo ? "Usuario activado" : "Usuario desactivado");
     qc.invalidateQueries({ queryKey: ["usuarios"] });
+  };
+
+  const guardarNuevo = async () => {
+    if (!form.nombre.trim()) return toast.error("Ingresa el nombre.");
+    if (!form.email.trim()) return toast.error("Ingresa el correo.");
+    if (form.password.length < 12)
+      return toast.error("La contraseña debe tener al menos 12 caracteres.");
+    setGuardando(true);
+    try {
+      const res = await crear({
+        data: {
+          nombre: form.nombre.trim(),
+          email: form.email.trim(),
+          cargo: form.cargo.trim(),
+          password: form.password,
+          rol: form.rol,
+          activo: form.activo,
+        },
+      });
+      if (!res.ok) {
+        toast.error(res.error ?? "No se pudo crear el usuario.");
+        return;
+      }
+      toast.success("Usuario creado correctamente.");
+      setForm(emptyForm);
+      setDialogOpen(false);
+      qc.invalidateQueries({ queryKey: ["usuarios"] });
+    } catch {
+      toast.error("Error al crear el usuario. Intenta de nuevo.");
+    } finally {
+      setGuardando(false);
+    }
   };
 
   const term = q.trim().toLowerCase();
@@ -96,7 +154,7 @@ export function UsuariosPanel() {
     <Panel
       title="Usuarios internos del turno"
       action={
-        <Button size="sm" className="rounded-full" onClick={() => toast.info("Próximamente")}>
+        <Button size="sm" className="rounded-full" onClick={() => setDialogOpen(true)}>
           <UserPlus className="mr-1.5 h-4 w-4" /> Nuevo usuario
         </Button>
       }
@@ -154,6 +212,7 @@ export function UsuariosPanel() {
             ) : (
               filtrados.map((u) => {
                 const rol = (u.roles[0] ?? "operativa") as Rol;
+                const sinRol = u.roles.length === 0;
                 const esYo = u.user_id === user?.id;
                 return (
                   <tr key={u.id} className="border-b border-border/60 last:border-0">
@@ -165,9 +224,11 @@ export function UsuariosPanel() {
                     <td className="px-3 py-3 text-muted-foreground">{u.cargo || "—"}</td>
                     <td className="px-3 py-3">
                       <span
-                        className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase ${rolBadge[rol]}`}
+                        className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase ${
+                          sinRol ? "bg-muted text-muted-foreground" : rolBadge[rol]
+                        }`}
                       >
-                        {rolLabels[rol]}
+                        {sinRol ? "Sin rol" : rolLabels[rol]}
                       </span>
                     </td>
                     <td className="px-3 py-3">
@@ -180,12 +241,12 @@ export function UsuariosPanel() {
                     <td className="px-3 py-3">
                       <div className="flex items-center justify-end gap-2">
                         <Select
-                          value={rol}
+                          value={sinRol ? undefined : rol}
                           onValueChange={(v) => cambiarRol(u.user_id, v as Rol)}
                           disabled={esYo}
                         >
                           <SelectTrigger className="h-8 w-40 rounded-full text-xs">
-                            <SelectValue />
+                            <SelectValue placeholder="Asignar rol" />
                           </SelectTrigger>
                           <SelectContent>
                             {(Object.keys(rolLabels) as Rol[]).map((r) => (
@@ -200,7 +261,7 @@ export function UsuariosPanel() {
                           size="sm"
                           className="h-8 rounded-full"
                           disabled={esYo}
-                          onClick={() => toggleActivo(u.id, !u.activo)}
+                          onClick={() => toggleActivo(u.user_id, !u.activo)}
                         >
                           {u.activo ? "Desactivar" : "Activar"}
                         </Button>
@@ -213,6 +274,112 @@ export function UsuariosPanel() {
           </tbody>
         </table>
       </div>
+
+      <Dialog open={dialogOpen} onOpenChange={(v) => !guardando && setDialogOpen(v)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nuevo usuario</DialogTitle>
+            <DialogDescription>
+              El administrador asigna el correo y la contraseña inicial. El usuario no podrá
+              registrarse ni cambiar su contraseña por su cuenta.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="n-nombre">Nombre completo</Label>
+              <Input
+                id="n-nombre"
+                value={form.nombre}
+                onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))}
+                placeholder="Nombre del usuario"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="n-email">Correo institucional</Label>
+              <Input
+                id="n-email"
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                placeholder="nombre@cedimips.com"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="n-cargo">Cargo (opcional)</Label>
+              <Input
+                id="n-cargo"
+                value={form.cargo}
+                onChange={(e) => setForm((f) => ({ ...f, cargo: e.target.value }))}
+                placeholder="Cargo o área"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="n-pass">Contraseña inicial</Label>
+              <Input
+                id="n-pass"
+                type="text"
+                value={form.password}
+                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                placeholder="Mínimo 12 caracteres, con mayúsculas, minúsculas y números"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Comunícasela al usuario por un canal seguro. Mínimo 12 caracteres.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Rol</Label>
+                <Select
+                  value={form.rol}
+                  onValueChange={(v) => setForm((f) => ({ ...f, rol: v as Rol }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(rolLabels) as Rol[]).map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {rolLabels[r]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Estado</Label>
+                <Select
+                  value={form.activo ? "activo" : "inactivo"}
+                  onValueChange={(v) => setForm((f) => ({ ...f, activo: v === "activo" }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="activo">Activo</SelectItem>
+                    <SelectItem value="inactivo">Inactivo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDialogOpen(false)} disabled={guardando}>
+              Cancelar
+            </Button>
+            <Button onClick={guardarNuevo} disabled={guardando}>
+              {guardando ? (
+                <>
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Creando…
+                </>
+              ) : (
+                "Crear usuario"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Panel>
   );
 }
