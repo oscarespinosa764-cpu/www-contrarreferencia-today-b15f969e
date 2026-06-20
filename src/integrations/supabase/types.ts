@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          accion: string
+          actor_email: string | null
+          created_at: string
+          detalles: Json | null
+          id: string
+          ip: string | null
+          modulo: string | null
+          registro_id: string | null
+          resultado: string
+          tabla: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          accion: string
+          actor_email?: string | null
+          created_at?: string
+          detalles?: Json | null
+          id?: string
+          ip?: string | null
+          modulo?: string | null
+          registro_id?: string | null
+          resultado?: string
+          tabla?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          accion?: string
+          actor_email?: string | null
+          created_at?: string
+          detalles?: Json | null
+          id?: string
+          ip?: string | null
+          modulo?: string | null
+          registro_id?: string | null
+          resultado?: string
+          tabla?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       avisos: {
         Row: {
           archivado: boolean
@@ -167,6 +212,36 @@ export type Database = {
           tipo?: string
           updated_at?: string
           valor?: string
+        }
+        Relationships: []
+      }
+      consentimientos: {
+        Row: {
+          aceptado: boolean
+          created_at: string
+          id: string
+          ip: string | null
+          user_agent: string | null
+          user_id: string
+          version: string
+        }
+        Insert: {
+          aceptado?: boolean
+          created_at?: string
+          id?: string
+          ip?: string | null
+          user_agent?: string | null
+          user_id: string
+          version: string
+        }
+        Update: {
+          aceptado?: boolean
+          created_at?: string
+          id?: string
+          ip?: string | null
+          user_agent?: string | null
+          user_id?: string
+          version?: string
         }
         Relationships: []
       }
@@ -1242,6 +1317,19 @@ export type Database = {
         Returns: boolean
       }
       is_active_member: { Args: { _user_id: string }; Returns: boolean }
+      registrar_auditoria: {
+        Args: {
+          _accion: string
+          _detalles?: Json
+          _ip?: string
+          _modulo?: string
+          _registro_id?: string
+          _resultado?: string
+          _tabla?: string
+          _user_agent?: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "operativa" | "temporal"

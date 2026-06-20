@@ -9,8 +9,11 @@ interface AuthContextValue {
   session: Session | null;
   roles: AppRole[];
   loading: boolean;
+  rolesLoaded: boolean;
   isAdmin: boolean;
   canEdit: boolean;
+  activo: boolean;
+  isActiveMember: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -23,15 +26,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
+  const [activo, setActivo] = useState(false);
+  const [rolesLoaded, setRolesLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadRoles = (uid: string) => {
-      supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", uid)
-        .then(({ data }) => setRoles((data ?? []).map((r) => r.role as AppRole)));
+    const loadRoles = async (uid: string) => {
+      const [{ data: roleRows }, { data: profile }] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", uid),
+        supabase.from("profiles").select("activo").eq("user_id", uid).maybeSingle(),
+      ]);
+      setRoles((roleRows ?? []).map((r) => r.role as AppRole));
+      setActivo(profile?.activo ?? false);
+      setRolesLoaded(true);
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, sess) => {
@@ -45,6 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setTimeout(() => loadRoles(sess.user.id), 0);
       } else {
         setRoles([]);
+        setActivo(false);
+        setRolesLoaded(false);
       }
       setLoading(false);
     });
@@ -57,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(null);
         setUser(null);
         setRoles([]);
+        setActivo(false);
         setLoading(false);
         return;
       }
@@ -72,13 +82,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isAdmin = roles.includes("admin");
   const canEdit = roles.includes("admin") || roles.includes("operativa");
+  const isActiveMember = activo && roles.length > 0;
 
   const signOut = async () => {
     await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, roles, loading, isAdmin, canEdit, signOut }}>
+    <AuthContext.Provider
+      value={{ user, session, roles, loading, rolesLoaded, isAdmin, canEdit, activo, isActiveMember, signOut }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -594,6 +594,12 @@ export function PlantillasBiblioteca() {
               <Label className="flex items-center gap-1.5 text-xs font-semibold">
                 <Sparkles className="h-3.5 w-3.5 text-status-blue" /> Generar texto con asistente
               </Label>
+              <p className="rounded-md bg-status-amber/10 px-2.5 py-1.5 text-[11px] font-medium leading-relaxed text-status-amber">
+                ⚠️ No ingreses datos personales, datos de pacientes ni información clínica
+                identificable (nombres, documentos, teléfonos, correos, direcciones ni
+                diagnósticos). Usa variables como {"{{PACIENTE}}"} o {"{{DOCUMENTO}}"}. La IA es
+                solo para redactar plantillas reutilizables.
+              </p>
               <Textarea
                 rows={2}
                 value={genDesc}

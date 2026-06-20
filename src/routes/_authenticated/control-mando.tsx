@@ -4,12 +4,27 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ControlMandoPanel } from "@/components/coordinacion/control-mando-panel";
 import { HistoricosPanel } from "@/components/coordinacion/historicos-panel";
 import { UsuariosPanel } from "@/components/coordinacion/usuarios-panel";
+import { AuditPanel } from "@/components/coordinacion/audit-panel";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/_authenticated/control-mando")({
   component: ControlMandoPage,
 });
 
 function ControlMandoPage() {
+  const { isAdmin } = useAuth();
+
+  if (!isAdmin) {
+    return (
+      <div>
+        <AppHeader title="Control de Mando" subtitle="Acceso restringido" />
+        <p className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
+          Esta sección es exclusiva del administrador.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div>
       <AppHeader
@@ -18,10 +33,11 @@ function ControlMandoPage() {
       />
 
       <Tabs defaultValue="control" className="w-full">
-        <TabsList className="mb-4 grid h-auto w-full grid-cols-3">
+        <TabsList className="mb-4 grid h-auto w-full grid-cols-4">
           <TabsTrigger className="whitespace-normal" value="control">Control de Mando</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="historicos">Históricos</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="usuarios">Usuarios</TabsTrigger>
+          <TabsTrigger className="whitespace-normal" value="auditoria">Auditoría</TabsTrigger>
         </TabsList>
 
         <TabsContent value="control">
@@ -32,6 +48,9 @@ function ControlMandoPage() {
         </TabsContent>
         <TabsContent value="usuarios">
           <UsuariosPanel />
+        </TabsContent>
+        <TabsContent value="auditoria">
+          <AuditPanel />
         </TabsContent>
       </Tabs>
     </div>

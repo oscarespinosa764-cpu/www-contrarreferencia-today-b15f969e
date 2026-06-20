@@ -30,3 +30,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Secrets / variables de entorno (NUNCA versionar)
+.env
+.env.*
+!.env.example

@@ -165,6 +165,12 @@ export const importarMasivo = createServerFn({ method: "POST" })
     const def = DESTINOS[data.destino] as DestinoDef;
     const { supabase, userId } = context;
 
+    // Solo editores (admin / operativa) activos pueden importar.
+    const { data: puedeEditar } = await (supabase as any).rpc("can_edit", { _user_id: userId });
+    if (!puedeEditar) {
+      return { ok: false, insertadas: 0, omitidas: 0, error: "No tienes autorización para importar." as string | null };
+    }
+
     const permitidas = new Set(def.columnas);
     const fechas = new Set(def.fechas ?? []);
     const booleanos = new Set(def.booleanos ?? []);
@@ -210,9 +216,24 @@ export const importarMasivo = createServerFn({ method: "POST" })
     // El nombre de tabla es dinámico; el cliente tipado no lo infiere.
     const { error } = await (supabase as any).from(def.tabla).insert(registros);
     if (error) {
-      console.error("importarMasivo error:", error);
-      return { ok: false, insertadas: 0, omitidas, error: error.message };
+      console.error("importarMasivo error");
+      await (supabase as any).rpc("registrar_auditoria", {
+        _accion: "importar",
+        _modulo: "importacion",
+        _tabla: def.tabla,
+        _resultado: "fallido",
+        _detalles: { intentadas: registros.length },
+      });
+      return { ok: false, insertadas: 0, omitidas, error: "No se pudo importar. Revisa el formato del archivo." as string | null };
     }
+
+    await (supabase as any).rpc("registrar_auditoria", {
+      _accion: "importar",
+      _modulo: "importacion",
+      _tabla: def.tabla,
+      _resultado: "exito",
+      _detalles: { insertadas: registros.length, omitidas },
+    });
 
     return { ok: true, insertadas: registros.length, omitidas, error: null as string | null };
   });
@@ -250,8 +271,8 @@ export const exportarMasivo = createServerFn({ method: "POST" })
 
     const { data: rows, error } = await query;
     if (error) {
-      console.error("exportarMasivo error:", error);
-      return { ok: false, columnas: def.columnas, filas: [] as Record<string, string>[], error: error.message as string | null };
+      console.error("exportarMasivo error");
+      return { ok: false, columnas: def.columnas, filas: [] as Record<string, string>[], error: "No se pudo exportar." as string | null };
     }
 
     // Normalizamos los valores a strings serializables, respetando el orden de columnas.
@@ -262,6 +283,14 @@ export const exportarMasivo = createServerFn({ method: "POST" })
         out[col] = v == null ? "" : String(v);
       }
       return out;
+    });
+
+    await (supabase as any).rpc("registrar_auditoria", {
+      _accion: "exportar",
+      _modulo: "exportacion",
+      _tabla: def.tabla,
+      _resultado: "exito",
+      _detalles: { filas: filas.length },
     });
 
     return {

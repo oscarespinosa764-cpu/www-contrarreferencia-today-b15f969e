@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { SessionTimeout } from "@/components/session-timeout";
+import { ConsentimientoGate } from "@/components/consentimiento-gate";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import cedimLogo from "@/assets/cedim-logo.png";
 import {
@@ -212,7 +213,7 @@ function SidebarContent({
 }
 
 function AuthenticatedLayout() {
-  const { user, loading, roles, isAdmin } = useAuth();
+  const { user, loading, rolesLoaded, isActiveMember, roles, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [collapsed, setCollapsed] = useState(false);
@@ -238,7 +239,7 @@ function AuthenticatedLayout() {
 
   const { data: pendientes } = useQuery({
     queryKey: ["seguimientos-pendientes"],
-    enabled: !!user,
+    enabled: !!user && isActiveMember,
     queryFn: async () => {
       const { count } = await supabase
         .from("seguimientos")
@@ -248,10 +249,35 @@ function AuthenticatedLayout() {
     },
   });
 
-  if (loading || !user) {
+  if (loading || !user || !rolesLoaded) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <p className="text-muted-foreground">Cargando…</p>
+      </div>
+    );
+  }
+
+  // Usuario autenticado pero sin rol activo: acceso bloqueado.
+  // (La base de datos también lo bloquea vía RLS; esto es la barrera visible.)
+  if (!isActiveMember) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="max-w-md rounded-2xl border border-border bg-card p-8 text-center shadow-modern">
+          <h1 className="text-xl font-bold text-foreground">Acceso no autorizado</h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Tu cuenta no tiene un rol activo asignado o está inactiva. Contacta al administrador
+            del sistema para habilitar tu acceso.
+          </p>
+          <button
+            onClick={() => {
+              signOut();
+              navigate({ to: "/login", replace: true });
+            }}
+            className="mt-6 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            Cerrar sesión
+          </button>
+        </div>
       </div>
     );
   }
@@ -325,6 +351,7 @@ function AuthenticatedLayout() {
         </main>
       </div>
       <SessionTimeout />
+      <ConsentimientoGate />
     </div>
   );
 }
