@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Panel } from "@/components/stat-card";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Search, Download } from "lucide-react";
 
 type AuditRow = {
   id: string;
@@ -61,16 +62,57 @@ export function AuditPanel() {
           .includes(term),
   );
 
+  const exportarCsv = () => {
+    const headers = ["Fecha", "Usuario", "Accion", "Modulo", "Tabla", "Resultado", "Detalles"];
+    const escape = (v: unknown) => {
+      const s = v == null ? "" : String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const rows = filtrados.map((l) =>
+      [
+        new Date(l.created_at).toLocaleString("es-CO"),
+        l.actor_email || "",
+        l.accion,
+        l.modulo || "",
+        l.tabla || "",
+        l.resultado,
+        l.detalles ? JSON.stringify(l.detalles) : "",
+      ]
+        .map(escape)
+        .join(","),
+    );
+    const csv = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `auditoria_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <Panel title="Registro de auditoría (últimos 500 eventos)">
-      <div className="relative mb-4 max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          className="rounded-full pl-9"
-          placeholder="Buscar acción, usuario, módulo…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="rounded-full pl-9"
+            placeholder="Buscar acción, usuario, módulo…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-full"
+          onClick={exportarCsv}
+          disabled={filtrados.length === 0}
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Descargar CSV
+        </Button>
       </div>
 
       <div className="overflow-x-auto">
