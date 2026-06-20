@@ -351,6 +351,7 @@ function AuthenticatedLayout() {
         </main>
       </div>
       <SessionTimeout />
+      <ConsentimientoGate />
     </div>
   );
 }
