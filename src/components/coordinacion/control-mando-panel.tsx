@@ -1,4 +1,6 @@
 import { useState } from "react";
+import * as XLSX from "xlsx";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Panel } from "@/components/stat-card";
 import { Input } from "@/components/ui/input";
@@ -10,8 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, RefreshCw, Loader2 } from "lucide-react";
+import { Search, RefreshCw, Loader2, DatabaseBackup } from "lucide-react";
 import { toast } from "sonner";
+import { respaldoTotal } from "@/lib/backup.functions";
 
 type EstadoTec = "ok" | "revisar" | "falla";
 
@@ -48,6 +51,44 @@ export function ControlMandoPanel() {
 
   // Auditoría de actividad
   const [actualizando, setActualizando] = useState(false);
+
+  // Respaldo total
+  const [respaldando, setRespaldando] = useState(false);
+  const generarRespaldo = useServerFn(respaldoTotal);
+
+  const descargarRespaldo = async () => {
+    setRespaldando(true);
+    try {
+      const res = await generarRespaldo();
+      if (!res.ok) {
+        toast.error(res.error ?? "No se pudo generar el respaldo.");
+        return;
+      }
+      const wb = XLSX.utils.book_new();
+      let totalFilas = 0;
+      for (const t of res.tablas) {
+        const cols = t.columnas;
+        const matriz =
+          cols.length > 0
+            ? [cols, ...t.filas.map((f) => cols.map((c) => f[c] ?? ""))]
+            : [["(sin registros)"]];
+        const ws = XLSX.utils.aoa_to_sheet(matriz);
+        // Excel limita el nombre de hoja a 31 caracteres.
+        XLSX.utils.book_append_sheet(wb, ws, t.nombre.slice(0, 31));
+        totalFilas += t.filas.length;
+      }
+      const fecha = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `respaldo_cedim_${fecha}.xlsx`);
+      toast.success(
+        `Respaldo generado: ${res.tablas.length} tabla(s), ${totalFilas} registro(s).`,
+      );
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al generar el respaldo. Intenta de nuevo.");
+    } finally {
+      setRespaldando(false);
+    }
+  };
 
   const okCount = servicios.filter((s) => s.estado === "ok").length;
   const revisarCount = servicios.filter((s) => s.estado === "revisar").length;
@@ -160,6 +201,38 @@ export function ControlMandoPanel() {
 
         <p className="mt-4 text-center text-[11px] italic text-muted-foreground">
           Los estados en revisión no bloquean el sistema, pero indican configuración incompleta o uso de respaldo.
+        </p>
+      </Panel>
+
+      <Panel
+        title="Copia de seguridad"
+        action={
+          <Button
+            size="sm"
+            className="rounded-full"
+            onClick={descargarRespaldo}
+            disabled={respaldando}
+          >
+            {respaldando ? (
+              <>
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Generando…
+              </>
+            ) : (
+              <>
+                <DatabaseBackup className="mr-1.5 h-4 w-4" /> Descargar respaldo total
+              </>
+            )}
+          </Button>
+        }
+      >
+        <p className="text-sm text-muted-foreground">
+          Genera y descarga un archivo Excel con <strong>todas las tablas</strong> del sistema
+          (remisiones, casos, seguimientos, red operativa, catálogos, indicadores, usuarios y
+          más), una hoja por tabla. Úsalo como copia de seguridad periódica fuera de línea.
+        </p>
+        <p className="mt-3 rounded-lg border border-status-amber/30 bg-status-amber/10 px-3 py-2 text-xs text-status-amber">
+          Contiene datos sensibles de pacientes. Guárdalo en un lugar seguro y bórralo cuando ya
+          no se necesite. La acción queda registrada en auditoría.
         </p>
       </Panel>
 
