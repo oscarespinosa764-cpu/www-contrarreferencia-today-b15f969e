@@ -197,7 +197,7 @@ function LoginPage() {
 
           <div className="mt-6 space-y-2 text-center">
             <p className="text-xs font-medium text-muted-foreground">
-              Horario de turno: {turnoLabel}
+              Horario de turno: {turnoLabel ?? "—"}
             </p>
             <p className="text-xs font-medium text-muted-foreground">© 2026 CEDIM IPS</p>
           </div>
