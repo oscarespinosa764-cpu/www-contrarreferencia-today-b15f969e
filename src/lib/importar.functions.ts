@@ -216,9 +216,24 @@ export const importarMasivo = createServerFn({ method: "POST" })
     // El nombre de tabla es dinámico; el cliente tipado no lo infiere.
     const { error } = await (supabase as any).from(def.tabla).insert(registros);
     if (error) {
-      console.error("importarMasivo error:", error);
-      return { ok: false, insertadas: 0, omitidas, error: error.message };
+      console.error("importarMasivo error");
+      await (supabase as any).rpc("registrar_auditoria", {
+        _accion: "importar",
+        _modulo: "importacion",
+        _tabla: def.tabla,
+        _resultado: "fallido",
+        _detalles: { intentadas: registros.length },
+      });
+      return { ok: false, insertadas: 0, omitidas, error: "No se pudo importar. Revisa el formato del archivo." as string | null };
     }
+
+    await (supabase as any).rpc("registrar_auditoria", {
+      _accion: "importar",
+      _modulo: "importacion",
+      _tabla: def.tabla,
+      _resultado: "exito",
+      _detalles: { insertadas: registros.length, omitidas },
+    });
 
     return { ok: true, insertadas: registros.length, omitidas, error: null as string | null };
   });
