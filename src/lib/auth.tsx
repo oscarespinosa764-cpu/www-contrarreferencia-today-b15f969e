@@ -11,6 +11,8 @@ interface AuthContextValue {
   loading: boolean;
   isAdmin: boolean;
   canEdit: boolean;
+  activo: boolean;
+  isActiveMember: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -23,6 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
+  const [activo, setActivo] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
