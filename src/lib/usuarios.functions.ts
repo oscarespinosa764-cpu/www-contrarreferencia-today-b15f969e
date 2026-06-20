@@ -149,6 +149,13 @@ export const cambiarEstadoUsuario = createServerFn({ method: "POST" })
       .eq("user_id", data.userId);
     if (error) return { ok: false, error: "No se pudo actualizar el estado." as string | null };
 
+    // Defensa en profundidad: al desactivar, se banea la cuenta en Auth para
+    // que su JWT deje de aceptarse de inmediato (no espera a que expire el token).
+    // Al reactivar, se levanta el baneo.
+    await (supabaseAdmin as any).auth.admin.updateUser(data.userId, {
+      ban_duration: data.activo ? "none" : "876000h",
+    });
+
     await (supabaseAdmin as any).from("audit_logs").insert({
       user_id: userId,
       accion: data.activo ? "activar_usuario" : "desactivar_usuario",
