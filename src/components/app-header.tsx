@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Moon, Sun, X } from "lucide-react";
-import { getSaludo, getSaludoEmoji, getTurnoLabel, getPrimerNombre } from "@/lib/turno";
+import { getSaludo, getSaludoEmoji, getTurnoLabel, getPrimerNombre, useClientTime } from "@/lib/turno";
 
 function useThemeToggle() {
   const [dark, setDark] = useState(false);
