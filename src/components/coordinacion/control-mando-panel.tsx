@@ -52,6 +52,44 @@ export function ControlMandoPanel() {
   // Auditoría de actividad
   const [actualizando, setActualizando] = useState(false);
 
+  // Respaldo total
+  const [respaldando, setRespaldando] = useState(false);
+  const generarRespaldo = useServerFn(respaldoTotal);
+
+  const descargarRespaldo = async () => {
+    setRespaldando(true);
+    try {
+      const res = await generarRespaldo();
+      if (!res.ok) {
+        toast.error(res.error ?? "No se pudo generar el respaldo.");
+        return;
+      }
+      const wb = XLSX.utils.book_new();
+      let totalFilas = 0;
+      for (const t of res.tablas) {
+        const cols = t.columnas;
+        const matriz =
+          cols.length > 0
+            ? [cols, ...t.filas.map((f) => cols.map((c) => f[c] ?? ""))]
+            : [["(sin registros)"]];
+        const ws = XLSX.utils.aoa_to_sheet(matriz);
+        // Excel limita el nombre de hoja a 31 caracteres.
+        XLSX.utils.book_append_sheet(wb, ws, t.nombre.slice(0, 31));
+        totalFilas += t.filas.length;
+      }
+      const fecha = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `respaldo_cedim_${fecha}.xlsx`);
+      toast.success(
+        `Respaldo generado: ${res.tablas.length} tabla(s), ${totalFilas} registro(s).`,
+      );
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al generar el respaldo. Intenta de nuevo.");
+    } finally {
+      setRespaldando(false);
+    }
+  };
+
   const okCount = servicios.filter((s) => s.estado === "ok").length;
   const revisarCount = servicios.filter((s) => s.estado === "revisar").length;
   const fallaCount = servicios.filter((s) => s.estado === "falla").length;
