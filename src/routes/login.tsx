@@ -48,10 +48,10 @@ function LoginPage() {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
 
-  const turnoLabel = useMemo(() => {
-    const t = getTurno();
+  const turnoLabel = useClientTime((d) => {
+    const t = getTurno(d);
     return `${t.nombre} · ${pad(t.inicio)}:00 – ${pad(t.fin)}:00`;
-  }, []);
+  });
 
   useEffect(() => {
     if (!loading && user) navigate({ to: "/dashboard", replace: true });
