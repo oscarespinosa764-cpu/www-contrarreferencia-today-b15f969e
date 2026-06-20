@@ -42,3 +42,18 @@ export function getTurnoLabel(d: Date = new Date()): string {
 export function getPrimerNombre(nombre: string): string {
   return (nombre || "").trim().split(/\s+/)[0]?.toUpperCase() || "";
 }
+
+// Hook que devuelve un valor dependiente de la hora SOLO en el cliente.
+// Evita errores de hidratación: el servidor (UTC) y el cliente (zona local)
+// calculan turnos distintos. Renderizamos vacío hasta montar en el navegador.
+import { useEffect, useState } from "react";
+
+export function useClientTime<T>(compute: (d: Date) => T): T | null {
+  const [value, setValue] = useState<T | null>(null);
+  useEffect(() => {
+    setValue(compute(new Date()));
+    // compute es estable en los usos actuales; no se incluye en deps a propósito.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return value;
+}
