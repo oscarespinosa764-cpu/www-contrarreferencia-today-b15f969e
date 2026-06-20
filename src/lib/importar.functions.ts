@@ -271,8 +271,8 @@ export const exportarMasivo = createServerFn({ method: "POST" })
 
     const { data: rows, error } = await query;
     if (error) {
-      console.error("exportarMasivo error:", error);
-      return { ok: false, columnas: def.columnas, filas: [] as Record<string, string>[], error: error.message as string | null };
+      console.error("exportarMasivo error");
+      return { ok: false, columnas: def.columnas, filas: [] as Record<string, string>[], error: "No se pudo exportar." as string | null };
     }
 
     // Normalizamos los valores a strings serializables, respetando el orden de columnas.
@@ -283,6 +283,14 @@ export const exportarMasivo = createServerFn({ method: "POST" })
         out[col] = v == null ? "" : String(v);
       }
       return out;
+    });
+
+    await (supabase as any).rpc("registrar_auditoria", {
+      _accion: "exportar",
+      _modulo: "exportacion",
+      _tabla: def.tabla,
+      _resultado: "exito",
+      _detalles: { filas: filas.length },
     });
 
     return {
