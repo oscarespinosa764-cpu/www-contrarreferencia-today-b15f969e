@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Moon, Sun, X } from "lucide-react";
-import { getSaludo, getSaludoEmoji, getTurnoLabel, getPrimerNombre } from "@/lib/turno";
+import { getSaludo, getSaludoEmoji, getTurnoLabel, getPrimerNombre, useClientTime } from "@/lib/turno";
 
 function useThemeToggle() {
   const [dark, setDark] = useState(false);
@@ -36,11 +36,14 @@ export function AppHeader({ title, subtitle }: { title: string; subtitle?: strin
   });
 
   const nombre = getPrimerNombre(profile?.nombre || user?.email || "");
+  const saludo = useClientTime((d) => `${getSaludo(d)}, `);
+  const saludoEmoji = useClientTime((d) => getSaludoEmoji(d));
+  const turnoLabel = useClientTime((d) => getTurnoLabel(d));
 
   return (
     <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
       <p className="text-lg font-bold text-foreground">
-        {getSaludo()}, {nombre} {getSaludoEmoji()}
+        {saludo ?? ""}{nombre} {saludoEmoji ?? ""}
       </p>
 
       <div className="order-last w-full text-center sm:order-none sm:w-auto sm:flex-1">
@@ -52,7 +55,7 @@ export function AppHeader({ title, subtitle }: { title: string; subtitle?: strin
 
       <div className="flex items-center gap-2">
         <span className="rounded-full border border-vitalis-blue/30 bg-vitalis-blue/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-vitalis-blue">
-          {getTurnoLabel()}
+          {turnoLabel ?? "—"}
         </span>
         <Button
           variant="outline"

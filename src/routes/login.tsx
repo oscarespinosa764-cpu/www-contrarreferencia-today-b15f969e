@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { getTurno } from "@/lib/turno";
+import { getTurno, useClientTime } from "@/lib/turno";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,10 +48,10 @@ function LoginPage() {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
 
-  const turnoLabel = useMemo(() => {
-    const t = getTurno();
+  const turnoLabel = useClientTime((d) => {
+    const t = getTurno(d);
     return `${t.nombre} · ${pad(t.inicio)}:00 – ${pad(t.fin)}:00`;
-  }, []);
+  });
 
   useEffect(() => {
     if (!loading && user) navigate({ to: "/dashboard", replace: true });
@@ -197,7 +197,7 @@ function LoginPage() {
 
           <div className="mt-6 space-y-2 text-center">
             <p className="text-xs font-medium text-muted-foreground">
-              Horario de turno: {turnoLabel}
+              Horario de turno: {turnoLabel ?? "—"}
             </p>
             <p className="text-xs font-medium text-muted-foreground">© 2026 CEDIM IPS</p>
           </div>
