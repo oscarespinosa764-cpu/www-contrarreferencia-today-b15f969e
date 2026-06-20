@@ -165,6 +165,12 @@ export const importarMasivo = createServerFn({ method: "POST" })
     const def = DESTINOS[data.destino] as DestinoDef;
     const { supabase, userId } = context;
 
+    // Solo editores (admin / operativa) activos pueden importar.
+    const { data: puedeEditar } = await (supabase as any).rpc("can_edit", { _user_id: userId });
+    if (!puedeEditar) {
+      return { ok: false, insertadas: 0, omitidas: 0, error: "No tienes autorización para importar." as string | null };
+    }
+
     const permitidas = new Set(def.columnas);
     const fechas = new Set(def.fechas ?? []);
     const booleanos = new Set(def.booleanos ?? []);
