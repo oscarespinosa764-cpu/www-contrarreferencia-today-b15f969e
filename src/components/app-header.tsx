@@ -43,7 +43,7 @@ export function AppHeader({ title, subtitle }: { title: string; subtitle?: strin
   return (
     <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
       <p className="text-lg font-bold text-foreground">
-        {getSaludo()}, {nombre} {getSaludoEmoji()}
+        {saludo ?? ""}{nombre} {saludoEmoji ?? ""}
       </p>
 
       <div className="order-last w-full text-center sm:order-none sm:w-auto sm:flex-1">
