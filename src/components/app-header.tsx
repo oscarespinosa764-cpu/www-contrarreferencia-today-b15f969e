@@ -36,6 +36,9 @@ export function AppHeader({ title, subtitle }: { title: string; subtitle?: strin
   });
 
   const nombre = getPrimerNombre(profile?.nombre || user?.email || "");
+  const saludo = useClientTime((d) => `${getSaludo(d)}, `);
+  const saludoEmoji = useClientTime((d) => getSaludoEmoji(d));
+  const turnoLabel = useClientTime((d) => getTurnoLabel(d));
 
   return (
     <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
