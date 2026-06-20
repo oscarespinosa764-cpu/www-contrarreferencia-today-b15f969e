@@ -27,6 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [activo, setActivo] = useState(false);
+  const [rolesLoaded, setRolesLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,6 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ]);
       setRoles((roleRows ?? []).map((r) => r.role as AppRole));
       setActivo(profile?.activo ?? false);
+      setRolesLoaded(true);
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, sess) => {
