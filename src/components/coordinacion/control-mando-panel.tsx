@@ -1,4 +1,6 @@
 import { useState } from "react";
+import * as XLSX from "xlsx";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Panel } from "@/components/stat-card";
 import { Input } from "@/components/ui/input";
@@ -10,8 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, RefreshCw, Loader2 } from "lucide-react";
+import { Search, RefreshCw, Loader2, DatabaseBackup } from "lucide-react";
 import { toast } from "sonner";
+import { respaldoTotal } from "@/lib/backup.functions";
 
 type EstadoTec = "ok" | "revisar" | "falla";
 
