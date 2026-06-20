@@ -53,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setRoles([]);
         setActivo(false);
+        setRolesLoaded(false);
       }
       setLoading(false);
     });
