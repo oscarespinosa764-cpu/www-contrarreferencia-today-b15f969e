@@ -205,6 +205,38 @@ export function ControlMandoPanel() {
       </Panel>
 
       <Panel
+        title="Copia de seguridad"
+        action={
+          <Button
+            size="sm"
+            className="rounded-full"
+            onClick={descargarRespaldo}
+            disabled={respaldando}
+          >
+            {respaldando ? (
+              <>
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Generando…
+              </>
+            ) : (
+              <>
+                <DatabaseBackup className="mr-1.5 h-4 w-4" /> Descargar respaldo total
+              </>
+            )}
+          </Button>
+        }
+      >
+        <p className="text-sm text-muted-foreground">
+          Genera y descarga un archivo Excel con <strong>todas las tablas</strong> del sistema
+          (remisiones, casos, seguimientos, red operativa, catálogos, indicadores, usuarios y
+          más), una hoja por tabla. Úsalo como copia de seguridad periódica fuera de línea.
+        </p>
+        <p className="mt-3 rounded-lg border border-status-amber/30 bg-status-amber/10 px-3 py-2 text-xs text-status-amber">
+          Contiene datos sensibles de pacientes. Guárdalo en un lugar seguro y bórralo cuando ya
+          no se necesite. La acción queda registrada en auditoría.
+        </p>
+      </Panel>
+
+      <Panel
         title="Auditoría de actividad"
         action={
           <Button
