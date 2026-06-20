@@ -66,10 +66,23 @@ export const limpiarDatos = createServerFn({ method: "POST" })
         .delete({ count: "exact" })
         .neq("id", "00000000-0000-0000-0000-000000000000");
       if (error) {
-        console.error("limpiarDatos error:", def.tabla, error);
-        return { ok: false, resultados, error: `Error al vaciar ${def.label}: ${error.message}` as string | null };
+        console.error("limpiarDatos error:", def.tabla);
+        await (supabase as any).rpc("registrar_auditoria", {
+          _accion: "borrado_masivo",
+          _modulo: "borrado",
+          _tabla: def.tabla,
+          _resultado: "fallido",
+        });
+        return { ok: false, resultados, error: `Error al vaciar ${def.label}.` as string | null };
       }
       resultados.push({ grupo: def.label, eliminadas: count ?? 0 });
+      await (supabase as any).rpc("registrar_auditoria", {
+        _accion: "borrado_masivo",
+        _modulo: "borrado",
+        _tabla: def.tabla,
+        _resultado: "exito",
+        _detalles: { eliminadas: count ?? 0 },
+      });
     }
 
     return { ok: true, resultados, error: null as string | null };
