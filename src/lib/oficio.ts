@@ -129,15 +129,27 @@ export function buildOficioHTML(tipo: string, codigo: string, mensaje: string): 
     // ── Tarjeta / oficio ──────────────────────────────────────────
     `<div style="max-width:680px;margin:0 auto;background:#ffffff;border:1px solid ${LINE};border-radius:16px;overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;color:${TEXT};line-height:1.6">`,
 
-    // ── Encabezado institucional ──────────────────────────────────
-    `<div style="padding:26px 32px 18px;border-bottom:3px solid ${TEAL};background:linear-gradient(180deg,#f4fbfc,#ffffff)">`,
-    `<div style="font-size:13px;font-weight:700;letter-spacing:2px;color:${TEAL};text-transform:uppercase">${INSTITUCION.nombre}</div>`,
-    `<div style="font-size:21px;font-weight:800;color:${MAIN};margin-top:2px">${INSTITUCION.nombreLargo}</div>`,
-    `<div style="font-size:13px;font-style:italic;color:${BLUE};margin-top:3px">${INSTITUCION.sede}</div>`,
+    // ── Encabezado institucional (logo · membrete · cruz) ─────────
+    `<div style="padding:22px 28px 16px;border-bottom:3px solid ${TEAL};background:linear-gradient(180deg,#eef9fb,#ffffff)">`,
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse"><tr>`,
+    // logo
+    `<td style="vertical-align:middle;width:96px;padding-right:14px">`,
+    `<img src="${IMG.logo}" alt="${INSTITUCION.nombre}" width="92" style="display:block;width:92px;height:auto;border:0" /></td>`,
+    // membrete centrado
+    `<td style="vertical-align:middle;text-align:center">`,
+    `<div style="font-size:12px;font-weight:700;letter-spacing:2px;color:${TEAL};text-transform:uppercase">${INSTITUCION.nombre}</div>`,
+    `<div style="font-size:19px;font-weight:800;color:${MAIN};margin-top:2px;line-height:1.2">${INSTITUCION.nombreLargo}</div>`,
+    `<div style="font-size:12px;font-style:italic;color:${BLUE};margin-top:3px">${INSTITUCION.sede}</div>`,
+    `</td>`,
+    // cruz / emblema referencia
+    `<td style="vertical-align:middle;width:84px;text-align:right;padding-left:10px">`,
+    `<img src="${IMG.cruz}" alt="Referencia y contrarreferencia" width="78" style="display:block;width:78px;height:auto;border:0;border-radius:12px;margin-left:auto" /></td>`,
+    `</tr></table>`,
     `</div>`,
 
     // ── Franja oficina ────────────────────────────────────────────
-    `<div style="background:${MAIN};color:#ffffff;padding:9px 32px;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase">${INSTITUCION.oficina}</div>`,
+    `<div style="background:${MAIN};color:#ffffff;padding:9px 32px;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;text-align:center">${INSTITUCION.oficina}</div>`,
+
 
     // ── Cuerpo ────────────────────────────────────────────────────
     `<div style="padding:26px 32px 8px">`,
