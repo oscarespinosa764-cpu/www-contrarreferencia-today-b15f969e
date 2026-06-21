@@ -2,6 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import type { Caso, MedicoCat, UnidadCat, MotivoCanCat, IpsCiudades, Plantilla } from "@/lib/rc-utils";
 
+export interface ProfesionalCat {
+  nombre: string;
+  cargo: string;
+}
+
 export interface Catalogos {
   medicos: MedicoCat[];
   especialidades: string[];
@@ -16,6 +21,7 @@ export interface Catalogos {
   unidadesRequeridas: string[];
   placas: string[];
   empresasTep: string[];
+  profesionales: ProfesionalCat[];
 }
 
 const EMPTY: Catalogos = {
@@ -32,6 +38,7 @@ const EMPTY: Catalogos = {
   unidadesRequeridas: [],
   placas: [],
   empresasTep: [],
+  profesionales: [],
 };
 
 export function useCatalogos() {
@@ -83,6 +90,10 @@ export function useCatalogos() {
         unidadesRequeridas: byTipo("UNIDAD_REQUERIDA").map((r) => r.valor),
         placas: byTipo("PLACA").map((r) => r.valor),
         empresasTep: byTipo("EMPRESA_TEP").map((r) => r.valor),
+        profesionales: byTipo("PROFESIONAL").map((r) => ({
+          nombre: r.valor,
+          cargo: (r.extra1 || "").trim(),
+        })),
       };
     },
     initialData: EMPTY,

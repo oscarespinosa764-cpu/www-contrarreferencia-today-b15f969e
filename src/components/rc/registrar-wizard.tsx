@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
 import { AutoComplete } from "@/components/rc/autocomplete";
@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import {
   buscarAcepActivo,
   buscarAcepReciente,
+  buscarDatosPaciente,
   buildMensaje,
   calcHrsReserva,
   calcularVencimiento,
@@ -38,10 +39,13 @@ import type { Plantilla } from "@/lib/rc-utils";
 type Tipo = "ACEP" | "NEG" | "CRUE_ACEP" | "CRUE_NR" | "CRUE_NEG";
 
 const CRUE_TIPOS: { value: Tipo; label: string }[] = [
-  { value: "CRUE_ACEP", label: "Aceptación direccionamiento" },
-  { value: "CRUE_NR", label: "No requerimiento" },
-  { value: "CRUE_NEG", label: "Negación direccionamiento" },
+  { value: "CRUE_ACEP", label: "ACEPTACIÓN DIRECCIONAMIENTO" },
+  { value: "CRUE_NR", label: "NO REQUERIMIENTO" },
+  { value: "CRUE_NEG", label: "NEGACIÓN DIRECCIONAMIENTO" },
 ];
+
+// Unidades válidas cuando el CRUE direcciona (solo URGENCIAS / UCI).
+const UNIDADES_CRUE = ["URGENCIAS", "UCI"];
 
 const COMPLEJIDADES = ["MAYOR COMPLEJIDAD", "MENOR COMPLEJIDAD"];
 
@@ -88,6 +92,11 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const [fechaRec, setFechaRec] = useState("");
   const [horaRec, setHoraRec] = useState("");
 
+  // Paciente reconsultante (autollenado) y ventana ADRES
+  const [esReconsultante, setEsReconsultante] = useState(false);
+  const adresWinRef = useRef<Window | null>(null);
+  const [adresAbierta, setAdresAbierta] = useState(false);
+
   const reincidente = useMemo(() => {
     const doc = documento.trim();
     if (!doc) return null;
@@ -103,6 +112,32 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const cupoActivo = !!cupoActivoCaso;
 
   const reincVen = reincidente ? calcularVencimiento(reincidente, casos) : null;
+
+  // ── Paciente reconsultante: datos previos del documento ──
+  const pacientePrevio = useMemo(
+    () => buscarDatosPaciente(casos, documento),
+    [casos, documento],
+  );
+
+  // Autollena los campos vacíos con los datos previos (no pisa ediciones del usuario).
+  const irAPaso2 = () => {
+    if (pacientePrevio) {
+      setNombres((v) => v || pacientePrevio.nombres);
+      setApellidos((v) => v || pacientePrevio.apellidos);
+      setEapb((v) => v || pacientePrevio.eapb);
+      setRegimen((v) => v || pacientePrevio.regimen);
+      setIps((v) => v || pacientePrevio.ips);
+      const hayDatos =
+        pacientePrevio.nombres ||
+        pacientePrevio.apellidos ||
+        pacientePrevio.eapb ||
+        pacientePrevio.regimen;
+      setEsReconsultante(!!hayDatos);
+    } else {
+      setEsReconsultante(false);
+    }
+    setStep(2);
+  };
 
   const unidadOptions = catalogos.unidades.map((u) => u.nombre);
   const isCrue = tipo === "CRUE_ACEP" || tipo === "CRUE_NR" || tipo === "CRUE_NEG";
@@ -126,16 +161,49 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     if (e && e.ciudades.length === 1) setCiudad(e.ciudades[0]);
   };
 
-  // ── Consultar ADRES: copia el documento y abre la ventana de ADRES ──
+  // ── Consultar ADRES: copia el documento y abre ADRES como ventana flotante ──
   const consultarAdres = async () => {
     const doc = documento.trim();
     try {
       await navigator.clipboard.writeText(doc);
-      toast.success("Documento copiado — pégalo en ADRES con Ctrl+V");
+      toast.success("Documento copiado para consultar en ADRES");
     } catch {
       toast.message("Copia el documento manualmente: " + doc);
     }
-    window.open("https://www.adres.gov.co/consulte-su-eps", "_blank", "noopener,noreferrer");
+    const w = 1100;
+    const h = 750;
+    const dualLeft = window.screenLeft ?? window.screenX ?? 0;
+    const dualTop = window.screenTop ?? window.screenY ?? 0;
+    const winW = window.innerWidth || document.documentElement.clientWidth || screen.width;
+    const winH = window.innerHeight || document.documentElement.clientHeight || screen.height;
+    const left = Math.max(0, dualLeft + (winW - w) / 2);
+    const top = Math.max(0, dualTop + (winH - h) / 2);
+    // No usamos noopener para conservar el handle y poder cerrar la ventana.
+    const features = `popup=yes,width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`;
+    const win = window.open("https://www.adres.gov.co/consulte-su-eps", "adresConsulta", features);
+    if (!win) {
+      toast.message(
+        "El navegador bloqueó la ventana emergente. Permite los popups de este sitio o abre ADRES manualmente.",
+      );
+      return;
+    }
+    adresWinRef.current = win;
+    setAdresAbierta(true);
+    try {
+      win.focus();
+    } catch {
+      /* algunos navegadores abren en pestaña; no se puede forzar el foco */
+    }
+  };
+
+  const cerrarAdres = () => {
+    try {
+      adresWinRef.current?.close();
+    } catch {
+      /* ventana cross-origin: close() funciona en ventanas abiertas por script */
+    }
+    adresWinRef.current = null;
+    setAdresAbierta(false);
   };
 
   // ── Lógica de campos según el motivo de negación ──
@@ -146,19 +214,58 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const negComplejidad = mNeg.includes("COMPLEJIDAD");
   const negDetalleOpcional = mNeg.includes("RED NO CONTRATADA") || mNeg.includes("AFILIACI");
 
+  // ── Catálogo médico ⇄ especialidad (bidireccional) ──
+  // Construye el mapa nombre→especialidad a partir del catálogo de médicos
+  // y del histórico de casos (dato más frecuente).
+  const medEspMap = useMemo(() => {
+    const counts: Record<string, Record<string, number>> = {};
+    const add = (nombre?: string | null, esp?: string | null) => {
+      const n = (nombre || "").trim();
+      const e = (esp || "").trim();
+      if (!n || !e) return;
+      const key = n.toLowerCase();
+      counts[key] = counts[key] || {};
+      counts[key][e] = (counts[key][e] || 0) + 1;
+    };
+    catalogos.medicos.forEach((m) => add(m.nombre, m.especialidad));
+    casos.forEach((c) => add(c.medico, c.especialidad));
+    const best: Record<string, string> = {};
+    for (const key of Object.keys(counts)) {
+      best[key] = Object.entries(counts[key]).sort((a, b) => b[1] - a[1])[0][0];
+    }
+    return best;
+  }, [catalogos.medicos, casos]);
+
+  // Lista completa de médicos (catálogo + histórico).
+  const medicosAll = useMemo(() => {
+    const set = new Set<string>();
+    catalogos.medicos.forEach((m) => m.nombre.trim() && set.add(m.nombre.trim()));
+    casos.forEach((c) => c.medico?.trim() && set.add(c.medico.trim()));
+    return Array.from(set).sort();
+  }, [catalogos.medicos, casos]);
+
   // ── Enlace Médico ⇄ Especialidad ──
-  const espKey = especialidad.trim().toLowerCase();
+  const espNorm = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toLowerCase();
+  const espKey = espNorm(especialidad);
+  // Si hay especialidad escrita, sugiere solo médicos de esa especialidad.
   const medicoOptions = espKey
-    ? catalogos.medicos
-        .filter((m) => !m.especialidad || m.especialidad.toLowerCase().includes(espKey))
-        .map((m) => m.nombre)
-    : catalogos.medicos.map((m) => m.nombre);
+    ? medicosAll.filter((nombre) => {
+        const e = medEspMap[nombre.toLowerCase()];
+        return e ? espNorm(e).includes(espKey) : false;
+      })
+    : medicosAll;
 
   const onPickMedico = (v: string) => {
     setMedico(v);
-    const m = catalogos.medicos.find((x) => x.nombre === v);
-    if (m?.especialidad) setEspecialidad(m.especialidad);
+    const esp = medEspMap[v.trim().toLowerCase()];
+    if (esp) setEspecialidad(esp);
   };
+
 
   // Tiempo reservado de la unidad seleccionada
   const hrsUnidad = unidad ? calcHrsReserva(unidad, "ACEP", catalogos.unidades) : 0;
@@ -187,6 +294,8 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     setMotivosCrue(["", "", ""]);
     setFechaRec("");
     setHoraRec("");
+    setEsReconsultante(false);
+    cerrarAdres();
     setResultado(null);
   };
 
@@ -199,6 +308,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     if (tipo === "NEG" && negUnidad && !unidad.trim()) return toast.error("Indica la unidad requerida");
     if (tipo === "NEG" && negComplejidad && complejidad === "MAYOR COMPLEJIDAD" && !especialidad.trim())
       return toast.error("Indica la especialidad requerida");
+    if (tipo === "CRUE_ACEP" && !unidadReq) return toast.error("Selecciona la unidad requerida (URGENCIAS o UCI)");
 
     setBusy(true);
     try {
@@ -271,6 +381,20 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
       });
       if (error) throw error;
 
+      // Auditoría de la acción crítica (creación de caso entrante).
+      try {
+        await (supabase as any).rpc("registrar_auditoria", {
+          _accion: "crear_caso_entrante",
+          _modulo: "entrantes",
+          _tabla: "casos_entrantes",
+          _registro_id: codigo,
+          _resultado: "exito",
+          _detalles: { tipo },
+        });
+      } catch {
+        /* no bloquea el flujo si falla la auditoría */
+      }
+
       toast.success(`Registrado ${codigo}`);
       setResultado({ tipo, codigo, mensaje });
       onDone();
@@ -306,7 +430,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && documento.trim().length >= 4 && !cupoActivo) {
                     e.preventDefault();
-                    setStep(2);
+                    irAPaso2();
                   }
                 }}
                 autoFocus
@@ -348,7 +472,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
               type="button"
               className="rounded-full"
               disabled={documento.trim().length < 4 || cupoActivo}
-              onClick={() => setStep(2)}
+              onClick={irAPaso2}
             >
               Continuar <ArrowRight className="ml-1.5 h-4 w-4" />
             </Button>
@@ -359,7 +483,32 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
       {/* ───── PASO 2 ───── */}
       {step === 2 && (
         <section className="space-y-4">
-          {!reincidente && (
+          {esReconsultante ? (
+            <div className="flex items-start gap-3 rounded-xl border border-status-green/50 bg-status-green/10 p-3">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-status-green" />
+              <div className="flex-1 text-xs text-foreground">
+                <p className="font-bold text-status-green">Paciente reconsultante</p>
+                <p className="mt-0.5">Datos cargados desde un registro previo. Puede editarlos si necesita corregirlos.</p>
+              </div>
+              <div className="flex shrink-0 flex-col gap-1.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 rounded-full"
+                  onClick={consultarAdres}
+                >
+                  <Search className="h-3.5 w-3.5" /> Consultar ADRES
+                  <ExternalLink className="h-3 w-3" />
+                </Button>
+                {adresAbierta && (
+                  <Button type="button" size="sm" variant="ghost" className="rounded-full text-xs" onClick={cerrarAdres}>
+                    Cerrar ventana ADRES
+                  </Button>
+                )}
+              </div>
+            </div>
+          ) : (
             <div className="flex items-start gap-3 rounded-xl border border-status-amber/50 bg-status-amber/10 p-3">
               <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-status-amber" />
               <div className="flex-1 text-xs text-foreground">
@@ -368,18 +517,26 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                   Consulte ADRES y transcriba los 4 datos. Ingrese la IPS remitente.
                 </p>
               </div>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="shrink-0 gap-1.5 rounded-full"
-                onClick={consultarAdres}
-              >
-                <Search className="h-3.5 w-3.5" /> Consultar ADRES
-                <ExternalLink className="h-3 w-3" />
-              </Button>
+              <div className="flex shrink-0 flex-col gap-1.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 rounded-full"
+                  onClick={consultarAdres}
+                >
+                  <Search className="h-3.5 w-3.5" /> Consultar ADRES
+                  <ExternalLink className="h-3 w-3" />
+                </Button>
+                {adresAbierta && (
+                  <Button type="button" size="sm" variant="ghost" className="rounded-full text-xs" onClick={cerrarAdres}>
+                    Cerrar ventana ADRES
+                  </Button>
+                )}
+              </div>
             </div>
           )}
+
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -414,7 +571,8 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 onPick={onPickIps}
                 options={ipsOptions}
                 openAllOnFocus={!!ciudad.trim()}
-                placeholder="Escribe o selecciona la IPS…"
+                minChars={2}
+                placeholder="Escribe para buscar la IPS…"
               />
               {ciudad.trim() && ipsOptions.length > 0 && !ips && (
                 <p className="mt-1 text-[11px] text-muted-foreground">
@@ -464,8 +622,15 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 onClick={() => {
                   setTipo("ACEP");
                   setCrueOpen(false);
+                  // limpia estado de negación y de CRUE
                   setMotivoNeg("");
                   setComplejidad("");
+                  setCodigoCrue("");
+                  setContactoIps("");
+                  setUnidadReq("");
+                  setMotivosCrue(["", "", ""]);
+                  setFechaRec("");
+                  setHoraRec("");
                 }}
               />
               <TipoCard
@@ -476,6 +641,15 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 onClick={() => {
                   setTipo("NEG");
                   setCrueOpen(false);
+                  // limpia estado de aceptación y de CRUE
+                  setMedico("");
+                  setEspecialidad("");
+                  setUnidad("");
+                  setAseguramiento("EPS");
+                  setCodigoCrue("");
+                  setContactoIps("");
+                  setUnidadReq("");
+                  setMotivosCrue(["", "", ""]);
                 }}
               />
               <TipoCard
@@ -483,7 +657,18 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 icon={<Siren className="h-5 w-5" />}
                 accent="amber"
                 active={isCrue || crueOpen}
-                onClick={() => setCrueOpen((o) => !o)}
+                onClick={() => {
+                  // CRUE es excluyente: abre panel CRUE y limpia aceptación/negación
+                  setCrueOpen(true);
+                  setTipo("");
+                  setMedico("");
+                  setUnidad("");
+                  setAseguramiento("EPS");
+                  setMotivoNeg("");
+                  setComplejidad("");
+                  setFechaRec("");
+                  setHoraRec("");
+                }}
               />
             </div>
             {crueOpen && (
@@ -492,8 +677,13 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                   <button
                     key={t.value}
                     type="button"
-                    onClick={() => setTipo(t.value)}
-                    className={`rounded-xl border-2 px-3 py-2 text-left text-xs font-bold transition ${
+                    onClick={() => {
+                      setTipo(t.value);
+                      // al cambiar de subtipo CRUE, limpia la unidad requerida
+                      setUnidadReq("");
+                      setMotivosCrue(["", "", ""]);
+                    }}
+                    className={`rounded-xl border-2 px-3 py-2 text-left text-xs font-bold uppercase transition ${
                       tipo === t.value
                         ? "border-status-amber bg-status-amber/10 text-status-amber"
                         : "border-border text-foreground hover:border-status-amber/40"
@@ -694,26 +884,54 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 <Label htmlFor="codcrue">Código CRUE</Label>
                 <Input id="codcrue" value={codigoCrue} onChange={(e) => setCodigoCrue(e.target.value)} />
               </div>
-              <AutoComplete label="Contacto / IPS" value={contactoIps} onChange={setContactoIps} options={catalogos.ips} />
-              <div className="space-y-2 sm:col-span-2">
-                <Label>Unidad requerida</Label>
-                <Select value={unidadReq} onValueChange={setUnidadReq}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {catalogos.unidadesRequeridas.map((u) => (
-                      <SelectItem key={u} value={u}>
-                        {u}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <AutoComplete label="Especialidad requerida" value={especialidad} onChange={setEspecialidad} options={catalogos.especialidades} />
+              <AutoComplete label="Contacto / IPS" value={contactoIps} onChange={setContactoIps} options={catalogos.ips} minChars={2} />
+
+              {/* ACEPTACIÓN DIRECCIONAMIENTO → unidad obligatoria (solo URGENCIAS/UCI) */}
+              {tipo === "CRUE_ACEP" && (
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Unidad requerida</Label>
+                  <Select value={unidadReq} onValueChange={setUnidadReq}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {UNIDADES_CRUE.map((u) => (
+                        <SelectItem key={u} value={u}>
+                          {u}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* NEGACIÓN DIRECCIONAMIENTO → unidad opcional (solo URGENCIAS/UCI) */}
               {tipo === "CRUE_NEG" && (
                 <div className="space-y-2 sm:col-span-2">
-                  <Label>Motivos de negación (hasta 3)</Label>
+                  <Label>Unidad solicitada (opcional)</Label>
+                  <Select value={unidadReq} onValueChange={setUnidadReq}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="No aplica / Seleccionar…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {UNIDADES_CRUE.map((u) => (
+                        <SelectItem key={u} value={u}>
+                          {u}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Especialidad requerida: aplica para aceptación y negación de direccionamiento */}
+              {tipo !== "CRUE_NR" && (
+                <AutoComplete label="Especialidad requerida" value={especialidad} onChange={setEspecialidad} options={catalogos.especialidades} />
+              )}
+
+              {tipo === "CRUE_NEG" && (
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Motivos de negación del direccionamiento (hasta 3)</Label>
                   {[0, 1, 2].map((i) => (
                     <Input
                       key={i}

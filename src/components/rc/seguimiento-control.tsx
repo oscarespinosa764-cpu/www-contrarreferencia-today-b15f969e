@@ -11,18 +11,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AutoComplete } from "@/components/rc/autocomplete";
 import { ResultadoCard } from "@/components/rc/resultado-card";
+import { OficioPreview } from "@/components/rc/oficio-preview";
+import { copiarOficio, tituloOficio } from "@/lib/oficio";
 import { PlantillasEnPaso } from "@/components/coordinacion/plantillas-en-paso";
-import { Clock, LogIn, Plus, XCircle, Archive, AlertTriangle, Loader2, Bell, Copy, Check } from "lucide-react";
+import { Clock, LogIn, Plus, XCircle, Archive, AlertTriangle, Loader2, Bell, Check, Mail } from "lucide-react";
 import { toast } from "sonner";
 import {
+  buildIngresoMensaje,
   buildMensaje,
   calcHrsReserva,
   calcularVencimiento,
-  copiarDual,
   fechaCasoStr,
   fmtFechaHora,
   fmtMinutos,
-  formatearMensajeHTML,
   nextCodigo,
   type Caso,
 } from "@/lib/rc-utils";
@@ -220,39 +221,71 @@ function AccionDialog({
   const [profesional, setProfesional] = useState("");
   const [cargo, setCargo] = useState("");
   const [placa, setPlaca] = useState("");
-  // Mapa nombre del profesional -> especialidad más frecuente (a partir del histórico de casos
-  // y de la especialidad del catálogo de médicos cuando exista).
-  const medicoEspecialidad = useMemo(() => {
-    const counts: Record<string, Record<string, number>> = {};
-    const add = (nombre?: string | null, esp?: string | null) => {
-      const n = (nombre || "").trim();
-      const e = (esp || "").trim();
-      if (!n || !e) return;
-      const key = n.toLowerCase();
-      counts[key] = counts[key] || {};
-      counts[key][e] = (counts[key][e] || 0) + 1;
-    };
-    casos.forEach((c) => add(c.medico, c.especialidad));
-    catalogos.medicos.forEach((m) => add(m.nombre, m.especialidad));
-    const best: Record<string, string> = {};
-    for (const key of Object.keys(counts)) {
-      best[key] = Object.entries(counts[key]).sort((a, b) => b[1] - a[1])[0][0];
-    }
-    return best;
-  }, [casos, catalogos.medicos]);
+  // Fecha/hora de ingreso precargadas con la hora local actual.
+  const ahoraInit = new Date();
+  const p2 = (n: number) => String(n).padStart(2, "0");
+  const [fechaIngreso, setFechaIngreso] = useState(
+    `${ahoraInit.getFullYear()}-${p2(ahoraInit.getMonth() + 1)}-${p2(ahoraInit.getDate())}`,
+  );
+  const [horaIngreso, setHoraIngreso] = useState(`${p2(ahoraInit.getHours())}:${p2(ahoraInit.getMinutes())}`);
 
-  // Sugerencias de profesional: catálogo de médicos + nombres vistos en casos.
-  const profesionalOptions = useMemo(() => {
+  // ── Catálogo profesional ⇄ cargo (bidireccional) ──
+  // Mapa nombre→cargo a partir del catálogo PROFESIONAL y del histórico de ingresos.
+  const profCargoMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    catalogos.profesionales.forEach((p) => {
+      const n = (p.nombre || "").trim().toLowerCase();
+      if (n && p.cargo) map[n] = p.cargo;
+    });
+    // Aprende de ingresos previos: "Profesional que recibe: NOMBRE (CARGO)"
+    casos
+      .filter((c) => c.tipo === "ING")
+      .forEach((c) => {
+        const m = (c.detalle || "").match(/Profesional que recibe:\s*([^()·]+?)\s*\(([^)]+)\)/i);
+        if (m) {
+          const n = m[1].trim().toLowerCase();
+          if (n && !map[n]) map[n] = m[2].trim();
+        }
+      });
+    return map;
+  }, [catalogos.profesionales, casos]);
+
+  // Sugerencias de profesional: catálogo PROFESIONAL + médicos + nombres vistos.
+  const profesionalAll = useMemo(() => {
     const set = new Set<string>();
+    catalogos.profesionales.forEach((p) => p.nombre.trim() && set.add(p.nombre.trim()));
     catalogos.medicos.forEach((m) => m.nombre.trim() && set.add(m.nombre.trim()));
     casos.forEach((c) => c.medico?.trim() && set.add(c.medico.trim()));
+    Object.keys(profCargoMap).forEach((k) => k && set.add(k.toUpperCase()));
     return Array.from(set).sort();
-  }, [casos, catalogos.medicos]);
+  }, [catalogos.profesionales, catalogos.medicos, casos, profCargoMap]);
 
-  // Al elegir/escribir un profesional, autocompleta el cargo con su especialidad.
+  const cargoNorm = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toLowerCase();
+  const cargoKey = cargoNorm(cargo);
+  // Si hay cargo escrito, sugiere solo profesionales con ese cargo.
+  const profesionalOptions = cargoKey
+    ? profesionalAll.filter((nombre) => {
+        const c = profCargoMap[nombre.toLowerCase()];
+        return c ? cargoNorm(c).includes(cargoKey) : false;
+      })
+    : profesionalAll;
+
+  const cargoOptions = useMemo(() => {
+    const set = new Set<string>(CARGO_OPTIONS);
+    catalogos.profesionales.forEach((p) => p.cargo && set.add(p.cargo));
+    Object.values(profCargoMap).forEach((c) => c && set.add(c));
+    return Array.from(set).sort();
+  }, [catalogos.profesionales, profCargoMap]);
+
+  // Al elegir/escribir un profesional, autocompleta el cargo.
   const onPickProfesional = (v: string) => {
-    const esp = medicoEspecialidad[v.trim().toLowerCase()];
-    if (esp) setCargo(esp);
+    const c = profCargoMap[v.trim().toLowerCase()];
+    if (c) setCargo(c);
   };
   // cancelar
   const [motivoCan, setMotivoCan] = useState("");
@@ -323,7 +356,30 @@ function AccionDialog({
 
       if (accion === "ingreso") {
         const codigo = nextCodigo(casos, "ING", ahora);
+        // Fecha/hora de ingreso elegidas (formato dd/mm/aaaa para el oficio).
+        const [yy, mm, dd] = (fechaIngreso || ahora.toISOString().slice(0, 10)).split("-");
+        const fechaFmt = `${dd}/${mm}/${yy}`;
+        const horaFmt = horaIngreso || `${p2(ahora.getHours())}:${p2(ahora.getMinutes())}`;
+        const nombrePac =
+          [caso.nombres, caso.apellidos].filter(Boolean).join(" ") || caso.documento || "—";
+
+        const mensaje = buildIngresoMensaje({
+          nombre: nombrePac,
+          codigo: caso.codigo,
+          fecha: fechaFmt,
+          hora: horaFmt,
+          ips: caso.ips ?? undefined,
+          eapb: caso.eapb ?? undefined,
+          unidad: caso.unidad ?? undefined,
+          empresaTep: empresaTep || undefined,
+          placa: placa || undefined,
+          profesional: profesional || undefined,
+          cargo: cargo || undefined,
+          observaciones: detalle || undefined,
+        });
+
         const obs = [
+          `Ingreso: ${fechaFmt} ${horaFmt}`,
           empresaTep && `Empresa TEP: ${empresaTep}`,
           placa && `Placa: ${placa}`,
           profesional && `Profesional que recibe: ${profesional}${cargo ? ` (${cargo})` : ""}`,
@@ -337,8 +393,9 @@ function AccionDialog({
           tipo: "ING",
           cod_ref: caso.codigo,
           estado: "INGRESADO",
-          fecha: ahora.toISOString().slice(0, 10),
+          fecha: fechaIngreso || ahora.toISOString().slice(0, 10),
           detalle: obs || null,
+          texto_ia: mensaje || null,
           created_by: user?.id,
         });
         if (e1) throw e1;
@@ -347,9 +404,20 @@ function AccionDialog({
           .update({ estado: "INGRESADO" })
           .eq("id", caso.id);
         if (e2) throw e2;
+        try {
+          await (supabase as any).rpc("registrar_auditoria", {
+            _accion: "confirmar_ingreso",
+            _modulo: "entrantes",
+            _tabla: "casos_entrantes",
+            _registro_id: caso.codigo,
+            _resultado: "exito",
+          });
+        } catch {
+          /* no bloquea el flujo */
+        }
         toast.success("Ingreso confirmado");
         refrescar();
-        onClose();
+        setResultado({ tipo: "ING", codigo: caso.codigo, mensaje });
         return;
       }
 
@@ -385,6 +453,17 @@ function AccionDialog({
           created_by: user?.id,
         });
         if (error) throw error;
+        try {
+          await (supabase as any).rpc("registrar_auditoria", {
+            _accion: "ampliar_cupo",
+            _modulo: "entrantes",
+            _tabla: "casos_entrantes",
+            _registro_id: caso.codigo,
+            _resultado: "exito",
+          });
+        } catch {
+          /* no bloquea el flujo */
+        }
         toast.success(`Cupo ampliado ${hrs}h`);
         refrescar();
         setResultado({ tipo: "AMP", codigo, mensaje });
@@ -435,6 +514,17 @@ function AccionDialog({
           .update({ estado: esArchivar ? "CANCELADO_VENCIMIENTO" : "CANCELADO" })
           .eq("id", caso.id);
         if (e2) throw e2;
+        try {
+          await (supabase as any).rpc("registrar_auditoria", {
+            _accion: esArchivar ? "archivar_vencimiento" : "cancelar_cupo",
+            _modulo: "entrantes",
+            _tabla: "casos_entrantes",
+            _registro_id: caso.codigo,
+            _resultado: "exito",
+          });
+        } catch {
+          /* no bloquea el flujo */
+        }
         toast.success(esArchivar ? "Caso archivado · enviado a historial" : "Cupo cancelado");
         refrescar();
         if (esArchivar) {
@@ -462,7 +552,7 @@ function AccionDialog({
         </DialogHeader>
 
         {resultado ? (
-          <ResultadoCard tipo={resultado.tipo} codigo={resultado.codigo} mensaje={resultado.mensaje} onNuevo={onClose} />
+          <ResultadoCard tipo={resultado.tipo} codigo={resultado.codigo} mensaje={resultado.mensaje} onNuevo={onClose} nuevoLabel="Cerrar" />
         ) : accion === "archivar" ? (
           <div className="space-y-4">
             <div className="rounded-lg border border-status-red/40 bg-status-red/10 p-3 text-xs text-foreground">
@@ -480,28 +570,25 @@ function AccionDialog({
             </div>
             {archivarInfo?.mensaje ? (
               <div className="space-y-2">
-                <Label>Mensaje de cancelación</Label>
-                <div
-                  className="max-h-60 overflow-auto whitespace-pre-wrap rounded-xl border border-border bg-card p-3 text-sm leading-relaxed text-foreground"
-                  dangerouslySetInnerHTML={{ __html: formatearMensajeHTML(archivarInfo.mensaje) }}
-                />
+                <Label>Oficio de cancelación por vencimiento</Label>
+                <OficioPreview titulo={tituloOficio("CAN")} codigo={archivarInfo.codigo} mensaje={archivarInfo.mensaje} />
                 <Button
                   type="button"
                   variant="secondary"
                   className="w-full rounded-full"
                   onClick={async () => {
-                    const ok = await copiarDual(archivarInfo.mensaje);
+                    const ok = await copiarOficio(tituloOficio("CAN"), archivarInfo.codigo, archivarInfo.mensaje);
                     if (ok) {
                       setCopied(true);
-                      toast.success("Mensaje copiado");
+                      toast.success("Oficio copiado para el correo");
                       setTimeout(() => setCopied(false), 2000);
                     } else {
                       toast.error("No se pudo copiar");
                     }
                   }}
                 >
-                  {copied ? <Check className="mr-1.5 h-4 w-4" /> : <Copy className="mr-1.5 h-4 w-4" />}
-                  Copiar mensaje
+                  {copied ? <Check className="mr-1.5 h-4 w-4" /> : <Mail className="mr-1.5 h-4 w-4" />}
+                  Copiar para correo
                 </Button>
               </div>
             ) : (
@@ -520,11 +607,21 @@ function AccionDialog({
           <div className="space-y-4">
             {accion === "ingreso" && (
               <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="fing">Fecha de ingreso</Label>
+                    <Input id="fing" type="date" value={fechaIngreso} onChange={(e) => setFechaIngreso(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="hing">Hora de ingreso</Label>
+                    <Input id="hing" type="time" value={horaIngreso} onChange={(e) => setHoraIngreso(e.target.value)} />
+                  </div>
+                </div>
                 <AutoComplete label="Empresa de transporte (TEP)" value={empresaTep} onChange={setEmpresaTep} options={catalogos.empresasTep} />
                 <AutoComplete label="Placa del vehículo" value={placa} onChange={setPlaca} options={catalogos.placas} />
                 <div className="grid gap-4 sm:grid-cols-2">
                   <AutoComplete id="prof" label="Profesional que recibe" value={profesional} onChange={setProfesional} onPick={onPickProfesional} options={profesionalOptions} />
-                  <AutoComplete id="cargo" label="Cargo" value={cargo} onChange={setCargo} options={CARGO_OPTIONS} />
+                  <AutoComplete id="cargo" label="Cargo" value={cargo} onChange={setCargo} options={cargoOptions} />
                 </div>
               </>
             )}
