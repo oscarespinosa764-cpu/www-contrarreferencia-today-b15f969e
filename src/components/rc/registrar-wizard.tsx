@@ -482,7 +482,32 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
       {/* ───── PASO 2 ───── */}
       {step === 2 && (
         <section className="space-y-4">
-          {!reincidente && (
+          {esReconsultante ? (
+            <div className="flex items-start gap-3 rounded-xl border border-status-green/50 bg-status-green/10 p-3">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-status-green" />
+              <div className="flex-1 text-xs text-foreground">
+                <p className="font-bold text-status-green">Paciente reconsultante</p>
+                <p className="mt-0.5">Datos cargados desde un registro previo. Puede editarlos si necesita corregirlos.</p>
+              </div>
+              <div className="flex shrink-0 flex-col gap-1.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 rounded-full"
+                  onClick={consultarAdres}
+                >
+                  <Search className="h-3.5 w-3.5" /> Consultar ADRES
+                  <ExternalLink className="h-3 w-3" />
+                </Button>
+                {adresAbierta && (
+                  <Button type="button" size="sm" variant="ghost" className="rounded-full text-xs" onClick={cerrarAdres}>
+                    Cerrar ventana ADRES
+                  </Button>
+                )}
+              </div>
+            </div>
+          ) : (
             <div className="flex items-start gap-3 rounded-xl border border-status-amber/50 bg-status-amber/10 p-3">
               <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-status-amber" />
               <div className="flex-1 text-xs text-foreground">
@@ -491,18 +516,26 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                   Consulte ADRES y transcriba los 4 datos. Ingrese la IPS remitente.
                 </p>
               </div>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="shrink-0 gap-1.5 rounded-full"
-                onClick={consultarAdres}
-              >
-                <Search className="h-3.5 w-3.5" /> Consultar ADRES
-                <ExternalLink className="h-3 w-3" />
-              </Button>
+              <div className="flex shrink-0 flex-col gap-1.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 rounded-full"
+                  onClick={consultarAdres}
+                >
+                  <Search className="h-3.5 w-3.5" /> Consultar ADRES
+                  <ExternalLink className="h-3 w-3" />
+                </Button>
+                {adresAbierta && (
+                  <Button type="button" size="sm" variant="ghost" className="rounded-full text-xs" onClick={cerrarAdres}>
+                    Cerrar ventana ADRES
+                  </Button>
+                )}
+              </div>
             </div>
           )}
+
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
