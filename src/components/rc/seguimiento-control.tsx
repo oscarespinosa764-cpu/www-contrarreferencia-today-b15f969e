@@ -221,13 +221,21 @@ function AccionDialog({
   const [profesional, setProfesional] = useState("");
   const [cargo, setCargo] = useState("");
   const [placa, setPlaca] = useState("");
-  // Fecha/hora de ingreso precargadas con la hora local actual.
-  const ahoraInit = new Date();
+  // Fecha/hora de ingreso capturadas al ABRIR el modal (hora local de Colombia).
+  // Son de solo lectura: se fijan una sola vez al montar el diálogo.
+  const ahoraInit = useMemo(() => new Date(), []);
   const p2 = (n: number) => String(n).padStart(2, "0");
-  const [fechaIngreso, setFechaIngreso] = useState(
+  const [fechaIngreso] = useState(
     `${ahoraInit.getFullYear()}-${p2(ahoraInit.getMonth() + 1)}-${p2(ahoraInit.getDate())}`,
   );
-  const [horaIngreso, setHoraIngreso] = useState(`${p2(ahoraInit.getHours())}:${p2(ahoraInit.getMinutes())}`);
+  const [horaIngreso] = useState(`${p2(ahoraInit.getHours())}:${p2(ahoraInit.getMinutes())}`);
+  // Versiones legibles para mostrar (no editables).
+  const fechaIngresoDisplay = `${p2(ahoraInit.getDate())}/${p2(ahoraInit.getMonth() + 1)}/${ahoraInit.getFullYear()}`;
+  const horaIngresoDisplay = ahoraInit.toLocaleTimeString("es-CO", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
 
   // ── Catálogo profesional ⇄ cargo (bidireccional) ──
   // Mapa nombre→cargo a partir del catálogo PROFESIONAL y del histórico de ingresos.
