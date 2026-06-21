@@ -471,7 +471,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
               type="button"
               className="rounded-full"
               disabled={documento.trim().length < 4 || cupoActivo}
-              onClick={() => setStep(2)}
+              onClick={irAPaso2}
             >
               Continuar <ArrowRight className="ml-1.5 h-4 w-4" />
             </Button>
