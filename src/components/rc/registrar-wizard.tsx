@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import {
   buscarAcepActivo,
   buscarAcepReciente,
+  buscarDatosPaciente,
   buildMensaje,
   calcHrsReserva,
   calcularVencimiento,
@@ -38,10 +39,13 @@ import type { Plantilla } from "@/lib/rc-utils";
 type Tipo = "ACEP" | "NEG" | "CRUE_ACEP" | "CRUE_NR" | "CRUE_NEG";
 
 const CRUE_TIPOS: { value: Tipo; label: string }[] = [
-  { value: "CRUE_ACEP", label: "Aceptación direccionamiento" },
-  { value: "CRUE_NR", label: "No requerimiento" },
-  { value: "CRUE_NEG", label: "Negación direccionamiento" },
+  { value: "CRUE_ACEP", label: "ACEPTACIÓN DIRECCIONAMIENTO" },
+  { value: "CRUE_NR", label: "NO REQUERIMIENTO" },
+  { value: "CRUE_NEG", label: "NEGACIÓN DIRECCIONAMIENTO" },
 ];
+
+// Unidades válidas cuando el CRUE direcciona (solo URGENCIAS / UCI).
+const UNIDADES_CRUE = ["URGENCIAS", "UCI"];
 
 const COMPLEJIDADES = ["MAYOR COMPLEJIDAD", "MENOR COMPLEJIDAD"];
 
