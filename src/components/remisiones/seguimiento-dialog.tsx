@@ -20,6 +20,8 @@ import {
 } from "@/lib/remisiones-utils";
 import { toast } from "sonner";
 import { PlantillasEnPaso } from "@/components/coordinacion/plantillas-en-paso";
+import { Copy } from "lucide-react";
+import { generarPlantillaRadicacion, type RadicacionTipo } from "@/lib/indigo-trazabilidad";
 
 type Props = {
   open: boolean;
@@ -44,8 +46,10 @@ type Props = {
 };
 
 // Lista fusionada: tipos de seguimiento del sistema actual + modalidades de gestión de Indigo.
+const RADICACION_TIPO = "Radicación en plataforma";
 const TIPOS_SEG = [
   "Radicado / inicio trámite de remisión",
+  RADICACION_TIPO,
   "Telefónico / celular",
   "Correo electrónico",
   "Plataforma web",
@@ -92,6 +96,8 @@ export function SeguimientoDialog({
   const [busy, setBusy] = useState(false);
   const [busyEvo, setBusyEvo] = useState(false);
   const [estadoCaso, setEstadoCaso] = useState("");
+  const [radPlantilla, setRadPlantilla] = useState("");
+  const [radEditada, setRadEditada] = useState(false);
 
   // Inicializar el checklist por especialidad al abrir.
   useEffect(() => {
@@ -116,6 +122,49 @@ export function SeguimientoDialog({
       return data ?? [];
     },
   });
+
+  // Flags ÍNDIGO del caso (solo remisiones): genera código / plataforma caída.
+  const { data: casoFlags } = useQuery({
+    queryKey: ["remision-indigo-flags", casoId],
+    enabled: open && tabla === "remisiones",
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("remisiones")
+        .select("eapb_genera_codigo, plataforma_funcionando")
+        .eq("id", casoId)
+        .maybeSingle();
+      return data as { eapb_genera_codigo: boolean | null; plataforma_funcionando: boolean | null } | null;
+    },
+  });
+
+  const esRadicacion = tipoSeg === RADICACION_TIPO;
+  const generaCodigo = casoFlags?.eapb_genera_codigo === true;
+  const plataformaFueCaida = casoFlags?.plataforma_funcionando === false;
+  const radicacionTipo: RadicacionTipo = !generaCodigo
+    ? "sin_codigo"
+    : plataformaFueCaida
+      ? "plataforma_restablecida"
+      : "con_codigo";
+
+  // Regenera la plantilla ÍNDIGO de radicación mientras el usuario no la haya editado.
+  useEffect(() => {
+    if (esRadicacion && !radEditada) {
+      setRadPlantilla(generarPlantillaRadicacion(radicacionTipo, radicado));
+    }
+  }, [esRadicacion, radEditada, radicacionTipo, radicado]);
+
+  useEffect(() => {
+    if (!esRadicacion) setRadEditada(false);
+  }, [esRadicacion]);
+
+  const copiarRad = async () => {
+    try {
+      await navigator.clipboard.writeText(radPlantilla);
+      toast.success("Texto copiado para Índigo");
+    } catch {
+      toast.error("No se pudo copiar. Selecciona el texto manualmente.");
+    }
+  };
 
   const radicadoExistente =
     radicadoCaso?.trim() || (historial ?? []).find((h) => h.radicado)?.radicado || "";
@@ -195,6 +244,10 @@ export function SeguimientoDialog({
       toast.error("Indica el motivo de la evolución pendiente");
       return;
     }
+    if (esRadicacion && generaCodigo && !radicado.trim()) {
+      toast.error("El código de radicación es obligatorio para este seguimiento");
+      return;
+    }
     setBusy(true);
     const { data: u } = await supabase.auth.getUser();
     const { data: perfil } = await supabase
@@ -236,12 +289,28 @@ export function SeguimientoDialog({
         update.evolucion_motivo = requiereMotivo ? motivoEvo.trim() : null;
       }
       if (radicadoEnUso) update.codigo_radicacion = radicadoEnUso;
+      if (esRadicacion && generaCodigo && radicado.trim())
+        update.codigo_radicacion = radicado.trim();
       if (estadoOpciones && estadoCaso) update.estado = estadoCaso;
       await supabase
         .from(tabla as "remisiones")
         .update(update)
         .eq("id", casoId);
       if (especialidadesList.length > 0) await sincronizarPendiente(u.user?.id);
+    }
+
+    // Auditoría de seguimiento y radicación (no bloquea el flujo).
+    try {
+      await (supabase as any).rpc("registrar_auditoria", {
+        _accion: esRadicacion ? "radicacion_en_plataforma" : "crear_seguimiento",
+        _modulo: "remisiones",
+        _tabla: tabla ?? "seguimientos",
+        _registro_id: casoId,
+        _resultado: "exito",
+        _detalles: { tipo_seguimiento: tipoSeg },
+      });
+    } catch {
+      /* la auditoría no debe interrumpir el seguimiento */
     }
 
     toast.success("Seguimiento registrado");
@@ -376,6 +445,60 @@ export function SeguimientoDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Radicación en plataforma (ÍNDIGO) */}
+          {esRadicacion && tabla === "remisiones" && (
+            <div className="space-y-3 rounded-lg border border-border/60 bg-muted/30 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Radicación en plataforma · Trazabilidad Índigo
+              </p>
+              {generaCodigo ? (
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Código de radicación *
+                  </Label>
+                  <Input
+                    value={radicado}
+                    onChange={(e) => {
+                      setRadicado(e.target.value);
+                      setNuevoRadicado(true);
+                    }}
+                    placeholder="Ingresa el código de radicación"
+                  />
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">
+                  Esta EAPB no genera código de radicación. No se exige código.
+                </p>
+              )}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Plantilla para Índigo (texto plano editable)
+                  </Label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 gap-1.5 rounded-full px-3 text-xs"
+                    onClick={copiarRad}
+                  >
+                    <Copy className="h-3.5 w-3.5" /> Copiar para Índigo
+                  </Button>
+                </div>
+                <Textarea
+                  value={radPlantilla}
+                  onChange={(e) => {
+                    setRadPlantilla(e.target.value);
+                    setRadEditada(true);
+                  }}
+                  rows={5}
+                  className="font-mono text-xs leading-relaxed"
+                />
+              </div>
+            </div>
+          )}
+
 
           {/* Estado de la solicitud (Indigo) */}
           <div className="space-y-1.5">

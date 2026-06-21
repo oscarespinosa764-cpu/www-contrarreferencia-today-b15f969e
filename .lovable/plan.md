@@ -1,71 +1,93 @@
-# Plan — Ajustes Bitácora de Remisiones + Sesión
+# Plantillas de trazabilidad ÍNDIGO — Dashboard operativo salientes
 
-## 1. Tarjeta del caso (imagen 1) — `caso-remision-card.tsx`
+Objetivo: generar plantillas de TEXTO PLANO (para copiar/pegar en ÍNDIGO) al crear un caso saliente y al hacer seguimientos de radicación. No se toca remisiones entrantes, ni login/roles/RLS/seguridad. Sin HTML, sin formato oficio, sin negrillas/colores, sin botón WhatsApp. Solo botón “Copiar para Índigo”.
 
-**Tiempo transcurrido (esquina inferior derecha):**
-- Quitar el chip de tiempo del encabezado (arriba a la derecha, junto a "Rad").
-- Colocarlo abajo a la derecha de la tarjeta (donde está la X roja).
-- Eliminar los segundos → mostrar solo `días, horas, minutos`.
-- Color del recuadro según antigüedad:
-  - menos de 12 h → verde
-  - 12 h a menos de 120 h → amarillo
-  - 120 h o más → rojo
+## Alcance (qué se toca)
+- Catálogos EAPB/ERP: 2 atributos nuevos.
+- Catálogos: nuevas listas administrables (IPS local, departamentos, tipos de trámite).
+- Formulario "Nuevo registro → Remisión" (saliente).
+- Diálogo de seguimiento (tipo "Radicación en plataforma").
+- Nuevo módulo de generación de plantillas en texto plano.
+- 1 migración aditiva (no destructiva).
 
-**Última gestión (junto al botón Seguimiento):**
-- Quitarla de su posición actual (debajo del motivo) y ubicarla en la fila de acciones, al lado del botón "Seguimiento".
-- Si hay gestión previa: mostrar **fecha, hora y quién** la realizó.
-- Si no hay: "Sin seguimientos registrados".
-- (La data ya llega vía `ultimaGestion = { fecha, responsable }`; se aprovecha tal cual.)
+## 1. Migración de base de datos (aditiva, sin borrar nada)
+Nuevas columnas en `remisiones` (todas nullable, compatibles con datos existentes):
+- `eapb` text — EAPB/ERP seleccionada (hoy el form no la captura).
+- `alcance_red` text — "LOCAL" | "LOCAL_NACIONAL".
+- `ips_red_local` text — IPS marcadas, separadas por coma.
+- `departamentos_red_nacional` text — departamentos marcados, separados por coma.
+- `eapb_tiene_plataforma` boolean.
+- `eapb_genera_codigo` boolean.
+- `plataforma_funcionando` boolean (null si no aplica).
+- `trazabilidad_indigo` text — plantilla inicial generada (editada).
 
-**Texto "Motivo":**
-- Cambiar la etiqueta `Motivo:` por `Justificación remisión:`.
+`codigo_radicacion` (ya existe) se usa para "PENDIENTE DE RADICACIÓN" / "NO APLICA" / código real.
 
-**Marquita de prioridad (media/baja/alta):**
-- baja → verde, media → amarillo, alta → rojo (hoy solo se colorea "alta" en rojo).
+Atributos EAPB en catálogo: se reutilizan las columnas existentes `extra1`/`extra2` de `catalogos` para tipo `EAPB`:
+- `extra1` = "Tiene plataforma" ("SI"/"NO")
+- `extra2` = "Genera código de radicación" ("SI"/"NO")
 
-**Borde izquierdo de la tarjeta:**
-- Cambiar el color fijo azul/teal por el color de prioridad (verde / amarillo / rojo).
+Seed de catálogos nuevos (vía INSERT, no destructivo, con ON CONFLICT/condicional):
+- tipo `TIPO_TRAMITE`: Remisión asistencial normal; Remisión por trámite administrativo cancelable; Remisión asistencial por SOAT; Remisión asistencial normal con falla de plataforma.
+- tipo `IPS_LOCAL`: Clínica Medilaser Florencia; Hospital María Inmaculada Florencia.
+- tipo `DEPARTAMENTO`: Huila; Tolima; Cundinamarca; Nariño; Cauca; Valle del Cauca; Atlántico; Antioquia.
 
-**Rad:** se mantiene el color actual.
+GRANTs ya existen para `catalogos`/`remisiones`; no se cambian políticas RLS.
 
-## 2. Modal de seguimiento (imagen 2) — `seguimiento-dialog.tsx`
+## 2. Catálogo EAPB/ERP (catalogo-maestras.tsx)
+Para tipo `EAPB`, mostrar `extra1Label = "Tiene plataforma (SI/NO)"` y `extra2Label = "Genera código de radicación (SI/NO)"` como selects SI/NO (en vez de texto libre). No se agrega nombre de plataforma ni observaciones. Otros tipos quedan igual.
 
-- **"Agregar nuevo radicado"**: convertirlo en un **botón** con estilo (outline/secundario), no texto plano.
-- **"No aplica (esta EPS no genera radicado)"**: mostrar la casilla **solo cuando el número de radicado está vacío** (no generado). Si ya hay radicado guardado, ocultarla.
-- **Tipo de seguimiento**: agregar la opción **"Radicado de trámite de remisión"** (para cuando solo se registra el radicado).
-- **Evolución diaria — especialidades correctas**: hoy usa las especialidades **destino/receptoras**. Debe usar las **especialidades tratantes (remisoras)**. Se pasará `r.especialidades_tratantes` en lugar de `r.especialidades_receptoras` al modal.
+## 3. Formulario Remisión saliente (nuevo-registro-dialog.tsx)
+Agregar al tab "Remisión":
+- Select **EAPB/ERP** (desde catálogo EAPB). Al elegir, se leen sus flags `tiene_plataforma` y `genera_codigo`.
+- Si `tiene_plataforma = SI` y NO es SOAT: pregunta obligatoria **¿La plataforma se encuentra funcionando? (Sí/No)**.
+- Campo obligatorio **Tipo de trámite** (desde catálogo TIPO_TRAMITE).
+- Campo obligatorio **Alcance de gestión**: Red local | Red local + red nacional.
+- Si alcance incluye local: checkboxes de **IPS locales** (catálogo IPS_LOCAL), mínimo 1.
+- Si alcance incluye nacional: checkboxes de **departamentos** (catálogo DEPARTAMENTO) + "Otro" con campo de texto, mínimo 1.
+- `codigo_radicacion` NO se digita aquí: se guarda "PENDIENTE DE RADICACIÓN" (si genera código) o "NO APLICA" (si no genera).
+- Fecha/hora de inicio y radicación siguen como están (no editables / automáticas).
 
-## 3. Evolución diaria con guardado independiente (imagen 4) — `seguimiento-dialog.tsx`
+Al guardar el caso, se persisten los nuevos campos y se abre la **ventana de plantilla inicial**.
 
-- Mantener las dos casillas por especialidad **Índigo / EAPB** (con visual de check, ya lo es).
-- Agregar un botón **"Guardar"** propio dentro del recuadro de "Evolución diaria" (en la fila del título), que muestre "Guardando…" mientras procesa.
-- Ese botón guarda **solo la evolución** (actualiza `evolucion` y `evolucion_detalle` del caso) **sin exigir** tipo de seguimiento ni el resto del modal.
-- El botón inferior "Registrar seguimiento" sigue funcionando como hasta ahora (sí exige tipo de seguimiento).
+## 4. Generador de plantillas (nuevo archivo src/lib/indigo-trazabilidad.ts)
+Función pura que recibe los datos del caso y devuelve string de texto plano, eligiendo la plantilla 8.1–8.11 según: tipo de pagador (EAPB vs SOAT), tipo de trámite, tiene_plataforma, plataforma_funcionando, alcance (local / local+nacional). Reemplaza variables `{{ips_red_local}}`, `{{departamentos_red_nacional}}`, `{{codigo_radicacion}}`, etc. Incluye:
+- Las 11 plantillas iniciales exactas del requerimiento.
+- Notas aclaratorias (sección 9) con placeholders visibles si faltan datos.
+- Plantillas de seguimiento de radicación (10.1, 10.2, 10.3) y plantilla especial 8.12.
+Todo en MAYÚSCULAS/texto plano, sin HTML.
 
-## 4. Color coding centralizado — `remisiones-utils.ts`
+## 5. Ventana de plantilla inicial (nuevo componente indigo-panel.tsx)
+Modal con:
+- Título: "INICIO DE TRÁMITE DE REMISIÓN - TRAZABILIDAD ÍNDIGO".
+- `Textarea` editable con la plantilla generada.
+- Botón **Copiar para Índigo** (copia `textarea.value` como texto plano vía `navigator.clipboard.writeText`).
+- Botón **Regenerar plantilla** (re-aplica el generador descartando ediciones).
+- Botón **Cerrar / Continuar**.
+Reutilizable también para mostrar la plantilla desde la tarjeta del caso.
 
-- `fmtTranscurrido`: quitar segundos (solo días/horas/min).
-- Nuevo helper `tiempoTono(fromISO)` → devuelve `verde | amarillo | rojo` según los umbrales (12 h / 120 h).
-- Nuevo helper `prioridadMeta(prioridad)` → mapea baja/media/alta a clases de color (borde, texto, fondo) usando los tokens `status-green / status-amber / status-red` ya existentes en `styles.css`.
+## 6. Seguimiento "Radicación en plataforma" (seguimiento-dialog.tsx)
+- Agregar tipo "Radicación en plataforma" a la lista de tipos.
+- Si EAPB `genera_codigo = SI`: campo **Código de radicación** obligatorio; al guardar actualiza `codigo_radicacion` del caso.
+- Generar plantilla 10.1 (o 10.2 si la plataforma estaba caída) en `Textarea` editable + botón "Copiar para Índigo".
+- Si `genera_codigo = NO`: no exigir código; plantilla 10.3.
+- Plantilla especial 8.12 disponible como opción de seguimiento editable.
 
-## 5. Sesión por inactividad (imagen 3)
-
-**Nuevo componente** `src/components/session-timeout.tsx` + hook de inactividad, montado dentro del layout `_authenticated.tsx`:
-- Detecta inactividad (mouse, teclado, scroll, touch). Tras **3 horas sin actividad**, muestra el modal "Sesión expirada" con dos acciones:
-  - **Cerrar sesión** → `signOut()`.
-  - **Continuar/Renovar** → refresca la sesión (`supabase.auth.refreshSession()`), reinicia el contador y cierra el modal.
-- Si tras aparecer el modal pasa **1 hora más** sin que el usuario presione "Continuar", se ejecuta `signOut()` automáticamente.
-
-**Cierre al cerrar pestaña/navegador:**
-- Marcar la sesión como "viva" en `sessionStorage` al cargar la app autenticada. Como `sessionStorage` se borra al cerrar la pestaña/navegador, al volver a abrir sin esa marca se fuerza `signOut()`. Esto cierra la sesión cuando se cierra la pestaña o el navegador, sin afectar la navegación dentro de la misma pestaña.
-- (Nota técnica: `client.ts` es autogenerado y persiste en `localStorage`; por eso el cierre por cierre de pestaña se implementa con la marca de `sessionStorage`, sin tocar ese archivo.)
+## 7. Auditoría (sección 12)
+Llamar `registrar_auditoria` (función ya existente) en: creación de caso saliente, generación de plantilla inicial, seguimiento de radicación y registro/modificación de código. Sin datos sensibles ni claves en logs. No se cambia la lógica de auditoría existente.
 
 ## Detalles técnicos
+- Todo el texto se genera con un módulo TS puro (`indigo-trazabilidad.ts`); el panel solo muestra/edita/copa.
+- "Copiar para Índigo" usa `navigator.clipboard.writeText(value)` — siempre texto plano.
+- No se importa nada de `oficio.ts` ni de los componentes de entrantes; cero cambios en entrantes.
+- Migración 100% aditiva; los casos antiguos quedan con los nuevos campos en null y la app los maneja con defaults.
 
-- Tokens de color (verde/amarillo/rojo) ya existen: `status-green`, `status-amber`, `status-red` en `src/styles.css`. No se crean colores nuevos.
-- Cambios contenidos a: `caso-remision-card.tsx`, `seguimiento-dialog.tsx`, `remisiones-utils.ts`, `_authenticated.tsx`, y un nuevo `session-timeout.tsx`. Sin cambios de base de datos.
-- `GenericoCard` (PHD/internas/pendientes) en `remisiones.tsx` también usa tiempo/última gestión; se aplicará el mismo color de tiempo para consistencia, opcional según prioridad.
-
-## Pendiente / fuera de alcance
-- Trazabilidad completa de seguimientos (el usuario indicó que se organizará en otro lugar más adelante).
-- Formatos de exportación (PDF/Excel) — el usuario los enviará al final.
+## Pruebas recomendadas
+1. Catálogo: marcar EAPB con/sin plataforma y con/sin código.
+2. Crear caso EAPB con plataforma funcionando + red local → plantilla 8.1.
+3. EAPB con plataforma caída + local+nacional → plantilla 8.8 (sin exigir código).
+4. SOAT + local → plantilla 8.5 (sin hablar de plataforma/código).
+5. Trámite administrativo con plataforma → 8.9; sin plataforma → 8.10.
+6. Seguimiento "Radicación en plataforma" con EAPB que genera código → exige código y plantilla 10.1.
+7. Verificar que "Copiar para Índigo" pega texto plano y que NO existe botón WhatsApp.
+8. Confirmar que remisiones entrantes no cambió.

@@ -37,7 +37,16 @@ const TIPO_META: Record<
     modulo: "Remisiones",
     extra1Label: "Ciudad – Departamento (separar sedes con ;)",
   },
-  EAPB: { label: "EAPB / Aseguradoras", usadoEn: "Remisiones · Referencia interna", modulo: "Remisiones" },
+  EAPB: {
+    label: "EAPB / Aseguradoras",
+    usadoEn: "Remisiones · Referencia interna",
+    modulo: "Remisiones",
+    extra1Label: "Tiene plataforma (SI/NO)",
+    extra2Label: "Genera código de radicación (SI/NO)",
+  },
+  TIPO_TRAMITE: { label: "Tipos de trámite", usadoEn: "Remisiones salientes · Trazabilidad Índigo", modulo: "Remisiones" },
+  IPS_LOCAL: { label: "IPS red local", usadoEn: "Remisiones salientes · Trazabilidad Índigo", modulo: "Remisiones" },
+  DEPARTAMENTO: { label: "Departamentos red nacional", usadoEn: "Remisiones salientes · Trazabilidad Índigo", modulo: "Remisiones" },
   ESPECIALIDAD: { label: "Especialidades", usadoEn: "Remisiones · Médicos", modulo: "Remisiones" },
   MEDICO: {
     label: "Médicos / Profesionales",
@@ -485,6 +494,33 @@ export function CatalogoMaestras() {
                     <Plus className="h-4 w-4" /> Agregar sede / detalle
                   </Button>
                 </div>
+              ) : editing.tipo === "EAPB" ? (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="extra1">Tiene plataforma</Label>
+                    <select
+                      id="extra1"
+                      name="extra1"
+                      defaultValue={editing.extra1 ?? "NO"}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                    >
+                      <option value="SI">Sí</option>
+                      <option value="NO">No</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="extra2">Genera código de radicación</Label>
+                    <select
+                      id="extra2"
+                      name="extra2"
+                      defaultValue={editing.extra2 ?? "NO"}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                    >
+                      <option value="SI">Sí</option>
+                      <option value="NO">No</option>
+                    </select>
+                  </div>
+                </>
               ) : (
                 <>
                   <div className="space-y-2">
