@@ -244,6 +244,10 @@ export function SeguimientoDialog({
       toast.error("Indica el motivo de la evolución pendiente");
       return;
     }
+    if (esRadicacion && generaCodigo && !radicado.trim()) {
+      toast.error("El código de radicación es obligatorio para este seguimiento");
+      return;
+    }
     setBusy(true);
     const { data: u } = await supabase.auth.getUser();
     const { data: perfil } = await supabase
