@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/backend-client";
 
 const DOC_TYPES = ["CC", "CE", "TI", "RC", "RNV", "ASI", "MSI"];
 const SRC_TABLES = ["remisiones", "domiciliarios", "referencia_interna"] as const;
