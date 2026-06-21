@@ -294,6 +294,8 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     setMotivosCrue(["", "", ""]);
     setFechaRec("");
     setHoraRec("");
+    setEsReconsultante(false);
+    cerrarAdres();
     setResultado(null);
   };
 
