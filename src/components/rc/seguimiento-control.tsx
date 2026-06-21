@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AutoComplete } from "@/components/rc/autocomplete";
 import { ResultadoCard } from "@/components/rc/resultado-card";
 import { OficioPreview } from "@/components/rc/oficio-preview";
-import { copiarOficio, tituloOficio } from "@/lib/oficio";
+import { copiarOficio } from "@/lib/oficio";
 import { PlantillasEnPaso } from "@/components/coordinacion/plantillas-en-paso";
 import { Clock, LogIn, Plus, XCircle, Archive, AlertTriangle, Loader2, Bell, Check, Mail } from "lucide-react";
 import { toast } from "sonner";
@@ -579,13 +579,13 @@ function AccionDialog({
             {archivarInfo?.mensaje ? (
               <div className="space-y-2">
                 <Label>Oficio de cancelación por vencimiento</Label>
-                <OficioPreview titulo={tituloOficio("CAN")} codigo={archivarInfo.codigo} mensaje={archivarInfo.mensaje} />
+                <OficioPreview tipo="CAN" codigo={archivarInfo.codigo} mensaje={archivarInfo.mensaje} />
                 <Button
                   type="button"
                   variant="secondary"
                   className="w-full rounded-full"
                   onClick={async () => {
-                    const ok = await copiarOficio(tituloOficio("CAN"), archivarInfo.codigo, archivarInfo.mensaje);
+                    const ok = await copiarOficio("CAN", archivarInfo.codigo, archivarInfo.mensaje);
                     if (ok) {
                       setCopied(true);
                       toast.success("Oficio copiado para el correo");

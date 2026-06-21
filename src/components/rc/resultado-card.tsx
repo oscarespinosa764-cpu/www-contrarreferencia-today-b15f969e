@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Check, Copy, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { TIPO_LABEL } from "@/lib/rc-utils";
-import { copiarOficio, tituloOficio } from "@/lib/oficio";
+import { copiarOficio } from "@/lib/oficio";
 import { OficioPreview } from "@/components/rc/oficio-preview";
 
 interface Props {
@@ -19,7 +19,7 @@ export function ResultadoCard({ tipo, codigo, mensaje, onNuevo, nuevoLabel }: Pr
   const [copied, setCopied] = useState(false);
 
   const copiarCorreo = async () => {
-    const ok = await copiarOficio(tituloOficio(tipo), codigo, mensaje);
+    const ok = await copiarOficio(tipo, codigo, mensaje);
     if (ok) {
       setCopied(true);
       toast.success("Oficio copiado — pégalo en el correo (Gmail / Outlook)");
@@ -42,7 +42,7 @@ export function ResultadoCard({ tipo, codigo, mensaje, onNuevo, nuevoLabel }: Pr
       </div>
 
       {mensaje ? (
-        <OficioPreview titulo={tituloOficio(tipo)} codigo={codigo} mensaje={mensaje} />
+        <OficioPreview tipo={tipo} codigo={codigo} mensaje={mensaje} />
       ) : (
         <p className="rounded-xl border border-dashed border-border bg-card p-4 text-center text-xs text-muted-foreground">
           No se encontró una plantilla configurada para este tipo de caso. El registro se guardó igualmente.
