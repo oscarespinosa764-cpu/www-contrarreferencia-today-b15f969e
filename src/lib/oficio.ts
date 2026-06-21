@@ -167,21 +167,11 @@ export function buildOficioHTML(tipo: string, codigo: string, mensaje: string): 
     // Texto institucional
     `<div style="font-size:14px">${cuerpo}</div>`,
 
-    // Firma institucional + mascota CECI
-    `<div style="border-top:1px solid ${LINE};margin:24px 0 14px"></div>`,
-    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse"><tr>`,
-    `<td style="vertical-align:bottom">`,
-    `<div style="font-size:13px;color:${MAIN};font-weight:700">${INSTITUCION.nombre}</div>`,
-    `<div style="font-size:12px;font-style:italic;color:${MUTED}">${INSTITUCION.oficina}</div>`,
-    `<div style="font-size:12px;color:${MUTED};margin-top:2px">${INSTITUCION.email}</div>`,
-    `</td>`,
-    `<td style="vertical-align:bottom;text-align:right;width:120px">`,
-    `<img src="${IMG.mascota}" alt="CECI" width="92" style="display:block;width:92px;height:auto;border:0;margin-left:auto" /></td>`,
-    `</tr></table>`,
-
+    // Separador azul antes del aviso
+    `<div style="height:2px;background:${MAIN};border-radius:2px;margin:24px 0 16px"></div>`,
 
     // Aviso final
-    `<div style="margin:20px 0 6px;background:#f1f9fb;border:1px solid #cfeaef;border-radius:12px;padding:16px;text-align:center">`,
+    `<div style="margin:6px 0;background:#f1f9fb;border:1px solid #cfeaef;border-radius:12px;padding:16px;text-align:center">`,
     `<div style="font-size:13px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:${TEAL}">⛨ Aviso</div>`,
     `<div style="font-size:13px;font-weight:700;color:${MAIN};margin-top:4px">${INSTITUCION.aviso}</div>`,
     `</div>`,
