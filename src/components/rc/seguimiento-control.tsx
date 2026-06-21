@@ -11,8 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AutoComplete } from "@/components/rc/autocomplete";
 import { ResultadoCard } from "@/components/rc/resultado-card";
+import { OficioPreview } from "@/components/rc/oficio-preview";
+import { copiarOficio, tituloOficio } from "@/lib/oficio";
 import { PlantillasEnPaso } from "@/components/coordinacion/plantillas-en-paso";
-import { Clock, LogIn, Plus, XCircle, Archive, AlertTriangle, Loader2, Bell, Copy, Check } from "lucide-react";
+import { Clock, LogIn, Plus, XCircle, Archive, AlertTriangle, Loader2, Bell, Copy, Check, Mail } from "lucide-react";
 import { toast } from "sonner";
 import {
   buildIngresoMensaje,
