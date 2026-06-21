@@ -579,7 +579,7 @@ function AccionDialog({
             {archivarInfo?.mensaje ? (
               <div className="space-y-2">
                 <Label>Oficio de cancelación por vencimiento</Label>
-                <OficioPreview titulo={tituloOficio("CAN")} codigo={archivarInfo.codigo} mensaje={archivarInfo.mensaje} />
+                <OficioPreview tipo="CAN" codigo={archivarInfo.codigo} mensaje={archivarInfo.mensaje} />
                 <Button
                   type="button"
                   variant="secondary"
