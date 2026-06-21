@@ -5,6 +5,18 @@
 //  y se copia al correo (Gmail / Outlook) para máxima fidelidad.
 // ══════════════════════════════════════════════════════════════════
 import { limpiarMarcadores } from "./rc-utils";
+import logoAsset from "@/assets/cedim-logo.png.asset.json";
+import cruzAsset from "@/assets/cruz-referencia.png.asset.json";
+import mascotaAsset from "@/assets/ceci-mascota.png.asset.json";
+
+// Las imágenes deben tener URL ABSOLUTA para verse también cuando el oficio
+// se pega en el correo (Gmail / Outlook). Usamos el dominio publicado.
+const ASSET_BASE = "https://look-see-html.lovable.app";
+export const IMG = {
+  logo: ASSET_BASE + logoAsset.url,
+  cruz: ASSET_BASE + cruzAsset.url,
+  mascota: ASSET_BASE + mascotaAsset.url,
+};
 
 export const INSTITUCION = {
   nombre: "CEDIM IPS",
