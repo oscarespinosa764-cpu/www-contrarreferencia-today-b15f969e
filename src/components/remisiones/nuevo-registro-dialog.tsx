@@ -359,6 +359,7 @@ export function NuevoRegistroDialog({
   };
 
   return (
+    <>
     <Dialog
       open={open}
       onOpenChange={(v) => {
