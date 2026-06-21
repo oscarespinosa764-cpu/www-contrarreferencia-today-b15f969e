@@ -38,6 +38,18 @@ export function NuevoRegistroDialog({
   const [phdTratantes, setPhdTratantes] = useState<string[]>([]);
   const [resetKey, setResetKey] = useState(0);
 
+  // --- Trazabilidad ÍNDIGO (remisión saliente) ---
+  const [eapbSel, setEapbSel] = useState("");
+  const [plataformaFunc, setPlataformaFunc] = useState<string>(""); // "SI" | "NO" | ""
+  const [tipoTramiteSel, setTipoTramiteSel] = useState("");
+  const [alcance, setAlcance] = useState<AlcanceRed | "">("");
+  const [ipsSel, setIpsSel] = useState<string[]>([]);
+  const [deptosSel, setDeptosSel] = useState<string[]>([]);
+  const [deptoOtro, setDeptoOtro] = useState("");
+  const [motivoNota, setMotivoNota] = useState<MotivoNota>("ninguno");
+  const [indigoOpen, setIndigoOpen] = useState(false);
+  const [indigoTexto, setIndigoTexto] = useState("");
+
   const { data: especialidades = [] } = useQuery({
     queryKey: ["cat-especialidad"],
     queryFn: async () => {
@@ -50,6 +62,72 @@ export function NuevoRegistroDialog({
       return (data ?? []).map((d) => d.valor as string);
     },
   });
+
+  // EAPB con sus flags (tiene plataforma / genera código).
+  const { data: eapbList = [] } = useQuery({
+    queryKey: ["cat-eapb-flags"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor, extra1, extra2")
+        .eq("tipo", "EAPB")
+        .eq("activo", true)
+        .order("valor");
+      return (data ?? []) as { valor: string; extra1: string | null; extra2: string | null }[];
+    },
+  });
+
+  const { data: tiposTramite = [] } = useQuery({
+    queryKey: ["cat-tipo-tramite"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor")
+        .eq("tipo", "TIPO_TRAMITE")
+        .eq("activo", true)
+        .order("valor");
+      return (data ?? []).map((d) => d.valor as string);
+    },
+  });
+
+  const { data: ipsLocales = [] } = useQuery({
+    queryKey: ["cat-ips-local"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor")
+        .eq("tipo", "IPS_LOCAL")
+        .eq("activo", true)
+        .order("valor");
+      return (data ?? []).map((d) => d.valor as string);
+    },
+  });
+
+  const { data: departamentos = [] } = useQuery({
+    queryKey: ["cat-departamento"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor")
+        .eq("tipo", "DEPARTAMENTO")
+        .eq("activo", true)
+        .order("valor");
+      return (data ?? []).map((d) => d.valor as string);
+    },
+  });
+
+  const eapbActual = useMemo(
+    () => eapbList.find((e) => e.valor === eapbSel) ?? null,
+    [eapbList, eapbSel],
+  );
+  const esSoat = esTramiteSoat(tipoTramiteSel);
+  const tienePlataforma = (eapbActual?.extra1 ?? "").toUpperCase() === "SI";
+  const generaCodigo = !esSoat && (eapbActual?.extra2 ?? "").toUpperCase() === "SI";
+  const mostrarPreguntaPlataforma = tienePlataforma && !esSoat;
+  const incluyeNacional = alcance === "LOCAL_NACIONAL";
+
+  const toggleList = (arr: string[], v: string, set: (x: string[]) => void) =>
+    set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["remisiones"] });
