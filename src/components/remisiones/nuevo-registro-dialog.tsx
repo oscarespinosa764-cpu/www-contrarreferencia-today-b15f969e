@@ -801,5 +801,13 @@ export function NuevoRegistroDialog({
         </Tabs>
       </DialogContent>
     </Dialog>
+
+    <IndigoPanel
+      open={indigoOpen}
+      onOpenChange={setIndigoOpen}
+      titulo="INICIO DE TRÁMITE DE REMISIÓN - TRAZABILIDAD ÍNDIGO"
+      plantillaBase={indigoTexto}
+    />
+    </>
   );
 }
