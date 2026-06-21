@@ -37,7 +37,16 @@ const TIPO_META: Record<
     modulo: "Remisiones",
     extra1Label: "Ciudad – Departamento (separar sedes con ;)",
   },
-  EAPB: { label: "EAPB / Aseguradoras", usadoEn: "Remisiones · Referencia interna", modulo: "Remisiones" },
+  EAPB: {
+    label: "EAPB / Aseguradoras",
+    usadoEn: "Remisiones · Referencia interna",
+    modulo: "Remisiones",
+    extra1Label: "Tiene plataforma (SI/NO)",
+    extra2Label: "Genera código de radicación (SI/NO)",
+  },
+  TIPO_TRAMITE: { label: "Tipos de trámite", usadoEn: "Remisiones salientes · Trazabilidad Índigo", modulo: "Remisiones" },
+  IPS_LOCAL: { label: "IPS red local", usadoEn: "Remisiones salientes · Trazabilidad Índigo", modulo: "Remisiones" },
+  DEPARTAMENTO: { label: "Departamentos red nacional", usadoEn: "Remisiones salientes · Trazabilidad Índigo", modulo: "Remisiones" },
   ESPECIALIDAD: { label: "Especialidades", usadoEn: "Remisiones · Médicos", modulo: "Remisiones" },
   MEDICO: {
     label: "Médicos / Profesionales",
