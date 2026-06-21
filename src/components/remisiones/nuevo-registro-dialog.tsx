@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Field, SelectField, SpecialtyList, EdadField } from "./form-bits";
@@ -11,6 +13,16 @@ import { PatientBlock } from "./patient-block";
 import { Cie10Field } from "./cie10-field";
 import { toast } from "sonner";
 import { PlantillasEnPaso } from "@/components/coordinacion/plantillas-en-paso";
+import { IndigoPanel } from "./indigo-panel";
+import {
+  generarPlantillaInicio,
+  generarNotaAclaratoria,
+  codigoInicial,
+  esTramiteSoat,
+  MOTIVOS_NOTA,
+  type AlcanceRed,
+  type MotivoNota,
+} from "@/lib/indigo-trazabilidad";
 
 export function NuevoRegistroDialog({
   open,
