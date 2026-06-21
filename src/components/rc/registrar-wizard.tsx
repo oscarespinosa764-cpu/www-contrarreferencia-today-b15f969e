@@ -161,19 +161,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     if (e && e.ciudades.length === 1) setCiudad(e.ciudades[0]);
   };
 
-  // ── Consultar ADRES: copia el documento y abre la ventana de ADRES ──
-  const consultarAdres = async () => {
-    const doc = documento.trim();
-    try {
-      await navigator.clipboard.writeText(doc);
-      toast.success("Documento copiado — pégalo en ADRES con Ctrl+V");
-    } catch {
-      toast.message("Copia el documento manualmente: " + doc);
-    }
-    window.open("https://www.adres.gov.co/consulte-su-eps", "_blank", "noopener,noreferrer");
-  };
 
-  // ── Consultar ADRES: copia el documento y abre ADRES como ventana flotante ──
   const consultarAdres = async () => {
     const doc = documento.trim();
     try {
