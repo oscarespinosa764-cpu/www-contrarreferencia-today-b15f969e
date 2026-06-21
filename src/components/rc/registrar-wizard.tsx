@@ -127,11 +127,17 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
       setEapb((v) => v || pacientePrevio.eapb);
       setRegimen((v) => v || pacientePrevio.regimen);
       setIps((v) => v || pacientePrevio.ips);
+      // Ciudad/Departamento: no se almacena en el caso, se deriva de la IPS previa.
+      if (pacientePrevio.ips) {
+        const e = catalogos.ipsConCiudades.find((x) => x.nombre === pacientePrevio.ips);
+        if (e && e.ciudades.length >= 1) setCiudad((v) => v || e.ciudades[0]);
+      }
       const hayDatos =
         pacientePrevio.nombres ||
         pacientePrevio.apellidos ||
         pacientePrevio.eapb ||
-        pacientePrevio.regimen;
+        pacientePrevio.regimen ||
+        pacientePrevio.ips;
       setEsReconsultante(!!hayDatos);
     } else {
       setEsReconsultante(false);
