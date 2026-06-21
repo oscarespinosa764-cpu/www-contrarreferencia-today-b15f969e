@@ -1065,6 +1065,7 @@ export type Database = {
       }
       remisiones: {
         Row: {
+          alcance_red: string | null
           archivado: boolean
           asegurador: string | null
           cama: string | null
@@ -1075,7 +1076,11 @@ export type Database = {
           contacto_telefono: string | null
           created_at: string
           created_by: string | null
+          departamentos_red_nacional: string | null
           documento: string | null
+          eapb: string | null
+          eapb_genera_codigo: boolean | null
+          eapb_tiene_plataforma: boolean | null
           edad: string | null
           especialidades_receptoras: string | null
           especialidades_tratantes: string | null
@@ -1089,8 +1094,10 @@ export type Database = {
           fecha_radicado: string | null
           id: string
           ips_receptora: string | null
+          ips_red_local: string | null
           observaciones: string | null
           paciente: string | null
+          plataforma_funcionando: boolean | null
           pqrs: string | null
           prestador_traslado: string | null
           prioridad: string | null
@@ -1102,9 +1109,11 @@ export type Database = {
           tipo_ambulancia: string | null
           tipo_documento: string | null
           tipo_tramite: string | null
+          trazabilidad_indigo: string | null
           updated_at: string
         }
         Insert: {
+          alcance_red?: string | null
           archivado?: boolean
           asegurador?: string | null
           cama?: string | null
@@ -1115,7 +1124,11 @@ export type Database = {
           contacto_telefono?: string | null
           created_at?: string
           created_by?: string | null
+          departamentos_red_nacional?: string | null
           documento?: string | null
+          eapb?: string | null
+          eapb_genera_codigo?: boolean | null
+          eapb_tiene_plataforma?: boolean | null
           edad?: string | null
           especialidades_receptoras?: string | null
           especialidades_tratantes?: string | null
@@ -1129,8 +1142,10 @@ export type Database = {
           fecha_radicado?: string | null
           id?: string
           ips_receptora?: string | null
+          ips_red_local?: string | null
           observaciones?: string | null
           paciente?: string | null
+          plataforma_funcionando?: boolean | null
           pqrs?: string | null
           prestador_traslado?: string | null
           prioridad?: string | null
@@ -1142,9 +1157,11 @@ export type Database = {
           tipo_ambulancia?: string | null
           tipo_documento?: string | null
           tipo_tramite?: string | null
+          trazabilidad_indigo?: string | null
           updated_at?: string
         }
         Update: {
+          alcance_red?: string | null
           archivado?: boolean
           asegurador?: string | null
           cama?: string | null
@@ -1155,7 +1172,11 @@ export type Database = {
           contacto_telefono?: string | null
           created_at?: string
           created_by?: string | null
+          departamentos_red_nacional?: string | null
           documento?: string | null
+          eapb?: string | null
+          eapb_genera_codigo?: boolean | null
+          eapb_tiene_plataforma?: boolean | null
           edad?: string | null
           especialidades_receptoras?: string | null
           especialidades_tratantes?: string | null
@@ -1169,8 +1190,10 @@ export type Database = {
           fecha_radicado?: string | null
           id?: string
           ips_receptora?: string | null
+          ips_red_local?: string | null
           observaciones?: string | null
           paciente?: string | null
+          plataforma_funcionando?: boolean | null
           pqrs?: string | null
           prestador_traslado?: string | null
           prioridad?: string | null
@@ -1182,6 +1205,7 @@ export type Database = {
           tipo_ambulancia?: string | null
           tipo_documento?: string | null
           tipo_tramite?: string | null
+          trazabilidad_indigo?: string | null
           updated_at?: string
         }
         Relationships: []
