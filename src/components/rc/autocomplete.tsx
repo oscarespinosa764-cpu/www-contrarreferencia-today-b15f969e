@@ -14,7 +14,16 @@ interface Props {
   id?: string;
   /** Muestra las opciones al enfocar aunque el campo esté vacío (contexto relacionado) */
   openAllOnFocus?: boolean;
+  /** Mínimo de caracteres antes de mostrar sugerencias al escribir (def. 1) */
+  minChars?: number;
 }
+
+// Normaliza para búsqueda: sin tildes, en minúsculas.
+const norm = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 
 export function AutoComplete({
   label,
@@ -26,22 +35,29 @@ export function AutoComplete({
   required,
   id,
   openAllOnFocus,
+  minChars = 1,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const tokens = value.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  // Sugerencia inteligente: muestra opciones al escribir, o al enfocar cuando hay contexto relacionado.
+  const raw = value.trim();
+  const tokens = norm(raw).split(/\s+/).filter(Boolean);
+  const enoughChars = raw.length >= minChars;
+  // Sugerencia inteligente: muestra opciones al escribir (insensible a
+  // mayúsculas/tildes, por coincidencia parcial), o al enfocar cuando hay
+  // contexto relacionado. No abre la lista completa solo por enfocar.
   const filtered =
     tokens.length === 0
       ? openAllOnFocus
         ? options
         : []
-      : options.filter((o) => {
-          const low = o.toLowerCase();
-          return tokens.every((t) => low.includes(t));
-        });
+      : enoughChars
+        ? options.filter((o) => {
+            const low = norm(o);
+            return tokens.every((t) => low.includes(t));
+          })
+        : [];
   const visible = filtered.slice(0, 12);
 
   const pick = (v: string) => {
