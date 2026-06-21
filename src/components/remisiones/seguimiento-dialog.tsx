@@ -146,6 +146,26 @@ export function SeguimientoDialog({
       ? "plataforma_restablecida"
       : "con_codigo";
 
+  // Regenera la plantilla ÍNDIGO de radicación mientras el usuario no la haya editado.
+  useEffect(() => {
+    if (esRadicacion && !radEditada) {
+      setRadPlantilla(generarPlantillaRadicacion(radicacionTipo, radicado));
+    }
+  }, [esRadicacion, radEditada, radicacionTipo, radicado]);
+
+  useEffect(() => {
+    if (!esRadicacion) setRadEditada(false);
+  }, [esRadicacion]);
+
+  const copiarRad = async () => {
+    try {
+      await navigator.clipboard.writeText(radPlantilla);
+      toast.success("Texto copiado para Índigo");
+    } catch {
+      toast.error("No se pudo copiar. Selecciona el texto manualmente.");
+    }
+  };
+
   const radicadoExistente =
     radicadoCaso?.trim() || (historial ?? []).find((h) => h.radicado)?.radicado || "";
   const radicadoEnUso = noAplicaRadicado
