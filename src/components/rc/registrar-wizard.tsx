@@ -173,6 +173,51 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     window.open("https://www.adres.gov.co/consulte-su-eps", "_blank", "noopener,noreferrer");
   };
 
+  // ── Consultar ADRES: copia el documento y abre ADRES como ventana flotante ──
+  const consultarAdres = async () => {
+    const doc = documento.trim();
+    try {
+      await navigator.clipboard.writeText(doc);
+      toast.success("Documento copiado para consultar en ADRES");
+    } catch {
+      toast.message("Copia el documento manualmente: " + doc);
+    }
+    const w = 1100;
+    const h = 750;
+    const dualLeft = window.screenLeft ?? window.screenX ?? 0;
+    const dualTop = window.screenTop ?? window.screenY ?? 0;
+    const winW = window.innerWidth || document.documentElement.clientWidth || screen.width;
+    const winH = window.innerHeight || document.documentElement.clientHeight || screen.height;
+    const left = Math.max(0, dualLeft + (winW - w) / 2);
+    const top = Math.max(0, dualTop + (winH - h) / 2);
+    // No usamos noopener para conservar el handle y poder cerrar la ventana.
+    const features = `popup=yes,width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`;
+    const win = window.open("https://www.adres.gov.co/consulte-su-eps", "adresConsulta", features);
+    if (!win) {
+      toast.message(
+        "El navegador bloqueó la ventana emergente. Permite los popups de este sitio o abre ADRES manualmente.",
+      );
+      return;
+    }
+    adresWinRef.current = win;
+    setAdresAbierta(true);
+    try {
+      win.focus();
+    } catch {
+      /* algunos navegadores abren en pestaña; no se puede forzar el foco */
+    }
+  };
+
+  const cerrarAdres = () => {
+    try {
+      adresWinRef.current?.close();
+    } catch {
+      /* ventana cross-origin: close() funciona en ventanas abiertas por script */
+    }
+    adresWinRef.current = null;
+    setAdresAbierta(false);
+  };
+
   // ── Lógica de campos según el motivo de negación ──
   const mNeg = motivoNeg.toUpperCase();
   const negEspecialidad = mNeg.includes("RECURSO HUMANO");
@@ -181,19 +226,58 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const negComplejidad = mNeg.includes("COMPLEJIDAD");
   const negDetalleOpcional = mNeg.includes("RED NO CONTRATADA") || mNeg.includes("AFILIACI");
 
+  // ── Catálogo médico ⇄ especialidad (bidireccional) ──
+  // Construye el mapa nombre→especialidad a partir del catálogo de médicos
+  // y del histórico de casos (dato más frecuente).
+  const medEspMap = useMemo(() => {
+    const counts: Record<string, Record<string, number>> = {};
+    const add = (nombre?: string | null, esp?: string | null) => {
+      const n = (nombre || "").trim();
+      const e = (esp || "").trim();
+      if (!n || !e) return;
+      const key = n.toLowerCase();
+      counts[key] = counts[key] || {};
+      counts[key][e] = (counts[key][e] || 0) + 1;
+    };
+    catalogos.medicos.forEach((m) => add(m.nombre, m.especialidad));
+    casos.forEach((c) => add(c.medico, c.especialidad));
+    const best: Record<string, string> = {};
+    for (const key of Object.keys(counts)) {
+      best[key] = Object.entries(counts[key]).sort((a, b) => b[1] - a[1])[0][0];
+    }
+    return best;
+  }, [catalogos.medicos, casos]);
+
+  // Lista completa de médicos (catálogo + histórico).
+  const medicosAll = useMemo(() => {
+    const set = new Set<string>();
+    catalogos.medicos.forEach((m) => m.nombre.trim() && set.add(m.nombre.trim()));
+    casos.forEach((c) => c.medico?.trim() && set.add(c.medico.trim()));
+    return Array.from(set).sort();
+  }, [catalogos.medicos, casos]);
+
   // ── Enlace Médico ⇄ Especialidad ──
-  const espKey = especialidad.trim().toLowerCase();
+  const espNorm = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toLowerCase();
+  const espKey = espNorm(especialidad);
+  // Si hay especialidad escrita, sugiere solo médicos de esa especialidad.
   const medicoOptions = espKey
-    ? catalogos.medicos
-        .filter((m) => !m.especialidad || m.especialidad.toLowerCase().includes(espKey))
-        .map((m) => m.nombre)
-    : catalogos.medicos.map((m) => m.nombre);
+    ? medicosAll.filter((nombre) => {
+        const e = medEspMap[nombre.toLowerCase()];
+        return e ? espNorm(e).includes(espKey) : false;
+      })
+    : medicosAll;
 
   const onPickMedico = (v: string) => {
     setMedico(v);
-    const m = catalogos.medicos.find((x) => x.nombre === v);
-    if (m?.especialidad) setEspecialidad(m.especialidad);
+    const esp = medEspMap[v.trim().toLowerCase()];
+    if (esp) setEspecialidad(esp);
   };
+
 
   // Tiempo reservado de la unidad seleccionada
   const hrsUnidad = unidad ? calcHrsReserva(unidad, "ACEP", catalogos.unidades) : 0;
