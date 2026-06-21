@@ -340,6 +340,85 @@ export async function copiarDual(textoMarcado: string): Promise<boolean> {
   }
 }
 
+// ─── Datos de paciente reconsultante ─────────────────────────────
+export interface DatosPaciente {
+  nombres: string;
+  apellidos: string;
+  eapb: string;
+  regimen: string;
+  ips: string;
+}
+
+/**
+ * Busca los datos básicos de un paciente ya registrado por su documento.
+ * Usa el registro más reciente y completa los campos faltantes con
+ * registros anteriores (dato más reciente y más completo).
+ */
+export function buscarDatosPaciente(todos: Caso[], doc: string): DatosPaciente | null {
+  const d = (doc || "").trim();
+  if (!d) return null;
+  const list = todos
+    .filter((c) => (c.documento || "").trim() === d)
+    .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
+  if (!list.length) return null;
+  const pick = (k: keyof Caso): string => {
+    for (const c of list) {
+      const v = c[k];
+      if (v && String(v).trim()) return String(v).trim();
+    }
+    return "";
+  };
+  return {
+    nombres: pick("nombres"),
+    apellidos: pick("apellidos"),
+    eapb: pick("eapb"),
+    regimen: pick("regimen"),
+    ips: pick("ips"),
+  };
+}
+
+// ─── Mensaje de confirmación de ingreso (sin plantilla / sin IA) ──
+export interface IngresoMsgData {
+  nombre: string;
+  codigo: string;
+  fecha: string;
+  hora: string;
+  ips?: string;
+  eapb?: string;
+  unidad?: string;
+  empresaTep?: string;
+  placa?: string;
+  profesional?: string;
+  cargo?: string;
+  observaciones?: string;
+}
+
+export function buildIngresoMensaje(d: IngresoMsgData): string {
+  const lines: string[] = [
+    "Cordial saludo,",
+    "",
+    `Nos permitimos informar que el paciente *${d.nombre || "—"}*, asociado al caso *${d.codigo}*, ==ingresó a nuestra institución== el día ${d.fecha} a las ${d.hora}, para la continuidad del proceso de atención correspondiente.`,
+    "",
+  ];
+  if (d.ips) lines.push(`IPS remitente: ${d.ips}`);
+  if (d.eapb) lines.push(`EAPB/Asegurador: ${d.eapb}`);
+  if (d.unidad) lines.push(`Unidad/Servicio de ingreso: ${d.unidad}`);
+  if (d.empresaTep) lines.push(`Empresa de transporte: ${d.empresaTep}`);
+  if (d.placa) lines.push(`Placa: ${d.placa}`);
+  if (d.profesional)
+    lines.push(`Profesional que recibe: ${d.profesional}${d.cargo ? ` - ${d.cargo}` : ""}`);
+  if (d.observaciones) lines.push(`Observaciones: ${d.observaciones}`);
+  lines.push(
+    "",
+    "Agradecemos tener en cuenta esta confirmación para los trámites administrativos y asistenciales correspondientes.",
+    "",
+    "Cordialmente,",
+    "",
+    "Oficina de Referencia y Contrarreferencia",
+  );
+  return lines.join("\n");
+}
+
 export const ASEGURAMIENTOS = ["EPS", "SOAT-ADRES", "ARL-POLIZA"];
 export const TIPO_LABEL: Record<string, string> = {
   ACEP: "CASO ACEPTADO",
