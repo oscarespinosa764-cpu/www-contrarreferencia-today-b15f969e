@@ -115,6 +115,12 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
+        <script
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{
+            __html: `globalThis.__CEDIM_BACKEND_CONFIG__=${JSON.stringify(globalThis.__CEDIM_BACKEND_CONFIG__ ?? {})}`,
+          }}
+        />
         {children}
         <Scripts />
       </body>
