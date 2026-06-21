@@ -610,11 +610,27 @@ function AccionDialog({
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="fing">Fecha de ingreso</Label>
-                    <Input id="fing" type="date" value={fechaIngreso} onChange={(e) => setFechaIngreso(e.target.value)} />
+                    <Input
+                      id="fing"
+                      type="text"
+                      value={fechaIngresoDisplay}
+                      readOnly
+                      tabIndex={-1}
+                      aria-readonly="true"
+                      className="cursor-default bg-muted/50 text-foreground"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="hing">Hora de ingreso</Label>
-                    <Input id="hing" type="time" value={horaIngreso} onChange={(e) => setHoraIngreso(e.target.value)} />
+                    <Input
+                      id="hing"
+                      type="text"
+                      value={horaIngresoDisplay}
+                      readOnly
+                      tabIndex={-1}
+                      aria-readonly="true"
+                      className="cursor-default bg-muted/50 text-foreground"
+                    />
                   </div>
                 </div>
                 <AutoComplete label="Empresa de transporte (TEP)" value={empresaTep} onChange={setEmpresaTep} options={catalogos.empresasTep} />
