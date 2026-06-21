@@ -21,11 +21,9 @@ import {
   buildMensaje,
   calcHrsReserva,
   calcularVencimiento,
-  copiarDual,
   fechaCasoStr,
   fmtFechaHora,
   fmtMinutos,
-  formatearMensajeHTML,
   nextCodigo,
   type Caso,
 } from "@/lib/rc-utils";
