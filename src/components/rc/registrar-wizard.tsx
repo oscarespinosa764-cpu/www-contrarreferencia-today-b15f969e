@@ -621,8 +621,15 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 onClick={() => {
                   setTipo("ACEP");
                   setCrueOpen(false);
+                  // limpia estado de negación y de CRUE
                   setMotivoNeg("");
                   setComplejidad("");
+                  setCodigoCrue("");
+                  setContactoIps("");
+                  setUnidadReq("");
+                  setMotivosCrue(["", "", ""]);
+                  setFechaRec("");
+                  setHoraRec("");
                 }}
               />
               <TipoCard
@@ -633,6 +640,15 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 onClick={() => {
                   setTipo("NEG");
                   setCrueOpen(false);
+                  // limpia estado de aceptación y de CRUE
+                  setMedico("");
+                  setEspecialidad("");
+                  setUnidad("");
+                  setAseguramiento("EPS");
+                  setCodigoCrue("");
+                  setContactoIps("");
+                  setUnidadReq("");
+                  setMotivosCrue(["", "", ""]);
                 }}
               />
               <TipoCard
@@ -640,7 +656,18 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 icon={<Siren className="h-5 w-5" />}
                 accent="amber"
                 active={isCrue || crueOpen}
-                onClick={() => setCrueOpen((o) => !o)}
+                onClick={() => {
+                  // CRUE es excluyente: abre panel CRUE y limpia aceptación/negación
+                  setCrueOpen(true);
+                  setTipo("");
+                  setMedico("");
+                  setUnidad("");
+                  setAseguramiento("EPS");
+                  setMotivoNeg("");
+                  setComplejidad("");
+                  setFechaRec("");
+                  setHoraRec("");
+                }}
               />
             </div>
             {crueOpen && (
@@ -649,8 +676,13 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                   <button
                     key={t.value}
                     type="button"
-                    onClick={() => setTipo(t.value)}
-                    className={`rounded-xl border-2 px-3 py-2 text-left text-xs font-bold transition ${
+                    onClick={() => {
+                      setTipo(t.value);
+                      // al cambiar de subtipo CRUE, limpia la unidad requerida
+                      setUnidadReq("");
+                      setMotivosCrue(["", "", ""]);
+                    }}
+                    className={`rounded-xl border-2 px-3 py-2 text-left text-xs font-bold uppercase transition ${
                       tipo === t.value
                         ? "border-status-amber bg-status-amber/10 text-status-amber"
                         : "border-border text-foreground hover:border-status-amber/40"
