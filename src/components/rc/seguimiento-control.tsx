@@ -15,6 +15,7 @@ import { PlantillasEnPaso } from "@/components/coordinacion/plantillas-en-paso";
 import { Clock, LogIn, Plus, XCircle, Archive, AlertTriangle, Loader2, Bell, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import {
+  buildIngresoMensaje,
   buildMensaje,
   calcHrsReserva,
   calcularVencimiento,
