@@ -5,17 +5,14 @@
 //  y se copia al correo (Gmail / Outlook) para máxima fidelidad.
 // ══════════════════════════════════════════════════════════════════
 import { limpiarMarcadores } from "./rc-utils";
-import logoAsset from "@/assets/cedim-logo.png.asset.json";
-import cruzAsset from "@/assets/cruz-referencia.png.asset.json";
-import mascotaAsset from "@/assets/ceci-mascota.png.asset.json";
 
 // Las imágenes deben tener URL ABSOLUTA para verse también cuando el oficio
-// se pega en el correo (Gmail / Outlook). Usamos el dominio publicado.
+// se pega en el correo (Gmail / Outlook). URLs inmutables del CDN.
 const ASSET_BASE = "https://look-see-html.lovable.app";
 export const IMG = {
-  logo: ASSET_BASE + logoAsset.url,
-  cruz: ASSET_BASE + cruzAsset.url,
-  mascota: ASSET_BASE + mascotaAsset.url,
+  logo: ASSET_BASE + "/__l5e/assets-v1/debb769e-6a9d-4c3b-984a-fac1313767e8/cedim-logo.png",
+  cruz: ASSET_BASE + "/__l5e/assets-v1/68052705-29b9-400b-9419-d72818b6134c/cruz-referencia.png",
+  mascota: ASSET_BASE + "/__l5e/assets-v1/b2238e85-eeda-4f5c-a307-7d2906a913b9/ceci-mascota.png",
 };
 
 export const INSTITUCION = {
