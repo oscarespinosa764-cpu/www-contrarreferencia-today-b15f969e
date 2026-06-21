@@ -1,7 +1,7 @@
 import { useState } from "react";
 import * as XLSX from "xlsx";
 import { useServerFn } from "@tanstack/react-start";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/backend-client";
 import { Panel } from "@/components/stat-card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";

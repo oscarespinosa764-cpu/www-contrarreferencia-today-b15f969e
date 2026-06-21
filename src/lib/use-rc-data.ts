@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/backend-client";
 import type { Caso, MedicoCat, UnidadCat, MotivoCanCat, IpsCiudades, Plantilla } from "@/lib/rc-utils";
 
 export interface Catalogos {

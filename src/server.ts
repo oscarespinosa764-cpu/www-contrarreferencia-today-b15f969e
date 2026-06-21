@@ -9,6 +9,24 @@ type ServerEntry = {
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
 
+declare global {
+  var __CEDIM_BACKEND_CONFIG__:
+    | { backendUrl?: string; backendPublishableKey?: string }
+    | undefined;
+}
+
+function exposePublicBackendConfig(env: unknown) {
+  const runtimeEnv = (env ?? {}) as Record<string, string | undefined>;
+  globalThis.__CEDIM_BACKEND_CONFIG__ = {
+    backendUrl: runtimeEnv.VITE_SUPABASE_URL ?? runtimeEnv.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL,
+    backendPublishableKey:
+      runtimeEnv.VITE_SUPABASE_PUBLISHABLE_KEY ??
+      runtimeEnv.SUPABASE_PUBLISHABLE_KEY ??
+      process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
+      process.env.SUPABASE_PUBLISHABLE_KEY,
+  };
+}
+
 async function getServerEntry(): Promise<ServerEntry> {
   if (!serverEntryPromise) {
     serverEntryPromise = import("@tanstack/react-start/server-entry").then(
@@ -40,6 +58,7 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      exposePublicBackendConfig(env);
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);

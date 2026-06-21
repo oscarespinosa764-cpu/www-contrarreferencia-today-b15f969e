@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/backend-client";
 import { AppHeader } from "@/components/app-header";
 import { StatCard, SplitStatCard, MiniStat, SectionTitle, Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";

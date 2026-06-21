@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
 import { POLITICA, POLITICA_VERSION } from "@/lib/privacidad";
 import { Button } from "@/components/ui/button";

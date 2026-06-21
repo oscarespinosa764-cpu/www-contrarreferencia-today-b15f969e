@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
 import { getTurno, useClientTime } from "@/lib/turno";
 import { Button } from "@/components/ui/button";

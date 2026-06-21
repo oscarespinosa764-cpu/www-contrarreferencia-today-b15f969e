@@ -13,7 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "../lib/auth";
 import { Toaster } from "@/components/ui/sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/backend-client";
 
 function NotFoundComponent() {
   return (
@@ -115,6 +115,12 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
+        <script
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{
+            __html: `globalThis.__CEDIM_BACKEND_CONFIG__=${JSON.stringify(globalThis.__CEDIM_BACKEND_CONFIG__ ?? {})}`,
+          }}
+        />
         {children}
         <Scripts />
       </body>
