@@ -431,18 +431,159 @@ export function NuevoRegistroDialog({
                   ]}
                   required
                 />
-                <SelectField
-                  name="tipo_tramite"
-                  label="Tipo trámite"
-                  options={["TRAMITE ADMINISTRATIVO", "PERTINENCIA MEDICA", "PETICION VOLUNTARIA"]}
-                  required
-                />
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Tipo de trámite *
+                  </Label>
+                  <select
+                    value={tipoTramiteSel}
+                    onChange={(e) => setTipoTramiteSel(e.target.value)}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                  >
+                    <option value="">Selecciona…</option>
+                    {tiposTramite.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <SelectField
                   name="tipo_ambulancia"
                   label="Tipo de ambulancia"
                   options={["TAB", "TAM", "TAM-N"]}
                   required
                 />
+              </div>
+
+              {/* === Trazabilidad ÍNDIGO === */}
+              <div className="space-y-4 rounded-lg border border-border/60 bg-muted/30 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Trazabilidad Índigo
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      EAPB / ERP
+                    </Label>
+                    <select
+                      value={eapbSel}
+                      onChange={(e) => {
+                        setEapbSel(e.target.value);
+                        setPlataformaFunc("");
+                      }}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                    >
+                      <option value="">Selecciona…</option>
+                      {eapbList.map((e) => (
+                        <option key={e.valor} value={e.valor}>
+                          {e.valor}
+                        </option>
+                      ))}
+                    </select>
+                    {eapbActual && (
+                      <p className="text-[10px] text-muted-foreground">
+                        {tienePlataforma ? "Tiene plataforma" : "Sin plataforma"} ·{" "}
+                        {generaCodigo ? "Genera código" : "No genera código"}
+                      </p>
+                    )}
+                  </div>
+
+                  {mostrarPreguntaPlataforma && (
+                    <div className="space-y-1.5">
+                      <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        ¿La plataforma se encuentra funcionando? *
+                      </Label>
+                      <select
+                        value={plataformaFunc}
+                        onChange={(e) => setPlataformaFunc(e.target.value)}
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                      >
+                        <option value="">Selecciona…</option>
+                        <option value="SI">Sí</option>
+                        <option value="NO">No</option>
+                      </select>
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Alcance de gestión / red comentada *
+                    </Label>
+                    <select
+                      value={alcance}
+                      onChange={(e) => setAlcance(e.target.value as AlcanceRed | "")}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                    >
+                      <option value="">Selecciona…</option>
+                      <option value="LOCAL">Red local</option>
+                      <option value="LOCAL_NACIONAL">Red local + red nacional</option>
+                    </select>
+                  </div>
+                </div>
+
+                {alcance && (
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      IPS de red local * (marca al menos una)
+                    </Label>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {ipsLocales.map((ips) => (
+                        <label key={ips} className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={ipsSel.includes(ips)}
+                            onCheckedChange={() => toggleList(ipsSel, ips, setIpsSel)}
+                          />
+                          {ips}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {incluyeNacional && (
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Departamentos de red nacional * (marca al menos uno)
+                    </Label>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {[...departamentos, "Otro"].map((d) => (
+                        <label key={d} className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={deptosSel.includes(d)}
+                            onCheckedChange={() => toggleList(deptosSel, d, setDeptosSel)}
+                          />
+                          {d}
+                        </label>
+                      ))}
+                    </div>
+                    {deptosSel.includes("Otro") && (
+                      <Input
+                        value={deptoOtro}
+                        onChange={(e) => setDeptoOtro(e.target.value)}
+                        placeholder="Escribe el departamento o región"
+                        className="mt-2"
+                      />
+                    )}
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Nota aclaratoria (solo si aplica)
+                  </Label>
+                  <select
+                    value={motivoNota}
+                    onChange={(e) => setMotivoNota(e.target.value as MotivoNota)}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                  >
+                    {MOTIVOS_NOTA.map((m) => (
+                      <option key={m.value} value={m.value}>
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="especificacion" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
