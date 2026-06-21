@@ -19,7 +19,7 @@ export function ResultadoCard({ tipo, codigo, mensaje, onNuevo, nuevoLabel }: Pr
   const [copied, setCopied] = useState(false);
 
   const copiarCorreo = async () => {
-    const ok = await copiarOficio(tituloOficio(tipo), codigo, mensaje);
+    const ok = await copiarOficio(tipo, codigo, mensaje);
     if (ok) {
       setCopied(true);
       toast.success("Oficio copiado — pégalo en el correo (Gmail / Outlook)");
