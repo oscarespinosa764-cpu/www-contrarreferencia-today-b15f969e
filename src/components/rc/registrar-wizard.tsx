@@ -161,7 +161,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     if (e && e.ciudades.length === 1) setCiudad(e.ciudades[0]);
   };
 
-
+  // ── Consultar ADRES: copia el documento y abre ADRES como ventana flotante ──
   const consultarAdres = async () => {
     const doc = documento.trim();
     try {
