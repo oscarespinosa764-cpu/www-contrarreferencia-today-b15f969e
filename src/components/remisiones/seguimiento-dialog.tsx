@@ -20,6 +20,8 @@ import {
 } from "@/lib/remisiones-utils";
 import { toast } from "sonner";
 import { PlantillasEnPaso } from "@/components/coordinacion/plantillas-en-paso";
+import { Copy } from "lucide-react";
+import { generarPlantillaRadicacion, type RadicacionTipo } from "@/lib/indigo-trazabilidad";
 
 type Props = {
   open: boolean;
