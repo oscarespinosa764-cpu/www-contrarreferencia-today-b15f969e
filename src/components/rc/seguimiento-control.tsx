@@ -14,7 +14,7 @@ import { ResultadoCard } from "@/components/rc/resultado-card";
 import { OficioPreview } from "@/components/rc/oficio-preview";
 import { copiarOficio, tituloOficio } from "@/lib/oficio";
 import { PlantillasEnPaso } from "@/components/coordinacion/plantillas-en-paso";
-import { Clock, LogIn, Plus, XCircle, Archive, AlertTriangle, Loader2, Bell, Copy, Check, Mail } from "lucide-react";
+import { Clock, LogIn, Plus, XCircle, Archive, AlertTriangle, Loader2, Bell, Check, Mail } from "lucide-react";
 import { toast } from "sonner";
 import {
   buildIngresoMensaje,
