@@ -90,6 +90,10 @@ export function useCatalogos() {
         unidadesRequeridas: byTipo("UNIDAD_REQUERIDA").map((r) => r.valor),
         placas: byTipo("PLACA").map((r) => r.valor),
         empresasTep: byTipo("EMPRESA_TEP").map((r) => r.valor),
+        profesionales: byTipo("PROFESIONAL").map((r) => ({
+          nombre: r.valor,
+          cargo: (r.extra1 || "").trim(),
+        })),
       };
     },
     initialData: EMPTY,
