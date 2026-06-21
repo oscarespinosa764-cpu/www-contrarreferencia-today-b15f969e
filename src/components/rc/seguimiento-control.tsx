@@ -570,28 +570,25 @@ function AccionDialog({
             </div>
             {archivarInfo?.mensaje ? (
               <div className="space-y-2">
-                <Label>Mensaje de cancelación</Label>
-                <div
-                  className="max-h-60 overflow-auto whitespace-pre-wrap rounded-xl border border-border bg-card p-3 text-sm leading-relaxed text-foreground"
-                  dangerouslySetInnerHTML={{ __html: formatearMensajeHTML(archivarInfo.mensaje) }}
-                />
+                <Label>Oficio de cancelación por vencimiento</Label>
+                <OficioPreview titulo={tituloOficio("CAN")} codigo={archivarInfo.codigo} mensaje={archivarInfo.mensaje} />
                 <Button
                   type="button"
                   variant="secondary"
                   className="w-full rounded-full"
                   onClick={async () => {
-                    const ok = await copiarDual(archivarInfo.mensaje);
+                    const ok = await copiarOficio(tituloOficio("CAN"), archivarInfo.codigo, archivarInfo.mensaje);
                     if (ok) {
                       setCopied(true);
-                      toast.success("Mensaje copiado");
+                      toast.success("Oficio copiado para el correo");
                       setTimeout(() => setCopied(false), 2000);
                     } else {
                       toast.error("No se pudo copiar");
                     }
                   }}
                 >
-                  {copied ? <Check className="mr-1.5 h-4 w-4" /> : <Copy className="mr-1.5 h-4 w-4" />}
-                  Copiar mensaje
+                  {copied ? <Check className="mr-1.5 h-4 w-4" /> : <Mail className="mr-1.5 h-4 w-4" />}
+                  Copiar para correo
                 </Button>
               </div>
             ) : (
