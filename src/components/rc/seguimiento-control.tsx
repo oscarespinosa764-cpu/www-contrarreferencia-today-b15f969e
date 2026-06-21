@@ -585,7 +585,7 @@ function AccionDialog({
                   variant="secondary"
                   className="w-full rounded-full"
                   onClick={async () => {
-                    const ok = await copiarOficio(tituloOficio("CAN"), archivarInfo.codigo, archivarInfo.mensaje);
+                    const ok = await copiarOficio("CAN", archivarInfo.codigo, archivarInfo.mensaje);
                     if (ok) {
                       setCopied(true);
                       toast.success("Oficio copiado para el correo");
