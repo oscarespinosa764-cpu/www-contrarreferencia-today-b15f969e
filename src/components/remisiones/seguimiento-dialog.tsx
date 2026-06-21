@@ -289,12 +289,28 @@ export function SeguimientoDialog({
         update.evolucion_motivo = requiereMotivo ? motivoEvo.trim() : null;
       }
       if (radicadoEnUso) update.codigo_radicacion = radicadoEnUso;
+      if (esRadicacion && generaCodigo && radicado.trim())
+        update.codigo_radicacion = radicado.trim();
       if (estadoOpciones && estadoCaso) update.estado = estadoCaso;
       await supabase
         .from(tabla as "remisiones")
         .update(update)
         .eq("id", casoId);
       if (especialidadesList.length > 0) await sincronizarPendiente(u.user?.id);
+    }
+
+    // Auditoría de seguimiento y radicación (no bloquea el flujo).
+    try {
+      await (supabase as any).rpc("registrar_auditoria", {
+        _accion: esRadicacion ? "radicacion_en_plataforma" : "crear_seguimiento",
+        _modulo: "remisiones",
+        _tabla: tabla ?? "seguimientos",
+        _registro_id: casoId,
+        _resultado: "exito",
+        _detalles: { tipo_seguimiento: tipoSeg },
+      });
+    } catch {
+      /* la auditoría no debe interrumpir el seguimiento */
     }
 
     toast.success("Seguimiento registrado");
