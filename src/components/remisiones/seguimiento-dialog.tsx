@@ -446,6 +446,60 @@ export function SeguimientoDialog({
             </Select>
           </div>
 
+          {/* Radicación en plataforma (ÍNDIGO) */}
+          {esRadicacion && tabla === "remisiones" && (
+            <div className="space-y-3 rounded-lg border border-border/60 bg-muted/30 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Radicación en plataforma · Trazabilidad Índigo
+              </p>
+              {generaCodigo ? (
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Código de radicación *
+                  </Label>
+                  <Input
+                    value={radicado}
+                    onChange={(e) => {
+                      setRadicado(e.target.value);
+                      setNuevoRadicado(true);
+                    }}
+                    placeholder="Ingresa el código de radicación"
+                  />
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">
+                  Esta EAPB no genera código de radicación. No se exige código.
+                </p>
+              )}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Plantilla para Índigo (texto plano editable)
+                  </Label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 gap-1.5 rounded-full px-3 text-xs"
+                    onClick={copiarRad}
+                  >
+                    <Copy className="h-3.5 w-3.5" /> Copiar para Índigo
+                  </Button>
+                </div>
+                <Textarea
+                  value={radPlantilla}
+                  onChange={(e) => {
+                    setRadPlantilla(e.target.value);
+                    setRadEditada(true);
+                  }}
+                  rows={5}
+                  className="font-mono text-xs leading-relaxed"
+                />
+              </div>
+            </div>
+          )}
+
+
           {/* Estado de la solicitud (Indigo) */}
           <div className="space-y-1.5">
             <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
