@@ -175,38 +175,107 @@ export function NuevoRegistroDialog({
   const handleRemision = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+
+    // Validaciones de trazabilidad ÍNDIGO.
+    if (!tipoTramiteSel) return toast.error("Selecciona el tipo de trámite");
+    if (!alcance) return toast.error("Selecciona el alcance de gestión / red comentada");
+    if (mostrarPreguntaPlataforma && !plataformaFunc)
+      return toast.error("Indica si la plataforma se encuentra funcionando");
+    if (ipsSel.length === 0) return toast.error("Marca al menos una IPS de red local");
+    const deptosFinal = [
+      ...deptosSel.filter((d) => d !== "Otro"),
+      ...(deptosSel.includes("Otro") && deptoOtro.trim() ? [deptoOtro.trim()] : []),
+    ];
+    if (incluyeNacional && deptosFinal.length === 0)
+      return toast.error("Marca al menos un departamento de red nacional");
+
+    const plataformaFuncionando = mostrarPreguntaPlataforma
+      ? plataformaFunc === "SI"
+      : null;
+    const codigoRad = codigoInicial(generaCodigo);
+
+    const plantilla = generarPlantillaInicio({
+      tipoTramite: tipoTramiteSel,
+      tienePlataforma,
+      plataformaFuncionando,
+      generaCodigo,
+      alcance,
+      ipsRedLocal: ipsSel,
+      departamentos: deptosFinal,
+    });
+    const nota = generarNotaAclaratoria({ motivo: motivoNota });
+    const trazabilidad = nota ? `${plantilla}\n\n${nota}` : plantilla;
+
     const { data: u } = await supabase.auth.getUser();
     const inicioRaw = String(f.get("fecha_inicio") || "");
-    const { error } = await supabase.from("remisiones").insert({
-      fecha_inicio: inicioRaw ? new Date(inicioRaw).toISOString() : null,
-      fecha_radicado: new Date().toISOString(),
-      servicio: String(f.get("servicio")),
-      cama: String(f.get("cama")),
-      paciente: String(f.get("paciente")),
-      tipo_documento: String(f.get("tipo_documento")),
-      documento: String(f.get("documento")),
-      edad: String(f.get("edad")),
-      cie10: String(f.get("cie10")),
-      especialidades_tratantes: tratantes.join(", "),
-      especialidades_receptoras: receptoras.join(", "),
-      prioridad: String(f.get("prioridad")),
-      remision_por: String(f.get("remision_por")),
-      especificacion: String(f.get("especificacion")),
-      tipo_tramite: String(f.get("tipo_tramite")),
-      tipo_ambulancia: String(f.get("tipo_ambulancia")),
-      contacto_nombre: String(f.get("contacto_nombre")),
-      contacto_parentesco: String(f.get("contacto_parentesco")),
-      contacto_telefono: String(f.get("contacto_telefono")),
-      observaciones: String(f.get("observaciones")),
-      estado: "PENDIENTE ACEPTACION",
-      evolucion: "sin",
-      created_by: u.user?.id,
-    });
+    const { data: inserted, error } = await supabase
+      .from("remisiones")
+      .insert({
+        fecha_inicio: inicioRaw ? new Date(inicioRaw).toISOString() : null,
+        fecha_radicado: new Date().toISOString(),
+        servicio: String(f.get("servicio")),
+        cama: String(f.get("cama")),
+        paciente: String(f.get("paciente")),
+        tipo_documento: String(f.get("tipo_documento")),
+        documento: String(f.get("documento")),
+        edad: String(f.get("edad")),
+        cie10: String(f.get("cie10")),
+        especialidades_tratantes: tratantes.join(", "),
+        especialidades_receptoras: receptoras.join(", "),
+        prioridad: String(f.get("prioridad")),
+        remision_por: String(f.get("remision_por")),
+        especificacion: String(f.get("especificacion")),
+        tipo_tramite: tipoTramiteSel,
+        tipo_ambulancia: String(f.get("tipo_ambulancia")),
+        contacto_nombre: String(f.get("contacto_nombre")),
+        contacto_parentesco: String(f.get("contacto_parentesco")),
+        contacto_telefono: String(f.get("contacto_telefono")),
+        observaciones: String(f.get("observaciones")),
+        // Trazabilidad ÍNDIGO
+        eapb: eapbSel || null,
+        alcance_red: alcance,
+        ips_red_local: ipsSel.join(", "),
+        departamentos_red_nacional: deptosFinal.join(", "),
+        eapb_tiene_plataforma: tienePlataforma,
+        eapb_genera_codigo: generaCodigo,
+        plataforma_funcionando: plataformaFuncionando,
+        codigo_radicacion: codigoRad,
+        trazabilidad_indigo: trazabilidad,
+        estado: "PENDIENTE ACEPTACION",
+        evolucion: "sin",
+        created_by: u.user?.id,
+      })
+      .select("id")
+      .single();
     if (error) return toast.error(error.message);
+
+    // Auditoría (no bloquea el flujo).
+    try {
+      await (supabase as any).rpc("registrar_auditoria", {
+        _accion: "crear_caso_saliente",
+        _modulo: "remisiones",
+        _tabla: "remisiones",
+        _registro_id: inserted?.id ?? null,
+        _resultado: "exito",
+        _detalles: { tipo_tramite: tipoTramiteSel, alcance },
+      });
+      await (supabase as any).rpc("registrar_auditoria", {
+        _accion: "generar_plantilla_indigo_inicial",
+        _modulo: "remisiones",
+        _tabla: "remisiones",
+        _registro_id: inserted?.id ?? null,
+        _resultado: "exito",
+      });
+    } catch {
+      /* la auditoría no debe interrumpir el registro */
+    }
+
     toast.success("Remisión registrada");
+    setIndigoTexto(trazabilidad);
     reset();
     onOpenChange(false);
     invalidate();
+    setIndigoOpen(true);
   };
 
   const handlePHD = async (e: React.FormEvent<HTMLFormElement>) => {
