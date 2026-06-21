@@ -380,6 +380,20 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
       });
       if (error) throw error;
 
+      // Auditoría de la acción crítica (creación de caso entrante).
+      try {
+        await (supabase as any).rpc("registrar_auditoria", {
+          _accion: "crear_caso_entrante",
+          _modulo: "entrantes",
+          _tabla: "casos_entrantes",
+          _registro_id: codigo,
+          _resultado: "exito",
+          _detalles: { tipo },
+        });
+      } catch {
+        /* no bloquea el flujo si falla la auditoría */
+      }
+
       toast.success(`Registrado ${codigo}`);
       setResultado({ tipo, codigo, mensaje });
       onDone();
