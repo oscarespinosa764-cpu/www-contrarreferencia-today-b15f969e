@@ -453,6 +453,17 @@ function AccionDialog({
           created_by: user?.id,
         });
         if (error) throw error;
+        try {
+          await (supabase as any).rpc("registrar_auditoria", {
+            _accion: "ampliar_cupo",
+            _modulo: "entrantes",
+            _tabla: "casos_entrantes",
+            _registro_id: caso.codigo,
+            _resultado: "exito",
+          });
+        } catch {
+          /* no bloquea el flujo */
+        }
         toast.success(`Cupo ampliado ${hrs}h`);
         refrescar();
         setResultado({ tipo: "AMP", codigo, mensaje });
