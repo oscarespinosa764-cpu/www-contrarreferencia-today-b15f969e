@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
 import { SessionTimeout } from "@/components/session-timeout";
 import { ConsentimientoGate } from "@/components/consentimiento-gate";
