@@ -883,26 +883,54 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 <Label htmlFor="codcrue">Código CRUE</Label>
                 <Input id="codcrue" value={codigoCrue} onChange={(e) => setCodigoCrue(e.target.value)} />
               </div>
-              <AutoComplete label="Contacto / IPS" value={contactoIps} onChange={setContactoIps} options={catalogos.ips} />
-              <div className="space-y-2 sm:col-span-2">
-                <Label>Unidad requerida</Label>
-                <Select value={unidadReq} onValueChange={setUnidadReq}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {catalogos.unidadesRequeridas.map((u) => (
-                      <SelectItem key={u} value={u}>
-                        {u}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <AutoComplete label="Especialidad requerida" value={especialidad} onChange={setEspecialidad} options={catalogos.especialidades} />
+              <AutoComplete label="Contacto / IPS" value={contactoIps} onChange={setContactoIps} options={catalogos.ips} minChars={2} />
+
+              {/* ACEPTACIÓN DIRECCIONAMIENTO → unidad obligatoria (solo URGENCIAS/UCI) */}
+              {tipo === "CRUE_ACEP" && (
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Unidad requerida</Label>
+                  <Select value={unidadReq} onValueChange={setUnidadReq}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {UNIDADES_CRUE.map((u) => (
+                        <SelectItem key={u} value={u}>
+                          {u}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* NEGACIÓN DIRECCIONAMIENTO → unidad opcional (solo URGENCIAS/UCI) */}
               {tipo === "CRUE_NEG" && (
                 <div className="space-y-2 sm:col-span-2">
-                  <Label>Motivos de negación (hasta 3)</Label>
+                  <Label>Unidad solicitada (opcional)</Label>
+                  <Select value={unidadReq} onValueChange={setUnidadReq}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="No aplica / Seleccionar…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {UNIDADES_CRUE.map((u) => (
+                        <SelectItem key={u} value={u}>
+                          {u}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Especialidad requerida: aplica para aceptación y negación de direccionamiento */}
+              {tipo !== "CRUE_NR" && (
+                <AutoComplete label="Especialidad requerida" value={especialidad} onChange={setEspecialidad} options={catalogos.especialidades} />
+              )}
+
+              {tipo === "CRUE_NEG" && (
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Motivos de negación del direccionamiento (hasta 3)</Label>
                   {[0, 1, 2].map((i) => (
                     <Input
                       key={i}
