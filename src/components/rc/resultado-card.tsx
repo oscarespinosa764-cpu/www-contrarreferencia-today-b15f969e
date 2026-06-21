@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Check, Copy, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { TIPO_LABEL } from "@/lib/rc-utils";
-import { copiarOficio, tituloOficio } from "@/lib/oficio";
+import { copiarOficio } from "@/lib/oficio";
 import { OficioPreview } from "@/components/rc/oficio-preview";
 
 interface Props {
