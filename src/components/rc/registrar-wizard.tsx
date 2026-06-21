@@ -92,6 +92,11 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const [fechaRec, setFechaRec] = useState("");
   const [horaRec, setHoraRec] = useState("");
 
+  // Paciente reconsultante (autollenado) y ventana ADRES
+  const [esReconsultante, setEsReconsultante] = useState(false);
+  const adresWinRef = useRef<Window | null>(null);
+  const [adresAbierta, setAdresAbierta] = useState(false);
+
   const reincidente = useMemo(() => {
     const doc = documento.trim();
     if (!doc) return null;
