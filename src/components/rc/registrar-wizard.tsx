@@ -113,6 +113,32 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
 
   const reincVen = reincidente ? calcularVencimiento(reincidente, casos) : null;
 
+  // ── Paciente reconsultante: datos previos del documento ──
+  const pacientePrevio = useMemo(
+    () => buscarDatosPaciente(casos, documento),
+    [casos, documento],
+  );
+
+  // Autollena los campos vacíos con los datos previos (no pisa ediciones del usuario).
+  const irAPaso2 = () => {
+    if (pacientePrevio) {
+      setNombres((v) => v || pacientePrevio.nombres);
+      setApellidos((v) => v || pacientePrevio.apellidos);
+      setEapb((v) => v || pacientePrevio.eapb);
+      setRegimen((v) => v || pacientePrevio.regimen);
+      setIps((v) => v || pacientePrevio.ips);
+      const hayDatos =
+        pacientePrevio.nombres ||
+        pacientePrevio.apellidos ||
+        pacientePrevio.eapb ||
+        pacientePrevio.regimen;
+      setEsReconsultante(!!hayDatos);
+    } else {
+      setEsReconsultante(false);
+    }
+    setStep(2);
+  };
+
   const unidadOptions = catalogos.unidades.map((u) => u.nombre);
   const isCrue = tipo === "CRUE_ACEP" || tipo === "CRUE_NR" || tipo === "CRUE_NEG";
 
