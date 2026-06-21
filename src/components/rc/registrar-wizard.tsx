@@ -570,7 +570,8 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 onPick={onPickIps}
                 options={ipsOptions}
                 openAllOnFocus={!!ciudad.trim()}
-                placeholder="Escribe o selecciona la IPS…"
+                minChars={2}
+                placeholder="Escribe para buscar la IPS…"
               />
               {ciudad.trim() && ipsOptions.length > 0 && !ips && (
                 <p className="mt-1 text-[11px] text-muted-foreground">
