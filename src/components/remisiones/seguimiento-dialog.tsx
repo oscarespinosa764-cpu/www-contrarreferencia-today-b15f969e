@@ -44,8 +44,10 @@ type Props = {
 };
 
 // Lista fusionada: tipos de seguimiento del sistema actual + modalidades de gestión de Indigo.
+const RADICACION_TIPO = "Radicación en plataforma";
 const TIPOS_SEG = [
   "Radicado / inicio trámite de remisión",
+  RADICACION_TIPO,
   "Telefónico / celular",
   "Correo electrónico",
   "Plataforma web",
