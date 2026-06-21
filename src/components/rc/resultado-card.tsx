@@ -42,7 +42,7 @@ export function ResultadoCard({ tipo, codigo, mensaje, onNuevo, nuevoLabel }: Pr
       </div>
 
       {mensaje ? (
-        <OficioPreview titulo={tituloOficio(tipo)} codigo={codigo} mensaje={mensaje} />
+        <OficioPreview tipo={tipo} codigo={codigo} mensaje={mensaje} />
       ) : (
         <p className="rounded-xl border border-dashed border-border bg-card p-4 text-center text-xs text-muted-foreground">
           No se encontró una plantilla configurada para este tipo de caso. El registro se guardó igualmente.
