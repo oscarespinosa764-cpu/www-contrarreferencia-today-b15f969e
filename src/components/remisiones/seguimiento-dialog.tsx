@@ -96,6 +96,8 @@ export function SeguimientoDialog({
   const [busy, setBusy] = useState(false);
   const [busyEvo, setBusyEvo] = useState(false);
   const [estadoCaso, setEstadoCaso] = useState("");
+  const [radPlantilla, setRadPlantilla] = useState("");
+  const [radEditada, setRadEditada] = useState(false);
 
   // Inicializar el checklist por especialidad al abrir.
   useEffect(() => {
