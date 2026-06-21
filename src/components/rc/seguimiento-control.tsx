@@ -514,6 +514,17 @@ function AccionDialog({
           .update({ estado: esArchivar ? "CANCELADO_VENCIMIENTO" : "CANCELADO" })
           .eq("id", caso.id);
         if (e2) throw e2;
+        try {
+          await (supabase as any).rpc("registrar_auditoria", {
+            _accion: esArchivar ? "archivar_vencimiento" : "cancelar_cupo",
+            _modulo: "entrantes",
+            _tabla: "casos_entrantes",
+            _registro_id: caso.codigo,
+            _resultado: "exito",
+          });
+        } catch {
+          /* no bloquea el flujo */
+        }
         toast.success(esArchivar ? "Caso archivado · enviado a historial" : "Cupo cancelado");
         refrescar();
         if (esArchivar) {
