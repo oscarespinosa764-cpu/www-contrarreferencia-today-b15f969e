@@ -429,7 +429,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && documento.trim().length >= 4 && !cupoActivo) {
                     e.preventDefault();
-                    setStep(2);
+                    irAPaso2();
                   }
                 }}
                 autoFocus
