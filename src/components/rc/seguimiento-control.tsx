@@ -221,39 +221,71 @@ function AccionDialog({
   const [profesional, setProfesional] = useState("");
   const [cargo, setCargo] = useState("");
   const [placa, setPlaca] = useState("");
-  // Mapa nombre del profesional -> especialidad más frecuente (a partir del histórico de casos
-  // y de la especialidad del catálogo de médicos cuando exista).
-  const medicoEspecialidad = useMemo(() => {
-    const counts: Record<string, Record<string, number>> = {};
-    const add = (nombre?: string | null, esp?: string | null) => {
-      const n = (nombre || "").trim();
-      const e = (esp || "").trim();
-      if (!n || !e) return;
-      const key = n.toLowerCase();
-      counts[key] = counts[key] || {};
-      counts[key][e] = (counts[key][e] || 0) + 1;
-    };
-    casos.forEach((c) => add(c.medico, c.especialidad));
-    catalogos.medicos.forEach((m) => add(m.nombre, m.especialidad));
-    const best: Record<string, string> = {};
-    for (const key of Object.keys(counts)) {
-      best[key] = Object.entries(counts[key]).sort((a, b) => b[1] - a[1])[0][0];
-    }
-    return best;
-  }, [casos, catalogos.medicos]);
+  // Fecha/hora de ingreso precargadas con la hora local actual.
+  const ahoraInit = new Date();
+  const p2 = (n: number) => String(n).padStart(2, "0");
+  const [fechaIngreso, setFechaIngreso] = useState(
+    `${ahoraInit.getFullYear()}-${p2(ahoraInit.getMonth() + 1)}-${p2(ahoraInit.getDate())}`,
+  );
+  const [horaIngreso, setHoraIngreso] = useState(`${p2(ahoraInit.getHours())}:${p2(ahoraInit.getMinutes())}`);
 
-  // Sugerencias de profesional: catálogo de médicos + nombres vistos en casos.
-  const profesionalOptions = useMemo(() => {
+  // ── Catálogo profesional ⇄ cargo (bidireccional) ──
+  // Mapa nombre→cargo a partir del catálogo PROFESIONAL y del histórico de ingresos.
+  const profCargoMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    catalogos.profesionales.forEach((p) => {
+      const n = (p.nombre || "").trim().toLowerCase();
+      if (n && p.cargo) map[n] = p.cargo;
+    });
+    // Aprende de ingresos previos: "Profesional que recibe: NOMBRE (CARGO)"
+    casos
+      .filter((c) => c.tipo === "ING")
+      .forEach((c) => {
+        const m = (c.detalle || "").match(/Profesional que recibe:\s*([^()·]+?)\s*\(([^)]+)\)/i);
+        if (m) {
+          const n = m[1].trim().toLowerCase();
+          if (n && !map[n]) map[n] = m[2].trim();
+        }
+      });
+    return map;
+  }, [catalogos.profesionales, casos]);
+
+  // Sugerencias de profesional: catálogo PROFESIONAL + médicos + nombres vistos.
+  const profesionalAll = useMemo(() => {
     const set = new Set<string>();
+    catalogos.profesionales.forEach((p) => p.nombre.trim() && set.add(p.nombre.trim()));
     catalogos.medicos.forEach((m) => m.nombre.trim() && set.add(m.nombre.trim()));
     casos.forEach((c) => c.medico?.trim() && set.add(c.medico.trim()));
+    Object.keys(profCargoMap).forEach((k) => k && set.add(k.toUpperCase()));
     return Array.from(set).sort();
-  }, [casos, catalogos.medicos]);
+  }, [catalogos.profesionales, catalogos.medicos, casos, profCargoMap]);
 
-  // Al elegir/escribir un profesional, autocompleta el cargo con su especialidad.
+  const cargoNorm = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toLowerCase();
+  const cargoKey = cargoNorm(cargo);
+  // Si hay cargo escrito, sugiere solo profesionales con ese cargo.
+  const profesionalOptions = cargoKey
+    ? profesionalAll.filter((nombre) => {
+        const c = profCargoMap[nombre.toLowerCase()];
+        return c ? cargoNorm(c).includes(cargoKey) : false;
+      })
+    : profesionalAll;
+
+  const cargoOptions = useMemo(() => {
+    const set = new Set<string>(CARGO_OPTIONS);
+    catalogos.profesionales.forEach((p) => p.cargo && set.add(p.cargo));
+    Object.values(profCargoMap).forEach((c) => c && set.add(c));
+    return Array.from(set).sort();
+  }, [catalogos.profesionales, profCargoMap]);
+
+  // Al elegir/escribir un profesional, autocompleta el cargo.
   const onPickProfesional = (v: string) => {
-    const esp = medicoEspecialidad[v.trim().toLowerCase()];
-    if (esp) setCargo(esp);
+    const c = profCargoMap[v.trim().toLowerCase()];
+    if (c) setCargo(c);
   };
   // cancelar
   const [motivoCan, setMotivoCan] = useState("");
