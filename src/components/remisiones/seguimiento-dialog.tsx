@@ -121,6 +121,29 @@ export function SeguimientoDialog({
     },
   });
 
+  // Flags ÍNDIGO del caso (solo remisiones): genera código / plataforma caída.
+  const { data: casoFlags } = useQuery({
+    queryKey: ["remision-indigo-flags", casoId],
+    enabled: open && tabla === "remisiones",
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("remisiones")
+        .select("eapb_genera_codigo, plataforma_funcionando")
+        .eq("id", casoId)
+        .maybeSingle();
+      return data as { eapb_genera_codigo: boolean | null; plataforma_funcionando: boolean | null } | null;
+    },
+  });
+
+  const esRadicacion = tipoSeg === RADICACION_TIPO;
+  const generaCodigo = casoFlags?.eapb_genera_codigo === true;
+  const plataformaFueCaida = casoFlags?.plataforma_funcionando === false;
+  const radicacionTipo: RadicacionTipo = !generaCodigo
+    ? "sin_codigo"
+    : plataformaFueCaida
+      ? "plataforma_restablecida"
+      : "con_codigo";
+
   const radicadoExistente =
     radicadoCaso?.trim() || (historial ?? []).find((h) => h.radicado)?.radicado || "";
   const radicadoEnUso = noAplicaRadicado
