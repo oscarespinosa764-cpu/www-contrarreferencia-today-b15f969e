@@ -552,7 +552,7 @@ function AccionDialog({
         </DialogHeader>
 
         {resultado ? (
-          <ResultadoCard tipo={resultado.tipo} codigo={resultado.codigo} mensaje={resultado.mensaje} onNuevo={onClose} />
+          <ResultadoCard tipo={resultado.tipo} codigo={resultado.codigo} mensaje={resultado.mensaje} onNuevo={onClose} nuevoLabel="Cerrar" />
         ) : accion === "archivar" ? (
           <div className="space-y-4">
             <div className="rounded-lg border border-status-red/40 bg-status-red/10 p-3 text-xs text-foreground">
