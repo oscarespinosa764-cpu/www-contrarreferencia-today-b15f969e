@@ -142,6 +142,14 @@ export function NuevoRegistroDialog({
     setReceptoras([]);
     setPhdTratantes([]);
     setResetKey((k) => k + 1);
+    setEapbSel("");
+    setPlataformaFunc("");
+    setTipoTramiteSel("");
+    setAlcance("");
+    setIpsSel([]);
+    setDeptosSel([]);
+    setDeptoOtro("");
+    setMotivoNota("ninguno");
   };
 
   // Al agregar/quitar en tratantes, migra automáticamente a receptoras
