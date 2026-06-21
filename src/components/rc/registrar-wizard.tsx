@@ -308,6 +308,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     if (tipo === "NEG" && negUnidad && !unidad.trim()) return toast.error("Indica la unidad requerida");
     if (tipo === "NEG" && negComplejidad && complejidad === "MAYOR COMPLEJIDAD" && !especialidad.trim())
       return toast.error("Indica la especialidad requerida");
+    if (tipo === "CRUE_ACEP" && !unidadReq) return toast.error("Selecciona la unidad requerida (URGENCIAS o UCI)");
 
     setBusy(true);
     try {
