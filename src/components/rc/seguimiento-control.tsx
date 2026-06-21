@@ -356,7 +356,30 @@ function AccionDialog({
 
       if (accion === "ingreso") {
         const codigo = nextCodigo(casos, "ING", ahora);
+        // Fecha/hora de ingreso elegidas (formato dd/mm/aaaa para el oficio).
+        const [yy, mm, dd] = (fechaIngreso || ahora.toISOString().slice(0, 10)).split("-");
+        const fechaFmt = `${dd}/${mm}/${yy}`;
+        const horaFmt = horaIngreso || `${p2(ahora.getHours())}:${p2(ahora.getMinutes())}`;
+        const nombrePac =
+          [caso.nombres, caso.apellidos].filter(Boolean).join(" ") || caso.documento || "—";
+
+        const mensaje = buildIngresoMensaje({
+          nombre: nombrePac,
+          codigo: caso.codigo,
+          fecha: fechaFmt,
+          hora: horaFmt,
+          ips: caso.ips ?? undefined,
+          eapb: caso.eapb ?? undefined,
+          unidad: caso.unidad ?? undefined,
+          empresaTep: empresaTep || undefined,
+          placa: placa || undefined,
+          profesional: profesional || undefined,
+          cargo: cargo || undefined,
+          observaciones: detalle || undefined,
+        });
+
         const obs = [
+          `Ingreso: ${fechaFmt} ${horaFmt}`,
           empresaTep && `Empresa TEP: ${empresaTep}`,
           placa && `Placa: ${placa}`,
           profesional && `Profesional que recibe: ${profesional}${cargo ? ` (${cargo})` : ""}`,
@@ -370,8 +393,9 @@ function AccionDialog({
           tipo: "ING",
           cod_ref: caso.codigo,
           estado: "INGRESADO",
-          fecha: ahora.toISOString().slice(0, 10),
+          fecha: fechaIngreso || ahora.toISOString().slice(0, 10),
           detalle: obs || null,
+          texto_ia: mensaje || null,
           created_by: user?.id,
         });
         if (e1) throw e1;
@@ -380,9 +404,20 @@ function AccionDialog({
           .update({ estado: "INGRESADO" })
           .eq("id", caso.id);
         if (e2) throw e2;
+        try {
+          await (supabase as any).rpc("registrar_auditoria", {
+            _accion: "confirmar_ingreso",
+            _modulo: "entrantes",
+            _tabla: "casos_entrantes",
+            _registro_id: caso.codigo,
+            _resultado: "exito",
+          });
+        } catch {
+          /* no bloquea el flujo */
+        }
         toast.success("Ingreso confirmado");
         refrescar();
-        onClose();
+        setResultado({ tipo: "ING", codigo: caso.codigo, mensaje });
         return;
       }
 
