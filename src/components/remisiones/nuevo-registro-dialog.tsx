@@ -373,8 +373,32 @@ export function NuevoRegistroDialog({
   const handlePHD = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+
+    // Validaciones de campos obligatorios.
+    if (!String(f.get("fecha_inicio") || "").trim())
+      return toast.error("Indica la fecha y hora de inicio del trámite");
+    if (!String(f.get("servicio") || "").trim()) return toast.error("Selecciona el servicio");
+    if (!String(f.get("cama") || "").trim()) return toast.error("Indica la cama");
+    if (!String(f.get("paciente") || "").trim()) return toast.error("Indica el nombre del paciente");
+    if (!String(f.get("tipo_documento") || "").trim())
+      return toast.error("Selecciona el tipo de documento");
+    if (!String(f.get("documento") || "").trim()) return toast.error("Indica el documento");
+    if (!String(f.get("edad") || "").trim()) return toast.error("Indica la edad");
+    if (!String(f.get("cie10") || "").trim()) return toast.error("Indica el CIE-10");
+    if (phdTratantes.length === 0)
+      return toast.error("Agrega al menos una especialidad tratante");
+    if (!phdTipoSolicitud) return toast.error("Selecciona el tipo de solicitud");
+    if (!phdEapb.trim()) return toast.error("Indica la EAPB / ERP");
+    if (!phdRegimen) return toast.error("Selecciona el régimen");
+    if (!phdRequiereAmb) return toast.error("Indica si requiere ambulancia");
+    if (phdRequiereAmb === "SI" && !phdTipoAmb)
+      return toast.error("Selecciona el tipo de ambulancia");
+    if (phdEsUnidadEspecial && !phdUnidadEspecial.trim())
+      return toast.error("Indica la unidad especial");
+
     const { data: u } = await supabase.auth.getUser();
     const inicioRaw = String(f.get("fecha_inicio") || "");
+    const genera = phdGenera;
     const { error } = await supabase.from("domiciliarios").insert({
       fecha_inicio: inicioRaw ? new Date(inicioRaw).toISOString() : null,
       fecha_radicado: new Date().toISOString(),
@@ -386,16 +410,21 @@ export function NuevoRegistroDialog({
       edad: String(f.get("edad")),
       cie10: String(f.get("cie10")),
       especialidades_tratantes: phdTratantes.join(", "),
-      tipo_solicitud: String(f.get("tipo_solicitud")),
-      eapb: String(f.get("eapb")),
-      regimen: String(f.get("regimen")),
-      codigo_radicacion: String(f.get("codigo_radicacion")),
-      requiere_ambulancia: String(f.get("requiere_ambulancia")),
+      tipo_solicitud: phdTipoSolicitud,
+      tipo_solicitud_detalle: phdEsUnidadEspecial ? phdUnidadEspecial.trim() : null,
+      unidad_especial: phdEsUnidadEspecial ? phdUnidadEspecial.trim() : null,
+      eapb: phdEapb || null,
+      regimen: phdRegimen,
+      codigo_radicacion: codigoInicial(genera),
+      eapb_tiene_plataforma: phdTienePlataforma,
+      eapb_genera_codigo: genera,
+      requiere_ambulancia: phdRequiereAmb,
+      tipo_ambulancia: phdRequiereAmb === "SI" ? phdTipoAmb : null,
       contacto_nombre: String(f.get("contacto_nombre")),
       contacto_parentesco: String(f.get("contacto_parentesco")),
       contacto_telefono: String(f.get("contacto_telefono")),
       observaciones: String(f.get("observaciones")),
-      estado: "ACTIVO",
+      estado: "PENDIENTE ACEPTACION",
       evolucion: "sin",
       created_by: u.user?.id,
     });
@@ -419,6 +448,7 @@ export function NuevoRegistroDialog({
       documento: String(f.get("documento")),
       tipo_solicitud: String(f.get("tipo_solicitud")),
       tipo_ambulancia: String(f.get("tipo_ambulancia")),
+      eapb: internaEapb || null,
       observaciones: String(f.get("observaciones")),
       estado: "ACTIVO",
       evolucion: "sin",
@@ -434,21 +464,45 @@ export function NuevoRegistroDialog({
   const handlePendiente = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+
+    if (!pendTipo) return toast.error("Selecciona el tipo de pendiente");
+    if (pendTipo === "OTRO" && !pendCual.trim())
+      return toast.error("Indica cuál es el pendiente (campo CUÁL)");
+    if (!String(f.get("paciente_asunto") || "").trim())
+      return toast.error("Indica el paciente / asunto");
+    if (!pendPrioridad) return toast.error("Selecciona la prioridad");
+    if (!pendDestinoTipo) return toast.error("Selecciona el tipo de destino (IPS o ÁREA)");
+    if (pendDestinoTipo === "IPS" && !pendIps.trim())
+      return toast.error("Indica el nombre de la IPS");
+    if (pendDestinoTipo === "AREA" && !pendArea) return toast.error("Selecciona el área");
+
     const { data: u } = await supabase.auth.getUser();
+    const destinoValor = pendDestinoTipo === "IPS" ? pendIps.trim() : pendArea;
+    const tipoFinal = pendTipo === "OTRO" ? `OTRO: ${pendCual.trim().toUpperCase()}` : pendTipo;
+    const detalles: Record<string, unknown> = {
+      destino_tipo: pendDestinoTipo,
+      destino: destinoValor,
+    };
+    if (pendTipo === "OTRO") detalles.cual = pendCual.trim();
+    if (pendTipo === "EVOLUCIONAR") detalles.evolucion_pendiente_en = pendEvoEn;
+
     const { error } = await supabase.from("pendientes").insert({
-      tipo_pendiente: String(f.get("tipo_pendiente")),
-      ips_area: String(f.get("ips_area")),
+      tipo_pendiente: tipoFinal,
+      ips_area: destinoValor,
       paciente_asunto: String(f.get("paciente_asunto")),
-      prioridad: String(f.get("prioridad")),
-      observacion_entrega: String(f.get("observacion_entrega")),
+      prioridad: pendPrioridad,
+      observacion_entrega: String(f.get("observacion_entrega") || ""),
+      detalles: detalles as never,
       estado: "ABIERTO",
       created_by: u.user?.id,
     });
     if (error) return toast.error(error.message);
     toast.success("Pendiente registrado");
+    reset();
     onOpenChange(false);
     invalidate();
   };
+
 
   return (
     <>
