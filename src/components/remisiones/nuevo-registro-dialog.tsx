@@ -216,7 +216,22 @@ export function NuevoRegistroDialog({
     setIpsSel([]);
     setDeptosSel([]);
     setDeptoOtro("");
+    setPhdEapb("");
+    setPhdTipoSolicitud("");
+    setPhdUnidadEspecial("");
+    setPhdRequiereAmb("");
+    setPhdTipoAmb("");
+    setPhdRegimen("");
+    setInternaEapb("");
+    setPendTipo("");
+    setPendCual("");
+    setPendDestinoTipo("");
+    setPendIps("");
+    setPendArea("");
+    setPendPrioridad("");
+    setPendEvoEn([]);
   };
+
 
   // Al agregar/quitar en tratantes, migra automáticamente a receptoras
   const handleTratantesChange = (next: string[]) => {
