@@ -639,17 +639,47 @@ export function generarPlantillaFisico(i: FisicoInput): string {
   }
 }
 
-// --- 9. CONTACTO TELEFÓNICO ---
-export function generarPlantillaTelefonico(
-  nombre: string,
-  telefono: string,
-  estadoSolicitud: string,
-): string {
-  let t = `SE REALIZA CONTACTO TELEFÓNICO CON ${ph(nombre, "NOMBRE DE CONTACTO")} AL NÚMERO ${ph(
-    telefono,
-    "TELÉFONO",
-  )}, CON EL FIN DE REALIZAR SEGUIMIENTO AL PROCESO DE REMISIÓN.`;
-  if (estadoSolicitud.trim()) t += ` ESTADO DE LA SOLICITUD: ${estadoSolicitud.trim().toUpperCase()}.`;
+// --- 9. CONTACTO TELEFÓNICO (con destinatario del contacto) ---
+export type ContactoDestino = "CRUE" | "EAPB" | "CRUE_EAPB" | "IPS";
+
+export const CONTACTO_DESTINOS: { value: ContactoDestino; label: string }[] = [
+  { value: "CRUE", label: "CRUE" },
+  { value: "EAPB", label: "EAPB" },
+  { value: "CRUE_EAPB", label: "CRUE Y EAPB" },
+  { value: "IPS", label: "IPS" },
+];
+
+export type TelefonicoInput = {
+  destino: ContactoDestino | "";
+  ipsNombre?: string;
+  nombre: string;
+  telefono: string;
+  estadoSolicitud: string;
+};
+
+export function generarPlantillaTelefonico(i: TelefonicoInput): string {
+  let conQuien: string;
+  switch (i.destino) {
+    case "CRUE":
+      conQuien = "EL CRUE";
+      break;
+    case "EAPB":
+      conQuien = "LA EAPB";
+      break;
+    case "CRUE_EAPB":
+      conQuien = "EL CRUE Y LA EAPB";
+      break;
+    case "IPS":
+      conQuien = `LA IPS ${ph(i.ipsNombre, "NOMBRE IPS")}`;
+      break;
+    default:
+      conQuien = "[CONTACTO REALIZADO CON]";
+  }
+  let t = `SE REALIZA CONTACTO TELEFÓNICO CON ${conQuien}`;
+  if (i.nombre.trim()) t += `, ATENDIDO POR ${i.nombre.trim().toUpperCase()}`;
+  if (i.telefono.trim()) t += ` (TELÉFONO ${i.telefono.trim()})`;
+  t += ", CON EL FIN DE REALIZAR SEGUIMIENTO AL PROCESO DE REMISIÓN.";
+  if (i.estadoSolicitud.trim()) t += ` ESTADO DE LA SOLICITUD: ${i.estadoSolicitud.trim().toUpperCase()}.`;
   return t;
 }
 
@@ -666,6 +696,7 @@ export const NEGACION_MOTIVOS = [
   "NO DISPONIBILIDAD DE RECURSOS HUMANOS",
   "NO DISPONIBILIDAD DE INSUMOS O RECURSOS TECNOLÓGICOS",
   "NIVEL DE COMPETENCIA NO PERTINENTE",
+  "OTRO",
 ];
 
 export type NegacionGrupo = { motivo: string; ips: string[] };
