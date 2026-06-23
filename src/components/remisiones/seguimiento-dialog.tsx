@@ -215,6 +215,14 @@ export function SeguimientoDialog({
   // Otro
   const [otroCual, setOtroCual] = useState("");
 
+  // Referencia interna
+  const [riFuncionario, setRiFuncionario] = useState("");
+  const [riCargo, setRiCargo] = useState("");
+  const [riFecha, setRiFecha] = useState("");
+  const [riHora, setRiHora] = useState("");
+  const [riInformoAmb, setRiInformoAmb] = useState(false);
+  const [riInformoServ, setRiInformoServ] = useState(false);
+
   // Revisión autorización estancia hospitalaria (antes pertinencia médica)
   const [revAutoriza, setRevAutoriza] = useState<"" | "SI" | "NO">("");
   const [revNota, setRevNota] = useState<"" | "SI" | "NO">("");
