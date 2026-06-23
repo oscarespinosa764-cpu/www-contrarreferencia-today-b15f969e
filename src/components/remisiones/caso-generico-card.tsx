@@ -371,7 +371,7 @@ export function CasoGenericoCard({
                 <Dato label="Paciente" value={r.paciente} />
                 <Dato label="Tipo documento" value={r.tipo_documento} />
                 <Dato label="Documento" value={r.documento} />
-                <Dato label="Edad" value={r.edad} />
+                <Dato label="Edad" value={fmtEdad(r.edad)} />
                 <Dato label="CIE-10" value={r.cie10} />
                 <Dato label="EAPB / ERP" value={r.eapb} />
                 <Dato label="Régimen" value={r.regimen} />
@@ -380,7 +380,13 @@ export function CasoGenericoCard({
                 <Dato label="Prioridad" value={r.prioridad} />
                 <Dato label="N° radicado" value={radicado} />
                 <Dato label="Tipo solicitud" value={r.tipo_solicitud} />
+                {(r.unidad_especial || r.tipo_solicitud_detalle) && (
+                  <Dato label="Unidad especial" value={r.unidad_especial || r.tipo_solicitud_detalle} />
+                )}
                 <Dato label="Requiere ambulancia" value={r.requiere_ambulancia} />
+                {r.requiere_ambulancia === "SI" && (
+                  <Dato label="Tipo ambulancia" value={r.tipo_ambulancia} />
+                )}
                 <Dato label="Estado" value={r.estado} />
                 <Dato label="Fecha y hora inicio trámite" value={fmtFechaHora(r.fecha_inicio)} />
                 <Dato label="Fecha y hora radicación" value={fmtFechaHora(r.fecha_radicado)} />
@@ -399,9 +405,8 @@ export function CasoGenericoCard({
                 <Dato label="Servicio" value={r.servicio} />
                 <Dato label="Tipo solicitud" value={r.tipo_solicitud} />
                 <Dato label="Tipo ambulancia" value={r.tipo_ambulancia} />
-                <Dato label="Proveedor / prestador" value={r.proveedor_prestador} />
+                <Dato label="EAPB / ERP" value={r.eapb} />
                 <Dato label="Prioridad" value={r.prioridad} />
-                <Dato label="N° radicado" value={radicado} />
                 <Dato label="Estado" value={r.estado} />
                 <Dato label="Fecha y hora radicación" value={fmtFechaHora(r.fecha_radicado)} />
                 <Dato label="Tiempo del trámite" value={fmtTranscurrido(r.created_at)} />
@@ -413,7 +418,6 @@ export function CasoGenericoCard({
                 <Dato label="Tipo pendiente" value={r.tipo_pendiente} />
                 <Dato label="IPS / área" value={r.ips_area} />
                 <Dato label="Prioridad" value={r.prioridad} />
-                <Dato label="N° radicado" value={radicado} />
                 <Dato label="Estado" value={r.estado} />
                 <Dato label="Fecha y hora" value={fmtFechaHora(r.created_at)} />
                 <Dato label="Tiempo transcurrido" value={fmtTranscurrido(r.created_at)} />
