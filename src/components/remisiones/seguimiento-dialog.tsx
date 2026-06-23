@@ -1110,9 +1110,11 @@ export function SeguimientoDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Número de radicado */}
+          {/* Número de radicado (solo módulos con Índigo) */}
+          {usaIndigo && (
           <div className="space-y-1.5">
             <Label className={labelCls}>Número de radicado</Label>
+            {radicadoReal && false ? null : null}
             {radicadoReal ? (
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-1.5">
