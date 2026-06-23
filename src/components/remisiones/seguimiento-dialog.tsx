@@ -995,15 +995,9 @@ export function SeguimientoDialog({
         evolucion_motivo?: string | null;
         codigo_radicacion?: string;
         estado?: string;
+        archivado?: boolean;
         trazabilidad_indigo?: string;
       } = {};
-      // Evolución legacy (otros módulos).
-      if (mostrarEvolucionLegacy && especialidadesList.length > 0) {
-        update.evolucion = evolucionLegacyCalc;
-        update.evolucion_detalle = JSON.stringify(evoDetalle);
-        update.evolucion_actualizada_at = new Date().toISOString();
-        update.evolucion_motivo = requiereMotivoLegacy ? motivoEvo.trim() : null;
-      }
       // Evolución diaria salientes v2: refleja estado en la tarjeta.
       if (esEvolucionSal) {
         update.evolucion = evoEstadoSal;
@@ -1027,7 +1021,33 @@ export function SeguimientoDialog({
       if (esSaliente && tipoSeg === T.CANCELACION && cancelNuevoRadicado.trim())
         update.codigo_radicacion = cancelNuevoRadicado.trim();
       if (estadoOpciones && estadoCaso) update.estado = estadoCaso;
-      if (esSaliente && indigoTexto.trim()) update.trazabilidad_indigo = indigoTexto.trim();
+      if (usaIndigo && indigoTexto.trim()) update.trazabilidad_indigo = indigoTexto.trim();
+      // Referencia interna: refleja estado según el seguimiento y cierra al culminar.
+      if (esInterna) {
+        if (tipoSeg === TI.PENDIENTE) update.estado = "PENDIENTE COORDINACION";
+        else if (tipoSeg === TI.COORDINADO) update.estado = "EXAMEN COORDINADO";
+        else if (tipoSeg === TI.CULMINACION) {
+          update.estado = "CULMINADO";
+          update.archivado = true;
+        }
+      }
+      // Pendientes: cumplimiento completo cierra y archiva el caso.
+      if (esPendiente) {
+        if (tipoSeg === TP.COMPLETO) {
+          update.estado = "CUMPLIDO";
+          update.archivado = true;
+        } else {
+          update.estado = "ABIERTO";
+        }
+      }
+
+      if (Object.keys(update).length > 0) {
+        await supabase
+          .from(tabla as "remisiones")
+          .update(update)
+          .eq("id", casoId);
+      }
+    }
 
       if (Object.keys(update).length > 0) {
         await supabase
