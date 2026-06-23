@@ -761,7 +761,15 @@ export function SeguimientoDialog({
     }
 
     if (tabla) {
-      const update: Record<string, unknown> = {};
+      const update: {
+        evolucion?: string;
+        evolucion_detalle?: string;
+        evolucion_actualizada_at?: string;
+        evolucion_motivo?: string | null;
+        codigo_radicacion?: string;
+        estado?: string;
+        trazabilidad_indigo?: string;
+      } = {};
       // Evolución legacy (otros módulos).
       if (mostrarEvolucionLegacy && especialidadesList.length > 0) {
         update.evolucion = evolucionLegacyCalc;
