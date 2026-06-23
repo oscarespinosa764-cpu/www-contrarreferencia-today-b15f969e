@@ -879,7 +879,13 @@ export function SeguimientoDialog({
               <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-medium">
                 {radicadoReal}
               </div>
-            ) : esSaliente && !generaCodigo ? (
+            ) : !esSaliente ? (
+              <Input
+                value={radicado}
+                onChange={(e) => setRadicado(e.target.value)}
+                placeholder="Ej. 2026-000123"
+              />
+            ) : !generaCodigo ? (
               <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-medium text-muted-foreground">
                 NO APLICA
               </div>
