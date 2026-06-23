@@ -132,7 +132,10 @@ export function NuevoRegistroDialog({
   const generaCodigo = !esSoat && (eapbActual?.extra2 ?? "").toUpperCase() === "SI";
   const mostrarPreguntaPlataforma = tienePlataforma && !esSoat;
   const incluyeNacional = redNacional;
+  // Para la plantilla Índigo se mantiene la lógica original (LOCAL / LOCAL_NACIONAL).
   const alcance: AlcanceRed = redNacional ? "LOCAL_NACIONAL" : "LOCAL";
+  // Para almacenamiento/visualización se distingue también "NACIONAL".
+  const alcanceStore = redLocal && redNacional ? "LOCAL_NACIONAL" : redNacional ? "NACIONAL" : "LOCAL";
   // El tipo de trámite se deriva (ya no se selecciona manualmente).
   const tipoTramiteDerivado = derivarTipoTramite(remisionPor, tipoEntidad);
 
