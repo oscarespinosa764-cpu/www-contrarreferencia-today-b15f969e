@@ -671,20 +671,22 @@ export function SeguimientoDialog({
   };
 
   // --- Visibilidad de campos ---
-  // Contacto y teléfono solo en CONTACTO TELEFÓNICO.
-  const mostrarContacto = esSaliente ? esTelefono : true;
+  // Contacto y teléfono solo en CONTACTO TELEFÓNICO (módulos con Índigo). Oculto en interna/pendiente.
+  const mostrarContacto = usaIndigo ? esTelefono : false;
   // Estado del caso editable salvo en FÍSICO/PRESENCIAL.
   const estadoCasoEditable = !esFisico;
   // Estado de solicitud automático (no editable) en ciertos tipos.
   const estadoSolicAuto =
-    esSaliente &&
+    usaIndigo &&
     [T.RADICADO, T.CANCELACION, T.ACEPTACION, T.AMBULANCIA, T.NEGACIONES, T.EVOLUCION].includes(
       tipoSeg as never,
     );
-  const mostrarIndigo = esSaliente && (!!tipoSeg || nuevoRadicadoMode);
+  const mostrarIndigo = !!tipoSeg || nuevoRadicadoMode;
+  // Estado de la solicitud solo aplica a módulos con Índigo.
+  const mostrarEstadoSolicitud = usaIndigo;
 
-  // Evolución diaria por especialidad: solo módulos legacy.
-  const mostrarEvolucionLegacy = !esSaliente;
+  // Evolución diaria por especialidad: ya no se usa (los módulos migraron a v2).
+  const mostrarEvolucionLegacy = false;
 
   // --- Negaciones helpers ---
   const agregarIpsNeg = () => {
