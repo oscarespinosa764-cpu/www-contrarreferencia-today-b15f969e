@@ -14,14 +14,12 @@ import { Cie10Field } from "./cie10-field";
 import { toast } from "sonner";
 import { PlantillasEnPaso } from "@/components/coordinacion/plantillas-en-paso";
 import { IndigoPanel } from "./indigo-panel";
+import { AutoComplete } from "@/components/rc/autocomplete";
 import {
   generarPlantillaInicio,
-  generarNotaAclaratoria,
   codigoInicial,
-  esTramiteSoat,
-  MOTIVOS_NOTA,
+  derivarTipoTramite,
   type AlcanceRed,
-  type MotivoNota,
 } from "@/lib/indigo-trazabilidad";
 
 export function NuevoRegistroDialog({
