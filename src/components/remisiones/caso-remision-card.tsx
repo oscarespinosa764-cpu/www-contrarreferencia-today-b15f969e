@@ -42,6 +42,12 @@ export type Remision = {
   servicio: string | null;
   cama: string | null;
   asegurador: string | null;
+  eapb: string | null;
+  regimen: string | null;
+  remision_por: string | null;
+  alcance_red: string | null;
+  tipo_ambulancia: string | null;
+  eapb_genera_codigo: boolean | null;
   prioridad: string | null;
   estado: string | null;
   tipo_tramite: string | null;
