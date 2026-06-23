@@ -957,8 +957,8 @@ export function SeguimientoDialog({
       .eq("user_id", u.user?.id ?? "")
       .maybeSingle();
 
-    const radicadoSeg = !esSaliente
-      ? radicado.trim() || radicadoReal || null
+    const radicadoSeg = !usaIndigo
+      ? null
       : nuevoRadicadoMode
         ? nuevoRadicado.trim()
         : esRadicado
@@ -973,10 +973,10 @@ export function SeguimientoDialog({
       radicado: radicadoSeg || null,
       tipo_seguimiento: tipoSegFinal,
       detalle: detalle || null,
-      estado_solicitud: nuevoRadicadoMode ? null : estadoSolicitud || null,
+      estado_solicitud: nuevoRadicadoMode || !mostrarEstadoSolicitud ? null : estadoSolicitud || null,
       nombre_contacto: mostrarContacto ? nombreContacto.trim() || null : null,
       telefono: mostrarContacto ? telefono.trim() || null : null,
-      plantilla_indigo: esSaliente ? indigoTexto.trim() || null : null,
+      plantilla_indigo: indigoTexto.trim() || null,
       detalles: construirDetalles() as never,
       nombre_usuario: perfil?.nombre || u.user?.email || null,
       created_by: u.user?.id,
