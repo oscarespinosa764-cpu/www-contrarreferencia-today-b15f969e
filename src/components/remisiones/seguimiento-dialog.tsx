@@ -32,8 +32,9 @@ import {
   AMBULANCIA_VARIANTES,
   CANCELACION_GESTION,
   CANCELACION_TIPOS,
+  CONTACTO_DESTINOS,
   NEGACION_MOTIVOS,
-  PERTINENCIA_SUBTIPOS,
+  REVISION_AUT_LABEL_COMPLETO,
   SERVICIO_CANCELACION,
   SERVICIO_OPCIONES,
   appendNota,
@@ -46,18 +47,19 @@ import {
   generarPlantillaEvolucionDiaria,
   generarPlantillaFisico,
   generarPlantillaNegaciones,
-  
+  generarPlantillaNuevoRadicado,
   generarPlantillaOtroSeg,
-  generarPlantillaPertinencia,
   generarPlantillaPlataformaSeg,
   generarPlantillaRadicado,
+  generarPlantillaRevisionAutorizacion,
   generarPlantillaTelefonico,
   type AcercamientoTipo,
   type AmbulanciaVariante,
   type CancelacionTipo,
+  type ContactoDestino,
   type NegacionGrupo,
-  type PertinenciaSubtipo,
 } from "@/lib/indigo-trazabilidad";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Props = {
   open: boolean;
