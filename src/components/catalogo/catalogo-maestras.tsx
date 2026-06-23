@@ -158,6 +158,13 @@ export function CatalogoMaestras() {
   const [simOpen, setSimOpen] = useState(false);
   // Sedes/detalles dinámicos (solo IPS): se almacenan juntos en extra1 separados por " ; ".
   const [sedes, setSedes] = useState<string[]>([]);
+  // Indicadores de radicado por tipo (solo EAPB).
+  const [radicaFlags, setRadicaFlags] = useState({
+    radica_phd: false,
+    radica_pad: false,
+    radica_oxigeno: false,
+    radica_unidad_especial: false,
+  });
 
   useEffect(() => {
     if (editing && editing.tipo === "IPS") {
@@ -167,6 +174,14 @@ export function CatalogoMaestras() {
         .map((s) => s.trim())
         .filter(Boolean);
       setSedes(parts.length ? parts : [""]);
+    }
+    if (editing && editing.tipo === "EAPB") {
+      setRadicaFlags({
+        radica_phd: !!editing.radica_phd,
+        radica_pad: !!editing.radica_pad,
+        radica_oxigeno: !!editing.radica_oxigeno,
+        radica_unidad_especial: !!editing.radica_unidad_especial,
+      });
     }
   }, [editing]);
 
