@@ -148,6 +148,11 @@ export function SeguimientoDialog({
   const especialidadesList = useMemo(() => splitEspecialidades(especialidades), [especialidades]);
 
   const esSaliente = tabla === "remisiones";
+  const esPhd = tabla === "domiciliarios";
+  const esInterna = tabla === "referencia_interna";
+  const esPendiente = tabla === "pendientes";
+  // Módulos que reutilizan toda la lógica de trazabilidad Índigo.
+  const usaIndigo = esSaliente || esPhd;
 
   // --- Estados base ---
   const [tipoSeg, setTipoSeg] = useState("");
