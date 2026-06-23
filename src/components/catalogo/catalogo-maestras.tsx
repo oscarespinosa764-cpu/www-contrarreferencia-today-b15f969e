@@ -497,6 +497,21 @@ export function CatalogoMaestras() {
               ) : editing.tipo === "EAPB" ? (
                 <>
                   <div className="space-y-2">
+                    <Label htmlFor="extra3">Tipo de entidad</Label>
+                    <select
+                      id="extra3"
+                      name="extra3"
+                      defaultValue={editing.extra3 ?? "EPS"}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                    >
+                      <option value="EPS">EPS</option>
+                      <option value="ASEGURADORA">ASEGURADORA</option>
+                      <option value="ARL">ARL</option>
+                      <option value="PREPAGADA">PREPAGADA</option>
+                      <option value="NO APLICA">NO APLICA</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="extra1">Tiene plataforma</Label>
                     <select
                       id="extra1"
