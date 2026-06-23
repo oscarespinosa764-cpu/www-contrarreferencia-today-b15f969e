@@ -1524,22 +1524,111 @@ export function SeguimientoDialog({
             </div>
           )}
 
-          {/* VALIDACIÓN DE PERTINENCIA MÉDICA */}
+          {/* REVISIÓN AUTORIZACIÓN ESTANCIA HOSPITALARIA (CANCELACIÓN) */}
           {esSaliente && tipoSeg === T.PERTINENCIA && (
-            <div className="space-y-1.5">
-              <Label className={labelCls}>Estado de la nota</Label>
-              <Select value={pertinenciaSub} onValueChange={(v) => setPertinenciaSub(v as PertinenciaSubtipo)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="max-w-[calc(100vw-2rem)]">
-                  {PERTINENCIA_SUBTIPOS.map((s) => (
-                    <SelectItem key={s.value} value={s.value} className="whitespace-normal">
-                      {s.label}
+            <div className={sectionCls}>
+              <p className="text-[10px] text-muted-foreground">{REVISION_AUT_LABEL_COMPLETO}</p>
+              <div className="space-y-1.5">
+                <Label className={labelCls}>Estado de autorización de estancia</Label>
+                <Select value={revAutoriza} onValueChange={(v) => setRevAutoriza(v as "SI" | "NO")}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar…" />
+                  </SelectTrigger>
+                  <SelectContent className="max-w-[calc(100vw-2rem)]">
+                    <SelectItem value="SI" className="whitespace-normal">
+                      CUENTA CON AUTORIZACIÓN
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    <SelectItem value="NO" className="whitespace-normal">
+                      NO CUENTA CON AUTORIZACIÓN
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {revAutoriza === "SI" && (
+                <div className="space-y-1.5">
+                  <Label className={labelCls}>Trazabilidad de autorizaciones</Label>
+                  <Select value={revNota} onValueChange={(v) => setRevNota(v as "SI" | "NO")}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar…" />
+                    </SelectTrigger>
+                    <SelectContent className="max-w-[calc(100vw-2rem)]">
+                      <SelectItem value="SI" className="whitespace-normal">
+                        CUENTA CON NOTA DE TRAZABILIDAD DE CANCELACIÓN
+                      </SelectItem>
+                      <SelectItem value="NO" className="whitespace-normal">
+                        NO CUENTA CON NOTA DE TRAZABILIDAD DE CANCELACIÓN
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {revAutoriza === "SI" && revNota === "NO" && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Nombre del funcionario</Label>
+                    <Input value={revFuncionario} onChange={(e) => setRevFuncionario(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Cargo</Label>
+                    <Input value={revCargo} onChange={(e) => setRevCargo(e.target.value)} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* CONTACTO TELEFÓNICO · destinatario */}
+          {esTelefono && (
+            <div className={sectionCls}>
+              <Label className={labelCls}>Contacto realizado con</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {CONTACTO_DESTINOS.map((d) => {
+                  const active = contactoDestino === d.value;
+                  return (
+                    <button
+                      key={d.value}
+                      type="button"
+                      onClick={() => setContactoDestino(d.value)}
+                      className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+                        active
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-muted/40 text-foreground hover:border-primary/50"
+                      }`}
+                    >
+                      {d.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {contactoDestino === "IPS" && (
+                <div className="space-y-1.5 pt-1">
+                  <Label className={labelCls}>Nombre de la IPS</Label>
+                  <AutoComplete
+                    value={contactoIps}
+                    options={ipsLabels}
+                    placeholder="Escribe para buscar IPS…"
+                    minChars={2}
+                    onChange={setContactoIps}
+                    onPick={(label) => {
+                      const opt = ipsOptions.find((o) => o.label === label);
+                      setContactoIps(opt ? opt.ips : label);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ASUNTO (correo electrónico / plataforma web) */}
+          {esSaliente && (tipoSeg === T.CORREO || tipoSeg === T.PLATAFORMA) && (
+            <div className="space-y-1.5">
+              <Label className={labelCls}>Asunto</Label>
+              <Input
+                value={asunto}
+                onChange={(e) => setAsunto(e.target.value)}
+                placeholder="Asunto del seguimiento"
+                maxLength={200}
+              />
             </div>
           )}
 
