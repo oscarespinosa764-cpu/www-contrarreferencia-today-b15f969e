@@ -189,11 +189,19 @@ export function NuevoRegistroDialog({
     e.preventDefault();
     const f = new FormData(e.currentTarget);
 
-    // Validaciones de trazabilidad ÍNDIGO.
+    // Validaciones de campos obligatorios.
+    if (tratantes.length === 0)
+      return toast.error("Agrega al menos una especialidad tratante");
+    if (receptoras.length === 0)
+      return toast.error("Agrega al menos una especialidad receptora");
     if (!remisionPor) return toast.error("Selecciona el motivo en 'Remisión por'");
+    if (!String(f.get("regimen") || "").trim())
+      return toast.error("Selecciona el régimen");
     if (!eapbSel.trim()) return toast.error("Indica la EAPB / ERP");
     if (!redLocal && !redNacional)
       return toast.error("Marca la red a la que se comenta (local y/o nacional)");
+    if (!String(f.get("especificacion") || "").trim())
+      return toast.error("Escribe la justificación de la remisión");
     if (mostrarPreguntaPlataforma && !plataformaFunc)
       return toast.error("Indica si la plataforma se encuentra funcionando");
     if (redLocal && ipsSel.length === 0)
