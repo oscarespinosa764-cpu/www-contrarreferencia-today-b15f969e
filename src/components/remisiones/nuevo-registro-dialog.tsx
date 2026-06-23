@@ -154,12 +154,12 @@ export function NuevoRegistroDialog({
     setResetKey((k) => k + 1);
     setEapbSel("");
     setPlataformaFunc("");
-    setTipoTramiteSel("");
-    setAlcance("");
+    setRemisionPor("");
+    setRedLocal(false);
+    setRedNacional(false);
     setIpsSel([]);
     setDeptosSel([]);
     setDeptoOtro("");
-    setMotivoNota("ninguno");
   };
 
   // Al agregar/quitar en tratantes, migra automáticamente a receptoras
