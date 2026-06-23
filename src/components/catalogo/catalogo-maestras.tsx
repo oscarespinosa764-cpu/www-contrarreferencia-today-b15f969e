@@ -263,6 +263,15 @@ export function CatalogoMaestras() {
     const extra2 = isIPS ? null : ((String(f.get("extra2")).trim() || null) as string | null);
     const extra3 =
       editing.tipo === "EAPB" ? ((String(f.get("extra3")).trim() || null) as string | null) : editing.extra3;
+    const radicaPatch =
+      editing.tipo === "EAPB"
+        ? {
+            radica_phd: radicaFlags.radica_phd,
+            radica_pad: radicaFlags.radica_pad,
+            radica_oxigeno: radicaFlags.radica_oxigeno,
+            radica_unidad_especial: radicaFlags.radica_unidad_especial,
+          }
+        : {};
     const { error } = await supabase
       .from("catalogos")
       .update({
@@ -270,6 +279,7 @@ export function CatalogoMaestras() {
         extra1,
         extra2,
         extra3,
+        ...radicaPatch,
       })
       .eq("id", editing.id);
     if (error) return toast.error(error.message);
