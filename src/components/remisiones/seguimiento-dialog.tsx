@@ -910,31 +910,38 @@ export function SeguimientoDialog({
     } else {
       if (!tipoSeg) return toast.error("Selecciona el tipo de seguimiento");
 
-      // Validaciones por tipo (salientes).
+      // Validaciones por tipo (salientes / PHD).
       if (esRadicado && generaCodigo && !radicado.trim())
         return toast.error("Ingresa el número de radicado");
-      if (esSaliente && (tipoSeg === T.CORREO || tipoSeg === T.PLATAFORMA) && !asunto.trim())
+      if (usaIndigo && (tipoSeg === T.CORREO || tipoSeg === T.PLATAFORMA) && !asunto.trim())
         return toast.error("Indica el asunto del seguimiento");
       if (esTelefono && !contactoDestino)
         return toast.error("Selecciona con quién se realizó el contacto");
       if (esTelefono && contactoDestino === "IPS" && !contactoIps.trim())
         return toast.error("Indica el nombre de la IPS");
-      if (esSaliente && tipoSeg === T.OTRO && !otroCual.trim())
+      if (usaIndigo && tipoSeg === T.OTRO && !otroCual.trim())
         return toast.error("Indica en el campo CUÁL");
-      if (esSaliente && tipoSeg === T.PERTINENCIA) {
+      if (usaIndigo && tipoSeg === T.PERTINENCIA) {
         if (!revAutoriza) return toast.error("Indica el estado de autorización de estancia");
         if (revAutoriza === "SI" && !revNota)
           return toast.error("Indica la trazabilidad de autorizaciones");
         if (revAutoriza === "SI" && revNota === "NO" && !revFuncionario.trim())
           return toast.error("Indica el nombre del funcionario");
       }
-      if (esSaliente && tipoSeg === T.NEGACIONES && negGruposPreview.length === 0)
+      if (usaIndigo && tipoSeg === T.NEGACIONES && negGruposPreview.length === 0)
         return toast.error("Agrega al menos un motivo de negación con su IPS");
-      if (esSaliente && tipoSeg === T.AMBULANCIA) {
+      if (usaIndigo && tipoSeg === T.AMBULANCIA) {
         if (fechaTraslado.trim() && !isFechaValida(fechaTraslado))
           return toast.error("Fecha de traslado inválida (DD/MM/AAAA)");
         if (horaTraslado.trim() && !isHoraValida(horaTraslado))
           return toast.error("Hora de traslado inválida (HH:MM)");
+      }
+      // Referencia interna.
+      if (esInterna && tipoSeg === TI.COORDINADO) {
+        if (riFecha.trim() && !isFechaValida(riFecha))
+          return toast.error("Fecha del examen inválida (DD/MM/AAAA)");
+        if (riHora.trim() && !isHoraValida(riHora))
+          return toast.error("Hora del examen inválida (HH:MM)");
       }
       if (evoRequiereMotivo && !evoMotivoPend.trim())
         return toast.error("Indica el motivo del pendiente");
