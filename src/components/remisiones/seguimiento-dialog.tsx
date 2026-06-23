@@ -1006,8 +1006,58 @@ export function SeguimientoDialog({
           <div className="space-y-1.5">
             <Label className={labelCls}>Número de radicado</Label>
             {radicadoReal ? (
-              <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-medium">
-                {radicadoReal}
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {radicadosLista.map((rad) => (
+                    <span
+                      key={rad}
+                      className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2.5 py-1 text-xs font-medium"
+                    >
+                      {rad}
+                    </span>
+                  ))}
+                  {esSaliente && generaCodigo && !nuevoRadicadoMode && (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      className="h-7 w-7 rounded-full"
+                      aria-label="Agregar nuevo radicado"
+                      title="Agregar nuevo número de radicado"
+                      onClick={() => setNuevoRadicadoMode(true)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                {nuevoRadicadoMode && (
+                  <div className="space-y-1.5 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className={labelCls}>Agregar nuevo número de radicado *</Label>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6"
+                        aria-label="Cancelar"
+                        onClick={() => {
+                          setNuevoRadicadoMode(false);
+                          setNuevoRadicado("");
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <Input
+                      value={nuevoRadicado}
+                      onChange={(e) => setNuevoRadicado(e.target.value)}
+                      placeholder="Nuevo número de radicado"
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Indica abajo, en observaciones, por qué se agrega un nuevo radicado.
+                    </p>
+                  </div>
+                )}
               </div>
             ) : !esSaliente ? (
               <Input
@@ -1020,11 +1070,9 @@ export function SeguimientoDialog({
                 NO APLICA
               </div>
             ) : esRadicado ? (
-              <Input
-                value={radicado}
-                onChange={(e) => setRadicado(e.target.value)}
-                placeholder="Ej. 2026-000123"
-              />
+              <div className="rounded-md border border-dashed border-border px-3 py-2 text-xs italic text-muted-foreground">
+                Ingresa el radicado en el bloque "RADICADO DE CASO" más abajo.
+              </div>
             ) : (
               <div className="rounded-md border border-dashed border-border px-3 py-2 text-xs italic text-muted-foreground">
                 Pendiente de radicación. Selecciona "RADICADO DE CASO" para registrarlo.
