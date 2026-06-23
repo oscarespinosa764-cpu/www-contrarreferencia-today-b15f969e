@@ -61,13 +61,15 @@ export function NuevoRegistroDialog({
     },
   });
 
-  // EAPB con sus flags (tipo entidad / tiene plataforma / genera código).
+  // EAPB con sus flags (tipo entidad / tiene plataforma / genera código / radicado por tipo).
   const { data: eapbList = [] } = useQuery({
     queryKey: ["cat-eapb-flags"],
     queryFn: async () => {
       const { data } = await supabase
         .from("catalogos")
-        .select("valor, extra1, extra2, extra3")
+        .select(
+          "valor, extra1, extra2, extra3, radica_phd, radica_pad, radica_oxigeno, radica_unidad_especial",
+        )
         .eq("tipo", "EAPB")
         .eq("activo", true)
         .order("valor");
@@ -76,6 +78,10 @@ export function NuevoRegistroDialog({
         extra1: string | null;
         extra2: string | null;
         extra3: string | null;
+        radica_phd: boolean | null;
+        radica_pad: boolean | null;
+        radica_oxigeno: boolean | null;
+        radica_unidad_especial: boolean | null;
       }[];
     },
   });
