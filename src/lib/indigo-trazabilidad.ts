@@ -787,3 +787,59 @@ export function generarPlantillaOtroSeg(cual: string, estadoSolicitud: string): 
   return t;
 }
 
+// --- 15. NUEVO RADICADO ADICIONAL ---
+export function generarPlantillaNuevoRadicado(anterior: string, nuevo: string): string {
+  const a = ph(anterior, "RADICADO ANTERIOR");
+  const n = ph(nuevo, "NUEVO RADICADO");
+  return `SE DEJA TRAZABILIDAD DE LA ASIGNACIÓN DE UN NUEVO NÚMERO DE RADICADO PARA EL TRÁMITE DE REMISIÓN. RADICADO ANTERIOR: ${a}. NUEVO RADICADO: ${n}.`;
+}
+
+// --- 16. REVISIÓN AUTORIZACIÓN ESTANCIA HOSPITALARIA PARA CANCELACIÓN ---
+export type RevisionAutInput = {
+  /** true = cuenta con autorización · false = no cuenta · null = sin definir */
+  cuentaAutorizacion: boolean | null;
+  /** Solo aplica si cuenta con autorización: true = con nota · false = sin nota */
+  cuentaNota: boolean | null;
+  funcionario?: string;
+  cargo?: string;
+};
+
+export function generarPlantillaRevisionAutorizacion(i: RevisionAutInput): string {
+  const base =
+    "SE REALIZA REVISIÓN DE AUTORIZACIÓN DE ESTANCIA HOSPITALARIA PARA CANCELACIÓN DEL TRÁMITE DE REMISIÓN.";
+  if (i.cuentaAutorizacion === false) {
+    return `${base} SE IDENTIFICA QUE EL CASO NO CUENTA CON AUTORIZACIÓN DE ESTANCIA HOSPITALARIA.`;
+  }
+  if (i.cuentaAutorizacion === true) {
+    if (i.cuentaNota === true) {
+      return `${base} SE IDENTIFICA QUE EL CASO CUENTA CON AUTORIZACIÓN Y CON NOTA DE TRAZABILIDAD POR PARTE DE AUTORIZACIONES PARA LA CANCELACIÓN DEL TRÁMITE.`;
+    }
+    if (i.cuentaNota === false) {
+      return `${base} SE IDENTIFICA QUE EL CASO CUENTA CON AUTORIZACIÓN, PERO NO CUENTA CON NOTA DE TRAZABILIDAD DE CANCELACIÓN DEL TRÁMITE. SE REALIZA VALIDACIÓN CON ${ph(
+        i.funcionario,
+        "NOMBRE FUNCIONARIO",
+      )}, CARGO ${ph(i.cargo, "CARGO")}.`;
+    }
+  }
+  return base;
+}
+
+// ---------------------------------------------------------------------------
+// Derivación del tipo de trámite (ya no se selecciona manualmente).
+// Se infiere desde "REMISIÓN POR" y el tipo de entidad del catálogo EAPB/ERP.
+// ---------------------------------------------------------------------------
+export function derivarTipoTramite(remisionPor: string, tipoEntidad: string): string {
+  if (/red\s+no\s+contratada/i.test(remisionPor || "")) {
+    return "REMISIÓN POR TRÁMITE ADMINISTRATIVO CANCELABLE";
+  }
+  if (/aseguradora/i.test(tipoEntidad || "")) {
+    return "REMISIÓN ASISTENCIAL POR SOAT";
+  }
+  return "REMISIÓN ASISTENCIAL";
+}
+
+/** Etiqueta corta + completa del tipo de seguimiento de revisión de autorización. */
+export const REVISION_AUT_LABEL_CORTO = "REVISIÓN AUTORIZACIÓN ESTANCIA (CANCELACIÓN)";
+export const REVISION_AUT_LABEL_COMPLETO =
+  "REVISIÓN AUTORIZACIÓN ESTANCIA HOSPITALARIA PARA CANCELACIÓN DE TRÁMITE DE REMISIÓN";
+
