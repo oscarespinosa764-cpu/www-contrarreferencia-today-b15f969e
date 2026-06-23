@@ -14,14 +14,12 @@ import { Cie10Field } from "./cie10-field";
 import { toast } from "sonner";
 import { PlantillasEnPaso } from "@/components/coordinacion/plantillas-en-paso";
 import { IndigoPanel } from "./indigo-panel";
+import { AutoComplete } from "@/components/rc/autocomplete";
 import {
   generarPlantillaInicio,
-  generarNotaAclaratoria,
   codigoInicial,
-  esTramiteSoat,
-  MOTIVOS_NOTA,
+  derivarTipoTramite,
   type AlcanceRed,
-  type MotivoNota,
 } from "@/lib/indigo-trazabilidad";
 
 export function NuevoRegistroDialog({
@@ -39,14 +37,14 @@ export function NuevoRegistroDialog({
   const [resetKey, setResetKey] = useState(0);
 
   // --- Trazabilidad ÍNDIGO (remisión saliente) ---
-  const [eapbSel, setEapbSel] = useState("");
+  const [eapbSel, setEapbSel] = useState(""); // autocompletado EAPB / ERP
   const [plataformaFunc, setPlataformaFunc] = useState<string>(""); // "SI" | "NO" | ""
-  const [tipoTramiteSel, setTipoTramiteSel] = useState("");
-  const [alcance, setAlcance] = useState<AlcanceRed | "">("");
+  const [remisionPor, setRemisionPor] = useState("");
+  const [redLocal, setRedLocal] = useState(false);
+  const [redNacional, setRedNacional] = useState(false);
   const [ipsSel, setIpsSel] = useState<string[]>([]);
   const [deptosSel, setDeptosSel] = useState<string[]>([]);
   const [deptoOtro, setDeptoOtro] = useState("");
-  const [motivoNota, setMotivoNota] = useState<MotivoNota>("ninguno");
   const [indigoOpen, setIndigoOpen] = useState(false);
   const [indigoTexto, setIndigoTexto] = useState("");
 
@@ -63,27 +61,32 @@ export function NuevoRegistroDialog({
     },
   });
 
-  // EAPB con sus flags (tiene plataforma / genera código).
+  // EAPB con sus flags (tipo entidad / tiene plataforma / genera código).
   const { data: eapbList = [] } = useQuery({
     queryKey: ["cat-eapb-flags"],
     queryFn: async () => {
       const { data } = await supabase
         .from("catalogos")
-        .select("valor, extra1, extra2")
+        .select("valor, extra1, extra2, extra3")
         .eq("tipo", "EAPB")
         .eq("activo", true)
         .order("valor");
-      return (data ?? []) as { valor: string; extra1: string | null; extra2: string | null }[];
+      return (data ?? []) as {
+        valor: string;
+        extra1: string | null;
+        extra2: string | null;
+        extra3: string | null;
+      }[];
     },
   });
 
-  const { data: tiposTramite = [] } = useQuery({
-    queryKey: ["cat-tipo-tramite"],
+  const { data: regimenes = [] } = useQuery({
+    queryKey: ["cat-regimen"],
     queryFn: async () => {
       const { data } = await supabase
         .from("catalogos")
         .select("valor")
-        .eq("tipo", "TIPO_TRAMITE")
+        .eq("tipo", "REGIMEN")
         .eq("activo", true)
         .order("valor");
       return (data ?? []).map((d) => d.valor as string);
@@ -116,15 +119,22 @@ export function NuevoRegistroDialog({
     },
   });
 
+  // Opciones de EAPB para el autocompletado.
+  const eapbOptions = useMemo(() => eapbList.map((e) => e.valor), [eapbList]);
   const eapbActual = useMemo(
     () => eapbList.find((e) => e.valor === eapbSel) ?? null,
     [eapbList, eapbSel],
   );
-  const esSoat = esTramiteSoat(tipoTramiteSel);
+  const tipoEntidad = (eapbActual?.extra3 ?? "").toUpperCase();
+  // SOAT se infiere por tipo de entidad = ASEGURADORA.
+  const esSoat = /aseguradora/i.test(tipoEntidad);
   const tienePlataforma = (eapbActual?.extra1 ?? "").toUpperCase() === "SI";
   const generaCodigo = !esSoat && (eapbActual?.extra2 ?? "").toUpperCase() === "SI";
   const mostrarPreguntaPlataforma = tienePlataforma && !esSoat;
-  const incluyeNacional = alcance === "LOCAL_NACIONAL";
+  const incluyeNacional = redNacional;
+  const alcance: AlcanceRed = redNacional ? "LOCAL_NACIONAL" : "LOCAL";
+  // El tipo de trámite se deriva (ya no se selecciona manualmente).
+  const tipoTramiteDerivado = derivarTipoTramite(remisionPor, tipoEntidad);
 
   const toggleList = (arr: string[], v: string, set: (x: string[]) => void) =>
     set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
@@ -144,12 +154,12 @@ export function NuevoRegistroDialog({
     setResetKey((k) => k + 1);
     setEapbSel("");
     setPlataformaFunc("");
-    setTipoTramiteSel("");
-    setAlcance("");
+    setRemisionPor("");
+    setRedLocal(false);
+    setRedNacional(false);
     setIpsSel([]);
     setDeptosSel([]);
     setDeptoOtro("");
-    setMotivoNota("ninguno");
   };
 
   // Al agregar/quitar en tratantes, migra automáticamente a receptoras
@@ -177,11 +187,14 @@ export function NuevoRegistroDialog({
     const f = new FormData(e.currentTarget);
 
     // Validaciones de trazabilidad ÍNDIGO.
-    if (!tipoTramiteSel) return toast.error("Selecciona el tipo de trámite");
-    if (!alcance) return toast.error("Selecciona el alcance de gestión / red comentada");
+    if (!remisionPor) return toast.error("Selecciona el motivo en 'Remisión por'");
+    if (!eapbSel.trim()) return toast.error("Indica la EAPB / ERP");
+    if (!redLocal && !redNacional)
+      return toast.error("Marca la red a la que se comenta (local y/o nacional)");
     if (mostrarPreguntaPlataforma && !plataformaFunc)
       return toast.error("Indica si la plataforma se encuentra funcionando");
-    if (ipsSel.length === 0) return toast.error("Marca al menos una IPS de red local");
+    if (redLocal && ipsSel.length === 0)
+      return toast.error("Marca al menos una IPS de red local");
     const deptosFinal = [
       ...deptosSel.filter((d) => d !== "Otro"),
       ...(deptosSel.includes("Otro") && deptoOtro.trim() ? [deptoOtro.trim()] : []),
@@ -194,8 +207,8 @@ export function NuevoRegistroDialog({
       : null;
     const codigoRad = codigoInicial(generaCodigo);
 
-    const plantilla = generarPlantillaInicio({
-      tipoTramite: tipoTramiteSel,
+    const trazabilidad = generarPlantillaInicio({
+      tipoTramite: tipoTramiteDerivado,
       tienePlataforma,
       plataformaFuncionando,
       generaCodigo,
@@ -203,8 +216,6 @@ export function NuevoRegistroDialog({
       ipsRedLocal: ipsSel,
       departamentos: deptosFinal,
     });
-    const nota = generarNotaAclaratoria({ motivo: motivoNota });
-    const trazabilidad = nota ? `${plantilla}\n\n${nota}` : plantilla;
 
     const { data: u } = await supabase.auth.getUser();
     const inicioRaw = String(f.get("fecha_inicio") || "");
@@ -223,10 +234,12 @@ export function NuevoRegistroDialog({
         especialidades_tratantes: tratantes.join(", "),
         especialidades_receptoras: receptoras.join(", "),
         prioridad: String(f.get("prioridad")),
-        remision_por: String(f.get("remision_por")),
+        remision_por: remisionPor,
         especificacion: String(f.get("especificacion")),
-        tipo_tramite: tipoTramiteSel,
+        tipo_tramite: tipoTramiteDerivado,
         tipo_ambulancia: String(f.get("tipo_ambulancia")),
+        regimen: String(f.get("regimen") || ""),
+        asegurador: eapbSel || null,
         contacto_nombre: String(f.get("contacto_nombre")),
         contacto_parentesco: String(f.get("contacto_parentesco")),
         contacto_telefono: String(f.get("contacto_telefono")),
@@ -257,7 +270,7 @@ export function NuevoRegistroDialog({
         _tabla: "remisiones",
         _registro_id: inserted?.id ?? null,
         _resultado: "exito",
-        _detalles: { tipo_tramite: tipoTramiteSel, alcance },
+        _detalles: { tipo_tramite: tipoTramiteDerivado, alcance },
       });
       await (supabase as any).rpc("registrar_auditoria", {
         _accion: "generar_plantilla_indigo_inicial",
@@ -418,37 +431,46 @@ export function NuevoRegistroDialog({
                   options={["ALTA", "MEDIA", "BAJA"]}
                   required
                 />
-                <SelectField
-                  name="remision_por"
-                  label="Remisión por"
-                  options={[
-                    "RED NO CONTRATADA",
-                    "NO RECURSO HUMANO",
-                    "NO DISPONIBILIDAD DE INSUMO O TECNOLOGIA",
-                    "NO DISPONIBILIDAD DE UNIDAD",
-                    "NO DISPONIBILIDAD DE CAMAS",
-                    "NIVEL DE COMPETENCIA",
-                    "PETICION VOLUNTARIA",
-                  ]}
-                  required
-                />
                 <div className="space-y-1.5">
                   <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Tipo de trámite *
+                    Remisión por *
                   </Label>
                   <select
-                    value={tipoTramiteSel}
-                    onChange={(e) => setTipoTramiteSel(e.target.value)}
+                    value={remisionPor}
+                    onChange={(e) => setRemisionPor(e.target.value)}
                     className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
                   >
                     <option value="">Selecciona…</option>
-                    {tiposTramite.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
+                    {[
+                      "RED NO CONTRATADA",
+                      "NO RECURSO HUMANO",
+                      "NO DISPONIBILIDAD DE INSUMO O TECNOLOGIA",
+                      "NO DISPONIBILIDAD DE UNIDAD",
+                      "NO DISPONIBILIDAD DE CAMAS",
+                      "NIVEL DE COMPETENCIA",
+                      "PETICION VOLUNTARIA",
+                      "EN TRAMITE",
+                    ].map((o) => (
+                      <option key={o} value={o}>
+                        {o}
                       </option>
                     ))}
                   </select>
+                  {remisionPor === "RED NO CONTRATADA" && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Se interpreta como trámite administrativo cancelable.
+                    </p>
+                  )}
                 </div>
+                <SelectField
+                  name="regimen"
+                  label="Régimen"
+                  options={
+                    regimenes.length > 0
+                      ? regimenes
+                      : ["CONTRIBUTIVO", "SUBSIDIADO", "ESPECIAL", "NO APLICA"]
+                  }
+                />
                 <SelectField
                   name="tipo_ambulancia"
                   label="Tipo de ambulancia"
@@ -464,27 +486,23 @@ export function NuevoRegistroDialog({
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   <div className="space-y-1.5">
-                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      EAPB / ERP
-                    </Label>
-                    <select
+                    <AutoComplete
+                      label="EAPB / ERP"
                       value={eapbSel}
-                      onChange={(e) => {
-                        setEapbSel(e.target.value);
+                      options={eapbOptions}
+                      placeholder="Escribe para buscar EAPB / ERP…"
+                      onChange={(v) => {
+                        setEapbSel(v);
                         setPlataformaFunc("");
                       }}
-                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
-                    >
-                      <option value="">Selecciona…</option>
-                      {eapbList.map((e) => (
-                        <option key={e.valor} value={e.valor}>
-                          {e.valor}
-                        </option>
-                      ))}
-                    </select>
+                      onPick={(v) => {
+                        setEapbSel(v);
+                        setPlataformaFunc("");
+                      }}
+                    />
                     {eapbActual && (
                       <p className="text-[10px] text-muted-foreground">
-                        {tienePlataforma ? "Tiene plataforma" : "Sin plataforma"} ·{" "}
+                        {tipoEntidad || "SIN TIPO"} · {tienePlataforma ? "Tiene plataforma" : "Sin plataforma"} ·{" "}
                         {generaCodigo ? "Genera código" : "No genera código"}
                       </p>
                     )}
@@ -509,21 +527,22 @@ export function NuevoRegistroDialog({
 
                   <div className="space-y-1.5">
                     <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Alcance de gestión / red comentada *
+                      Red a la que se comenta *
                     </Label>
-                    <select
-                      value={alcance}
-                      onChange={(e) => setAlcance(e.target.value as AlcanceRed | "")}
-                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
-                    >
-                      <option value="">Selecciona…</option>
-                      <option value="LOCAL">Red local</option>
-                      <option value="LOCAL_NACIONAL">Red local + red nacional</option>
-                    </select>
+                    <div className="flex flex-wrap gap-4 pt-1">
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox checked={redLocal} onCheckedChange={(v) => setRedLocal(!!v)} />
+                        RED LOCAL
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox checked={redNacional} onCheckedChange={(v) => setRedNacional(!!v)} />
+                        RED NACIONAL
+                      </label>
+                    </div>
                   </div>
                 </div>
 
-                {alcance && (
+                {redLocal && (
                   <div className="space-y-1.5">
                     <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                       IPS de red local * (marca al menos una)
@@ -568,23 +587,6 @@ export function NuevoRegistroDialog({
                     )}
                   </div>
                 )}
-
-                <div className="space-y-1.5">
-                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Nota aclaratoria (solo si aplica)
-                  </Label>
-                  <select
-                    value={motivoNota}
-                    onChange={(e) => setMotivoNota(e.target.value as MotivoNota)}
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
-                  >
-                    {MOTIVOS_NOTA.map((m) => (
-                      <option key={m.value} value={m.value}>
-                        {m.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="especificacion" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">

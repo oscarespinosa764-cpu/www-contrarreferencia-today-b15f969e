@@ -140,6 +140,29 @@ export function fmtFechaHora(iso: string | null | undefined): string {
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/** Edad sin duplicar la unidad: "27" -> "27 años"; "27 años" -> "27 años". */
+export function fmtEdad(edad: string | null | undefined): string {
+  const v = (edad || "").trim();
+  if (!v) return "—";
+  return /[a-zA-Záéíóú]/.test(v) ? v : `${v} años`;
+}
+
+/** Texto del radicado según la lógica de la EAPB (NO APLICA / PENDIENTE / uno o varios). */
+export function fmtRadicado(
+  codigo: string | null | undefined,
+  generaCodigo: boolean | null | undefined,
+): string {
+  const v = (codigo || "").trim();
+  if (generaCodigo === false) return "NO APLICA";
+  if (/NO APLICA/i.test(v)) return "NO APLICA";
+  if (!v || /PENDIENTE/i.test(v)) return "PENDIENTE DE RADICACIÓN";
+  return v
+    .split(/\s*·\s*/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join(" · ");
+}
+
 // --- Evolución detallada por especialidad ---
 // Por cada especialidad receptora se registran tres casillas:
 //   indigo         = evolucionada en el sistema Índigo

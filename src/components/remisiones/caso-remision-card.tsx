@@ -23,7 +23,9 @@ const ESTADO_OPCIONES = [
 ];
 import {
   evolucionMeta,
+  fmtEdad,
   fmtFechaHora,
+  fmtRadicado,
   fmtTranscurrido,
   prioridadMeta,
   resumenEvolucion,
@@ -42,6 +44,12 @@ export type Remision = {
   servicio: string | null;
   cama: string | null;
   asegurador: string | null;
+  eapb: string | null;
+  regimen: string | null;
+  remision_por: string | null;
+  alcance_red: string | null;
+  tipo_ambulancia: string | null;
+  eapb_genera_codigo: boolean | null;
   prioridad: string | null;
   estado: string | null;
   tipo_tramite: string | null;
@@ -122,7 +130,8 @@ export function CasoRemisionCard({
   const evo = evolucionMeta[evoRes.estado];
   const pendiente = /PENDIENTE/i.test(r.estado || "");
   const nombre = r.paciente || "Sin nombre";
-  const radicado = r.codigo_radicacion?.trim() || "No aplica";
+  const radicado = fmtRadicado(r.codigo_radicacion, r.eapb_genera_codigo);
+  const aseguradorTxt = r.eapb || r.asegurador || "";
   const prio = prioridadMeta(r.prioridad);
 
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -159,11 +168,14 @@ export function CasoRemisionCard({
       {/* Encabezado */}
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-sm font-bold uppercase text-foreground">{nombre}</p>
+          <p className="text-sm font-bold uppercase text-foreground">
+            {nombre}
+            {r.tipo_documento && r.documento ? `, ${r.tipo_documento}: ${r.documento}` : ""}
+            {r.edad ? ` · ${fmtEdad(r.edad)}` : ""}
+          </p>
           <p className="text-[11px] text-muted-foreground">
-            {[r.tipo_tramite, r.documento && `Doc: ${r.documento}`, r.edad && `${r.edad} años`]
-              .filter(Boolean)
-              .join(" · ") || "—"}
+            Remisión por:{" "}
+            {[r.remision_por || r.especificacion || "—", aseguradorTxt || "—", r.regimen || "—"].join(" · ")}
           </p>
         </div>
         <div className="flex items-center gap-1.5">
@@ -269,14 +281,18 @@ export function CasoRemisionCard({
             <Dato label="Paciente" value={r.paciente} />
             <Dato label="Tipo documento" value={r.tipo_documento} />
             <Dato label="Documento" value={r.documento} />
-            <Dato label="Edad" value={r.edad} />
+            <Dato label="Edad" value={fmtEdad(r.edad)} />
             <Dato label="CIE-10" value={r.cie10} />
-            <Dato label="Asegurador" value={r.asegurador} />
+            <Dato label="EAPB / EPS / Asegurador" value={aseguradorTxt} />
+            <Dato label="Régimen" value={r.regimen} />
+            <Dato label="Remisión por" value={r.remision_por} />
+            <Dato label="Justificación remisión" value={r.especificacion || r.observaciones} />
+            <Dato label="Red comentada" value={r.alcance_red === "LOCAL_NACIONAL" ? "Red local y nacional" : r.alcance_red === "LOCAL" ? "Red local" : "—"} />
+            <Dato label="Tipo ambulancia" value={r.tipo_ambulancia} />
             <Dato label="Servicio" value={r.servicio} />
             <Dato label="Cama" value={r.cama} />
             <Dato label="Prioridad" value={r.prioridad} />
             <Dato label="N° radicado" value={radicado} />
-            <Dato label="Tipo trámite" value={r.tipo_tramite} />
             <Dato label="Estado" value={r.estado} />
             <Dato label="Fecha y hora inicio trámite" value={fmtFechaHora(r.fecha_inicio)} />
             <Dato label="Fecha y hora radicación" value={fmtFechaHora(r.fecha_radicado)} />

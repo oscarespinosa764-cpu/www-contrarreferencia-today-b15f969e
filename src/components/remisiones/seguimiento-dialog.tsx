@@ -32,8 +32,9 @@ import {
   AMBULANCIA_VARIANTES,
   CANCELACION_GESTION,
   CANCELACION_TIPOS,
+  CONTACTO_DESTINOS,
   NEGACION_MOTIVOS,
-  PERTINENCIA_SUBTIPOS,
+  REVISION_AUT_LABEL_COMPLETO,
   SERVICIO_CANCELACION,
   SERVICIO_OPCIONES,
   appendNota,
@@ -46,18 +47,19 @@ import {
   generarPlantillaEvolucionDiaria,
   generarPlantillaFisico,
   generarPlantillaNegaciones,
-  
+  generarPlantillaNuevoRadicado,
   generarPlantillaOtroSeg,
-  generarPlantillaPertinencia,
   generarPlantillaPlataformaSeg,
   generarPlantillaRadicado,
+  generarPlantillaRevisionAutorizacion,
   generarPlantillaTelefonico,
   type AcercamientoTipo,
   type AmbulanciaVariante,
   type CancelacionTipo,
+  type ContactoDestino,
   type NegacionGrupo,
-  type PertinenciaSubtipo,
 } from "@/lib/indigo-trazabilidad";
+
 
 type Props = {
   open: boolean;
@@ -87,7 +89,7 @@ const T = {
   NEGACIONES: "TRAZABILIDAD DE NEGACIONES",
   AMBULANCIA: "AMBULANCIA COORDINADA",
   CANCELACION: "CANCELACIÓN DE TRÁMITE DE REMISIÓN",
-  PERTINENCIA: "VALIDACIÓN DE PERTINENCIA MÉDICA",
+  PERTINENCIA: "REVISIÓN AUTORIZACIÓN ESTANCIA (CANCELACIÓN)",
   OTRO: "OTRO",
 } as const;
 
@@ -172,6 +174,7 @@ export function SeguimientoDialog({
 
   // Negaciones
   const [negMotivo, setNegMotivo] = useState("");
+  const [negCual, setNegCual] = useState(""); // motivo personalizado cuando es "OTRO"
   const [negIpsInput, setNegIpsInput] = useState("");
   const [negIpsCurrent, setNegIpsCurrent] = useState<string[]>([]);
   const [negGrupos, setNegGrupos] = useState<NegacionGrupo[]>([]);
@@ -190,9 +193,25 @@ export function SeguimientoDialog({
   const [cancelCargo, setCancelCargo] = useState("");
   const [cancelNuevoRadicado, setCancelNuevoRadicado] = useState("");
 
-  // Otro / Pertinencia
+  // Otro
   const [otroCual, setOtroCual] = useState("");
-  const [pertinenciaSub, setPertinenciaSub] = useState<PertinenciaSubtipo>("con_nota");
+
+  // Revisión autorización estancia hospitalaria (antes pertinencia médica)
+  const [revAutoriza, setRevAutoriza] = useState<"" | "SI" | "NO">("");
+  const [revNota, setRevNota] = useState<"" | "SI" | "NO">("");
+  const [revFuncionario, setRevFuncionario] = useState("");
+  const [revCargo, setRevCargo] = useState("");
+
+  // Asunto (correo / plataforma web)
+  const [asunto, setAsunto] = useState("");
+
+  // Contacto telefónico
+  const [contactoDestino, setContactoDestino] = useState<ContactoDestino | "">("");
+  const [contactoIps, setContactoIps] = useState("");
+
+  // Radicado adicional ("+")
+  const [nuevoRadicadoMode, setNuevoRadicadoMode] = useState(false);
+  const [nuevoRadicado, setNuevoRadicado] = useState("");
 
   // Índigo
   const [indigoTexto, setIndigoTexto] = useState("");
@@ -300,6 +319,15 @@ export function SeguimientoDialog({
   const radicadoReal =
     radicadoCaso && !/PENDIENTE|NO APLICA/i.test(radicadoCaso) ? radicadoCaso.trim() : "";
 
+  // Lista de radicados (pueden registrarse varios separados por " · ").
+  const radicadosLista = radicadoReal
+    ? radicadoReal
+        .split(/\s*·\s*/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
+  const ultimoRadicado = radicadosLista[radicadosLista.length - 1] ?? "";
+
   // ¿Mostrar la opción "RADICADO DE CASO"? Solo si la EAPB genera código y aún no existe radicado real.
   const mostrarOpcionRadicado = esSaliente && generaCodigo && !radicadoReal;
 
@@ -383,24 +411,46 @@ export function SeguimientoDialog({
   const evoMetaSal = evolucionMeta[evoEstadoSal];
   const evoRequiereMotivo = esEvolucionSal && tienePlataforma && evoEstadoSal === "parcial";
 
-  // Autosugerir motivo cuando solo se envió por correo y la plataforma no funciona.
+  // Autollenar/limpiar el motivo automático "PLATAFORMA NO FUNCIONAL".
+  // Solo aplica al Caso B: se envió por CORREO, falta plataforma y la plataforma NO funciona.
   useEffect(() => {
-    if (esEvolucionSal && evoCorreo && !evoPlataforma && plataformaFuncSeg === "NO" && !evoMotivoPend.trim()) {
+    if (!esEvolucionSal) return;
+    const casoB = evoCorreo && !evoPlataforma && plataformaFuncSeg === "NO";
+    if (casoB && !evoMotivoPend.trim()) {
       setEvoMotivoPend("PLATAFORMA NO FUNCIONAL");
+    } else if (!casoB && evoMotivoPend === "PLATAFORMA NO FUNCIONAL") {
+      // Limpia el autollenado si cambian las condiciones (p.ej. solo plataforma).
+      setEvoMotivoPend("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [esEvolucionSal, evoCorreo, evoPlataforma, plataformaFuncSeg]);
 
+  // Estado de la solicitud automático para EVOLUCIÓN DIARIA → PENDIENTE (no editable).
+  useEffect(() => {
+    if (esEvolucionSal) setEstadoSolicitud("Pendiente");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [esEvolucionSal]);
+
+  // Motivo de negación resuelto (texto personalizado cuando se elige "OTRO").
+  const negMotivoResuelto =
+    negMotivo === "OTRO" ? (negCual.trim() ? `OTRO MOTIVO: ${negCual.trim().toUpperCase()}` : "") : negMotivo;
+
   // Grupo de negación actual (no guardado) para incluirlo en la vista previa.
   const negGruposPreview = useMemo(() => {
     const arr = [...negGrupos];
-    if (negMotivo && negIpsCurrent.length > 0) arr.push({ motivo: negMotivo, ips: negIpsCurrent });
+    if (negMotivoResuelto && negIpsCurrent.length > 0)
+      arr.push({ motivo: negMotivoResuelto, ips: negIpsCurrent });
     return arr;
-  }, [negGrupos, negMotivo, negIpsCurrent]);
+  }, [negGrupos, negMotivoResuelto, negIpsCurrent]);
 
   // --- Plantilla Índigo generada según el tipo ---
   const plantillaGenerada = useMemo(() => {
-    if (!esSaliente || !tipoSeg) return "";
+    if (!esSaliente) return "";
+    // Flujo de radicado adicional ("+"): independiente del tipo de seguimiento.
+    if (nuevoRadicadoMode) {
+      return appendNota(generarPlantillaNuevoRadicado(ultimoRadicado, nuevoRadicado), detalle);
+    }
+    if (!tipoSeg) return "";
     let base = "";
     switch (tipoSeg) {
       case T.RADICADO:
@@ -418,10 +468,10 @@ export function SeguimientoDialog({
         });
         break;
       case T.CORREO:
-        base = generarPlantillaCorreoSeg(estadoSolicitud, estadoCaso);
+        base = generarPlantillaCorreoSeg(asunto, estadoSolicitud);
         break;
       case T.PLATAFORMA:
-        base = generarPlantillaPlataformaSeg(estadoSolicitud, estadoCaso);
+        base = generarPlantillaPlataformaSeg(asunto, estadoSolicitud);
         break;
       case T.FISICO:
         base = generarPlantillaFisico({
@@ -435,7 +485,13 @@ export function SeguimientoDialog({
         });
         break;
       case T.TELEFONO:
-        base = generarPlantillaTelefonico(nombreContacto, telefono, estadoSolicitud);
+        base = generarPlantillaTelefonico({
+          destino: contactoDestino,
+          ipsNombre: contactoIps,
+          nombre: nombreContacto,
+          telefono,
+          estadoSolicitud,
+        });
         break;
       case T.ACEPTACION:
         base = generarPlantillaAceptacionIps(ipsReceptora, ipsReceptoraSede);
@@ -457,7 +513,12 @@ export function SeguimientoDialog({
         });
         break;
       case T.PERTINENCIA:
-        base = generarPlantillaPertinencia(pertinenciaSub);
+        base = generarPlantillaRevisionAutorizacion({
+          cuentaAutorizacion: revAutoriza === "SI" ? true : revAutoriza === "NO" ? false : null,
+          cuentaNota: revNota === "SI" ? true : revNota === "NO" ? false : null,
+          funcionario: revFuncionario,
+          cargo: revCargo,
+        });
         break;
       case T.OTRO:
         base = generarPlantillaOtroSeg(otroCual, estadoSolicitud);
@@ -470,6 +531,9 @@ export function SeguimientoDialog({
   }, [
     esSaliente,
     tipoSeg,
+    nuevoRadicadoMode,
+    nuevoRadicado,
+    ultimoRadicado,
     radicado,
     estadoCaso,
     esAdminCaso,
@@ -479,6 +543,7 @@ export function SeguimientoDialog({
     evoPlataforma,
     evoMotivoPend,
     estadoSolicitud,
+    asunto,
     acercamiento,
     fisNombre,
     fisParentesco,
@@ -486,6 +551,8 @@ export function SeguimientoDialog({
     fisFuncionario,
     fisCargo,
     fisConQuien,
+    contactoDestino,
+    contactoIps,
     nombreContacto,
     telefono,
     ipsReceptora,
@@ -501,7 +568,10 @@ export function SeguimientoDialog({
     cancelFuncionario,
     cancelCargo,
     cancelNuevoRadicado,
-    pertinenciaSub,
+    revAutoriza,
+    revNota,
+    revFuncionario,
+    revCargo,
     otroCual,
     detalle,
   ]);
@@ -544,8 +614,10 @@ export function SeguimientoDialog({
   // Estado de solicitud automático (no editable) en ciertos tipos.
   const estadoSolicAuto =
     esSaliente &&
-    [T.RADICADO, T.CANCELACION, T.ACEPTACION, T.AMBULANCIA, T.NEGACIONES].includes(tipoSeg as never);
-  const mostrarIndigo = esSaliente && !!tipoSeg;
+    [T.RADICADO, T.CANCELACION, T.ACEPTACION, T.AMBULANCIA, T.NEGACIONES, T.EVOLUCION].includes(
+      tipoSeg as never,
+    );
+  const mostrarIndigo = esSaliente && (!!tipoSeg || nuevoRadicadoMode);
 
   // Evolución diaria por especialidad: solo módulos legacy.
   const mostrarEvolucionLegacy = !esSaliente;
@@ -560,9 +632,11 @@ export function SeguimientoDialog({
   const quitarIpsNeg = (v: string) => setNegIpsCurrent((p) => p.filter((x) => x !== v));
   const agregarGrupoNeg = () => {
     if (!negMotivo) return toast.error("Selecciona el motivo de negación");
+    if (negMotivo === "OTRO" && !negCual.trim()) return toast.error("Indica cuál es el motivo (campo CUÁL)");
     if (negIpsCurrent.length === 0) return toast.error("Agrega al menos una IPS al motivo");
-    setNegGrupos((p) => [...p, { motivo: negMotivo, ips: negIpsCurrent }]);
+    setNegGrupos((p) => [...p, { motivo: negMotivoResuelto, ips: negIpsCurrent }]);
     setNegMotivo("");
+    setNegCual("");
     setNegIpsCurrent([]);
     setNegIpsInput("");
   };
@@ -627,6 +701,9 @@ export function SeguimientoDialog({
   // Detalle JSON específico por tipo (estructura flexible).
   const construirDetalles = (): Record<string, unknown> | null => {
     if (!esSaliente) return null;
+    if (nuevoRadicadoMode) {
+      return { radicado_anterior: ultimoRadicado || null, nuevo_radicado: nuevoRadicado.trim() };
+    }
     switch (tipoSeg) {
       case T.RADICADO:
         return { radicado: radicado.trim() };
@@ -638,6 +715,9 @@ export function SeguimientoDialog({
           estado_evolucion: evoEstadoSal,
           motivo_pendiente: evoRequiereMotivo ? evoMotivoPend.trim() : null,
         };
+      case T.CORREO:
+      case T.PLATAFORMA:
+        return { asunto: asunto.trim() || null };
       case T.FISICO:
         return {
           acercamiento,
@@ -647,6 +727,13 @@ export function SeguimientoDialog({
           funcionario: fisFuncionario.trim() || null,
           cargo: fisCargo.trim() || null,
           con_quien: fisConQuien.trim() || null,
+        };
+      case T.TELEFONO:
+        return {
+          destino: contactoDestino || null,
+          ips: contactoDestino === "IPS" ? contactoIps.trim() || null : null,
+          nombre: nombreContacto.trim() || null,
+          telefono: telefono.trim() || null,
         };
       case T.ACEPTACION:
         return { ips_receptora: ipsReceptora.trim(), sede: ipsReceptoraSede.trim() || null };
@@ -667,6 +754,13 @@ export function SeguimientoDialog({
           funcionario: cancelFuncionario.trim() || null,
           cargo: cancelCargo.trim() || null,
           nuevo_radicado: cancelNuevoRadicado.trim() || null,
+        };
+      case T.PERTINENCIA:
+        return {
+          cuenta_autorizacion: revAutoriza || null,
+          cuenta_nota: revAutoriza === "SI" ? revNota || null : null,
+          funcionario: revFuncionario.trim() || null,
+          cargo: revCargo.trim() || null,
         };
       case T.OTRO:
         return { cual: otroCual.trim() };
@@ -693,6 +787,7 @@ export function SeguimientoDialog({
     setFisConQuien("");
     setIpsReceptoraSede("");
     setNegMotivo("");
+    setNegCual("");
     setNegIpsInput("");
     setNegIpsCurrent([]);
     setNegGrupos([]);
@@ -705,28 +800,57 @@ export function SeguimientoDialog({
     setCancelCargo("");
     setCancelNuevoRadicado("");
     setOtroCual("");
+    setAsunto("");
+    setContactoDestino("");
+    setContactoIps("");
+    setRevAutoriza("");
+    setRevNota("");
+    setRevFuncionario("");
+    setRevCargo("");
+    setNuevoRadicadoMode(false);
+    setNuevoRadicado("");
   };
 
   const guardar = async () => {
-    if (!tipoSeg) return toast.error("Selecciona el tipo de seguimiento");
+    // Flujo de radicado adicional ("+").
+    if (nuevoRadicadoMode) {
+      if (!nuevoRadicado.trim()) return toast.error("Ingresa el nuevo número de radicado");
+      if (!detalle.trim())
+        return toast.error("Indica las observaciones que justifican el nuevo radicado");
+    } else {
+      if (!tipoSeg) return toast.error("Selecciona el tipo de seguimiento");
 
-    // Validaciones por tipo (salientes).
-    if (esRadicado && generaCodigo && !radicado.trim())
-      return toast.error("Ingresa el número de radicado");
-    if (esSaliente && tipoSeg === T.OTRO && !otroCual.trim())
-      return toast.error("Indica en el campo CUÁL");
-    if (esSaliente && tipoSeg === T.NEGACIONES && negGruposPreview.length === 0)
-      return toast.error("Agrega al menos un motivo de negación con su IPS");
-    if (esSaliente && tipoSeg === T.AMBULANCIA) {
-      if (fechaTraslado.trim() && !isFechaValida(fechaTraslado))
-        return toast.error("Fecha de traslado inválida (DD/MM/AAAA)");
-      if (horaTraslado.trim() && !isHoraValida(horaTraslado))
-        return toast.error("Hora de traslado inválida (HH:MM)");
+      // Validaciones por tipo (salientes).
+      if (esRadicado && generaCodigo && !radicado.trim())
+        return toast.error("Ingresa el número de radicado");
+      if (esSaliente && (tipoSeg === T.CORREO || tipoSeg === T.PLATAFORMA) && !asunto.trim())
+        return toast.error("Indica el asunto del seguimiento");
+      if (esTelefono && !contactoDestino)
+        return toast.error("Selecciona con quién se realizó el contacto");
+      if (esTelefono && contactoDestino === "IPS" && !contactoIps.trim())
+        return toast.error("Indica el nombre de la IPS");
+      if (esSaliente && tipoSeg === T.OTRO && !otroCual.trim())
+        return toast.error("Indica en el campo CUÁL");
+      if (esSaliente && tipoSeg === T.PERTINENCIA) {
+        if (!revAutoriza) return toast.error("Indica el estado de autorización de estancia");
+        if (revAutoriza === "SI" && !revNota)
+          return toast.error("Indica la trazabilidad de autorizaciones");
+        if (revAutoriza === "SI" && revNota === "NO" && !revFuncionario.trim())
+          return toast.error("Indica el nombre del funcionario");
+      }
+      if (esSaliente && tipoSeg === T.NEGACIONES && negGruposPreview.length === 0)
+        return toast.error("Agrega al menos un motivo de negación con su IPS");
+      if (esSaliente && tipoSeg === T.AMBULANCIA) {
+        if (fechaTraslado.trim() && !isFechaValida(fechaTraslado))
+          return toast.error("Fecha de traslado inválida (DD/MM/AAAA)");
+        if (horaTraslado.trim() && !isHoraValida(horaTraslado))
+          return toast.error("Hora de traslado inválida (HH:MM)");
+      }
+      if (evoRequiereMotivo && !evoMotivoPend.trim())
+        return toast.error("Indica el motivo del pendiente");
+      if (requiereMotivoLegacy && mostrarEvolucionLegacy && !motivoEvo.trim())
+        return toast.error("Indica el motivo de la evolución pendiente");
     }
-    if (evoRequiereMotivo && !evoMotivoPend.trim())
-      return toast.error("Indica el motivo del pendiente");
-    if (requiereMotivoLegacy && mostrarEvolucionLegacy && !motivoEvo.trim())
-      return toast.error("Indica el motivo de la evolución pendiente");
 
     setBusy(true);
     const { data: u } = await supabase.auth.getUser();
@@ -738,17 +862,21 @@ export function SeguimientoDialog({
 
     const radicadoSeg = !esSaliente
       ? radicado.trim() || radicadoReal || null
-      : esRadicado
-        ? radicado.trim()
-        : cancelNuevoRadicado.trim() || radicadoReal || null;
+      : nuevoRadicadoMode
+        ? nuevoRadicado.trim()
+        : esRadicado
+          ? radicado.trim()
+          : cancelNuevoRadicado.trim() || radicadoReal || null;
+
+    const tipoSegFinal = nuevoRadicadoMode ? "RADICADO ADICIONAL" : tipoSeg;
 
     const { error } = await supabase.from("seguimientos").insert({
       caso_id: casoId,
       tipo_caso: tipoCaso,
       radicado: radicadoSeg || null,
-      tipo_seguimiento: tipoSeg,
+      tipo_seguimiento: tipoSegFinal,
       detalle: detalle || null,
-      estado_solicitud: estadoSolicitud || null,
+      estado_solicitud: nuevoRadicadoMode ? null : estadoSolicitud || null,
       nombre_contacto: mostrarContacto ? nombreContacto.trim() || null : null,
       telefono: mostrarContacto ? telefono.trim() || null : null,
       plantilla_indigo: esSaliente ? indigoTexto.trim() || null : null,
@@ -797,6 +925,8 @@ export function SeguimientoDialog({
         }
       }
       if (esRadicado && radicado.trim()) update.codigo_radicacion = radicado.trim();
+      if (nuevoRadicadoMode && nuevoRadicado.trim())
+        update.codigo_radicacion = [...radicadosLista, nuevoRadicado.trim()].join(" · ");
       if (esSaliente && tipoSeg === T.CANCELACION && cancelNuevoRadicado.trim())
         update.codigo_radicacion = cancelNuevoRadicado.trim();
       if (estadoOpciones && estadoCaso) update.estado = estadoCaso;
@@ -876,8 +1006,58 @@ export function SeguimientoDialog({
           <div className="space-y-1.5">
             <Label className={labelCls}>Número de radicado</Label>
             {radicadoReal ? (
-              <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-medium">
-                {radicadoReal}
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {radicadosLista.map((rad) => (
+                    <span
+                      key={rad}
+                      className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2.5 py-1 text-xs font-medium"
+                    >
+                      {rad}
+                    </span>
+                  ))}
+                  {esSaliente && generaCodigo && !nuevoRadicadoMode && (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      className="h-7 w-7 rounded-full"
+                      aria-label="Agregar nuevo radicado"
+                      title="Agregar nuevo número de radicado"
+                      onClick={() => setNuevoRadicadoMode(true)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                {nuevoRadicadoMode && (
+                  <div className="space-y-1.5 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className={labelCls}>Agregar nuevo número de radicado *</Label>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6"
+                        aria-label="Cancelar"
+                        onClick={() => {
+                          setNuevoRadicadoMode(false);
+                          setNuevoRadicado("");
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <Input
+                      value={nuevoRadicado}
+                      onChange={(e) => setNuevoRadicado(e.target.value)}
+                      placeholder="Nuevo número de radicado"
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Indica abajo, en observaciones, por qué se agrega un nuevo radicado.
+                    </p>
+                  </div>
+                )}
               </div>
             ) : !esSaliente ? (
               <Input
@@ -890,11 +1070,9 @@ export function SeguimientoDialog({
                 NO APLICA
               </div>
             ) : esRadicado ? (
-              <Input
-                value={radicado}
-                onChange={(e) => setRadicado(e.target.value)}
-                placeholder="Ej. 2026-000123"
-              />
+              <div className="rounded-md border border-dashed border-border px-3 py-2 text-xs italic text-muted-foreground">
+                Ingresa el radicado en el bloque "RADICADO DE CASO" más abajo.
+              </div>
             ) : (
               <div className="rounded-md border border-dashed border-border px-3 py-2 text-xs italic text-muted-foreground">
                 Pendiente de radicación. Selecciona "RADICADO DE CASO" para registrarlo.
@@ -902,6 +1080,8 @@ export function SeguimientoDialog({
             )}
           </div>
 
+          {!nuevoRadicadoMode && (
+          <>
           {/* Estado del caso */}
           {estadoOpciones && estadoOpciones.length > 0 && (
             <div className="space-y-1.5">
@@ -935,7 +1115,12 @@ export function SeguimientoDialog({
               </SelectTrigger>
               <SelectContent className="max-w-[calc(100vw-2rem)]">
                 {TIPOS_SEG.map((t) => (
-                  <SelectItem key={t} value={t} className="whitespace-normal">
+                  <SelectItem
+                    key={t}
+                    value={t}
+                    className="whitespace-normal"
+                    title={t === T.PERTINENCIA ? REVISION_AUT_LABEL_COMPLETO : undefined}
+                  >
                     {t}
                   </SelectItem>
                 ))}
@@ -1143,6 +1328,16 @@ export function SeguimientoDialog({
                   </SelectContent>
                 </Select>
               </div>
+              {negMotivo === "OTRO" && (
+                <div className="space-y-1.5">
+                  <Label className={labelCls}>¿Cuál? *</Label>
+                  <Input
+                    value={negCual}
+                    onChange={(e) => setNegCual(e.target.value)}
+                    placeholder="Escribe el motivo de negación"
+                  />
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label className={labelCls}>IPS</Label>
                 <div className="flex items-end gap-2">
@@ -1346,22 +1541,111 @@ export function SeguimientoDialog({
             </div>
           )}
 
-          {/* VALIDACIÓN DE PERTINENCIA MÉDICA */}
+          {/* REVISIÓN AUTORIZACIÓN ESTANCIA HOSPITALARIA (CANCELACIÓN) */}
           {esSaliente && tipoSeg === T.PERTINENCIA && (
-            <div className="space-y-1.5">
-              <Label className={labelCls}>Estado de la nota</Label>
-              <Select value={pertinenciaSub} onValueChange={(v) => setPertinenciaSub(v as PertinenciaSubtipo)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="max-w-[calc(100vw-2rem)]">
-                  {PERTINENCIA_SUBTIPOS.map((s) => (
-                    <SelectItem key={s.value} value={s.value} className="whitespace-normal">
-                      {s.label}
+            <div className={sectionCls}>
+              <p className="text-[10px] text-muted-foreground">{REVISION_AUT_LABEL_COMPLETO}</p>
+              <div className="space-y-1.5">
+                <Label className={labelCls}>Estado de autorización de estancia</Label>
+                <Select value={revAutoriza} onValueChange={(v) => setRevAutoriza(v as "SI" | "NO")}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar…" />
+                  </SelectTrigger>
+                  <SelectContent className="max-w-[calc(100vw-2rem)]">
+                    <SelectItem value="SI" className="whitespace-normal">
+                      CUENTA CON AUTORIZACIÓN
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    <SelectItem value="NO" className="whitespace-normal">
+                      NO CUENTA CON AUTORIZACIÓN
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {revAutoriza === "SI" && (
+                <div className="space-y-1.5">
+                  <Label className={labelCls}>Trazabilidad de autorizaciones</Label>
+                  <Select value={revNota} onValueChange={(v) => setRevNota(v as "SI" | "NO")}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar…" />
+                    </SelectTrigger>
+                    <SelectContent className="max-w-[calc(100vw-2rem)]">
+                      <SelectItem value="SI" className="whitespace-normal">
+                        CUENTA CON NOTA DE TRAZABILIDAD DE CANCELACIÓN
+                      </SelectItem>
+                      <SelectItem value="NO" className="whitespace-normal">
+                        NO CUENTA CON NOTA DE TRAZABILIDAD DE CANCELACIÓN
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {revAutoriza === "SI" && revNota === "NO" && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Nombre del funcionario</Label>
+                    <Input value={revFuncionario} onChange={(e) => setRevFuncionario(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Cargo</Label>
+                    <Input value={revCargo} onChange={(e) => setRevCargo(e.target.value)} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* CONTACTO TELEFÓNICO · destinatario */}
+          {esTelefono && (
+            <div className={sectionCls}>
+              <Label className={labelCls}>Contacto realizado con</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {CONTACTO_DESTINOS.map((d) => {
+                  const active = contactoDestino === d.value;
+                  return (
+                    <button
+                      key={d.value}
+                      type="button"
+                      onClick={() => setContactoDestino(d.value)}
+                      className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+                        active
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-muted/40 text-foreground hover:border-primary/50"
+                      }`}
+                    >
+                      {d.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {contactoDestino === "IPS" && (
+                <div className="space-y-1.5 pt-1">
+                  <Label className={labelCls}>Nombre de la IPS</Label>
+                  <AutoComplete
+                    value={contactoIps}
+                    options={ipsLabels}
+                    placeholder="Escribe para buscar IPS…"
+                    minChars={2}
+                    onChange={setContactoIps}
+                    onPick={(label) => {
+                      const opt = ipsOptions.find((o) => o.label === label);
+                      setContactoIps(opt ? opt.ips : label);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ASUNTO (correo electrónico / plataforma web) */}
+          {esSaliente && (tipoSeg === T.CORREO || tipoSeg === T.PLATAFORMA) && (
+            <div className="space-y-1.5">
+              <Label className={labelCls}>Asunto</Label>
+              <Input
+                value={asunto}
+                onChange={(e) => setAsunto(e.target.value)}
+                placeholder="Asunto del seguimiento"
+                maxLength={200}
+              />
             </div>
           )}
 
@@ -1405,6 +1689,8 @@ export function SeguimientoDialog({
                 />
               </div>
             </div>
+          )}
+          </>
           )}
 
           {/* Observaciones */}

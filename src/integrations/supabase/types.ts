@@ -188,6 +188,7 @@ export type Database = {
           created_at: string
           extra1: string | null
           extra2: string | null
+          extra3: string | null
           id: string
           tipo: string
           updated_at: string
@@ -198,6 +199,7 @@ export type Database = {
           created_at?: string
           extra1?: string | null
           extra2?: string | null
+          extra3?: string | null
           id?: string
           tipo: string
           updated_at?: string
@@ -208,6 +210,7 @@ export type Database = {
           created_at?: string
           extra1?: string | null
           extra2?: string | null
+          extra3?: string | null
           id?: string
           tipo?: string
           updated_at?: string

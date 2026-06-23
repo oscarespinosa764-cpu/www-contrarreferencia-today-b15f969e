@@ -23,6 +23,7 @@ type CatRow = {
   valor: string;
   extra1: string | null;
   extra2: string | null;
+  extra3: string | null;
   activo: boolean;
 };
 
@@ -170,7 +171,7 @@ export function CatalogoMaestras() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("catalogos")
-        .select("id, tipo, valor, extra1, extra2, activo")
+        .select("id, tipo, valor, extra1, extra2, extra3, activo")
         .neq("tipo", "plantilla")
         .order("tipo")
         .order("valor");
@@ -239,12 +240,15 @@ export function CatalogoMaestras() {
       ? sedes.map((s) => s.trim()).filter(Boolean).join(" ; ") || null
       : ((String(f.get("extra1")).trim() || null) as string | null);
     const extra2 = isIPS ? null : ((String(f.get("extra2")).trim() || null) as string | null);
+    const extra3 =
+      editing.tipo === "EAPB" ? ((String(f.get("extra3")).trim() || null) as string | null) : editing.extra3;
     const { error } = await supabase
       .from("catalogos")
       .update({
         valor: String(f.get("valor")).trim(),
         extra1,
         extra2,
+        extra3,
       })
       .eq("id", editing.id);
     if (error) return toast.error(error.message);
@@ -496,6 +500,21 @@ export function CatalogoMaestras() {
                 </div>
               ) : editing.tipo === "EAPB" ? (
                 <>
+                  <div className="space-y-2">
+                    <Label htmlFor="extra3">Tipo de entidad</Label>
+                    <select
+                      id="extra3"
+                      name="extra3"
+                      defaultValue={editing.extra3 ?? "EPS"}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                    >
+                      <option value="EPS">EPS</option>
+                      <option value="ASEGURADORA">ASEGURADORA</option>
+                      <option value="ARL">ARL</option>
+                      <option value="PREPAGADA">PREPAGADA</option>
+                      <option value="NO APLICA">NO APLICA</option>
+                    </select>
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="extra1">Tiene plataforma</Label>
                     <select
