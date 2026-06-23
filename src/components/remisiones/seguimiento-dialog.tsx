@@ -428,7 +428,12 @@ export function SeguimientoDialog({
 
   // --- Plantilla Índigo generada según el tipo ---
   const plantillaGenerada = useMemo(() => {
-    if (!esSaliente || !tipoSeg) return "";
+    if (!esSaliente) return "";
+    // Flujo de radicado adicional ("+"): independiente del tipo de seguimiento.
+    if (nuevoRadicadoMode) {
+      return appendNota(generarPlantillaNuevoRadicado(ultimoRadicado, nuevoRadicado), detalle);
+    }
+    if (!tipoSeg) return "";
     let base = "";
     switch (tipoSeg) {
       case T.RADICADO:
@@ -446,10 +451,10 @@ export function SeguimientoDialog({
         });
         break;
       case T.CORREO:
-        base = generarPlantillaCorreoSeg(estadoSolicitud, estadoCaso);
+        base = generarPlantillaCorreoSeg(asunto, estadoSolicitud);
         break;
       case T.PLATAFORMA:
-        base = generarPlantillaPlataformaSeg(estadoSolicitud, estadoCaso);
+        base = generarPlantillaPlataformaSeg(asunto, estadoSolicitud);
         break;
       case T.FISICO:
         base = generarPlantillaFisico({
@@ -463,7 +468,13 @@ export function SeguimientoDialog({
         });
         break;
       case T.TELEFONO:
-        base = generarPlantillaTelefonico(nombreContacto, telefono, estadoSolicitud);
+        base = generarPlantillaTelefonico({
+          destino: contactoDestino,
+          ipsNombre: contactoIps,
+          nombre: nombreContacto,
+          telefono,
+          estadoSolicitud,
+        });
         break;
       case T.ACEPTACION:
         base = generarPlantillaAceptacionIps(ipsReceptora, ipsReceptoraSede);
@@ -485,7 +496,12 @@ export function SeguimientoDialog({
         });
         break;
       case T.PERTINENCIA:
-        base = generarPlantillaPertinencia(pertinenciaSub);
+        base = generarPlantillaRevisionAutorizacion({
+          cuentaAutorizacion: revAutoriza === "SI" ? true : revAutoriza === "NO" ? false : null,
+          cuentaNota: revNota === "SI" ? true : revNota === "NO" ? false : null,
+          funcionario: revFuncionario,
+          cargo: revCargo,
+        });
         break;
       case T.OTRO:
         base = generarPlantillaOtroSeg(otroCual, estadoSolicitud);
@@ -498,6 +514,9 @@ export function SeguimientoDialog({
   }, [
     esSaliente,
     tipoSeg,
+    nuevoRadicadoMode,
+    nuevoRadicado,
+    ultimoRadicado,
     radicado,
     estadoCaso,
     esAdminCaso,
@@ -507,6 +526,7 @@ export function SeguimientoDialog({
     evoPlataforma,
     evoMotivoPend,
     estadoSolicitud,
+    asunto,
     acercamiento,
     fisNombre,
     fisParentesco,
@@ -514,6 +534,8 @@ export function SeguimientoDialog({
     fisFuncionario,
     fisCargo,
     fisConQuien,
+    contactoDestino,
+    contactoIps,
     nombreContacto,
     telefono,
     ipsReceptora,
@@ -529,7 +551,10 @@ export function SeguimientoDialog({
     cancelFuncionario,
     cancelCargo,
     cancelNuevoRadicado,
-    pertinenciaSub,
+    revAutoriza,
+    revNota,
+    revFuncionario,
+    revCargo,
     otroCual,
     detalle,
   ]);
