@@ -154,8 +154,8 @@ export function fmtRadicado(
 ): string {
   const v = (codigo || "").trim();
   if (generaCodigo === false) return "NO APLICA";
-  if (!v || /PENDIENTE/i.test(v)) return generaCodigo === false ? "NO APLICA" : "PENDIENTE DE RADICACIÓN";
   if (/NO APLICA/i.test(v)) return "NO APLICA";
+  if (!v || /PENDIENTE/i.test(v)) return "PENDIENTE DE RADICACIÓN";
   return v
     .split(/\s*·\s*/)
     .map((s) => s.trim())
