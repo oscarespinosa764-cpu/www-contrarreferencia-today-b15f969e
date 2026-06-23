@@ -632,9 +632,11 @@ export function SeguimientoDialog({
   const quitarIpsNeg = (v: string) => setNegIpsCurrent((p) => p.filter((x) => x !== v));
   const agregarGrupoNeg = () => {
     if (!negMotivo) return toast.error("Selecciona el motivo de negación");
+    if (negMotivo === "OTRO" && !negCual.trim()) return toast.error("Indica cuál es el motivo (campo CUÁL)");
     if (negIpsCurrent.length === 0) return toast.error("Agrega al menos una IPS al motivo");
-    setNegGrupos((p) => [...p, { motivo: negMotivo, ips: negIpsCurrent }]);
+    setNegGrupos((p) => [...p, { motivo: negMotivoResuelto, ips: negIpsCurrent }]);
     setNegMotivo("");
+    setNegCual("");
     setNegIpsCurrent([]);
     setNegIpsInput("");
   };
