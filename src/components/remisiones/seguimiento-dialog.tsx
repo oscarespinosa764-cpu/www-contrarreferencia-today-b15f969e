@@ -1049,15 +1049,6 @@ export function SeguimientoDialog({
       }
     }
 
-      if (Object.keys(update).length > 0) {
-        await supabase
-          .from(tabla as "remisiones")
-          .update(update)
-          .eq("id", casoId);
-      }
-      if (mostrarEvolucionLegacy && especialidadesList.length > 0)
-        await sincronizarPendienteLegacy(u.user?.id);
-    }
 
     try {
       await (supabase as any).rpc("registrar_auditoria", {
