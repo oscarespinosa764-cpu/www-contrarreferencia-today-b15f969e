@@ -1,5 +1,44 @@
 // Utilidades para la bitácora de remisiones salientes.
 
+// --- Máscaras de entrada para fecha y hora (digitación rápida) ---
+
+/** Convierte "22062026" -> "22/06/2026" progresivamente (DD/MM/YYYY). */
+export function maskFechaInput(v: string): string {
+  const d = v.replace(/\D/g, "").slice(0, 8);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+}
+
+/** Convierte "1315" / "13.15" / "13:15" -> "13:15" (HH:mm). */
+export function maskHoraInput(v: string): string {
+  const d = v.replace(/\D/g, "").slice(0, 4);
+  if (d.length <= 2) return d;
+  return `${d.slice(0, 2)}:${d.slice(2)}`;
+}
+
+/** Valida una fecha real en formato DD/MM/YYYY. */
+export function isFechaValida(v: string): boolean {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v.trim());
+  if (!m) return false;
+  const dd = +m[1];
+  const mm = +m[2];
+  const yyyy = +m[3];
+  if (mm < 1 || mm > 12 || dd < 1 || yyyy < 1900) return false;
+  const dim = new Date(yyyy, mm, 0).getDate();
+  return dd <= dim;
+}
+
+/** Valida una hora real en formato HH:mm. */
+export function isHoraValida(v: string): boolean {
+  const m = /^(\d{2}):(\d{2})$/.exec(v.trim());
+  if (!m) return false;
+  const hh = +m[1];
+  const mi = +m[2];
+  return hh >= 0 && hh <= 23 && mi >= 0 && mi <= 59;
+}
+
+
 export function fmtTranscurrido(fromISO: string | null | undefined): string {
   if (!fromISO) return "—";
   const start = new Date(fromISO).getTime();
