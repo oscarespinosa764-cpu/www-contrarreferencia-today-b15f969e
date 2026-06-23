@@ -49,6 +49,28 @@ export function NuevoRegistroDialog({
   const [indigoOpen, setIndigoOpen] = useState(false);
   const [indigoTexto, setIndigoTexto] = useState("");
 
+  // --- PHD/PAD/O2/Especiales ---
+  const [phdEapb, setPhdEapb] = useState("");
+  const [phdTipoSolicitud, setPhdTipoSolicitud] = useState("");
+  const [phdUnidadEspecial, setPhdUnidadEspecial] = useState("");
+  const [phdRequiereAmb, setPhdRequiereAmb] = useState("");
+  const [phdTipoAmb, setPhdTipoAmb] = useState("");
+  const [phdRegimen, setPhdRegimen] = useState("");
+
+  // --- Ref. Interna ---
+  const [internaEapb, setInternaEapb] = useState("");
+
+  // --- Pendiente ---
+  const [pendTipo, setPendTipo] = useState("");
+  const [pendCual, setPendCual] = useState("");
+  const [pendDestinoTipo, setPendDestinoTipo] = useState<"IPS" | "AREA" | "">("");
+  const [pendIps, setPendIps] = useState("");
+  const [pendArea, setPendArea] = useState("");
+  const [pendPrioridad, setPendPrioridad] = useState("");
+  const [pendEvoEn, setPendEvoEn] = useState<string[]>([]);
+
+
+
   const { data: especialidades = [] } = useQuery({
     queryKey: ["cat-especialidad"],
     queryFn: async () => {
