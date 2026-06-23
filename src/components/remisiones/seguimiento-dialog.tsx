@@ -411,20 +411,37 @@ export function SeguimientoDialog({
   const evoMetaSal = evolucionMeta[evoEstadoSal];
   const evoRequiereMotivo = esEvolucionSal && tienePlataforma && evoEstadoSal === "parcial";
 
-  // Autosugerir motivo cuando solo se envió por correo y la plataforma no funciona.
+  // Autollenar/limpiar el motivo automático "PLATAFORMA NO FUNCIONAL".
+  // Solo aplica al Caso B: se envió por CORREO, falta plataforma y la plataforma NO funciona.
   useEffect(() => {
-    if (esEvolucionSal && evoCorreo && !evoPlataforma && plataformaFuncSeg === "NO" && !evoMotivoPend.trim()) {
+    if (!esEvolucionSal) return;
+    const casoB = evoCorreo && !evoPlataforma && plataformaFuncSeg === "NO";
+    if (casoB && !evoMotivoPend.trim()) {
       setEvoMotivoPend("PLATAFORMA NO FUNCIONAL");
+    } else if (!casoB && evoMotivoPend === "PLATAFORMA NO FUNCIONAL") {
+      // Limpia el autollenado si cambian las condiciones (p.ej. solo plataforma).
+      setEvoMotivoPend("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [esEvolucionSal, evoCorreo, evoPlataforma, plataformaFuncSeg]);
 
+  // Estado de la solicitud automático para EVOLUCIÓN DIARIA → PENDIENTE (no editable).
+  useEffect(() => {
+    if (esEvolucionSal) setEstadoSolicitud("Pendiente");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [esEvolucionSal]);
+
+  // Motivo de negación resuelto (texto personalizado cuando se elige "OTRO").
+  const negMotivoResuelto =
+    negMotivo === "OTRO" ? (negCual.trim() ? `OTRO MOTIVO: ${negCual.trim().toUpperCase()}` : "") : negMotivo;
+
   // Grupo de negación actual (no guardado) para incluirlo en la vista previa.
   const negGruposPreview = useMemo(() => {
     const arr = [...negGrupos];
-    if (negMotivo && negIpsCurrent.length > 0) arr.push({ motivo: negMotivo, ips: negIpsCurrent });
+    if (negMotivoResuelto && negIpsCurrent.length > 0)
+      arr.push({ motivo: negMotivoResuelto, ips: negIpsCurrent });
     return arr;
-  }, [negGrupos, negMotivo, negIpsCurrent]);
+  }, [negGrupos, negMotivoResuelto, negIpsCurrent]);
 
   // --- Plantilla Índigo generada según el tipo ---
   const plantillaGenerada = useMemo(() => {
