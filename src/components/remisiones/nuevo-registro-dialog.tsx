@@ -431,37 +431,46 @@ export function NuevoRegistroDialog({
                   options={["ALTA", "MEDIA", "BAJA"]}
                   required
                 />
-                <SelectField
-                  name="remision_por"
-                  label="Remisión por"
-                  options={[
-                    "RED NO CONTRATADA",
-                    "NO RECURSO HUMANO",
-                    "NO DISPONIBILIDAD DE INSUMO O TECNOLOGIA",
-                    "NO DISPONIBILIDAD DE UNIDAD",
-                    "NO DISPONIBILIDAD DE CAMAS",
-                    "NIVEL DE COMPETENCIA",
-                    "PETICION VOLUNTARIA",
-                  ]}
-                  required
-                />
                 <div className="space-y-1.5">
                   <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Tipo de trámite *
+                    Remisión por *
                   </Label>
                   <select
-                    value={tipoTramiteSel}
-                    onChange={(e) => setTipoTramiteSel(e.target.value)}
+                    value={remisionPor}
+                    onChange={(e) => setRemisionPor(e.target.value)}
                     className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
                   >
                     <option value="">Selecciona…</option>
-                    {tiposTramite.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
+                    {[
+                      "RED NO CONTRATADA",
+                      "NO RECURSO HUMANO",
+                      "NO DISPONIBILIDAD DE INSUMO O TECNOLOGIA",
+                      "NO DISPONIBILIDAD DE UNIDAD",
+                      "NO DISPONIBILIDAD DE CAMAS",
+                      "NIVEL DE COMPETENCIA",
+                      "PETICION VOLUNTARIA",
+                      "EN TRAMITE",
+                    ].map((o) => (
+                      <option key={o} value={o}>
+                        {o}
                       </option>
                     ))}
                   </select>
+                  {remisionPor === "RED NO CONTRATADA" && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Se interpreta como trámite administrativo cancelable.
+                    </p>
+                  )}
                 </div>
+                <SelectField
+                  name="regimen"
+                  label="Régimen"
+                  options={
+                    regimenes.length > 0
+                      ? regimenes
+                      : ["CONTRIBUTIVO", "SUBSIDIADO", "ESPECIAL", "NO APLICA"]
+                  }
+                />
                 <SelectField
                   name="tipo_ambulancia"
                   label="Tipo de ambulancia"
