@@ -105,7 +105,12 @@ function camposGrid(
   return cursor + 1;
 }
 
-export function generarBitacoraPDF(input: BitacoraInput): void {
+export async function generarBitacoraPDF(input: BitacoraInput): Promise<void> {
+  const [{ jsPDF }, autoTableMod] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ]);
+  const autoTable = autoTableMod.default;
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
