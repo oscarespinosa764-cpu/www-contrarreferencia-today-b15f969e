@@ -119,15 +119,22 @@ export function NuevoRegistroDialog({
     },
   });
 
+  // Opciones de EAPB para el autocompletado.
+  const eapbOptions = useMemo(() => eapbList.map((e) => e.valor), [eapbList]);
   const eapbActual = useMemo(
     () => eapbList.find((e) => e.valor === eapbSel) ?? null,
     [eapbList, eapbSel],
   );
-  const esSoat = esTramiteSoat(tipoTramiteSel);
+  const tipoEntidad = (eapbActual?.extra3 ?? "").toUpperCase();
+  // SOAT se infiere por tipo de entidad = ASEGURADORA.
+  const esSoat = /aseguradora/i.test(tipoEntidad);
   const tienePlataforma = (eapbActual?.extra1 ?? "").toUpperCase() === "SI";
   const generaCodigo = !esSoat && (eapbActual?.extra2 ?? "").toUpperCase() === "SI";
   const mostrarPreguntaPlataforma = tienePlataforma && !esSoat;
-  const incluyeNacional = alcance === "LOCAL_NACIONAL";
+  const incluyeNacional = redNacional;
+  const alcance: AlcanceRed = redNacional ? "LOCAL_NACIONAL" : "LOCAL";
+  // El tipo de trámite se deriva (ya no se selecciona manualmente).
+  const tipoTramiteDerivado = derivarTipoTramite(remisionPor, tipoEntidad);
 
   const toggleList = (arr: string[], v: string, set: (x: string[]) => void) =>
     set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
