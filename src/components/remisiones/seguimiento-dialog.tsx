@@ -46,7 +46,7 @@ import {
   generarPlantillaEvolucionDiaria,
   generarPlantillaFisico,
   generarPlantillaNegaciones,
-  generarPlantillaOtro,
+  
   generarPlantillaOtroSeg,
   generarPlantillaPertinencia,
   generarPlantillaPlataformaSeg,
