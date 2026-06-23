@@ -415,7 +415,7 @@ export function SeguimientoDialog({
   // Al cambiar el tipo de seguimiento: defaults de estado y reactivar auto-generación.
   useEffect(() => {
     setIndigoEditada(false);
-    if (!esSaliente || !tipoSeg) return;
+    if (!usaIndigo || !tipoSeg) return;
     // Estado de la solicitud automático según el tipo.
     if (tipoSeg === T.RADICADO || tipoSeg === T.CANCELACION) setEstadoSolicitud("No aplica");
     else if (tipoSeg === T.ACEPTACION || tipoSeg === T.AMBULANCIA) setEstadoSolicitud("Sí acepta");
@@ -432,10 +432,10 @@ export function SeguimientoDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipoSeg]);
 
-  const esEvolucionSal = esSaliente && tipoSeg === T.EVOLUCION;
-  const esRadicado = esSaliente && tipoSeg === T.RADICADO;
-  const esFisico = esSaliente && tipoSeg === T.FISICO;
-  const esTelefono = esSaliente && tipoSeg === T.TELEFONO;
+  const esEvolucionSal = usaIndigo && tipoSeg === T.EVOLUCION;
+  const esRadicado = usaIndigo && tipoSeg === T.RADICADO;
+  const esFisico = usaIndigo && tipoSeg === T.FISICO;
+  const esTelefono = usaIndigo && tipoSeg === T.TELEFONO;
 
   // --- Estado de evolución diaria (salientes v2) ---
   const evoEstadoSal: EvolucionEstado = useMemo(() => {
