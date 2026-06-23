@@ -786,43 +786,131 @@ export function NuevoRegistroDialog({
                   options={["URGENCIAS", "HOSPITALIZACION", "UCI ADULTOS", "QUIROFANO"]}
                   required
                 />
-                <Field name="cama" label="Cama" />
+                <Field name="cama" label="Cama" required />
                 <PatientBlock key={`phd-pac-${resetKey}`} />
-                <EdadField key={`phd-edad-${resetKey}`} />
-                <Cie10Field key={`phd-cie-${resetKey}`} />
+                <EdadField key={`phd-edad-${resetKey}`} required />
+                <Cie10Field key={`phd-cie-${resetKey}`} required />
               </div>
               <SpecialtyList
-                label="Especialidades tratantes"
+                label="Especialidades tratantes *"
                 items={phdTratantes}
                 onChange={setPhdTratantes}
                 suggestions={especialidades}
               />
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <SelectField
-                  name="tipo_solicitud"
-                  label="Tipo de solicitud"
-                  options={[
-                    "PHD",
-                    "PAD CRONICO",
-                    "OXIGENO DOMICILIARIO",
-                    "PHD + OXIGENO DOMICILIARIO",
-                    "PAD CRONICO + OXIGENO DOMICILIARIO",
-                    "UNIDADES ESPECIALES",
-                  ]}
-                  required
-                />
-                <Field name="eapb" label="EAPB / ERP" placeholder="Ej: NUEVA EPS, SAVIA SALUD…" />
-                <SelectField
-                  name="regimen"
-                  label="Régimen"
-                  options={["SUBSIDIADO", "CONTRIBUTIVO", "ESPECIAL", "NO APLICA"]}
-                />
-                <Field name="codigo_radicacion" label="Código de radicación" />
-                <SelectField
-                  name="requiere_ambulancia"
-                  label="Requiere ambulancia"
-                  options={["SI", "NO"]}
-                />
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Tipo de solicitud *
+                  </Label>
+                  <select
+                    value={phdTipoSolicitud}
+                    onChange={(e) => setPhdTipoSolicitud(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Seleccione…</option>
+                    {[
+                      "PHD",
+                      "PAD CRONICO",
+                      "OXIGENO DOMICILIARIO",
+                      "PHD + OXIGENO DOMICILIARIO",
+                      "PAD CRONICO + OXIGENO DOMICILIARIO",
+                      "UNIDADES ESPECIALES",
+                    ].map((o) => (
+                      <option key={o} value={o}>
+                        {o}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {phdEsUnidadEspecial && (
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Unidad especial *
+                    </Label>
+                    <Input
+                      value={phdUnidadEspecial}
+                      onChange={(e) => setPhdUnidadEspecial(e.target.value)}
+                      placeholder="Escribe la unidad especial"
+                    />
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <AutoComplete
+                    label="EAPB / ERP *"
+                    value={phdEapb}
+                    options={eapbOptions}
+                    placeholder="Escribe para buscar EAPB / ERP…"
+                    onChange={setPhdEapb}
+                    onPick={setPhdEapb}
+                  />
+                  {phdEapbActual && (
+                    <p className="text-[10px] text-muted-foreground">
+                      {phdTienePlataforma ? "Tiene plataforma" : "Sin plataforma"} ·{" "}
+                      {phdTipoSolicitud
+                        ? phdGenera
+                          ? "Genera radicado para este tipo"
+                          : "No genera radicado para este tipo"
+                        : "Selecciona el tipo de solicitud"}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Régimen *
+                  </Label>
+                  <select
+                    value={phdRegimen}
+                    onChange={(e) => setPhdRegimen(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Seleccione…</option>
+                    {(regimenes.length > 0
+                      ? regimenes
+                      : ["SUBSIDIADO", "CONTRIBUTIVO", "ESPECIAL", "NO APLICA"]
+                    ).map((o) => (
+                      <option key={o} value={o}>
+                        {o}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Requiere ambulancia *
+                  </Label>
+                  <select
+                    value={phdRequiereAmb}
+                    onChange={(e) => {
+                      setPhdRequiereAmb(e.target.value);
+                      if (e.target.value !== "SI") setPhdTipoAmb("");
+                    }}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Seleccione…</option>
+                    <option value="SI">SÍ</option>
+                    <option value="NO">NO</option>
+                  </select>
+                </div>
+                {phdRequiereAmb === "SI" && (
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Tipo de ambulancia *
+                    </Label>
+                    <select
+                      value={phdTipoAmb}
+                      onChange={(e) => setPhdTipoAmb(e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="">Seleccione…</option>
+                      {["TAT", "TAN", "TAN-N"].map((o) => (
+                        <option key={o} value={o}>
+                          {o}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <Field name="codigo_radicacion_display" label="Código de radicación" defaultValue="Se asigna según la EAPB" readOnly />
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
                 <Field name="contacto_nombre" label="Nombre y apellido familiar" />
@@ -880,6 +968,16 @@ export function NuevoRegistroDialog({
                   label="Tipo de ambulancia"
                   options={["TAB", "TAM", "TAM-N"]}
                 />
+                <div className="space-y-1.5">
+                  <AutoComplete
+                    label="EAPB / ERP"
+                    value={internaEapb}
+                    options={eapbOptions}
+                    placeholder="Escribe para buscar EAPB / ERP…"
+                    onChange={setInternaEapb}
+                    onPick={setInternaEapb}
+                  />
+                </div>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="ri-obs" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -905,40 +1003,165 @@ export function NuevoRegistroDialog({
                   defaultValue="Se asigna automáticamente al guardar"
                   readOnly
                 />
-                <SelectField
-                  name="tipo_pendiente"
-                  label="Tipo pendiente"
-                  options={[
-                    "DEFINICION MEDICA PARA RESPUESTA CORREO",
-                    "COORDINAR AMBULANCIA",
-                    "PROGRAMAR RESONANCIA",
-                    "PROGRAMAR TAC",
-                    "PROGRAMAR ECOGRAFIA",
-                    "PROGRAMAR INTERCONSULTA",
-                    "CONFIRMACION CON IPS",
-                    "RADICAR REMISION",
-                    "EVOLUCIONAR",
-                    "ORDENES EXTRAMURALES",
-                    "NEGACIONES",
-                    "AVERIGUAR",
-                    "CANCELAR",
-                  ]}
-                  required
-                />
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Tipo pendiente *
+                  </Label>
+                  <select
+                    value={pendTipo}
+                    onChange={(e) => setPendTipo(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Seleccione…</option>
+                    {[
+                      "DEFINICION MEDICA PARA RESPUESTA CORREO",
+                      "COORDINAR AMBULANCIA",
+                      "PROGRAMAR RESONANCIA",
+                      "PROGRAMAR TAC",
+                      "PROGRAMAR ECOGRAFIA",
+                      "PROGRAMAR INTERCONSULTA",
+                      "CONFIRMACION CON IPS",
+                      "RADICAR REMISION",
+                      "EVOLUCIONAR",
+                      "ORDENES EXTRAMURALES",
+                      "NEGACIONES",
+                      "AVERIGUAR",
+                      "CANCELAR",
+                      "OTRO",
+                    ].map((o) => (
+                      <option key={o} value={o}>
+                        {o}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {pendTipo === "OTRO" && (
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      ¿Cuál? *
+                    </Label>
+                    <Input
+                      value={pendCual}
+                      onChange={(e) => setPendCual(e.target.value)}
+                      placeholder="Escribe el pendiente"
+                    />
+                  </div>
+                )}
                 <Field name="paciente_asunto" label="Paciente / asunto" required />
-                <Field name="ips_area" label="IPS / área" required />
-                <SelectField
-                  name="prioridad"
-                  label="Prioridad"
-                  options={["ALTA", "MEDIA", "BAJA"]}
-                  required
-                />
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Prioridad *
+                  </Label>
+                  <select
+                    value={pendPrioridad}
+                    onChange={(e) => setPendPrioridad(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Seleccione…</option>
+                    {["ALTA", "MEDIA", "BAJA"].map((o) => (
+                      <option key={o} value={o}>
+                        {o}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
+
+              {/* Tipo de destino */}
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Tipo de destino *
+                </Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {(["IPS", "AREA"] as const).map((d) => {
+                    const active = pendDestinoTipo === d;
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => {
+                          setPendDestinoTipo(d);
+                          setPendIps("");
+                          setPendArea("");
+                        }}
+                        className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+                          active
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-muted/40 text-foreground hover:border-primary/50"
+                        }`}
+                      >
+                        {d === "AREA" ? "ÁREA" : "IPS"}
+                      </button>
+                    );
+                  })}
+                </div>
+                {pendDestinoTipo === "IPS" && (
+                  <div className="space-y-1.5 pt-1">
+                    <AutoComplete
+                      label="Nombre de la IPS *"
+                      value={pendIps}
+                      options={ipsCatalogo}
+                      placeholder="Escribe para buscar IPS…"
+                      minChars={2}
+                      onChange={setPendIps}
+                      onPick={setPendIps}
+                    />
+                  </div>
+                )}
+                {pendDestinoTipo === "AREA" && (
+                  <div className="space-y-1.5 pt-1">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Área *
+                    </Label>
+                    <select
+                      value={pendArea}
+                      onChange={(e) => setPendArea(e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="">Seleccione…</option>
+                      {[
+                        "URGENCIAS",
+                        "HOSPITALIZACIÓN",
+                        "UCI",
+                        "QUIRÓFANO",
+                        "SEDE PRINCIPAL",
+                        "FACTURACIÓN",
+                        "CONSULTA EXTERNA",
+                      ].map((o) => (
+                        <option key={o} value={o}>
+                          {o}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Pendiente de evolución en (solo EVOLUCIONAR) */}
+              {pendTipo === "EVOLUCIONAR" && (
+                <div className="space-y-1.5 rounded-lg border border-border/60 bg-muted/30 p-3">
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Pendiente de evolución en:
+                  </Label>
+                  <div className="flex flex-wrap gap-4 pt-1">
+                    {["ÍNDIGO", "CORREO ELECTRÓNICO", "PLATAFORMA"].map((o) => (
+                      <label key={o} className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={pendEvoEn.includes(o)}
+                          onCheckedChange={() => toggleList(pendEvoEn, o, setPendEvoEn)}
+                        />
+                        {o}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-1.5">
                 <Label htmlFor="pend-obs" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Observación de entrega
                 </Label>
-                <Textarea id="pend-obs" name="observacion_entrega" rows={2} required />
+                <Textarea id="pend-obs" name="observacion_entrega" rows={2} />
               </div>
               <DialogFooter>
                 <Button type="submit" className="rounded-full">
@@ -948,6 +1171,7 @@ export function NuevoRegistroDialog({
             </form>
           </TabsContent>
         </Tabs>
+
       </DialogContent>
     </Dialog>
 
