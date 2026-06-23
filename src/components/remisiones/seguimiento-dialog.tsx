@@ -59,7 +59,7 @@ import {
   type ContactoDestino,
   type NegacionGrupo,
 } from "@/lib/indigo-trazabilidad";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 type Props = {
   open: boolean;
