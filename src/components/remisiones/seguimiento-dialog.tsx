@@ -1080,6 +1080,8 @@ export function SeguimientoDialog({
             )}
           </div>
 
+          {!nuevoRadicadoMode && (
+          <>
           {/* Estado del caso */}
           {estadoOpciones && estadoOpciones.length > 0 && (
             <div className="space-y-1.5">
