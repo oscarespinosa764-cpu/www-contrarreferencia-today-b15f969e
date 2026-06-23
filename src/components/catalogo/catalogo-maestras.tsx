@@ -570,6 +570,29 @@ export function CatalogoMaestras() {
                       <option value="NO">No</option>
                     </select>
                   </div>
+                  <div className="space-y-2 rounded-lg border border-border/60 bg-muted/30 p-3">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Genera radicado para (PHD/PAD/O2/Especiales)
+                    </Label>
+                    {(
+                      [
+                        { key: "radica_phd", label: "Genera radicado para PHD" },
+                        { key: "radica_pad", label: "Genera radicado para PAD" },
+                        { key: "radica_oxigeno", label: "Genera radicado para Oxígeno domiciliario" },
+                        { key: "radica_unidad_especial", label: "Genera radicado para Unidades especiales" },
+                      ] as const
+                    ).map((opt) => (
+                      <label key={opt.key} className="flex items-center justify-between gap-2 text-sm">
+                        <span>{opt.label}</span>
+                        <Switch
+                          checked={radicaFlags[opt.key]}
+                          onCheckedChange={(v) =>
+                            setRadicaFlags((p) => ({ ...p, [opt.key]: !!v }))
+                          }
+                        />
+                      </label>
+                    ))}
+                  </div>
                 </>
               ) : (
                 <>
