@@ -40,6 +40,7 @@ const PHD_SOLICITUD = [
 ];
 const REGIMEN_OPCIONES = ["SUBSIDIADO", "CONTRIBUTIVO", "ESPECIAL", "NO APLICA"];
 const SI_NO = ["SI", "NO"];
+const PHD_AMBULANCIA = ["TAT", "TAN", "TAN-N"];
 const INTERNA_SOLICITUD = [
   "RESONANCIA",
   "INTERCONSULTA",
@@ -51,11 +52,10 @@ const INTERNA_SOLICITUD = [
 ];
 const AMBULANCIA_OPCIONES = ["TAB", "TAM", "TAM-N"];
 const PHD_ESTADO_OPCIONES = [
-  "ACTIVO",
   "PENDIENTE ACEPTACION",
-  "ACEPTADO SIN PROGRAMACION DE AMBULANCIA",
-  "ACEPTADO CON AMBULANCIA COORDINADA",
-  "FINALIZADO",
+  "ACEPTADO",
+  "ACEPTADO CON PENDIENTE COORDINACION DE AMBULANCIA",
+  "PENDIENTE NOTIFICACION",
 ];
 const PENDIENTE_TIPOS = [
   "DEFINICION MEDICA PARA RESPUESTA CORREO",
@@ -71,6 +71,7 @@ const PENDIENTE_TIPOS = [
   "NEGACIONES",
   "AVERIGUAR",
   "CANCELAR",
+  "OTRO",
 ];
 
 const CONFIG: Record<
@@ -78,7 +79,7 @@ const CONFIG: Record<
   { tabla: string; tipoCaso: string; evoluciona: boolean; tieneRadicado: boolean }
 > = {
   phd: { tabla: "domiciliarios", tipoCaso: "domiciliario", evoluciona: true, tieneRadicado: true },
-  interna: { tabla: "referencia_interna", tipoCaso: "referencia_interna", evoluciona: true, tieneRadicado: false },
+  interna: { tabla: "referencia_interna", tipoCaso: "referencia_interna", evoluciona: false, tieneRadicado: false },
   pendiente: { tabla: "pendientes", tipoCaso: "pendiente", evoluciona: false, tieneRadicado: false },
 };
 
