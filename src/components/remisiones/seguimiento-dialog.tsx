@@ -1189,6 +1189,7 @@ export function SeguimientoDialog({
               </div>
             )}
           </div>
+          )}
 
           {!nuevoRadicadoMode && (
           <>
