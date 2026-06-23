@@ -12,7 +12,9 @@ import { Cie10Field } from "./cie10-field";
 import { SeguimientoDialog } from "./seguimiento-dialog";
 import {
   evolucionMeta,
+  fmtEdad,
   fmtFechaHora,
+  fmtRadicado,
   fmtTranscurrido,
   normEvolucion,
   prioridadMeta,
