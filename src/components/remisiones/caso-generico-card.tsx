@@ -167,7 +167,7 @@ export function CasoGenericoCard({
 
   const nombre = (tipo === "pendiente" ? r.paciente_asunto : r.paciente) || "Sin nombre";
   const documento = tipo === "pendiente" ? null : r.documento;
-  const radicado = cfg.tieneRadicado ? r.codigo_radicacion?.trim() || "No aplica" : "No aplica";
+  const radicado = cfg.tieneRadicado ? fmtRadicado(r.codigo_radicacion, r.eapb_genera_codigo) : "NO APLICA";
   const prio = prioridadMeta(r.prioridad);
   const evo = cfg.evoluciona ? evoChip(tipo, r) : null;
   const justif =
@@ -175,11 +175,17 @@ export function CasoGenericoCard({
   const invalidateKey =
     tipo === "phd" ? "domiciliarios" : tipo === "interna" ? "referencia-interna" : "pendientes-rem";
 
+  // Línea principal: [NOMBRE], [TIPODOC]: [DOC] · [EDAD] años
+  const docPart = documento ? `${r.tipo_documento || "DOC"}: ${documento}` : "";
+  const edadPart = tipo === "phd" && r.edad ? fmtEdad(r.edad) : "";
+  const mainExtra = [docPart, edadPart].filter(Boolean).join(" · ");
+  const mainLine = tipo === "pendiente" ? nombre : `${nombre}${mainExtra ? `, ${mainExtra}` : ""}`;
+
   const subParts =
     tipo === "phd"
-      ? [r.tipo_solicitud, documento && `Doc: ${documento}`, r.edad && `${r.edad} años`]
+      ? [r.tipo_solicitud, r.eapb, r.regimen]
       : tipo === "interna"
-        ? [r.tipo_solicitud, r.servicio, documento && `Doc: ${documento}`]
+        ? [r.tipo_solicitud, r.servicio, r.eapb]
         : [r.tipo_pendiente, r.ips_area];
 
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
