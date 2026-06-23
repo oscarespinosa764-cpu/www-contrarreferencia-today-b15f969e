@@ -925,6 +925,8 @@ export function SeguimientoDialog({
         }
       }
       if (esRadicado && radicado.trim()) update.codigo_radicacion = radicado.trim();
+      if (nuevoRadicadoMode && nuevoRadicado.trim())
+        update.codigo_radicacion = [...radicadosLista, nuevoRadicado.trim()].join(" · ");
       if (esSaliente && tipoSeg === T.CANCELACION && cancelNuevoRadicado.trim())
         update.codigo_radicacion = cancelNuevoRadicado.trim();
       if (estadoOpciones && estadoCaso) update.estado = estadoCaso;
