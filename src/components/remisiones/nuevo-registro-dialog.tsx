@@ -486,27 +486,23 @@ export function NuevoRegistroDialog({
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   <div className="space-y-1.5">
-                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      EAPB / ERP
-                    </Label>
-                    <select
+                    <AutoComplete
+                      label="EAPB / ERP"
                       value={eapbSel}
-                      onChange={(e) => {
-                        setEapbSel(e.target.value);
+                      options={eapbOptions}
+                      placeholder="Escribe para buscar EAPB / ERP…"
+                      onChange={(v) => {
+                        setEapbSel(v);
                         setPlataformaFunc("");
                       }}
-                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
-                    >
-                      <option value="">Selecciona…</option>
-                      {eapbList.map((e) => (
-                        <option key={e.valor} value={e.valor}>
-                          {e.valor}
-                        </option>
-                      ))}
-                    </select>
+                      onPick={(v) => {
+                        setEapbSel(v);
+                        setPlataformaFunc("");
+                      }}
+                    />
                     {eapbActual && (
                       <p className="text-[10px] text-muted-foreground">
-                        {tienePlataforma ? "Tiene plataforma" : "Sin plataforma"} ·{" "}
+                        {tipoEntidad || "SIN TIPO"} · {tienePlataforma ? "Tiene plataforma" : "Sin plataforma"} ·{" "}
                         {generaCodigo ? "Genera código" : "No genera código"}
                       </p>
                     )}
@@ -531,21 +527,22 @@ export function NuevoRegistroDialog({
 
                   <div className="space-y-1.5">
                     <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Alcance de gestión / red comentada *
+                      Red a la que se comenta *
                     </Label>
-                    <select
-                      value={alcance}
-                      onChange={(e) => setAlcance(e.target.value as AlcanceRed | "")}
-                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
-                    >
-                      <option value="">Selecciona…</option>
-                      <option value="LOCAL">Red local</option>
-                      <option value="LOCAL_NACIONAL">Red local + red nacional</option>
-                    </select>
+                    <div className="flex flex-wrap gap-4 pt-1">
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox checked={redLocal} onCheckedChange={(v) => setRedLocal(!!v)} />
+                        RED LOCAL
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox checked={redNacional} onCheckedChange={(v) => setRedNacional(!!v)} />
+                        RED NACIONAL
+                      </label>
+                    </div>
                   </div>
                 </div>
 
-                {alcance && (
+                {redLocal && (
                   <div className="space-y-1.5">
                     <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                       IPS de red local * (marca al menos una)
@@ -590,23 +587,6 @@ export function NuevoRegistroDialog({
                     )}
                   </div>
                 )}
-
-                <div className="space-y-1.5">
-                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Nota aclaratoria (solo si aplica)
-                  </Label>
-                  <select
-                    value={motivoNota}
-                    onChange={(e) => setMotivoNota(e.target.value as MotivoNota)}
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
-                  >
-                    {MOTIVOS_NOTA.map((m) => (
-                      <option key={m.value} value={m.value}>
-                        {m.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="especificacion" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
