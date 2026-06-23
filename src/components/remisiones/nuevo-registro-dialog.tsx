@@ -474,15 +474,6 @@ export function NuevoRegistroDialog({
                   )}
                 </div>
                 <SelectField
-                  name="regimen"
-                  label="Régimen"
-                  options={
-                    regimenes.length > 0
-                      ? regimenes
-                      : ["CONTRIBUTIVO", "SUBSIDIADO", "ESPECIAL", "NO APLICA"]
-                  }
-                />
-                <SelectField
                   name="tipo_ambulancia"
                   label="Tipo de ambulancia"
                   options={["TAB", "TAM", "TAM-N"]}
