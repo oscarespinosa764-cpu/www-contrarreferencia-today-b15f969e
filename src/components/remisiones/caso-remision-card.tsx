@@ -281,14 +281,18 @@ export function CasoRemisionCard({
             <Dato label="Paciente" value={r.paciente} />
             <Dato label="Tipo documento" value={r.tipo_documento} />
             <Dato label="Documento" value={r.documento} />
-            <Dato label="Edad" value={r.edad} />
+            <Dato label="Edad" value={fmtEdad(r.edad)} />
             <Dato label="CIE-10" value={r.cie10} />
-            <Dato label="Asegurador" value={r.asegurador} />
+            <Dato label="EAPB / EPS / Asegurador" value={aseguradorTxt} />
+            <Dato label="Régimen" value={r.regimen} />
+            <Dato label="Remisión por" value={r.remision_por} />
+            <Dato label="Justificación remisión" value={r.especificacion || r.observaciones} />
+            <Dato label="Red comentada" value={r.alcance_red === "LOCAL_NACIONAL" ? "Red local y nacional" : r.alcance_red === "LOCAL" ? "Red local" : "—"} />
+            <Dato label="Tipo ambulancia" value={r.tipo_ambulancia} />
             <Dato label="Servicio" value={r.servicio} />
             <Dato label="Cama" value={r.cama} />
             <Dato label="Prioridad" value={r.prioridad} />
             <Dato label="N° radicado" value={radicado} />
-            <Dato label="Tipo trámite" value={r.tipo_tramite} />
             <Dato label="Estado" value={r.estado} />
             <Dato label="Fecha y hora inicio trámite" value={fmtFechaHora(r.fecha_inicio)} />
             <Dato label="Fecha y hora radicación" value={fmtFechaHora(r.fecha_radicado)} />
