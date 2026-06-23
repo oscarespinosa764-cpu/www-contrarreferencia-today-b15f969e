@@ -240,12 +240,15 @@ export function CatalogoMaestras() {
       ? sedes.map((s) => s.trim()).filter(Boolean).join(" ; ") || null
       : ((String(f.get("extra1")).trim() || null) as string | null);
     const extra2 = isIPS ? null : ((String(f.get("extra2")).trim() || null) as string | null);
+    const extra3 =
+      editing.tipo === "EAPB" ? ((String(f.get("extra3")).trim() || null) as string | null) : editing.extra3;
     const { error } = await supabase
       .from("catalogos")
       .update({
         valor: String(f.get("valor")).trim(),
         extra1,
         extra2,
+        extra3,
       })
       .eq("id", editing.id);
     if (error) return toast.error(error.message);
