@@ -736,9 +736,11 @@ export function SeguimientoDialog({
       .eq("user_id", u.user?.id ?? "")
       .maybeSingle();
 
-    const radicadoSeg = esRadicado
-      ? radicado.trim()
-      : cancelNuevoRadicado.trim() || radicadoReal || null;
+    const radicadoSeg = !esSaliente
+      ? radicado.trim() || radicadoReal || null
+      : esRadicado
+        ? radicado.trim()
+        : cancelNuevoRadicado.trim() || radicadoReal || null;
 
     const { error } = await supabase.from("seguimientos").insert({
       caso_id: casoId,
