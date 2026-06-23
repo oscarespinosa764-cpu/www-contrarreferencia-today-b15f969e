@@ -568,19 +568,21 @@ export function generarPlantillaEvolucionDiaria(i: EvolucionDiariaInput): string
   return base;
 }
 
-// --- 6/7. CORREO ELECTRÓNICO / PLATAFORMA WEB ---
-export function generarPlantillaCorreoSeg(estadoSolicitud: string, estadoCaso: string): string {
-  let t =
-    "SE REALIZA SEGUIMIENTO POR CORREO ELECTRÓNICO A LA EAPB, DEJANDO TRAZABILIDAD DE LA GESTIÓN DEL PROCESO DE REMISIÓN.";
-  if (estadoCaso.trim()) t += ` ESTADO DEL CASO: ${estadoCaso.trim().toUpperCase()}.`;
+// --- 6/7. CORREO ELECTRÓNICO / PLATAFORMA WEB (con ASUNTO) ---
+export function generarPlantillaCorreoSeg(asunto: string, estadoSolicitud: string): string {
+  let t = `SE REALIZA SEGUIMIENTO POR CORREO ELECTRÓNICO RELACIONADO CON EL ASUNTO: ${ph(
+    asunto,
+    "ASUNTO",
+  )}.`;
   if (estadoSolicitud.trim()) t += ` ESTADO DE LA SOLICITUD: ${estadoSolicitud.trim().toUpperCase()}.`;
   return t;
 }
 
-export function generarPlantillaPlataformaSeg(estadoSolicitud: string, estadoCaso: string): string {
-  let t =
-    "SE REALIZA SEGUIMIENTO MEDIANTE LA PLATAFORMA WEB DE LA EAPB, DEJANDO TRAZABILIDAD DE LA GESTIÓN DEL PROCESO DE REMISIÓN.";
-  if (estadoCaso.trim()) t += ` ESTADO DEL CASO: ${estadoCaso.trim().toUpperCase()}.`;
+export function generarPlantillaPlataformaSeg(asunto: string, estadoSolicitud: string): string {
+  let t = `SE REALIZA SEGUIMIENTO MEDIANTE PLATAFORMA WEB DE LA EAPB RELACIONADO CON EL ASUNTO: ${ph(
+    asunto,
+    "ASUNTO",
+  )}.`;
   if (estadoSolicitud.trim()) t += ` ESTADO DE LA SOLICITUD: ${estadoSolicitud.trim().toUpperCase()}.`;
   return t;
 }
@@ -595,7 +597,13 @@ export const ACERCAMIENTO_OPCIONES: AcercamientoTipo[] = [
   "OTRO",
 ];
 
-export const SERVICIO_OPCIONES = ["URGENCIAS", "HOSPITALIZACIÓN", "QUIRÓFANO", "UCI"];
+export const SERVICIO_OPCIONES = [
+  "URGENCIAS",
+  "HOSPITALIZACIÓN",
+  "QUIRÓFANO",
+  "UCI",
+  "FACTURACIÓN / ADMISIONES",
+];
 
 export type FisicoInput = {
   acercamiento: AcercamientoTipo;
