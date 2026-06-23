@@ -251,7 +251,7 @@ export function CasoGenericoCard({
       {/* Encabezado */}
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-sm font-bold uppercase text-foreground">{nombre}</p>
+          <p className="text-sm font-bold uppercase text-foreground">{mainLine}</p>
           <p className="text-[11px] text-muted-foreground">{subParts.filter(Boolean).join(" · ") || "—"}</p>
         </div>
         <div className="flex items-center gap-1.5">
@@ -265,7 +265,7 @@ export function CasoGenericoCard({
               Rad: {radicado}
             </Badge>
           )}
-          {(tipo === "interna" || tipo === "pendiente") && <EstadoBadge estado={r.estado} />}
+          {tipo === "interna" && <EstadoBadge estado={r.estado} />}
         </div>
       </div>
 
@@ -275,7 +275,6 @@ export function CasoGenericoCard({
           <>
             <Dato label="Tipo pendiente" value={r.tipo_pendiente} />
             <Dato label="IPS / área" value={r.ips_area} />
-            <Dato label="Prioridad" value={r.prioridad} />
           </>
         ) : (
           <>
@@ -297,6 +296,9 @@ export function CasoGenericoCard({
               <Dato label="Tipo solicitud" value={r.tipo_solicitud} />
             )}
             <Dato label={tipo === "phd" ? "Tipo solicitud" : "Tipo ambulancia"} value={tipo === "phd" ? r.tipo_solicitud : r.tipo_ambulancia} />
+            {tipo === "phd" && (
+              <Dato label="Tipo ambulancia" value={r.tipo_ambulancia} />
+            )}
             {evo && (
               <Dato
                 label="Evolución"
