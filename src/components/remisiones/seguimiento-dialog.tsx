@@ -97,19 +97,29 @@ const T = {
   OTRO: "OTRO",
 } as const;
 
-// Lista heredada para otros módulos (domiciliarios, PHD, etc.). No se modifica.
-const TIPOS_LEGACY = [
-  "Radicado / inicio trámite de remisión",
-  "Telefónico / celular",
-  "Correo electrónico",
-  "Plataforma web",
-  "Físico o presencial",
-  "Respuesta de IPS",
-  "Gestión ambulancia",
-  "Actualización clínica",
-  "Contacto familiar",
-  "Otro",
-];
+// --- Tipos de seguimiento PHD/PAD/O2/Especiales (reutiliza lógica saliente) ---
+const TIPOS_PHD_BASE = [
+  T.EVOLUCION,
+  T.CORREO,
+  T.PLATAFORMA,
+  T.FISICO,
+  T.OTRO,
+] as const;
+
+// --- Referencia interna ---
+const TI = {
+  PENDIENTE: "PENDIENTE COORDINACIÓN FECHA Y HORA EXAMEN",
+  COORDINADO: "EXAMEN COORDINADO",
+  CULMINACION: "CULMINACIÓN DE SOLICITUD",
+} as const;
+const TIPOS_INTERNA = [TI.PENDIENTE, TI.COORDINADO, TI.CULMINACION];
+
+// --- Pendientes ---
+const TP = {
+  PARCIAL: "CUMPLIMIENTO PARCIAL",
+  COMPLETO: "CUMPLIMIENTO COMPLETO",
+} as const;
+const TIPOS_PENDIENTE = [TP.PARCIAL, TP.COMPLETO];
 
 const ESTADOS_SOLICITUD = ["Sí acepta", "No acepta", "Pendiente", "No aplica"];
 
