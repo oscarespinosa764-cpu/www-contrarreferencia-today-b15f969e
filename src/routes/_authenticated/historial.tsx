@@ -76,8 +76,8 @@ type Caso = {
   detalle: string | null;
   eapb: string | null;
   regimen: string | null;
-  edad: string | null;
-  cie10: string | null;
+  edad?: string | null;
+  cie10?: string | null;
   texto_ia: string | null;
   created_at: string;
 };
