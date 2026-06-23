@@ -257,7 +257,7 @@ export function NuevoRegistroDialog({
         observaciones: String(f.get("observaciones")),
         // Trazabilidad ÍNDIGO
         eapb: eapbSel || null,
-        alcance_red: alcance,
+        alcance_red: alcanceStore,
         ips_red_local: ipsSel.join(", "),
         departamentos_red_nacional: deptosFinal.join(", "),
         eapb_tiene_plataforma: tienePlataforma,
