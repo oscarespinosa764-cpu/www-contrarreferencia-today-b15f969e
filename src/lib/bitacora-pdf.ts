@@ -6,8 +6,7 @@
 // Pensado para ejecutarse en el navegador (cliente). jsPDF + autotable son
 // librerías 100% JS, compatibles con el bundler.
 
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
+import type { jsPDF } from "jspdf";
 
 const INSTITUCION = "CENTRO DE IMAGENES DIAGNOSTICAS CEDIM I.P.S S.A.S";
 const NIT = "NIT: 900559103-5";
