@@ -701,6 +701,9 @@ export function SeguimientoDialog({
   // Detalle JSON específico por tipo (estructura flexible).
   const construirDetalles = (): Record<string, unknown> | null => {
     if (!esSaliente) return null;
+    if (nuevoRadicadoMode) {
+      return { radicado_anterior: ultimoRadicado || null, nuevo_radicado: nuevoRadicado.trim() };
+    }
     switch (tipoSeg) {
       case T.RADICADO:
         return { radicado: radicado.trim() };
@@ -712,6 +715,9 @@ export function SeguimientoDialog({
           estado_evolucion: evoEstadoSal,
           motivo_pendiente: evoRequiereMotivo ? evoMotivoPend.trim() : null,
         };
+      case T.CORREO:
+      case T.PLATAFORMA:
+        return { asunto: asunto.trim() || null };
       case T.FISICO:
         return {
           acercamiento,
@@ -721,6 +727,13 @@ export function SeguimientoDialog({
           funcionario: fisFuncionario.trim() || null,
           cargo: fisCargo.trim() || null,
           con_quien: fisConQuien.trim() || null,
+        };
+      case T.TELEFONO:
+        return {
+          destino: contactoDestino || null,
+          ips: contactoDestino === "IPS" ? contactoIps.trim() || null : null,
+          nombre: nombreContacto.trim() || null,
+          telefono: telefono.trim() || null,
         };
       case T.ACEPTACION:
         return { ips_receptora: ipsReceptora.trim(), sede: ipsReceptoraSede.trim() || null };
@@ -741,6 +754,13 @@ export function SeguimientoDialog({
           funcionario: cancelFuncionario.trim() || null,
           cargo: cancelCargo.trim() || null,
           nuevo_radicado: cancelNuevoRadicado.trim() || null,
+        };
+      case T.PERTINENCIA:
+        return {
+          cuenta_autorizacion: revAutoriza || null,
+          cuenta_nota: revAutoriza === "SI" ? revNota || null : null,
+          funcionario: revFuncionario.trim() || null,
+          cargo: revCargo.trim() || null,
         };
       case T.OTRO:
         return { cual: otroCual.trim() };
@@ -767,6 +787,7 @@ export function SeguimientoDialog({
     setFisConQuien("");
     setIpsReceptoraSede("");
     setNegMotivo("");
+    setNegCual("");
     setNegIpsInput("");
     setNegIpsCurrent([]);
     setNegGrupos([]);
@@ -779,6 +800,15 @@ export function SeguimientoDialog({
     setCancelCargo("");
     setCancelNuevoRadicado("");
     setOtroCual("");
+    setAsunto("");
+    setContactoDestino("");
+    setContactoIps("");
+    setRevAutoriza("");
+    setRevNota("");
+    setRevFuncionario("");
+    setRevCargo("");
+    setNuevoRadicadoMode(false);
+    setNuevoRadicado("");
   };
 
   const guardar = async () => {
