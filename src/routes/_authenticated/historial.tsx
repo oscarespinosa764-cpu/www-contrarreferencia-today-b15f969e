@@ -21,11 +21,14 @@ import {
 import {
   Search,
   FileSpreadsheet,
+  FileText,
   MessageSquare,
   Hospital,
   ArrowDownLeft,
   ArrowUpRight,
-  Ambulance,
+  Home,
+  Stethoscope,
+  ClipboardList,
   Filter,
   CalendarDays,
   ChevronDown,
@@ -34,12 +37,27 @@ import {
   Check,
 } from "lucide-react";
 import { toast } from "sonner";
+import { fmtFechaHora, fmtEdad, fmtRadicado } from "@/lib/remisiones-utils";
+import {
+  buildSegMap,
+  descargarLibro,
+  estadoLabel,
+  seccionRecibidas,
+  seccionRemisiones,
+  seccionPHD,
+  seccionInternas,
+  seccionPendientes,
+  type SegMap,
+  type Seccion,
+  type GrupoEntrante,
+} from "@/lib/historial-export";
+import { generarBitacoraPDF, type SeguimientoPDF, type CampoPDF } from "@/lib/bitacora-pdf";
 
 export const Route = createFileRoute("/_authenticated/historial")({
   component: HistorialPage,
 });
 
-type Vista = "entrantes" | "salientes";
+type Vista = "entrantes" | "salientes" | "phd" | "interna" | "pendientes";
 
 type Caso = {
   id: string;
@@ -55,11 +73,16 @@ type Caso = {
   estado: string | null;
   fecha: string | null;
   fecha_vence: string | null;
+  detalle: string | null;
+  eapb: string | null;
+  regimen: string | null;
+  edad?: string | null;
+  cie10?: string | null;
   texto_ia: string | null;
   created_at: string;
 };
 
-type Remision = {
+type Remision = Record<string, unknown> & {
   id: string;
   codigo_radicacion: string | null;
   documento: string | null;
@@ -67,10 +90,17 @@ type Remision = {
   servicio: string | null;
   ips_receptora: string | null;
   asegurador: string | null;
+  eapb: string | null;
   prioridad: string | null;
   estado: string | null;
   fecha_radicado: string | null;
   texto_ia: string | null;
+  created_at: string;
+};
+
+type Generico = Record<string, unknown> & {
+  id: string;
+  estado: string | null;
   created_at: string;
 };
 
@@ -108,8 +138,26 @@ const SAL_LABEL: Record<SalFilter, string> = {
   DESISTIDA: "Desistida",
 };
 
+const GEN_FILTERS = ["TODOS", "ABIERTO", "PENDIENTE", "GESTIONANDO", "CERRADO"] as const;
+type GenFilter = (typeof GEN_FILTERS)[number];
+const GEN_LABEL: Record<GenFilter, string> = {
+  TODOS: "Todos los casos",
+  ABIERTO: "Abierto / Inicial",
+  PENDIENTE: "Pendiente",
+  GESTIONANDO: "Gestionando",
+  CERRADO: "Cerrado / Culminado",
+};
+
 const PERIODOS = ["Todos", "Hoy", "Esta semana", "Este mes", "Mes anterior"] as const;
 type Periodo = (typeof PERIODOS)[number];
+
+const VISTAS: { key: Vista; label: string; icon: typeof Home; color: string }[] = [
+  { key: "entrantes", label: "Entrantes", icon: ArrowDownLeft, color: "bg-status-green" },
+  { key: "salientes", label: "Salientes", icon: ArrowUpRight, color: "bg-status-teal" },
+  { key: "phd", label: "PHD/PAD/O2/Esp.", icon: Home, color: "bg-status-sky" },
+  { key: "interna", label: "Ref. Internas", icon: Stethoscope, color: "bg-status-blue" },
+  { key: "pendientes", label: "Pendientes", icon: ClipboardList, color: "bg-status-amber" },
+];
 
 const tipoChip: Record<string, string> = {
   ACEP: "bg-status-teal/15 text-status-teal border-status-teal/40",
@@ -192,7 +240,6 @@ function calcularEstado(base: Caso, eventos: Caso[]): { estadoFinal: Grupo["esta
   return { estadoFinal: { label: "ACTIVA", color: "green" }, activa: true };
 }
 
-/** Activa => confirmable. Cancelada/vencida en las últimas 24h => confirmable. Ingresada/NEG => no. */
 function esConfirmable(base: Caso, eventos: Caso[], activa: boolean): boolean {
   const baseTipo = (base.tipo || "").toUpperCase();
   if (baseTipo.includes("NEG")) return false;
@@ -225,6 +272,16 @@ function estadoSaliente(estado: string | null): { label: string; color: StatusCo
   return { label: e, color: "sky" };
 }
 
+function estadoGenerico(estado: string | null): { label: string; color: StatusColor } {
+  const e = (estado || "").toUpperCase();
+  if (e.includes("COMPLET") || e.includes("CERRAD") || e.includes("CULMIN")) return { label: e || "CERRADO", color: "green" };
+  if (e.includes("PARCIAL")) return { label: "CUMPLIMIENTO PARCIAL", color: "amber" };
+  if (e.includes("DESIST") || e.includes("CANCELAD")) return { label: e, color: "red" };
+  if (e.includes("PENDIENTE")) return { label: "PENDIENTE", color: "amber" };
+  if (e.includes("GESTION")) return { label: "GESTIONANDO", color: "sky" };
+  return { label: e || "ABIERTO", color: "sky" };
+}
+
 type IngresoDatos = {
   transporte: string;
   placa: string;
@@ -244,13 +301,19 @@ type MensajeItem = {
   mensaje: string;
 };
 
+const v = (x: unknown): string => (x == null ? "" : String(x).trim());
+const joinList = (x: unknown): string => (Array.isArray(x) ? x.filter(Boolean).join(", ") : v(x));
+
 function HistorialPage() {
-  const { canEdit } = useAuth();
+  const { canEdit, user } = useAuth();
+  const usuario =
+    (user?.user_metadata?.nombre as string) || user?.email || "Usuario autenticado";
   const qc = useQueryClient();
   const [vista, setVista] = useState<Vista>("entrantes");
   const [q, setQ] = useState("");
   const [tipo, setTipo] = useState<TipoFilter>("TODOS");
   const [salTipo, setSalTipo] = useState<SalFilter>("TODOS");
+  const [genTipo, setGenTipo] = useState<GenFilter>("TODOS");
   const [periodo, setPeriodo] = useState<Periodo>("Todos");
   const [fechaEspecifica, setFechaEspecifica] = useState<Date | undefined>(undefined);
   const [ingresoFor, setIngresoFor] = useState<Grupo | null>(null);
@@ -261,7 +324,7 @@ function HistorialPage() {
       const { data, error } = await supabase
         .from("casos_entrantes")
         .select(
-          "id, codigo, tipo, cod_ref, documento, nombres, apellidos, ips, unidad, especialidad, estado, fecha, fecha_vence, texto_ia, created_at",
+          "id, codigo, tipo, cod_ref, documento, nombres, apellidos, ips, unidad, especialidad, estado, fecha, fecha_vence, detalle, eapb, regimen, texto_ia, created_at",
         )
         .order("created_at", { ascending: false })
         .limit(1000);
@@ -271,19 +334,71 @@ function HistorialPage() {
   });
 
   const { data: remisiones, isLoading: loadingSal } = useQuery({
-    queryKey: ["historial-remisiones"],
+    queryKey: ["historial-remisiones-full"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("remisiones")
-        .select(
-          "id, codigo_radicacion, documento, paciente, servicio, ips_receptora, asegurador, prioridad, estado, fecha_radicado, texto_ia, created_at",
-        )
+        .select("*")
         .order("created_at", { ascending: false })
         .limit(1000);
       if (error) throw error;
       return data as Remision[];
     },
   });
+
+  const { data: phd, isLoading: loadingPhd } = useQuery({
+    queryKey: ["historial-domiciliarios"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("domiciliarios")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1000);
+      if (error) throw error;
+      return data as Generico[];
+    },
+  });
+
+  const { data: internas, isLoading: loadingInt } = useQuery({
+    queryKey: ["historial-internas"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("referencia_interna")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1000);
+      if (error) throw error;
+      return data as Generico[];
+    },
+  });
+
+  const { data: pendientes, isLoading: loadingPen } = useQuery({
+    queryKey: ["historial-pendientes"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pendientes")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(1000);
+      if (error) throw error;
+      return data as Generico[];
+    },
+  });
+
+  const { data: seguimientos } = useQuery({
+    queryKey: ["historial-seguimientos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("seguimientos")
+        .select("caso_id, tipo_caso, tipo_seguimiento, detalle, plantilla_indigo, estado_solicitud, nombre_contacto, nombre_usuario, created_at")
+        .order("created_at", { ascending: true })
+        .limit(5000);
+      if (error) throw error;
+      return data as Record<string, unknown>[];
+    },
+  });
+
+  const segMap = useMemo<SegMap>(() => buildSegMap(seguimientos ?? []), [seguimientos]);
 
   const grupos = useMemo<Grupo[]>(() => {
     const map = new Map<string, Caso[]>();
@@ -329,7 +444,7 @@ function HistorialPage() {
     () =>
       (remisiones ?? []).filter((r) => {
         if (salTipo !== "TODOS" && !(r.estado || "").toUpperCase().includes(salTipo)) return false;
-        if (!pasaPeriodo(r.fecha_radicado || r.created_at)) return false;
+        if (!pasaPeriodo((r.fecha_radicado as string) || r.created_at)) return false;
         if (!term) return true;
         const hay = `${r.codigo_radicacion ?? ""} ${r.documento ?? ""} ${r.paciente ?? ""} ${r.ips_receptora ?? ""} ${r.servicio ?? ""}`.toLowerCase();
         return hay.includes(term);
@@ -337,7 +452,32 @@ function HistorialPage() {
     [remisiones, salTipo, periodo, fechaEspecifica, term],
   );
 
-  // Mensajes recientes (últimos con gestión / texto generado)
+  const filtraGenerico = (rows: Generico[], campos: (r: Generico) => string) =>
+    rows.filter((r) => {
+      if (genTipo !== "TODOS") {
+        const e = (r.estado || "").toUpperCase();
+        if (genTipo === "CERRADO" && !/COMPLET|CERRAD|CULMIN/.test(e)) return false;
+        if (genTipo !== "CERRADO" && !e.includes(genTipo)) return false;
+      }
+      if (!pasaPeriodo((r.fecha_inicio as string) || (r.fecha as string) || r.created_at)) return false;
+      if (!term) return true;
+      return campos(r).toLowerCase().includes(term);
+    });
+
+  const phdF = useMemo(
+    () => filtraGenerico((phd ?? []) as Generico[], (r) => `${v(r.paciente)} ${v(r.documento)} ${v(r.tipo_solicitud)} ${v(r.eapb)} ${v(r.codigo_radicacion)}`),
+    [phd, genTipo, periodo, fechaEspecifica, term],
+  );
+  const internasF = useMemo(
+    () => filtraGenerico((internas ?? []) as Generico[], (r) => `${v(r.paciente)} ${v(r.documento)} ${v(r.tipo_solicitud)} ${v(r.servicio)} ${v(r.eapb)}`),
+    [internas, genTipo, periodo, fechaEspecifica, term],
+  );
+  const pendientesF = useMemo(
+    () => filtraGenerico((pendientes ?? []) as Generico[], (r) => `${v(r.paciente_asunto)} ${v(r.tipo_pendiente)} ${v(r.ips_area)} ${v(r.prioridad)}`),
+    [pendientes, genTipo, periodo, fechaEspecifica, term],
+  );
+
+  // Mensajes recientes
   const mensajes = useMemo<MensajeItem[]>(() => {
     if (vista === "entrantes") {
       return (casos ?? [])
@@ -369,7 +509,7 @@ function HistorialPage() {
           ips: r.ips_receptora || "",
           estado: est.label,
           color: est.color,
-          fecha: fmtFecha(r.created_at, r.fecha_radicado),
+          fecha: fmtFecha(r.created_at, r.fecha_radicado as string),
           mensaje: r.texto_ia || "",
         };
       });
@@ -379,7 +519,8 @@ function HistorialPage() {
     ? `${pad(fechaEspecifica.getDate())}/${pad(fechaEspecifica.getMonth() + 1)}/${fechaEspecifica.getFullYear()}`
     : periodo;
 
-  const filtroCasoLabel = vista === "entrantes" ? TIPO_LABEL[tipo] : SAL_LABEL[salTipo];
+  const filtroCasoLabel =
+    vista === "entrantes" ? TIPO_LABEL[tipo] : vista === "salientes" ? SAL_LABEL[salTipo] : GEN_LABEL[genTipo];
 
   const handleConfirmarIngreso = async (g: Grupo, datos: IngresoDatos) => {
     const base = g.base;
@@ -416,8 +557,6 @@ function HistorialPage() {
     if (base.codigo) {
       await supabase.from("casos_entrantes").update({ estado: "INGRESADO" }).eq("codigo", base.codigo);
     }
-    // Si el ingreso se confirma cuando el caso ya estaba cerrado (cancelado o vencido,
-    // dentro de la ventana de 24h), se genera una alerta en Coordinación para la visita IPS.
     if (!g.activa) {
       const paciente = [base.nombres, base.apellidos].filter(Boolean).join(" ") || null;
       const { error: alertaErr } = await supabase.from("coordinacion").insert({
@@ -450,91 +589,295 @@ function HistorialPage() {
     qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
   };
 
-  const exportarExcel = () => {
-    const rows =
-      vista === "entrantes"
-        ? gruposF.flatMap((g) =>
-            g.eventos.map((e) => ({
-              Codigo: e.codigo ?? "",
-              Tipo: e.tipo ?? "",
-              Documento: e.documento ?? "",
-              Paciente: [e.nombres, e.apellidos].filter(Boolean).join(" "),
-              IPS: e.ips ?? "",
-              Unidad: e.unidad ?? "",
-              Estado: g.estadoFinal.label,
-              Fecha: fmtFecha(e.created_at, e.fecha),
-            })),
-          )
-        : remisionesF.map((r) => ({
-            Radicado: r.codigo_radicacion ?? "",
-            Documento: r.documento ?? "",
-            Paciente: r.paciente ?? "",
-            Servicio: r.servicio ?? "",
-            IPS_Receptora: r.ips_receptora ?? "",
-            Asegurador: r.asegurador ?? "",
-            Estado: estadoSaliente(r.estado).label,
-            Fecha: fmtFecha(r.created_at, r.fecha_radicado),
-          }));
-    if (rows.length === 0) {
+  // ---- Auditoría de exportación ----
+  const auditar = async (accion: string, detalles: Record<string, unknown>) => {
+    try {
+      await (supabase as unknown as { rpc: (n: string, a: Record<string, unknown>) => Promise<unknown> }).rpc(
+        "registrar_auditoria",
+        {
+          _accion: accion,
+          _modulo: "historial",
+          _tabla: "varios",
+          _resultado: "exito",
+          _detalles: detalles,
+        },
+      );
+    } catch {
+      /* la auditoría no debe bloquear la exportación */
+    }
+  };
+
+  const filtrosTexto = `Caso=${filtroCasoLabel}; Período=${periodoLabel}${term ? `; Búsqueda="${term}"` : ""}`;
+
+  const gruposEntrantesExport = (): GrupoEntrante[] =>
+    gruposF.map((g) => ({ base: g.base as unknown as GrupoEntrante["base"], eventos: g.eventos as unknown as Record<string, unknown>[], estadoLabel: g.estadoFinal.label }));
+
+  const seccionActual = (): Seccion | null => {
+    if (vista === "entrantes") return seccionRecibidas(gruposEntrantesExport());
+    if (vista === "salientes") return seccionRemisiones(remisionesF as Record<string, unknown>[], segMap);
+    if (vista === "phd") return seccionPHD(phdF as Record<string, unknown>[], segMap);
+    if (vista === "interna") return seccionInternas(internasF as Record<string, unknown>[], segMap);
+    if (vista === "pendientes") return seccionPendientes(pendientesF as Record<string, unknown>[], segMap);
+    return null;
+  };
+
+  const exportarVistaActual = () => {
+    const sec = seccionActual();
+    if (!sec || sec.rows.length === 0) {
       toast.info("No hay registros para exportar.");
       return;
     }
-    const headers = Object.keys(rows[0]);
-    const csv = [
-      headers.join(","),
-      ...rows.map((r) =>
-        headers.map((h) => `"${String((r as Record<string, string>)[h]).replace(/"/g, '""')}"`).join(","),
-      ),
-    ].join("\n");
-    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `historial_${vista}_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
+    descargarLibro([sec], usuario, filtrosTexto, `historial_${vista}`);
+    auditar("exportar_excel_seccion", { vista, filtros: filtrosTexto, registros: sec.rows.length });
+    toast.success("Excel generado");
   };
 
-  const cargando = vista === "entrantes" ? isLoading : loadingSal;
-  const vacio = vista === "entrantes" ? gruposF.length === 0 : remisionesF.length === 0;
+  const exportarTodo = () => {
+    const secciones = [
+      seccionRecibidas(gruposEntrantesExport()),
+      seccionRemisiones(remisionesF as Record<string, unknown>[], segMap),
+      seccionPHD(phdF as Record<string, unknown>[], segMap),
+      seccionInternas(internasF as Record<string, unknown>[], segMap),
+      seccionPendientes(pendientesF as Record<string, unknown>[], segMap),
+    ];
+    const total = secciones.reduce((s, x) => s + x.rows.length, 0);
+    if (total === 0) {
+      toast.info("No hay registros para exportar.");
+      return;
+    }
+    descargarLibro(secciones, usuario, filtrosTexto, "historial_bitacora_general");
+    auditar("exportar_excel_unificado", { filtros: filtrosTexto, registros: total });
+    toast.success("Excel unificado generado");
+  };
+
+  // ---- PDF bitácora ----
+  const segPDFpara = (casoId: string): SeguimientoPDF[] => {
+    const arr = segMap.get(casoId) ?? [];
+    return arr.map((s) => ({
+      fecha: fmtFechaHora(s.created_at),
+      entidad: "",
+      observaciones: s.detalle || "—",
+      estado: s.estado || "—",
+      contacto: s.tipo || "—",
+      funcionario: s.usuario || "—",
+    }));
+  };
+
+  const pdfEntrante = (g: Grupo) => {
+    const b = g.base;
+    const datosPaciente: CampoPDF[] = [
+      { label: "Nombres", value: v(b.nombres) },
+      { label: "Apellidos", value: v(b.apellidos) },
+      { label: "Tipo documento", value: "CC" },
+      { label: "Documento", value: v(b.documento) },
+      { label: "Edad", value: fmtEdad(b.edad) },
+      { label: "EAPB / Asegurador", value: v(b.eapb) || "N/A" },
+      { label: "Régimen", value: v(b.regimen) || "N/A" },
+      { label: "IPS que remite", value: v(b.ips) || "N/A" },
+      { label: "CIE-10", value: v(b.cie10) || "N/A" },
+      { label: "Especialidad", value: v(b.especialidad) || "N/A" },
+    ];
+    const datosReferencia: CampoPDF[] = [
+      { label: "Fecha recepción", value: fmtFechaHora(b.fecha || b.created_at) },
+      { label: "Unidad / Servicio", value: v(b.unidad) || "N/A" },
+      { label: "Estado final", value: g.estadoFinal.label },
+    ];
+    const seguimientos: SeguimientoPDF[] = g.eventos.map((e) => ({
+      fecha: fmtFechaHora(e.created_at || e.fecha),
+      entidad: v(e.ips),
+      observaciones: v(e.detalle) || v(e.texto_ia) || "—",
+      estado: v(e.estado) || v(e.tipo) || "—",
+      contacto: v(e.tipo) || "—",
+      funcionario: "—",
+    }));
+    void generarBitacoraPDF({
+      tipoDocumento: "REMISIÓN ENTRANTE",
+      referencia: v(b.documento) || v(b.codigo) || g.key,
+      datosPaciente,
+      datosReferencia,
+      seguimientos,
+      usuario,
+    });
+    auditar("exportar_pdf_bitacora", { vista: "entrantes", caso: v(b.codigo) || v(b.documento) });
+  };
+
+  const pdfSaliente = (r: Remision) => {
+    const datosPaciente: CampoPDF[] = [
+      { label: "Paciente", value: v(r.paciente) },
+      { label: "Documento", value: v(r.documento) },
+      { label: "Edad", value: fmtEdad(r.edad as string) },
+      { label: "EAPB / ERP", value: v(r.eapb) || v(r.asegurador) || "N/A" },
+      { label: "Régimen", value: v(r.regimen) || "N/A" },
+      { label: "Tipo afiliado", value: "N/A" },
+    ];
+    const datosReferencia: CampoPDF[] = [
+      { label: "Fecha solicitud", value: fmtFechaHora((r.fecha_inicio as string) || r.created_at) },
+      { label: "Servicio que remite", value: v(r.servicio) || "N/A" },
+      { label: "Especialidad remitente", value: joinList(r.especialidades_tratantes) || "N/A" },
+      { label: "Especialidad destino", value: joinList(r.especialidades_receptoras) || "N/A" },
+      { label: "Motivo de remisión", value: v(r.remision_por) || "N/A" },
+      { label: "Diagnóstico CIE-10", value: v(r.cie10) || "N/A" },
+      { label: "Descripción", value: v(r.especificacion) || "N/A" },
+      { label: "N° radicado", value: fmtRadicado(v(r.codigo_radicacion), r.eapb_genera_codigo as boolean) },
+      { label: "Red comentada", value: redComentadaTxt(r) },
+      { label: "Tipo de ambulancia", value: v(r.tipo_ambulancia) || "N/A" },
+      { label: "IPS receptora", value: v(r.ips_receptora) || "N/A" },
+      { label: "Estado actual", value: estadoLabel(r.estado) },
+    ];
+    void generarBitacoraPDF({
+      tipoDocumento: "REMISIÓN SALIENTE",
+      referencia: v(r.codigo_radicacion) || v(r.documento) || r.id,
+      datosPaciente,
+      datosReferencia,
+      seguimientos: segPDFpara(r.id),
+      usuario,
+    });
+    auditar("exportar_pdf_bitacora", { vista: "salientes", caso: v(r.codigo_radicacion) || v(r.documento) });
+  };
+
+  const pdfPHD = (r: Generico) => {
+    const datosPaciente: CampoPDF[] = [
+      { label: "Paciente", value: v(r.paciente) },
+      { label: "Tipo documento", value: v(r.tipo_documento) || "N/A" },
+      { label: "Documento", value: v(r.documento) },
+      { label: "Edad", value: fmtEdad(r.edad as string) },
+      { label: "EAPB / ERP", value: v(r.eapb) || "N/A" },
+      { label: "Régimen", value: v(r.regimen) || "N/A" },
+      { label: "CIE-10", value: v(r.cie10) || "N/A" },
+      { label: "Servicio", value: v(r.servicio) || "N/A" },
+      { label: "Cama", value: v(r.cama) || "N/A" },
+      { label: "Tipo de solicitud", value: v(r.tipo_solicitud_detalle) || v(r.tipo_solicitud) || "N/A" },
+      { label: "Unidad especial", value: v(r.unidad_especial) || "N/A" },
+      { label: "Especialidad tratante", value: joinList(r.especialidades_tratantes) || "N/A" },
+      { label: "Requiere ambulancia", value: r.requiere_ambulancia ? "SI" : "NO" },
+      { label: "Tipo ambulancia", value: v(r.tipo_ambulancia) || "N/A" },
+      { label: "Código radicación", value: fmtRadicado(v(r.codigo_radicacion), r.eapb_genera_codigo as boolean) },
+      { label: "Estado actual", value: estadoGenerico(r.estado).label },
+    ];
+    const datosReferencia: CampoPDF[] = [
+      { label: "Fecha inicio trámite", value: fmtFechaHora((r.fecha_inicio as string) || r.created_at) },
+      { label: "Fecha radicación", value: fmtFechaHora(r.fecha_radicado as string) },
+      { label: "Tipo de solicitud", value: v(r.tipo_solicitud_detalle) || v(r.tipo_solicitud) || "N/A" },
+      { label: "Familiar", value: v(r.contacto_nombre) || "N/A" },
+      { label: "Parentesco", value: v(r.contacto_parentesco) || "N/A" },
+      { label: "Teléfono", value: v(r.contacto_telefono) || "N/A" },
+      { label: "Observaciones", value: v(r.observaciones) || "N/A" },
+    ];
+    void generarBitacoraPDF({
+      tipoDocumento: "PHD / PAD / O2 / ESPECIALES",
+      referencia: v(r.codigo_radicacion) || v(r.documento) || r.id,
+      datosPaciente,
+      datosReferencia,
+      seguimientos: segPDFpara(r.id),
+      usuario,
+    });
+    auditar("exportar_pdf_bitacora", { vista: "phd", caso: v(r.documento) });
+  };
+
+  const pdfInterna = (r: Generico) => {
+    const datosPaciente: CampoPDF[] = [
+      { label: "Paciente", value: v(r.paciente) },
+      { label: "Tipo documento", value: v(r.tipo_documento) || "N/A" },
+      { label: "Documento", value: v(r.documento) },
+      { label: "Servicio", value: v(r.servicio) || "N/A" },
+      { label: "EAPB / ERP", value: v(r.eapb) || v(r.proveedor_prestador) || "N/A" },
+      { label: "Tipo solicitud / examen", value: v(r.tipo_solicitud) || "N/A" },
+      { label: "Tipo ambulancia", value: v(r.tipo_ambulancia) || "N/A" },
+      { label: "Estado actual", value: estadoGenerico(r.estado).label },
+    ];
+    const datosReferencia: CampoPDF[] = [
+      { label: "Fecha/hora creación", value: fmtFechaHora((r.fecha_inicio as string) || r.created_at) },
+      { label: "Observaciones", value: v(r.observaciones) || "N/A" },
+    ];
+    void generarBitacoraPDF({
+      tipoDocumento: "REFERENCIA INTERNA",
+      referencia: v(r.documento) || r.id,
+      datosPaciente,
+      datosReferencia,
+      seguimientos: segPDFpara(r.id),
+      usuario,
+    });
+    auditar("exportar_pdf_bitacora", { vista: "interna", caso: v(r.documento) });
+  };
+
+  const pdfPendiente = (r: Generico) => {
+    const datosPaciente: CampoPDF[] = [
+      { label: "Paciente / Asunto", value: v(r.paciente_asunto) },
+      { label: "Tipo pendiente", value: v(r.tipo_pendiente) || "N/A" },
+      { label: "Destino (IPS / Área)", value: v(r.ips_area) || "N/A" },
+      { label: "Prioridad", value: v(r.prioridad) || "N/A" },
+      { label: "Estado", value: estadoGenerico(r.estado).label },
+    ];
+    const datosReferencia: CampoPDF[] = [
+      { label: "Fecha creación", value: fmtFechaHora((r.fecha as string) || r.created_at) },
+      { label: "Observación de entrega", value: v(r.observacion_entrega) || "N/A" },
+    ];
+    void generarBitacoraPDF({
+      tipoDocumento: "PENDIENTE",
+      referencia: r.id,
+      datosPaciente,
+      datosReferencia,
+      seguimientos: segPDFpara(r.id),
+      usuario,
+    });
+    auditar("exportar_pdf_bitacora", { vista: "pendientes", caso: v(r.paciente_asunto) });
+  };
+
+  const cargando =
+    vista === "entrantes" ? isLoading
+    : vista === "salientes" ? loadingSal
+    : vista === "phd" ? loadingPhd
+    : vista === "interna" ? loadingInt
+    : loadingPen;
+
+  const vacio =
+    vista === "entrantes" ? gruposF.length === 0
+    : vista === "salientes" ? remisionesF.length === 0
+    : vista === "phd" ? phdF.length === 0
+    : vista === "interna" ? internasF.length === 0
+    : pendientesF.length === 0;
 
   const setQuickPeriodo = (p: Periodo) => {
     setPeriodo(p);
     setFechaEspecifica(undefined);
   };
 
+  const tituloVista = VISTAS.find((x) => x.key === vista)?.label ?? "";
+  const usaMensajes = vista === "entrantes" || vista === "salientes";
+
   return (
     <div>
       <AppHeader title="Referencia y Contrarreferencia" subtitle="Control de Casos Entrantes y Salientes" />
 
       <Panel bodyMaxHeight={null}>
-        {/* Selector de vista: Entrantes / Salientes */}
-        <div className="mb-3 flex items-center justify-center">
-          <div className="inline-flex rounded-full border border-border bg-muted/40 p-1">
-            <button
-              onClick={() => setVista("entrantes")}
-              className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
-                vista === "entrantes" ? "bg-status-green text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <ArrowDownLeft className="h-3.5 w-3.5" /> Entrantes
-            </button>
-            <button
-              onClick={() => setVista("salientes")}
-              className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
-                vista === "salientes" ? "bg-status-teal text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <ArrowUpRight className="h-3.5 w-3.5" /> Salientes
-            </button>
+        {/* Selector de vista con scroll horizontal */}
+        <div className="mb-3 flex justify-center">
+          <div className="inline-flex max-w-full gap-1 overflow-x-auto rounded-full border border-border bg-muted/40 p-1">
+            {VISTAS.map((vw) => {
+              const Icon = vw.icon;
+              const active = vista === vw.key;
+              return (
+                <button
+                  key={vw.key}
+                  onClick={() => setVista(vw.key)}
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
+                    active ? `${vw.color} text-white shadow-sm` : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" /> {vw.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Encabezado: título + barra compacta de filtros + Excel */}
+        {/* Encabezado: título + filtros + exportar */}
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-extrabold uppercase tracking-wide text-foreground">
-            {vista === "entrantes" ? "HISTORIAL DE REMISIONES ENTRANTES" : "HISTORIAL DE REMISIONES SALIENTES"}
+            HISTORIAL · {tituloVista}
           </h2>
           <div className="flex flex-wrap items-center gap-1.5">
-            {/* Filtro por caso */}
+            {/* Filtro por caso/estado */}
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="h-8 rounded-full text-[11px] font-semibold">
@@ -545,37 +888,23 @@ function HistorialPage() {
               </PopoverTrigger>
               <PopoverContent align="end" className="w-52 p-1.5">
                 <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                  Filtrar por caso
+                  Filtrar por {vista === "entrantes" ? "caso" : "estado"}
                 </p>
                 {vista === "entrantes"
                   ? TIPO_FILTERS.map((t) => (
-                      <button
-                        key={t}
-                        onClick={() => setTipo(t)}
-                        className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs font-medium transition hover:bg-muted ${
-                          tipo === t ? "text-primary" : "text-foreground"
-                        }`}
-                      >
-                        {TIPO_LABEL[t]}
-                        {tipo === t && <Check className="h-3.5 w-3.5" />}
-                      </button>
+                      <FilterButton key={t} active={tipo === t} label={TIPO_LABEL[t]} onClick={() => setTipo(t)} />
                     ))
-                  : SAL_FILTERS.map((t) => (
-                      <button
-                        key={t}
-                        onClick={() => setSalTipo(t)}
-                        className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs font-medium transition hover:bg-muted ${
-                          salTipo === t ? "text-primary" : "text-foreground"
-                        }`}
-                      >
-                        {SAL_LABEL[t]}
-                        {salTipo === t && <Check className="h-3.5 w-3.5" />}
-                      </button>
-                    ))}
+                  : vista === "salientes"
+                    ? SAL_FILTERS.map((t) => (
+                        <FilterButton key={t} active={salTipo === t} label={SAL_LABEL[t]} onClick={() => setSalTipo(t)} />
+                      ))
+                    : GEN_FILTERS.map((t) => (
+                        <FilterButton key={t} active={genTipo === t} label={GEN_LABEL[t]} onClick={() => setGenTipo(t)} />
+                      ))}
               </PopoverContent>
             </Popover>
 
-            {/* Filtro por período + calendario */}
+            {/* Período + calendario */}
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="h-8 rounded-full text-[11px] font-semibold">
@@ -585,9 +914,7 @@ function HistorialPage() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-auto p-2">
-                <p className="px-1 pb-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                  Período
-                </p>
+                <p className="px-1 pb-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Período</p>
                 <div className="flex flex-wrap gap-1">
                   {PERIODOS.map((p) => (
                     <button
@@ -620,16 +947,34 @@ function HistorialPage() {
               </PopoverContent>
             </Popover>
 
-            {/* Mensajes recientes */}
-            <MensajesRecientesButton vista={vista} mensajes={mensajes} />
+            {usaMensajes && <MensajesRecientesButton vista={vista} mensajes={mensajes} />}
 
-            <Button
-              size="sm"
-              className="h-8 rounded-full bg-status-green text-white hover:bg-status-green/90"
-              onClick={exportarExcel}
-            >
-              <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Excel
-            </Button>
+            {/* Exportación */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button size="sm" className="h-8 rounded-full bg-status-green text-white hover:bg-status-green/90">
+                  <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Exportar
+                  <ChevronDown className="ml-1 h-3.5 w-3.5 opacity-80" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-60 p-1.5">
+                <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                  Exportar a Excel (GU-FR-50)
+                </p>
+                <button
+                  onClick={exportarVistaActual}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs font-medium transition hover:bg-muted"
+                >
+                  <FileSpreadsheet className="h-4 w-4 text-status-green" /> Solo {tituloVista}
+                </button>
+                <button
+                  onClick={exportarTodo}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs font-medium transition hover:bg-muted"
+                >
+                  <FileSpreadsheet className="h-4 w-4 text-status-teal" /> Todo el histórico (5 hojas)
+                </button>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 
@@ -638,9 +983,7 @@ function HistorialPage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="rounded-lg pl-9"
-            placeholder={
-              vista === "entrantes" ? "Buscar por número de documento…" : "Buscar por documento, radicado o IPS receptora…"
-            }
+            placeholder="Buscar por documento, paciente, radicado…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
@@ -658,24 +1001,83 @@ function HistorialPage() {
         ) : vista === "entrantes" ? (
           <div className="grid gap-2">
             {gruposF.map((g) => (
-              <CasoCard key={g.key} grupo={g} canEdit={canEdit} onConfirmar={() => setIngresoFor(g)} />
+              <CasoCard key={g.key} grupo={g} canEdit={canEdit} onConfirmar={() => setIngresoFor(g)} onPDF={() => pdfEntrante(g)} />
+            ))}
+          </div>
+        ) : vista === "salientes" ? (
+          <div className="grid gap-2">
+            {remisionesF.map((r) => (
+              <RemisionCard key={r.id} remision={r} onPDF={() => pdfSaliente(r)} />
+            ))}
+          </div>
+        ) : vista === "phd" ? (
+          <div className="grid gap-2">
+            {(phdF as Generico[]).map((r) => (
+              <GenericoCard
+                key={r.id}
+                titulo={`${v(r.paciente) || "Sin nombre"}`}
+                sub={[v(r.documento), v(r.tipo_solicitud_detalle) || v(r.tipo_solicitud), v(r.eapb)]}
+                estado={estadoGenerico(r.estado)}
+                fecha={fmtFechaHora((r.fecha_inicio as string) || r.created_at)}
+                radicado={fmtRadicado(v(r.codigo_radicacion), r.eapb_genera_codigo as boolean)}
+                onPDF={() => pdfPHD(r)}
+              />
+            ))}
+          </div>
+        ) : vista === "interna" ? (
+          <div className="grid gap-2">
+            {(internasF as Generico[]).map((r) => (
+              <GenericoCard
+                key={r.id}
+                titulo={`${v(r.paciente) || "Sin nombre"}`}
+                sub={[v(r.documento), v(r.tipo_solicitud), v(r.servicio)]}
+                estado={estadoGenerico(r.estado)}
+                fecha={fmtFechaHora((r.fecha_inicio as string) || r.created_at)}
+                onPDF={() => pdfInterna(r)}
+              />
             ))}
           </div>
         ) : (
           <div className="grid gap-2">
-            {remisionesF.map((r) => (
-              <RemisionCard key={r.id} remision={r} />
+            {(pendientesF as Generico[]).map((r) => (
+              <GenericoCard
+                key={r.id}
+                titulo={`${v(r.paciente_asunto) || "Pendiente"}`}
+                sub={[v(r.tipo_pendiente), v(r.ips_area), v(r.prioridad)]}
+                estado={estadoGenerico(r.estado)}
+                fecha={fmtFechaHora((r.fecha as string) || r.created_at)}
+                onPDF={() => pdfPendiente(r)}
+              />
             ))}
           </div>
         )}
       </Panel>
 
-      <IngresoDialog
-        grupo={ingresoFor}
-        onClose={() => setIngresoFor(null)}
-        onConfirmar={handleConfirmarIngreso}
-      />
+      <IngresoDialog grupo={ingresoFor} onClose={() => setIngresoFor(null)} onConfirmar={handleConfirmarIngreso} />
     </div>
+  );
+}
+
+function redComentadaTxt(r: Remision): string {
+  const local = joinList(r.ips_red_local);
+  const nacional = joinList(r.departamentos_red_nacional);
+  const partes: string[] = [];
+  if (local) partes.push(`LOCAL: ${local}`);
+  if (nacional) partes.push(`NACIONAL: ${nacional}`);
+  return partes.length ? partes.join(" | ") : v(r.alcance_red) || "N/A";
+}
+
+function FilterButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs font-medium transition hover:bg-muted ${
+        active ? "text-primary" : "text-foreground"
+      }`}
+    >
+      {label}
+      {active && <Check className="h-3.5 w-3.5" />}
+    </button>
   );
 }
 
@@ -742,12 +1144,7 @@ function MensajesRecientesButton({ vista, mensajes }: { vista: Vista; mensajes: 
                           {m.mensaje}
                         </pre>
                         <div className="mt-2 flex items-center justify-end gap-1.5">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 text-[11px]"
-                            onClick={() => setAbierto(null)}
-                          >
+                          <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setAbierto(null)}>
                             <X className="mr-1 h-3.5 w-3.5" /> Cerrar
                           </Button>
                           <Button
@@ -789,7 +1186,7 @@ function IngresoDialog({
   });
   const [guardando, setGuardando] = useState(false);
 
-  const set = (k: keyof IngresoDatos, v: string) => setDatos((d) => ({ ...d, [k]: v }));
+  const set = (k: keyof IngresoDatos, val: string) => setDatos((d) => ({ ...d, [k]: val }));
 
   const submit = async () => {
     if (!grupo) return;
@@ -850,11 +1247,7 @@ function IngresoDialog({
           <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
-          <Button
-            className="bg-status-green text-white hover:bg-status-green/90"
-            onClick={submit}
-            disabled={guardando}
-          >
+          <Button className="bg-status-green text-white hover:bg-status-green/90" onClick={submit} disabled={guardando}>
             <Hospital className="mr-1.5 h-4 w-4" /> {guardando ? "Guardando…" : "Confirmar ingreso"}
           </Button>
         </DialogFooter>
@@ -863,14 +1256,29 @@ function IngresoDialog({
   );
 }
 
+function PDFButton({ onClick }: { onClick: () => void }) {
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      className="h-7 rounded-md border-status-red/40 text-[11px] font-semibold text-status-red hover:bg-status-red/10"
+      onClick={onClick}
+    >
+      <FileText className="mr-1 h-3.5 w-3.5" /> Bitácora PDF
+    </Button>
+  );
+}
+
 function CasoCard({
   grupo,
   canEdit,
   onConfirmar,
+  onPDF,
 }: {
   grupo: Grupo;
   canEdit: boolean;
   onConfirmar: (g: Grupo) => void;
+  onPDF: () => void;
 }) {
   const { base, eventos, estadoFinal, confirmable } = grupo;
   const nombre = [base.nombres, base.apellidos].filter(Boolean).join(" ") || "Sin nombre";
@@ -907,21 +1315,24 @@ function CasoCard({
             </span>
           </div>
         ))}
-        {confirmable && canEdit && (
-          <Button
-            size="sm"
-            className="ml-auto h-7 rounded-md bg-status-green text-[11px] text-white hover:bg-status-green/90"
-            onClick={() => onConfirmar(grupo)}
-          >
-            <Hospital className="mr-1.5 h-3.5 w-3.5" /> Confirmar Ingreso
-          </Button>
-        )}
+        <div className="ml-auto flex items-center gap-1.5">
+          <PDFButton onClick={onPDF} />
+          {confirmable && canEdit && (
+            <Button
+              size="sm"
+              className="h-7 rounded-md bg-status-green text-[11px] text-white hover:bg-status-green/90"
+              onClick={() => onConfirmar(grupo)}
+            >
+              <Hospital className="mr-1.5 h-3.5 w-3.5" /> Confirmar Ingreso
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-function RemisionCard({ remision: r }: { remision: Remision }) {
+function RemisionCard({ remision: r, onPDF }: { remision: Remision; onPDF: () => void }) {
   const est = estadoSaliente(r.estado);
   return (
     <div className={`rounded-lg border border-border border-l-4 ${cardBorder[est.color]} bg-card px-3 py-2 shadow-sm`}>
@@ -933,8 +1344,8 @@ function RemisionCard({ remision: r }: { remision: Remision }) {
           </span>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2 text-right">
+          {r.servicio && <span className="text-[11px] italic text-muted-foreground">{r.servicio}</span>}
           {r.ips_receptora && <span className="text-[11px] font-bold text-foreground">{r.ips_receptora}</span>}
-          {r.prioridad && <span className="text-[11px] italic text-muted-foreground">{r.prioridad}</span>}
           <span
             className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${statusBadge[est.color]}`}
           >
@@ -942,21 +1353,55 @@ function RemisionCard({ remision: r }: { remision: Remision }) {
           </span>
         </div>
       </div>
+      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+        <span className="font-mono">Rad. {fmtRadicado(v(r.codigo_radicacion), r.eapb_genera_codigo as boolean)}</span>
+        {(r.eapb || r.asegurador) && <span className="rounded border px-1.5 py-0.5">{r.eapb || r.asegurador}</span>}
+        <span className="font-mono">{fmtFecha(r.created_at, r.fecha_radicado as string)}</span>
+        <div className="ml-auto">
+          <PDFButton onClick={onPDF} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
-      <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5 rounded-md border bg-background/40 px-1.5 py-0.5">
-          <Ambulance className="h-3.5 w-3.5 text-status-teal" />
-          <span className="font-semibold text-foreground">{r.servicio || "Servicio —"}</span>
+function GenericoCard({
+  titulo,
+  sub,
+  estado,
+  fecha,
+  radicado,
+  onPDF,
+}: {
+  titulo: string;
+  sub: string[];
+  estado: { label: string; color: StatusColor };
+  fecha: string;
+  radicado?: string;
+  onPDF: () => void;
+}) {
+  const subItems = sub.filter(Boolean);
+  return (
+    <div className={`rounded-lg border border-border border-l-4 ${cardBorder[estado.color]} bg-card px-3 py-2 shadow-sm`}>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <div className="min-w-0">
+          <span className="text-sm font-extrabold text-status-blue">{titulo}</span>
+        </div>
+        <span
+          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${statusBadge[estado.color]}`}
+        >
+          ● {estado.label}
         </span>
-        {r.codigo_radicacion && (
-          <span className="inline-flex items-center gap-1 rounded-md border bg-background/40 px-1.5 py-0.5">
-            Rad. <span className="font-mono font-semibold text-foreground">{r.codigo_radicacion}</span>
-          </span>
-        )}
-        {r.asegurador && (
-          <span className="inline-flex items-center gap-1 rounded-md border bg-background/40 px-1.5 py-0.5">{r.asegurador}</span>
-        )}
-        <span className="ml-auto font-mono text-[10px]">{fmtFecha(r.created_at, r.fecha_radicado)}</span>
+      </div>
+      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+        {subItems.map((s, i) => (
+          <span key={i} className="rounded border px-1.5 py-0.5">{s}</span>
+        ))}
+        {radicado && <span className="font-mono">Rad. {radicado}</span>}
+        <span className="font-mono">{fecha}</span>
+        <div className="ml-auto">
+          <PDFButton onClick={onPDF} />
+        </div>
       </div>
     </div>
   );
