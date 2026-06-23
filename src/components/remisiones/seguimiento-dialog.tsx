@@ -766,7 +766,25 @@ export function SeguimientoDialog({
 
   // Detalle JSON específico por tipo (estructura flexible).
   const construirDetalles = (): Record<string, unknown> | null => {
-    if (!esSaliente) return null;
+    if (esInterna) {
+      switch (tipoSeg) {
+        case TI.PENDIENTE:
+          return { funcionario: riFuncionario.trim() || null, cargo: riCargo.trim() || null };
+        case TI.COORDINADO:
+          return {
+            fecha: riFecha.trim() || null,
+            hora: riHora.trim() || null,
+            informo_ambulancia: riInformoAmb,
+            informo_servicio: riInformoServ,
+          };
+        default:
+          return null;
+      }
+    }
+    if (esPendiente) {
+      return { cumplimiento: tipoSeg === TP.COMPLETO ? "completo" : "parcial" };
+    }
+    if (!usaIndigo) return null;
     if (nuevoRadicadoMode) {
       return { radicado_anterior: ultimoRadicado || null, nuevo_radicado: nuevoRadicado.trim() };
     }
