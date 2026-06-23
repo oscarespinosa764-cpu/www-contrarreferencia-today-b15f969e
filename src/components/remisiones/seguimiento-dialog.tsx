@@ -353,7 +353,7 @@ export function SeguimientoDialog({
   const ultimoRadicado = radicadosLista[radicadosLista.length - 1] ?? "";
 
   // ¿Mostrar la opción "RADICADO DE CASO"? Solo si la EAPB genera código y aún no existe radicado real.
-  const mostrarOpcionRadicado = esSaliente && generaCodigo && !radicadoReal;
+  const mostrarOpcionRadicado = usaIndigo && generaCodigo && !radicadoReal;
 
   const TIPOS_SALIENTES = useMemo(() => {
     const arr = [
@@ -373,7 +373,20 @@ export function SeguimientoDialog({
     return arr;
   }, [mostrarOpcionRadicado]);
 
-  const TIPOS_SEG = esSaliente ? TIPOS_SALIENTES : TIPOS_LEGACY;
+  // Tipos para PHD/PAD/O2/Especiales (subconjunto saliente).
+  const TIPOS_PHD = useMemo(() => {
+    return [...(mostrarOpcionRadicado ? [T.RADICADO] : []), ...TIPOS_PHD_BASE];
+  }, [mostrarOpcionRadicado]);
+
+  const TIPOS_SEG: string[] = esSaliente
+    ? TIPOS_SALIENTES
+    : esPhd
+      ? TIPOS_PHD
+      : esInterna
+        ? TIPOS_INTERNA
+        : esPendiente
+          ? TIPOS_PENDIENTE
+          : [];
 
   const findEstado = (re: RegExp) => (estadoOpciones ?? []).find((o) => re.test(o)) ?? "";
 
