@@ -319,6 +319,15 @@ export function SeguimientoDialog({
   const radicadoReal =
     radicadoCaso && !/PENDIENTE|NO APLICA/i.test(radicadoCaso) ? radicadoCaso.trim() : "";
 
+  // Lista de radicados (pueden registrarse varios separados por " · ").
+  const radicadosLista = radicadoReal
+    ? radicadoReal
+        .split(/\s*·\s*/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
+  const ultimoRadicado = radicadosLista[radicadosLista.length - 1] ?? "";
+
   // ¿Mostrar la opción "RADICADO DE CASO"? Solo si la EAPB genera código y aún no existe radicado real.
   const mostrarOpcionRadicado = esSaliente && generaCodigo && !radicadoReal;
 
