@@ -1113,7 +1113,12 @@ export function SeguimientoDialog({
               </SelectTrigger>
               <SelectContent className="max-w-[calc(100vw-2rem)]">
                 {TIPOS_SEG.map((t) => (
-                  <SelectItem key={t} value={t} className="whitespace-normal">
+                  <SelectItem
+                    key={t}
+                    value={t}
+                    className="whitespace-normal"
+                    title={t === T.PERTINENCIA ? REVISION_AUT_LABEL_COMPLETO : undefined}
+                  >
                     {t}
                   </SelectItem>
                 ))}
