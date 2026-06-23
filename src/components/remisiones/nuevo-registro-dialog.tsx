@@ -187,11 +187,14 @@ export function NuevoRegistroDialog({
     const f = new FormData(e.currentTarget);
 
     // Validaciones de trazabilidad ÍNDIGO.
-    if (!tipoTramiteSel) return toast.error("Selecciona el tipo de trámite");
-    if (!alcance) return toast.error("Selecciona el alcance de gestión / red comentada");
+    if (!remisionPor) return toast.error("Selecciona el motivo en 'Remisión por'");
+    if (!eapbSel.trim()) return toast.error("Indica la EAPB / ERP");
+    if (!redLocal && !redNacional)
+      return toast.error("Marca la red a la que se comenta (local y/o nacional)");
     if (mostrarPreguntaPlataforma && !plataformaFunc)
       return toast.error("Indica si la plataforma se encuentra funcionando");
-    if (ipsSel.length === 0) return toast.error("Marca al menos una IPS de red local");
+    if (redLocal && ipsSel.length === 0)
+      return toast.error("Marca al menos una IPS de red local");
     const deptosFinal = [
       ...deptosSel.filter((d) => d !== "Otro"),
       ...(deptosSel.includes("Otro") && deptoOtro.trim() ? [deptoOtro.trim()] : []),
@@ -204,8 +207,8 @@ export function NuevoRegistroDialog({
       : null;
     const codigoRad = codigoInicial(generaCodigo);
 
-    const plantilla = generarPlantillaInicio({
-      tipoTramite: tipoTramiteSel,
+    const trazabilidad = generarPlantillaInicio({
+      tipoTramite: tipoTramiteDerivado,
       tienePlataforma,
       plataformaFuncionando,
       generaCodigo,
@@ -213,8 +216,6 @@ export function NuevoRegistroDialog({
       ipsRedLocal: ipsSel,
       departamentos: deptosFinal,
     });
-    const nota = generarNotaAclaratoria({ motivo: motivoNota });
-    const trazabilidad = nota ? `${plantilla}\n\n${nota}` : plantilla;
 
     const { data: u } = await supabase.auth.getUser();
     const inicioRaw = String(f.get("fecha_inicio") || "");
@@ -233,10 +234,12 @@ export function NuevoRegistroDialog({
         especialidades_tratantes: tratantes.join(", "),
         especialidades_receptoras: receptoras.join(", "),
         prioridad: String(f.get("prioridad")),
-        remision_por: String(f.get("remision_por")),
+        remision_por: remisionPor,
         especificacion: String(f.get("especificacion")),
-        tipo_tramite: tipoTramiteSel,
+        tipo_tramite: tipoTramiteDerivado,
         tipo_ambulancia: String(f.get("tipo_ambulancia")),
+        regimen: String(f.get("regimen") || ""),
+        asegurador: eapbSel || null,
         contacto_nombre: String(f.get("contacto_nombre")),
         contacto_parentesco: String(f.get("contacto_parentesco")),
         contacto_telefono: String(f.get("contacto_telefono")),
