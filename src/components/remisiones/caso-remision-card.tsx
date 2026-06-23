@@ -147,20 +147,22 @@ export function CasoRemisionCard({
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    // Solo se actualizan los campos autorizados para edición.
     const { error } = await supabase
       .from("remisiones")
       .update({
-        paciente: String(f.get("paciente")),
-        documento: String(f.get("documento")),
-        tipo_documento: String(f.get("tipo_documento")),
-        edad: String(f.get("edad")),
         cie10: String(f.get("cie10")),
         servicio: String(f.get("servicio")),
         cama: String(f.get("cama")),
-        asegurador: String(f.get("asegurador")),
         prioridad: String(f.get("prioridad")),
+        remision_por: String(f.get("remision_por")),
+        tipo_ambulancia: String(f.get("tipo_ambulancia")),
         especialidades_tratantes: tratantes.join(", "),
         especialidades_receptoras: receptoras.join(", "),
+        especificacion: String(f.get("especificacion")),
+        contacto_nombre: String(f.get("contacto_nombre")),
+        contacto_parentesco: String(f.get("contacto_parentesco")),
+        contacto_telefono: String(f.get("contacto_telefono")),
         observaciones: String(f.get("observaciones")),
       })
       .eq("id", r.id);
