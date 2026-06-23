@@ -615,7 +615,7 @@ export function NuevoRegistroDialog({
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="especificacion" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Justificación remisión
+                  Justificación remisión <span className="text-status-red">*</span>
                 </Label>
                 <Textarea id="especificacion" name="especificacion" rows={2} />
               </div>
