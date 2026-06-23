@@ -247,24 +247,21 @@ export function SeguimientoDialog({
   // Ver detalle / últimos seguimientos
   const [verDetalle, setVerDetalle] = useState<Record<string, unknown> | null>(null);
 
-  // Datos del caso (solo remisiones salientes).
+  // Datos del caso (remisiones salientes y PHD/PAD/O2/Especiales).
   const { data: caso } = useQuery({
-    queryKey: ["remision-indigo-caso", casoId],
-    enabled: open && esSaliente,
+    queryKey: ["indigo-caso", tabla, casoId],
+    enabled: open && usaIndigo,
     queryFn: async () => {
       const { data } = await supabase
-        .from("remisiones")
+        .from((tabla ?? "remisiones") as "remisiones")
         .select(
-          "eapb, tipo_tramite, alcance_red, ips_red_local, departamentos_red_nacional, eapb_tiene_plataforma, eapb_genera_codigo, plataforma_funcionando, ips_receptora, codigo_radicacion",
+          "eapb, tipo_tramite, eapb_tiene_plataforma, eapb_genera_codigo, plataforma_funcionando, ips_receptora, codigo_radicacion",
         )
         .eq("id", casoId)
         .maybeSingle();
       return data as {
         eapb: string | null;
         tipo_tramite: string | null;
-        alcance_red: string | null;
-        ips_red_local: string | null;
-        departamentos_red_nacional: string | null;
         eapb_tiene_plataforma: boolean | null;
         eapb_genera_codigo: boolean | null;
         plataforma_funcionando: boolean | null;
@@ -277,7 +274,7 @@ export function SeguimientoDialog({
   // Catálogo IPS con sede (autocompletado inteligente).
   const { data: ipsCat = [] } = useQuery({
     queryKey: ["cat-ips-sedes"],
-    enabled: open && esSaliente,
+    enabled: open && usaIndigo,
     queryFn: async () => {
       const { data } = await supabase
         .from("catalogos")
@@ -292,7 +289,7 @@ export function SeguimientoDialog({
   // Catálogo empresas de ambulancia / TEP.
   const { data: empresasTep = [] } = useQuery({
     queryKey: ["cat-empresa-tep"],
-    enabled: open && esSaliente,
+    enabled: open && usaIndigo,
     queryFn: async () => {
       const { data } = await supabase
         .from("catalogos")
