@@ -148,6 +148,20 @@ export function NuevoRegistroDialog({
     },
   });
 
+  // Catálogo de IPS (autocompletado para pendientes).
+  const { data: ipsCatalogo = [] } = useQuery({
+    queryKey: ["cat-ips-valores"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor")
+        .eq("tipo", "IPS")
+        .eq("activo", true)
+        .order("valor");
+      return (data ?? []).map((d) => d.valor as string);
+    },
+  });
+
   // Opciones de EAPB para el autocompletado.
   const eapbOptions = useMemo(() => eapbList.map((e) => e.valor), [eapbList]);
   const eapbActual = useMemo(
@@ -167,6 +181,16 @@ export function NuevoRegistroDialog({
   const alcanceStore = redLocal && redNacional ? "LOCAL_NACIONAL" : redNacional ? "NACIONAL" : "LOCAL";
   // El tipo de trámite se deriva (ya no se selecciona manualmente).
   const tipoTramiteDerivado = derivarTipoTramite(remisionPor, tipoEntidad);
+
+  // EAPB seleccionada en la pestaña PHD (con sus flags de plataforma / radicado por tipo).
+  const phdEapbActual = useMemo(
+    () => eapbList.find((e) => e.valor === phdEapb) ?? null,
+    [eapbList, phdEapb],
+  );
+  const phdTienePlataforma = (phdEapbActual?.extra1 ?? "").toUpperCase() === "SI";
+  const phdGenera = phdGeneraCodigo(phdTipoSolicitud, phdEapbActual ?? undefined);
+  const phdEsUnidadEspecial = /unidad/i.test(phdTipoSolicitud);
+
 
   const toggleList = (arr: string[], v: string, set: (x: string[]) => void) =>
     set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
