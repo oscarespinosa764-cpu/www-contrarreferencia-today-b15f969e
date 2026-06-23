@@ -49,6 +49,10 @@ import {
   generarPlantillaNegaciones,
   generarPlantillaNuevoRadicado,
   generarPlantillaOtroSeg,
+  generarPlantillaPendienteCumplimiento,
+  generarPlantillaRefInternaCoordinado,
+  generarPlantillaRefInternaCulminacion,
+  generarPlantillaRefInternaPendiente,
   generarPlantillaPlataformaSeg,
   generarPlantillaRadicado,
   generarPlantillaRevisionAutorizacion,
@@ -93,19 +97,29 @@ const T = {
   OTRO: "OTRO",
 } as const;
 
-// Lista heredada para otros módulos (domiciliarios, PHD, etc.). No se modifica.
-const TIPOS_LEGACY = [
-  "Radicado / inicio trámite de remisión",
-  "Telefónico / celular",
-  "Correo electrónico",
-  "Plataforma web",
-  "Físico o presencial",
-  "Respuesta de IPS",
-  "Gestión ambulancia",
-  "Actualización clínica",
-  "Contacto familiar",
-  "Otro",
-];
+// --- Tipos de seguimiento PHD/PAD/O2/Especiales (reutiliza lógica saliente) ---
+const TIPOS_PHD_BASE = [
+  T.EVOLUCION,
+  T.CORREO,
+  T.PLATAFORMA,
+  T.FISICO,
+  T.OTRO,
+] as const;
+
+// --- Referencia interna ---
+const TI = {
+  PENDIENTE: "PENDIENTE COORDINACIÓN FECHA Y HORA EXAMEN",
+  COORDINADO: "EXAMEN COORDINADO",
+  CULMINACION: "CULMINACIÓN DE SOLICITUD",
+} as const;
+const TIPOS_INTERNA = [TI.PENDIENTE, TI.COORDINADO, TI.CULMINACION];
+
+// --- Pendientes ---
+const TP = {
+  PARCIAL: "CUMPLIMIENTO PARCIAL",
+  COMPLETO: "CUMPLIMIENTO COMPLETO",
+} as const;
+const TIPOS_PENDIENTE = [TP.PARCIAL, TP.COMPLETO];
 
 const ESTADOS_SOLICITUD = ["Sí acepta", "No acepta", "Pendiente", "No aplica"];
 
@@ -134,6 +148,11 @@ export function SeguimientoDialog({
   const especialidadesList = useMemo(() => splitEspecialidades(especialidades), [especialidades]);
 
   const esSaliente = tabla === "remisiones";
+  const esPhd = tabla === "domiciliarios";
+  const esInterna = tabla === "referencia_interna";
+  const esPendiente = tabla === "pendientes";
+  // Módulos que reutilizan toda la lógica de trazabilidad Índigo.
+  const usaIndigo = esSaliente || esPhd;
 
   // --- Estados base ---
   const [tipoSeg, setTipoSeg] = useState("");
@@ -196,6 +215,14 @@ export function SeguimientoDialog({
   // Otro
   const [otroCual, setOtroCual] = useState("");
 
+  // Referencia interna
+  const [riFuncionario, setRiFuncionario] = useState("");
+  const [riCargo, setRiCargo] = useState("");
+  const [riFecha, setRiFecha] = useState("");
+  const [riHora, setRiHora] = useState("");
+  const [riInformoAmb, setRiInformoAmb] = useState(false);
+  const [riInformoServ, setRiInformoServ] = useState(false);
+
   // Revisión autorización estancia hospitalaria (antes pertinencia médica)
   const [revAutoriza, setRevAutoriza] = useState<"" | "SI" | "NO">("");
   const [revNota, setRevNota] = useState<"" | "SI" | "NO">("");
@@ -220,24 +247,21 @@ export function SeguimientoDialog({
   // Ver detalle / últimos seguimientos
   const [verDetalle, setVerDetalle] = useState<Record<string, unknown> | null>(null);
 
-  // Datos del caso (solo remisiones salientes).
+  // Datos del caso (remisiones salientes y PHD/PAD/O2/Especiales).
   const { data: caso } = useQuery({
-    queryKey: ["remision-indigo-caso", casoId],
-    enabled: open && esSaliente,
+    queryKey: ["indigo-caso", tabla, casoId],
+    enabled: open && usaIndigo,
     queryFn: async () => {
       const { data } = await supabase
-        .from("remisiones")
+        .from((tabla ?? "remisiones") as "remisiones")
         .select(
-          "eapb, tipo_tramite, alcance_red, ips_red_local, departamentos_red_nacional, eapb_tiene_plataforma, eapb_genera_codigo, plataforma_funcionando, ips_receptora, codigo_radicacion",
+          "eapb, tipo_tramite, eapb_tiene_plataforma, eapb_genera_codigo, plataforma_funcionando, ips_receptora, codigo_radicacion",
         )
         .eq("id", casoId)
         .maybeSingle();
       return data as {
         eapb: string | null;
         tipo_tramite: string | null;
-        alcance_red: string | null;
-        ips_red_local: string | null;
-        departamentos_red_nacional: string | null;
         eapb_tiene_plataforma: boolean | null;
         eapb_genera_codigo: boolean | null;
         plataforma_funcionando: boolean | null;
@@ -250,7 +274,7 @@ export function SeguimientoDialog({
   // Catálogo IPS con sede (autocompletado inteligente).
   const { data: ipsCat = [] } = useQuery({
     queryKey: ["cat-ips-sedes"],
-    enabled: open && esSaliente,
+    enabled: open && usaIndigo,
     queryFn: async () => {
       const { data } = await supabase
         .from("catalogos")
@@ -265,7 +289,7 @@ export function SeguimientoDialog({
   // Catálogo empresas de ambulancia / TEP.
   const { data: empresasTep = [] } = useQuery({
     queryKey: ["cat-empresa-tep"],
-    enabled: open && esSaliente,
+    enabled: open && usaIndigo,
     queryFn: async () => {
       const { data } = await supabase
         .from("catalogos")
@@ -329,7 +353,7 @@ export function SeguimientoDialog({
   const ultimoRadicado = radicadosLista[radicadosLista.length - 1] ?? "";
 
   // ¿Mostrar la opción "RADICADO DE CASO"? Solo si la EAPB genera código y aún no existe radicado real.
-  const mostrarOpcionRadicado = esSaliente && generaCodigo && !radicadoReal;
+  const mostrarOpcionRadicado = usaIndigo && generaCodigo && !radicadoReal;
 
   const TIPOS_SALIENTES = useMemo(() => {
     const arr = [
@@ -349,7 +373,20 @@ export function SeguimientoDialog({
     return arr;
   }, [mostrarOpcionRadicado]);
 
-  const TIPOS_SEG = esSaliente ? TIPOS_SALIENTES : TIPOS_LEGACY;
+  // Tipos para PHD/PAD/O2/Especiales (subconjunto saliente).
+  const TIPOS_PHD = useMemo(() => {
+    return [...(mostrarOpcionRadicado ? [T.RADICADO] : []), ...TIPOS_PHD_BASE];
+  }, [mostrarOpcionRadicado]);
+
+  const TIPOS_SEG: string[] = esSaliente
+    ? TIPOS_SALIENTES
+    : esPhd
+      ? TIPOS_PHD
+      : esInterna
+        ? TIPOS_INTERNA
+        : esPendiente
+          ? TIPOS_PENDIENTE
+          : [];
 
   const findEstado = (re: RegExp) => (estadoOpciones ?? []).find((o) => re.test(o)) ?? "";
 
@@ -378,7 +415,7 @@ export function SeguimientoDialog({
   // Al cambiar el tipo de seguimiento: defaults de estado y reactivar auto-generación.
   useEffect(() => {
     setIndigoEditada(false);
-    if (!esSaliente || !tipoSeg) return;
+    if (!usaIndigo || !tipoSeg) return;
     // Estado de la solicitud automático según el tipo.
     if (tipoSeg === T.RADICADO || tipoSeg === T.CANCELACION) setEstadoSolicitud("No aplica");
     else if (tipoSeg === T.ACEPTACION || tipoSeg === T.AMBULANCIA) setEstadoSolicitud("Sí acepta");
@@ -395,10 +432,10 @@ export function SeguimientoDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipoSeg]);
 
-  const esEvolucionSal = esSaliente && tipoSeg === T.EVOLUCION;
-  const esRadicado = esSaliente && tipoSeg === T.RADICADO;
-  const esFisico = esSaliente && tipoSeg === T.FISICO;
-  const esTelefono = esSaliente && tipoSeg === T.TELEFONO;
+  const esEvolucionSal = usaIndigo && tipoSeg === T.EVOLUCION;
+  const esRadicado = usaIndigo && tipoSeg === T.RADICADO;
+  const esFisico = usaIndigo && tipoSeg === T.FISICO;
+  const esTelefono = usaIndigo && tipoSeg === T.TELEFONO;
 
   // --- Estado de evolución diaria (salientes v2) ---
   const evoEstadoSal: EvolucionEstado = useMemo(() => {
@@ -445,7 +482,34 @@ export function SeguimientoDialog({
 
   // --- Plantilla Índigo generada según el tipo ---
   const plantillaGenerada = useMemo(() => {
-    if (!esSaliente) return "";
+    if (esInterna) {
+      switch (tipoSeg) {
+        case TI.PENDIENTE:
+          return appendNota(
+            generarPlantillaRefInternaPendiente({ funcionario: riFuncionario, cargo: riCargo }),
+            detalle,
+          );
+        case TI.COORDINADO:
+          return appendNota(
+            generarPlantillaRefInternaCoordinado({
+              fecha: riFecha,
+              hora: riHora,
+              informoAmbulancia: riInformoAmb,
+              informoServicio: riInformoServ,
+            }),
+            detalle,
+          );
+        case TI.CULMINACION:
+          return appendNota(generarPlantillaRefInternaCulminacion(), detalle);
+        default:
+          return "";
+      }
+    }
+    if (esPendiente) {
+      if (!tipoSeg) return "";
+      return generarPlantillaPendienteCumplimiento(tipoSeg === TP.COMPLETO, detalle);
+    }
+    if (!usaIndigo) return "";
     // Flujo de radicado adicional ("+"): independiente del tipo de seguimiento.
     if (nuevoRadicadoMode) {
       return appendNota(generarPlantillaNuevoRadicado(ultimoRadicado, nuevoRadicado), detalle);
@@ -607,20 +671,22 @@ export function SeguimientoDialog({
   };
 
   // --- Visibilidad de campos ---
-  // Contacto y teléfono solo en CONTACTO TELEFÓNICO.
-  const mostrarContacto = esSaliente ? esTelefono : true;
+  // Contacto y teléfono solo en CONTACTO TELEFÓNICO (módulos con Índigo). Oculto en interna/pendiente.
+  const mostrarContacto = usaIndigo ? esTelefono : false;
   // Estado del caso editable salvo en FÍSICO/PRESENCIAL.
   const estadoCasoEditable = !esFisico;
   // Estado de solicitud automático (no editable) en ciertos tipos.
   const estadoSolicAuto =
-    esSaliente &&
+    usaIndigo &&
     [T.RADICADO, T.CANCELACION, T.ACEPTACION, T.AMBULANCIA, T.NEGACIONES, T.EVOLUCION].includes(
       tipoSeg as never,
     );
-  const mostrarIndigo = esSaliente && (!!tipoSeg || nuevoRadicadoMode);
+  const mostrarIndigo = !!tipoSeg || nuevoRadicadoMode;
+  // Estado de la solicitud solo aplica a módulos con Índigo.
+  const mostrarEstadoSolicitud = usaIndigo;
 
-  // Evolución diaria por especialidad: solo módulos legacy.
-  const mostrarEvolucionLegacy = !esSaliente;
+  // Evolución diaria por especialidad: ya no se usa (los módulos migraron a v2).
+  const mostrarEvolucionLegacy = false;
 
   // --- Negaciones helpers ---
   const agregarIpsNeg = () => {
@@ -700,7 +766,25 @@ export function SeguimientoDialog({
 
   // Detalle JSON específico por tipo (estructura flexible).
   const construirDetalles = (): Record<string, unknown> | null => {
-    if (!esSaliente) return null;
+    if (esInterna) {
+      switch (tipoSeg) {
+        case TI.PENDIENTE:
+          return { funcionario: riFuncionario.trim() || null, cargo: riCargo.trim() || null };
+        case TI.COORDINADO:
+          return {
+            fecha: riFecha.trim() || null,
+            hora: riHora.trim() || null,
+            informo_ambulancia: riInformoAmb,
+            informo_servicio: riInformoServ,
+          };
+        default:
+          return null;
+      }
+    }
+    if (esPendiente) {
+      return { cumplimiento: tipoSeg === TP.COMPLETO ? "completo" : "parcial" };
+    }
+    if (!usaIndigo) return null;
     if (nuevoRadicadoMode) {
       return { radicado_anterior: ultimoRadicado || null, nuevo_radicado: nuevoRadicado.trim() };
     }
@@ -809,6 +893,12 @@ export function SeguimientoDialog({
     setRevCargo("");
     setNuevoRadicadoMode(false);
     setNuevoRadicado("");
+    setRiFuncionario("");
+    setRiCargo("");
+    setRiFecha("");
+    setRiHora("");
+    setRiInformoAmb(false);
+    setRiInformoServ(false);
   };
 
   const guardar = async () => {
@@ -820,31 +910,38 @@ export function SeguimientoDialog({
     } else {
       if (!tipoSeg) return toast.error("Selecciona el tipo de seguimiento");
 
-      // Validaciones por tipo (salientes).
+      // Validaciones por tipo (salientes / PHD).
       if (esRadicado && generaCodigo && !radicado.trim())
         return toast.error("Ingresa el número de radicado");
-      if (esSaliente && (tipoSeg === T.CORREO || tipoSeg === T.PLATAFORMA) && !asunto.trim())
+      if (usaIndigo && (tipoSeg === T.CORREO || tipoSeg === T.PLATAFORMA) && !asunto.trim())
         return toast.error("Indica el asunto del seguimiento");
       if (esTelefono && !contactoDestino)
         return toast.error("Selecciona con quién se realizó el contacto");
       if (esTelefono && contactoDestino === "IPS" && !contactoIps.trim())
         return toast.error("Indica el nombre de la IPS");
-      if (esSaliente && tipoSeg === T.OTRO && !otroCual.trim())
+      if (usaIndigo && tipoSeg === T.OTRO && !otroCual.trim())
         return toast.error("Indica en el campo CUÁL");
-      if (esSaliente && tipoSeg === T.PERTINENCIA) {
+      if (usaIndigo && tipoSeg === T.PERTINENCIA) {
         if (!revAutoriza) return toast.error("Indica el estado de autorización de estancia");
         if (revAutoriza === "SI" && !revNota)
           return toast.error("Indica la trazabilidad de autorizaciones");
         if (revAutoriza === "SI" && revNota === "NO" && !revFuncionario.trim())
           return toast.error("Indica el nombre del funcionario");
       }
-      if (esSaliente && tipoSeg === T.NEGACIONES && negGruposPreview.length === 0)
+      if (usaIndigo && tipoSeg === T.NEGACIONES && negGruposPreview.length === 0)
         return toast.error("Agrega al menos un motivo de negación con su IPS");
-      if (esSaliente && tipoSeg === T.AMBULANCIA) {
+      if (usaIndigo && tipoSeg === T.AMBULANCIA) {
         if (fechaTraslado.trim() && !isFechaValida(fechaTraslado))
           return toast.error("Fecha de traslado inválida (DD/MM/AAAA)");
         if (horaTraslado.trim() && !isHoraValida(horaTraslado))
           return toast.error("Hora de traslado inválida (HH:MM)");
+      }
+      // Referencia interna.
+      if (esInterna && tipoSeg === TI.COORDINADO) {
+        if (riFecha.trim() && !isFechaValida(riFecha))
+          return toast.error("Fecha del examen inválida (DD/MM/AAAA)");
+        if (riHora.trim() && !isHoraValida(riHora))
+          return toast.error("Hora del examen inválida (HH:MM)");
       }
       if (evoRequiereMotivo && !evoMotivoPend.trim())
         return toast.error("Indica el motivo del pendiente");
@@ -860,8 +957,8 @@ export function SeguimientoDialog({
       .eq("user_id", u.user?.id ?? "")
       .maybeSingle();
 
-    const radicadoSeg = !esSaliente
-      ? radicado.trim() || radicadoReal || null
+    const radicadoSeg = !usaIndigo
+      ? null
       : nuevoRadicadoMode
         ? nuevoRadicado.trim()
         : esRadicado
@@ -876,10 +973,10 @@ export function SeguimientoDialog({
       radicado: radicadoSeg || null,
       tipo_seguimiento: tipoSegFinal,
       detalle: detalle || null,
-      estado_solicitud: nuevoRadicadoMode ? null : estadoSolicitud || null,
+      estado_solicitud: nuevoRadicadoMode || !mostrarEstadoSolicitud ? null : estadoSolicitud || null,
       nombre_contacto: mostrarContacto ? nombreContacto.trim() || null : null,
       telefono: mostrarContacto ? telefono.trim() || null : null,
-      plantilla_indigo: esSaliente ? indigoTexto.trim() || null : null,
+      plantilla_indigo: indigoTexto.trim() || null,
       detalles: construirDetalles() as never,
       nombre_usuario: perfil?.nombre || u.user?.email || null,
       created_by: u.user?.id,
@@ -898,15 +995,9 @@ export function SeguimientoDialog({
         evolucion_motivo?: string | null;
         codigo_radicacion?: string;
         estado?: string;
+        archivado?: boolean;
         trazabilidad_indigo?: string;
       } = {};
-      // Evolución legacy (otros módulos).
-      if (mostrarEvolucionLegacy && especialidadesList.length > 0) {
-        update.evolucion = evolucionLegacyCalc;
-        update.evolucion_detalle = JSON.stringify(evoDetalle);
-        update.evolucion_actualizada_at = new Date().toISOString();
-        update.evolucion_motivo = requiereMotivoLegacy ? motivoEvo.trim() : null;
-      }
       // Evolución diaria salientes v2: refleja estado en la tarjeta.
       if (esEvolucionSal) {
         update.evolucion = evoEstadoSal;
@@ -930,7 +1021,25 @@ export function SeguimientoDialog({
       if (esSaliente && tipoSeg === T.CANCELACION && cancelNuevoRadicado.trim())
         update.codigo_radicacion = cancelNuevoRadicado.trim();
       if (estadoOpciones && estadoCaso) update.estado = estadoCaso;
-      if (esSaliente && indigoTexto.trim()) update.trazabilidad_indigo = indigoTexto.trim();
+      if (usaIndigo && indigoTexto.trim()) update.trazabilidad_indigo = indigoTexto.trim();
+      // Referencia interna: refleja estado según el seguimiento y cierra al culminar.
+      if (esInterna) {
+        if (tipoSeg === TI.PENDIENTE) update.estado = "PENDIENTE COORDINACION";
+        else if (tipoSeg === TI.COORDINADO) update.estado = "EXAMEN COORDINADO";
+        else if (tipoSeg === TI.CULMINACION) {
+          update.estado = "CULMINADO";
+          update.archivado = true;
+        }
+      }
+      // Pendientes: cumplimiento completo cierra y archiva el caso.
+      if (esPendiente) {
+        if (tipoSeg === TP.COMPLETO) {
+          update.estado = "CUMPLIDO";
+          update.archivado = true;
+        } else {
+          update.estado = "ABIERTO";
+        }
+      }
 
       if (Object.keys(update).length > 0) {
         await supabase
@@ -938,9 +1047,8 @@ export function SeguimientoDialog({
           .update(update)
           .eq("id", casoId);
       }
-      if (mostrarEvolucionLegacy && especialidadesList.length > 0)
-        await sincronizarPendienteLegacy(u.user?.id);
     }
+
 
     try {
       await (supabase as any).rpc("registrar_auditoria", {
@@ -1002,9 +1110,11 @@ export function SeguimientoDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Número de radicado */}
+          {/* Número de radicado (solo módulos con Índigo) */}
+          {usaIndigo && (
           <div className="space-y-1.5">
             <Label className={labelCls}>Número de radicado</Label>
+            {radicadoReal && false ? null : null}
             {radicadoReal ? (
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-1.5">

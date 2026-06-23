@@ -19,6 +19,7 @@ import {
   generarPlantillaInicio,
   codigoInicial,
   derivarTipoTramite,
+  phdGeneraCodigo,
   type AlcanceRed,
 } from "@/lib/indigo-trazabilidad";
 
@@ -48,6 +49,28 @@ export function NuevoRegistroDialog({
   const [indigoOpen, setIndigoOpen] = useState(false);
   const [indigoTexto, setIndigoTexto] = useState("");
 
+  // --- PHD/PAD/O2/Especiales ---
+  const [phdEapb, setPhdEapb] = useState("");
+  const [phdTipoSolicitud, setPhdTipoSolicitud] = useState("");
+  const [phdUnidadEspecial, setPhdUnidadEspecial] = useState("");
+  const [phdRequiereAmb, setPhdRequiereAmb] = useState("");
+  const [phdTipoAmb, setPhdTipoAmb] = useState("");
+  const [phdRegimen, setPhdRegimen] = useState("");
+
+  // --- Ref. Interna ---
+  const [internaEapb, setInternaEapb] = useState("");
+
+  // --- Pendiente ---
+  const [pendTipo, setPendTipo] = useState("");
+  const [pendCual, setPendCual] = useState("");
+  const [pendDestinoTipo, setPendDestinoTipo] = useState<"IPS" | "AREA" | "">("");
+  const [pendIps, setPendIps] = useState("");
+  const [pendArea, setPendArea] = useState("");
+  const [pendPrioridad, setPendPrioridad] = useState("");
+  const [pendEvoEn, setPendEvoEn] = useState<string[]>([]);
+
+
+
   const { data: especialidades = [] } = useQuery({
     queryKey: ["cat-especialidad"],
     queryFn: async () => {
@@ -61,13 +84,15 @@ export function NuevoRegistroDialog({
     },
   });
 
-  // EAPB con sus flags (tipo entidad / tiene plataforma / genera código).
+  // EAPB con sus flags (tipo entidad / tiene plataforma / genera código / radicado por tipo).
   const { data: eapbList = [] } = useQuery({
     queryKey: ["cat-eapb-flags"],
     queryFn: async () => {
       const { data } = await supabase
         .from("catalogos")
-        .select("valor, extra1, extra2, extra3")
+        .select(
+          "valor, extra1, extra2, extra3, radica_phd, radica_pad, radica_oxigeno, radica_unidad_especial",
+        )
         .eq("tipo", "EAPB")
         .eq("activo", true)
         .order("valor");
@@ -76,6 +101,10 @@ export function NuevoRegistroDialog({
         extra1: string | null;
         extra2: string | null;
         extra3: string | null;
+        radica_phd: boolean | null;
+        radica_pad: boolean | null;
+        radica_oxigeno: boolean | null;
+        radica_unidad_especial: boolean | null;
       }[];
     },
   });
@@ -119,6 +148,20 @@ export function NuevoRegistroDialog({
     },
   });
 
+  // Catálogo de IPS (autocompletado para pendientes).
+  const { data: ipsCatalogo = [] } = useQuery({
+    queryKey: ["cat-ips-valores"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor")
+        .eq("tipo", "IPS")
+        .eq("activo", true)
+        .order("valor");
+      return (data ?? []).map((d) => d.valor as string);
+    },
+  });
+
   // Opciones de EAPB para el autocompletado.
   const eapbOptions = useMemo(() => eapbList.map((e) => e.valor), [eapbList]);
   const eapbActual = useMemo(
@@ -138,6 +181,16 @@ export function NuevoRegistroDialog({
   const alcanceStore = redLocal && redNacional ? "LOCAL_NACIONAL" : redNacional ? "NACIONAL" : "LOCAL";
   // El tipo de trámite se deriva (ya no se selecciona manualmente).
   const tipoTramiteDerivado = derivarTipoTramite(remisionPor, tipoEntidad);
+
+  // EAPB seleccionada en la pestaña PHD (con sus flags de plataforma / radicado por tipo).
+  const phdEapbActual = useMemo(
+    () => eapbList.find((e) => e.valor === phdEapb) ?? null,
+    [eapbList, phdEapb],
+  );
+  const phdTienePlataforma = (phdEapbActual?.extra1 ?? "").toUpperCase() === "SI";
+  const phdGenera = phdGeneraCodigo(phdTipoSolicitud, phdEapbActual ?? undefined);
+  const phdEsUnidadEspecial = /unidad/i.test(phdTipoSolicitud);
+
 
   const toggleList = (arr: string[], v: string, set: (x: string[]) => void) =>
     set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
@@ -163,7 +216,22 @@ export function NuevoRegistroDialog({
     setIpsSel([]);
     setDeptosSel([]);
     setDeptoOtro("");
+    setPhdEapb("");
+    setPhdTipoSolicitud("");
+    setPhdUnidadEspecial("");
+    setPhdRequiereAmb("");
+    setPhdTipoAmb("");
+    setPhdRegimen("");
+    setInternaEapb("");
+    setPendTipo("");
+    setPendCual("");
+    setPendDestinoTipo("");
+    setPendIps("");
+    setPendArea("");
+    setPendPrioridad("");
+    setPendEvoEn([]);
   };
+
 
   // Al agregar/quitar en tratantes, migra automáticamente a receptoras
   const handleTratantesChange = (next: string[]) => {
@@ -305,8 +373,32 @@ export function NuevoRegistroDialog({
   const handlePHD = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+
+    // Validaciones de campos obligatorios.
+    if (!String(f.get("fecha_inicio") || "").trim())
+      return toast.error("Indica la fecha y hora de inicio del trámite");
+    if (!String(f.get("servicio") || "").trim()) return toast.error("Selecciona el servicio");
+    if (!String(f.get("cama") || "").trim()) return toast.error("Indica la cama");
+    if (!String(f.get("paciente") || "").trim()) return toast.error("Indica el nombre del paciente");
+    if (!String(f.get("tipo_documento") || "").trim())
+      return toast.error("Selecciona el tipo de documento");
+    if (!String(f.get("documento") || "").trim()) return toast.error("Indica el documento");
+    if (!String(f.get("edad") || "").trim()) return toast.error("Indica la edad");
+    if (!String(f.get("cie10") || "").trim()) return toast.error("Indica el CIE-10");
+    if (phdTratantes.length === 0)
+      return toast.error("Agrega al menos una especialidad tratante");
+    if (!phdTipoSolicitud) return toast.error("Selecciona el tipo de solicitud");
+    if (!phdEapb.trim()) return toast.error("Indica la EAPB / ERP");
+    if (!phdRegimen) return toast.error("Selecciona el régimen");
+    if (!phdRequiereAmb) return toast.error("Indica si requiere ambulancia");
+    if (phdRequiereAmb === "SI" && !phdTipoAmb)
+      return toast.error("Selecciona el tipo de ambulancia");
+    if (phdEsUnidadEspecial && !phdUnidadEspecial.trim())
+      return toast.error("Indica la unidad especial");
+
     const { data: u } = await supabase.auth.getUser();
     const inicioRaw = String(f.get("fecha_inicio") || "");
+    const genera = phdGenera;
     const { error } = await supabase.from("domiciliarios").insert({
       fecha_inicio: inicioRaw ? new Date(inicioRaw).toISOString() : null,
       fecha_radicado: new Date().toISOString(),
@@ -318,16 +410,21 @@ export function NuevoRegistroDialog({
       edad: String(f.get("edad")),
       cie10: String(f.get("cie10")),
       especialidades_tratantes: phdTratantes.join(", "),
-      tipo_solicitud: String(f.get("tipo_solicitud")),
-      eapb: String(f.get("eapb")),
-      regimen: String(f.get("regimen")),
-      codigo_radicacion: String(f.get("codigo_radicacion")),
-      requiere_ambulancia: String(f.get("requiere_ambulancia")),
+      tipo_solicitud: phdTipoSolicitud,
+      tipo_solicitud_detalle: phdEsUnidadEspecial ? phdUnidadEspecial.trim() : null,
+      unidad_especial: phdEsUnidadEspecial ? phdUnidadEspecial.trim() : null,
+      eapb: phdEapb || null,
+      regimen: phdRegimen,
+      codigo_radicacion: codigoInicial(genera),
+      eapb_tiene_plataforma: phdTienePlataforma,
+      eapb_genera_codigo: genera,
+      requiere_ambulancia: phdRequiereAmb,
+      tipo_ambulancia: phdRequiereAmb === "SI" ? phdTipoAmb : null,
       contacto_nombre: String(f.get("contacto_nombre")),
       contacto_parentesco: String(f.get("contacto_parentesco")),
       contacto_telefono: String(f.get("contacto_telefono")),
       observaciones: String(f.get("observaciones")),
-      estado: "ACTIVO",
+      estado: "PENDIENTE ACEPTACION",
       evolucion: "sin",
       created_by: u.user?.id,
     });
@@ -351,6 +448,7 @@ export function NuevoRegistroDialog({
       documento: String(f.get("documento")),
       tipo_solicitud: String(f.get("tipo_solicitud")),
       tipo_ambulancia: String(f.get("tipo_ambulancia")),
+      eapb: internaEapb || null,
       observaciones: String(f.get("observaciones")),
       estado: "ACTIVO",
       evolucion: "sin",
@@ -366,21 +464,45 @@ export function NuevoRegistroDialog({
   const handlePendiente = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+
+    if (!pendTipo) return toast.error("Selecciona el tipo de pendiente");
+    if (pendTipo === "OTRO" && !pendCual.trim())
+      return toast.error("Indica cuál es el pendiente (campo CUÁL)");
+    if (!String(f.get("paciente_asunto") || "").trim())
+      return toast.error("Indica el paciente / asunto");
+    if (!pendPrioridad) return toast.error("Selecciona la prioridad");
+    if (!pendDestinoTipo) return toast.error("Selecciona el tipo de destino (IPS o ÁREA)");
+    if (pendDestinoTipo === "IPS" && !pendIps.trim())
+      return toast.error("Indica el nombre de la IPS");
+    if (pendDestinoTipo === "AREA" && !pendArea) return toast.error("Selecciona el área");
+
     const { data: u } = await supabase.auth.getUser();
+    const destinoValor = pendDestinoTipo === "IPS" ? pendIps.trim() : pendArea;
+    const tipoFinal = pendTipo === "OTRO" ? `OTRO: ${pendCual.trim().toUpperCase()}` : pendTipo;
+    const detalles: Record<string, unknown> = {
+      destino_tipo: pendDestinoTipo,
+      destino: destinoValor,
+    };
+    if (pendTipo === "OTRO") detalles.cual = pendCual.trim();
+    if (pendTipo === "EVOLUCIONAR") detalles.evolucion_pendiente_en = pendEvoEn;
+
     const { error } = await supabase.from("pendientes").insert({
-      tipo_pendiente: String(f.get("tipo_pendiente")),
-      ips_area: String(f.get("ips_area")),
+      tipo_pendiente: tipoFinal,
+      ips_area: destinoValor,
       paciente_asunto: String(f.get("paciente_asunto")),
-      prioridad: String(f.get("prioridad")),
-      observacion_entrega: String(f.get("observacion_entrega")),
+      prioridad: pendPrioridad,
+      observacion_entrega: String(f.get("observacion_entrega") || ""),
+      detalles: detalles as never,
       estado: "ABIERTO",
       created_by: u.user?.id,
     });
     if (error) return toast.error(error.message);
     toast.success("Pendiente registrado");
+    reset();
     onOpenChange(false);
     invalidate();
   };
+
 
   return (
     <>
@@ -664,43 +786,131 @@ export function NuevoRegistroDialog({
                   options={["URGENCIAS", "HOSPITALIZACION", "UCI ADULTOS", "QUIROFANO"]}
                   required
                 />
-                <Field name="cama" label="Cama" />
+                <Field name="cama" label="Cama" required />
                 <PatientBlock key={`phd-pac-${resetKey}`} />
-                <EdadField key={`phd-edad-${resetKey}`} />
-                <Cie10Field key={`phd-cie-${resetKey}`} />
+                <EdadField key={`phd-edad-${resetKey}`} required />
+                <Cie10Field key={`phd-cie-${resetKey}`} required />
               </div>
               <SpecialtyList
-                label="Especialidades tratantes"
+                label="Especialidades tratantes *"
                 items={phdTratantes}
                 onChange={setPhdTratantes}
                 suggestions={especialidades}
               />
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <SelectField
-                  name="tipo_solicitud"
-                  label="Tipo de solicitud"
-                  options={[
-                    "PHD",
-                    "PAD CRONICO",
-                    "OXIGENO DOMICILIARIO",
-                    "PHD + OXIGENO DOMICILIARIO",
-                    "PAD CRONICO + OXIGENO DOMICILIARIO",
-                    "UNIDADES ESPECIALES",
-                  ]}
-                  required
-                />
-                <Field name="eapb" label="EAPB / ERP" placeholder="Ej: NUEVA EPS, SAVIA SALUD…" />
-                <SelectField
-                  name="regimen"
-                  label="Régimen"
-                  options={["SUBSIDIADO", "CONTRIBUTIVO", "ESPECIAL", "NO APLICA"]}
-                />
-                <Field name="codigo_radicacion" label="Código de radicación" />
-                <SelectField
-                  name="requiere_ambulancia"
-                  label="Requiere ambulancia"
-                  options={["SI", "NO"]}
-                />
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Tipo de solicitud *
+                  </Label>
+                  <select
+                    value={phdTipoSolicitud}
+                    onChange={(e) => setPhdTipoSolicitud(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Seleccione…</option>
+                    {[
+                      "PHD",
+                      "PAD CRONICO",
+                      "OXIGENO DOMICILIARIO",
+                      "PHD + OXIGENO DOMICILIARIO",
+                      "PAD CRONICO + OXIGENO DOMICILIARIO",
+                      "UNIDADES ESPECIALES",
+                    ].map((o) => (
+                      <option key={o} value={o}>
+                        {o}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {phdEsUnidadEspecial && (
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Unidad especial *
+                    </Label>
+                    <Input
+                      value={phdUnidadEspecial}
+                      onChange={(e) => setPhdUnidadEspecial(e.target.value)}
+                      placeholder="Escribe la unidad especial"
+                    />
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <AutoComplete
+                    label="EAPB / ERP *"
+                    value={phdEapb}
+                    options={eapbOptions}
+                    placeholder="Escribe para buscar EAPB / ERP…"
+                    onChange={setPhdEapb}
+                    onPick={setPhdEapb}
+                  />
+                  {phdEapbActual && (
+                    <p className="text-[10px] text-muted-foreground">
+                      {phdTienePlataforma ? "Tiene plataforma" : "Sin plataforma"} ·{" "}
+                      {phdTipoSolicitud
+                        ? phdGenera
+                          ? "Genera radicado para este tipo"
+                          : "No genera radicado para este tipo"
+                        : "Selecciona el tipo de solicitud"}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Régimen *
+                  </Label>
+                  <select
+                    value={phdRegimen}
+                    onChange={(e) => setPhdRegimen(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Seleccione…</option>
+                    {(regimenes.length > 0
+                      ? regimenes
+                      : ["SUBSIDIADO", "CONTRIBUTIVO", "ESPECIAL", "NO APLICA"]
+                    ).map((o) => (
+                      <option key={o} value={o}>
+                        {o}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Requiere ambulancia *
+                  </Label>
+                  <select
+                    value={phdRequiereAmb}
+                    onChange={(e) => {
+                      setPhdRequiereAmb(e.target.value);
+                      if (e.target.value !== "SI") setPhdTipoAmb("");
+                    }}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Seleccione…</option>
+                    <option value="SI">SÍ</option>
+                    <option value="NO">NO</option>
+                  </select>
+                </div>
+                {phdRequiereAmb === "SI" && (
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Tipo de ambulancia *
+                    </Label>
+                    <select
+                      value={phdTipoAmb}
+                      onChange={(e) => setPhdTipoAmb(e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="">Seleccione…</option>
+                      {["TAT", "TAN", "TAN-N"].map((o) => (
+                        <option key={o} value={o}>
+                          {o}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <Field name="codigo_radicacion_display" label="Código de radicación" defaultValue="Se asigna según la EAPB" readOnly />
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
                 <Field name="contacto_nombre" label="Nombre y apellido familiar" />
@@ -758,6 +968,16 @@ export function NuevoRegistroDialog({
                   label="Tipo de ambulancia"
                   options={["TAB", "TAM", "TAM-N"]}
                 />
+                <div className="space-y-1.5">
+                  <AutoComplete
+                    label="EAPB / ERP"
+                    value={internaEapb}
+                    options={eapbOptions}
+                    placeholder="Escribe para buscar EAPB / ERP…"
+                    onChange={setInternaEapb}
+                    onPick={setInternaEapb}
+                  />
+                </div>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="ri-obs" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -783,40 +1003,165 @@ export function NuevoRegistroDialog({
                   defaultValue="Se asigna automáticamente al guardar"
                   readOnly
                 />
-                <SelectField
-                  name="tipo_pendiente"
-                  label="Tipo pendiente"
-                  options={[
-                    "DEFINICION MEDICA PARA RESPUESTA CORREO",
-                    "COORDINAR AMBULANCIA",
-                    "PROGRAMAR RESONANCIA",
-                    "PROGRAMAR TAC",
-                    "PROGRAMAR ECOGRAFIA",
-                    "PROGRAMAR INTERCONSULTA",
-                    "CONFIRMACION CON IPS",
-                    "RADICAR REMISION",
-                    "EVOLUCIONAR",
-                    "ORDENES EXTRAMURALES",
-                    "NEGACIONES",
-                    "AVERIGUAR",
-                    "CANCELAR",
-                  ]}
-                  required
-                />
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Tipo pendiente *
+                  </Label>
+                  <select
+                    value={pendTipo}
+                    onChange={(e) => setPendTipo(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Seleccione…</option>
+                    {[
+                      "DEFINICION MEDICA PARA RESPUESTA CORREO",
+                      "COORDINAR AMBULANCIA",
+                      "PROGRAMAR RESONANCIA",
+                      "PROGRAMAR TAC",
+                      "PROGRAMAR ECOGRAFIA",
+                      "PROGRAMAR INTERCONSULTA",
+                      "CONFIRMACION CON IPS",
+                      "RADICAR REMISION",
+                      "EVOLUCIONAR",
+                      "ORDENES EXTRAMURALES",
+                      "NEGACIONES",
+                      "AVERIGUAR",
+                      "CANCELAR",
+                      "OTRO",
+                    ].map((o) => (
+                      <option key={o} value={o}>
+                        {o}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {pendTipo === "OTRO" && (
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      ¿Cuál? *
+                    </Label>
+                    <Input
+                      value={pendCual}
+                      onChange={(e) => setPendCual(e.target.value)}
+                      placeholder="Escribe el pendiente"
+                    />
+                  </div>
+                )}
                 <Field name="paciente_asunto" label="Paciente / asunto" required />
-                <Field name="ips_area" label="IPS / área" required />
-                <SelectField
-                  name="prioridad"
-                  label="Prioridad"
-                  options={["ALTA", "MEDIA", "BAJA"]}
-                  required
-                />
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Prioridad *
+                  </Label>
+                  <select
+                    value={pendPrioridad}
+                    onChange={(e) => setPendPrioridad(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Seleccione…</option>
+                    {["ALTA", "MEDIA", "BAJA"].map((o) => (
+                      <option key={o} value={o}>
+                        {o}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
+
+              {/* Tipo de destino */}
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Tipo de destino *
+                </Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {(["IPS", "AREA"] as const).map((d) => {
+                    const active = pendDestinoTipo === d;
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => {
+                          setPendDestinoTipo(d);
+                          setPendIps("");
+                          setPendArea("");
+                        }}
+                        className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+                          active
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-muted/40 text-foreground hover:border-primary/50"
+                        }`}
+                      >
+                        {d === "AREA" ? "ÁREA" : "IPS"}
+                      </button>
+                    );
+                  })}
+                </div>
+                {pendDestinoTipo === "IPS" && (
+                  <div className="space-y-1.5 pt-1">
+                    <AutoComplete
+                      label="Nombre de la IPS *"
+                      value={pendIps}
+                      options={ipsCatalogo}
+                      placeholder="Escribe para buscar IPS…"
+                      minChars={2}
+                      onChange={setPendIps}
+                      onPick={setPendIps}
+                    />
+                  </div>
+                )}
+                {pendDestinoTipo === "AREA" && (
+                  <div className="space-y-1.5 pt-1">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Área *
+                    </Label>
+                    <select
+                      value={pendArea}
+                      onChange={(e) => setPendArea(e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="">Seleccione…</option>
+                      {[
+                        "URGENCIAS",
+                        "HOSPITALIZACIÓN",
+                        "UCI",
+                        "QUIRÓFANO",
+                        "SEDE PRINCIPAL",
+                        "FACTURACIÓN",
+                        "CONSULTA EXTERNA",
+                      ].map((o) => (
+                        <option key={o} value={o}>
+                          {o}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Pendiente de evolución en (solo EVOLUCIONAR) */}
+              {pendTipo === "EVOLUCIONAR" && (
+                <div className="space-y-1.5 rounded-lg border border-border/60 bg-muted/30 p-3">
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Pendiente de evolución en:
+                  </Label>
+                  <div className="flex flex-wrap gap-4 pt-1">
+                    {["ÍNDIGO", "CORREO ELECTRÓNICO", "PLATAFORMA"].map((o) => (
+                      <label key={o} className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={pendEvoEn.includes(o)}
+                          onCheckedChange={() => toggleList(pendEvoEn, o, setPendEvoEn)}
+                        />
+                        {o}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-1.5">
                 <Label htmlFor="pend-obs" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Observación de entrega
                 </Label>
-                <Textarea id="pend-obs" name="observacion_entrega" rows={2} required />
+                <Textarea id="pend-obs" name="observacion_entrega" rows={2} />
               </div>
               <DialogFooter>
                 <Button type="submit" className="rounded-full">
@@ -826,6 +1171,7 @@ export function NuevoRegistroDialog({
             </form>
           </TabsContent>
         </Tabs>
+
       </DialogContent>
     </Dialog>
 

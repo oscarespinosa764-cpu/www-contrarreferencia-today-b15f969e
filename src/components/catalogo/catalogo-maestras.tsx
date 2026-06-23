@@ -25,6 +25,10 @@ type CatRow = {
   extra2: string | null;
   extra3: string | null;
   activo: boolean;
+  radica_phd?: boolean | null;
+  radica_pad?: boolean | null;
+  radica_oxigeno?: boolean | null;
+  radica_unidad_especial?: boolean | null;
 };
 
 // Etiqueta legible + dónde se usa + módulo agrupador
@@ -154,6 +158,13 @@ export function CatalogoMaestras() {
   const [simOpen, setSimOpen] = useState(false);
   // Sedes/detalles dinámicos (solo IPS): se almacenan juntos en extra1 separados por " ; ".
   const [sedes, setSedes] = useState<string[]>([]);
+  // Indicadores de radicado por tipo (solo EAPB).
+  const [radicaFlags, setRadicaFlags] = useState({
+    radica_phd: false,
+    radica_pad: false,
+    radica_oxigeno: false,
+    radica_unidad_especial: false,
+  });
 
   useEffect(() => {
     if (editing && editing.tipo === "IPS") {
@@ -164,6 +175,14 @@ export function CatalogoMaestras() {
         .filter(Boolean);
       setSedes(parts.length ? parts : [""]);
     }
+    if (editing && editing.tipo === "EAPB") {
+      setRadicaFlags({
+        radica_phd: !!editing.radica_phd,
+        radica_pad: !!editing.radica_pad,
+        radica_oxigeno: !!editing.radica_oxigeno,
+        radica_unidad_especial: !!editing.radica_unidad_especial,
+      });
+    }
   }, [editing]);
 
   const { data: items, isLoading } = useQuery({
@@ -171,7 +190,9 @@ export function CatalogoMaestras() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("catalogos")
-        .select("id, tipo, valor, extra1, extra2, extra3, activo")
+        .select(
+          "id, tipo, valor, extra1, extra2, extra3, activo, radica_phd, radica_pad, radica_oxigeno, radica_unidad_especial",
+        )
         .neq("tipo", "plantilla")
         .order("tipo")
         .order("valor");
@@ -242,6 +263,15 @@ export function CatalogoMaestras() {
     const extra2 = isIPS ? null : ((String(f.get("extra2")).trim() || null) as string | null);
     const extra3 =
       editing.tipo === "EAPB" ? ((String(f.get("extra3")).trim() || null) as string | null) : editing.extra3;
+    const radicaPatch =
+      editing.tipo === "EAPB"
+        ? {
+            radica_phd: radicaFlags.radica_phd,
+            radica_pad: radicaFlags.radica_pad,
+            radica_oxigeno: radicaFlags.radica_oxigeno,
+            radica_unidad_especial: radicaFlags.radica_unidad_especial,
+          }
+        : {};
     const { error } = await supabase
       .from("catalogos")
       .update({
@@ -249,6 +279,7 @@ export function CatalogoMaestras() {
         extra1,
         extra2,
         extra3,
+        ...radicaPatch,
       })
       .eq("id", editing.id);
     if (error) return toast.error(error.message);
@@ -538,6 +569,29 @@ export function CatalogoMaestras() {
                       <option value="SI">Sí</option>
                       <option value="NO">No</option>
                     </select>
+                  </div>
+                  <div className="space-y-2 rounded-lg border border-border/60 bg-muted/30 p-3">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Genera radicado para (PHD/PAD/O2/Especiales)
+                    </Label>
+                    {(
+                      [
+                        { key: "radica_phd", label: "Genera radicado para PHD" },
+                        { key: "radica_pad", label: "Genera radicado para PAD" },
+                        { key: "radica_oxigeno", label: "Genera radicado para Oxígeno domiciliario" },
+                        { key: "radica_unidad_especial", label: "Genera radicado para Unidades especiales" },
+                      ] as const
+                    ).map((opt) => (
+                      <label key={opt.key} className="flex items-center justify-between gap-2 text-sm">
+                        <span>{opt.label}</span>
+                        <Switch
+                          checked={radicaFlags[opt.key]}
+                          onCheckedChange={(v) =>
+                            setRadicaFlags((p) => ({ ...p, [opt.key]: !!v }))
+                          }
+                        />
+                      </label>
+                    ))}
                   </div>
                 </>
               ) : (

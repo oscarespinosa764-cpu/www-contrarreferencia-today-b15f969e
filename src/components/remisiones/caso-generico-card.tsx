@@ -12,7 +12,9 @@ import { Cie10Field } from "./cie10-field";
 import { SeguimientoDialog } from "./seguimiento-dialog";
 import {
   evolucionMeta,
+  fmtEdad,
   fmtFechaHora,
+  fmtRadicado,
   fmtTranscurrido,
   normEvolucion,
   prioridadMeta,
@@ -38,6 +40,7 @@ const PHD_SOLICITUD = [
 ];
 const REGIMEN_OPCIONES = ["SUBSIDIADO", "CONTRIBUTIVO", "ESPECIAL", "NO APLICA"];
 const SI_NO = ["SI", "NO"];
+const PHD_AMBULANCIA = ["TAT", "TAN", "TAN-N"];
 const INTERNA_SOLICITUD = [
   "RESONANCIA",
   "INTERCONSULTA",
@@ -49,11 +52,10 @@ const INTERNA_SOLICITUD = [
 ];
 const AMBULANCIA_OPCIONES = ["TAB", "TAM", "TAM-N"];
 const PHD_ESTADO_OPCIONES = [
-  "ACTIVO",
   "PENDIENTE ACEPTACION",
-  "ACEPTADO SIN PROGRAMACION DE AMBULANCIA",
-  "ACEPTADO CON AMBULANCIA COORDINADA",
-  "FINALIZADO",
+  "ACEPTADO",
+  "ACEPTADO CON PENDIENTE COORDINACION DE AMBULANCIA",
+  "PENDIENTE NOTIFICACION",
 ];
 const PENDIENTE_TIPOS = [
   "DEFINICION MEDICA PARA RESPUESTA CORREO",
@@ -69,6 +71,7 @@ const PENDIENTE_TIPOS = [
   "NEGACIONES",
   "AVERIGUAR",
   "CANCELAR",
+  "OTRO",
 ];
 
 const CONFIG: Record<
@@ -76,7 +79,7 @@ const CONFIG: Record<
   { tabla: string; tipoCaso: string; evoluciona: boolean; tieneRadicado: boolean }
 > = {
   phd: { tabla: "domiciliarios", tipoCaso: "domiciliario", evoluciona: true, tieneRadicado: true },
-  interna: { tabla: "referencia_interna", tipoCaso: "referencia_interna", evoluciona: true, tieneRadicado: false },
+  interna: { tabla: "referencia_interna", tipoCaso: "referencia_interna", evoluciona: false, tieneRadicado: false },
   pendiente: { tabla: "pendientes", tipoCaso: "pendiente", evoluciona: false, tieneRadicado: false },
 };
 
@@ -164,7 +167,7 @@ export function CasoGenericoCard({
 
   const nombre = (tipo === "pendiente" ? r.paciente_asunto : r.paciente) || "Sin nombre";
   const documento = tipo === "pendiente" ? null : r.documento;
-  const radicado = cfg.tieneRadicado ? r.codigo_radicacion?.trim() || "No aplica" : "No aplica";
+  const radicado = cfg.tieneRadicado ? fmtRadicado(r.codigo_radicacion, r.eapb_genera_codigo) : "NO APLICA";
   const prio = prioridadMeta(r.prioridad);
   const evo = cfg.evoluciona ? evoChip(tipo, r) : null;
   const justif =
@@ -172,11 +175,17 @@ export function CasoGenericoCard({
   const invalidateKey =
     tipo === "phd" ? "domiciliarios" : tipo === "interna" ? "referencia-interna" : "pendientes-rem";
 
+  // Línea principal: [NOMBRE], [TIPODOC]: [DOC] · [EDAD] años
+  const docPart = documento ? `${r.tipo_documento || "DOC"}: ${documento}` : "";
+  const edadPart = tipo === "phd" && r.edad ? fmtEdad(r.edad) : "";
+  const mainExtra = [docPart, edadPart].filter(Boolean).join(" · ");
+  const mainLine = tipo === "pendiente" ? nombre : `${nombre}${mainExtra ? `, ${mainExtra}` : ""}`;
+
   const subParts =
     tipo === "phd"
-      ? [r.tipo_solicitud, documento && `Doc: ${documento}`, r.edad && `${r.edad} años`]
+      ? [r.tipo_solicitud, r.eapb, r.regimen]
       : tipo === "interna"
-        ? [r.tipo_solicitud, r.servicio, documento && `Doc: ${documento}`]
+        ? [r.tipo_solicitud, r.servicio, r.eapb]
         : [r.tipo_pendiente, r.ips_area];
 
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -196,8 +205,10 @@ export function CasoGenericoCard({
         cama: String(f.get("cama")),
         prioridad: String(f.get("prioridad")),
         tipo_solicitud: String(f.get("tipo_solicitud")),
+        unidad_especial: String(f.get("unidad_especial") || ""),
+        tipo_solicitud_detalle: String(f.get("unidad_especial") || "") || null,
         requiere_ambulancia: String(f.get("requiere_ambulancia")),
-        codigo_radicacion: String(f.get("codigo_radicacion")),
+        tipo_ambulancia: String(f.get("tipo_ambulancia") || ""),
         especialidades_tratantes: tratantes.join(", "),
         contacto_nombre: String(f.get("contacto_nombre")),
         contacto_parentesco: String(f.get("contacto_parentesco")),
@@ -212,7 +223,7 @@ export function CasoGenericoCard({
         servicio: String(f.get("servicio")),
         tipo_solicitud: String(f.get("tipo_solicitud")),
         tipo_ambulancia: String(f.get("tipo_ambulancia")),
-        proveedor_prestador: String(f.get("proveedor_prestador")),
+        eapb: String(f.get("eapb")),
         prioridad: String(f.get("prioridad")),
         observaciones: String(f.get("observaciones")),
       };
@@ -240,7 +251,7 @@ export function CasoGenericoCard({
       {/* Encabezado */}
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-sm font-bold uppercase text-foreground">{nombre}</p>
+          <p className="text-sm font-bold uppercase text-foreground">{mainLine}</p>
           <p className="text-[11px] text-muted-foreground">{subParts.filter(Boolean).join(" · ") || "—"}</p>
         </div>
         <div className="flex items-center gap-1.5">
@@ -254,7 +265,7 @@ export function CasoGenericoCard({
               Rad: {radicado}
             </Badge>
           )}
-          {(tipo === "interna" || tipo === "pendiente") && <EstadoBadge estado={r.estado} />}
+          {tipo === "interna" && <EstadoBadge estado={r.estado} />}
         </div>
       </div>
 
@@ -264,7 +275,6 @@ export function CasoGenericoCard({
           <>
             <Dato label="Tipo pendiente" value={r.tipo_pendiente} />
             <Dato label="IPS / área" value={r.ips_area} />
-            <Dato label="Prioridad" value={r.prioridad} />
           </>
         ) : (
           <>
@@ -286,6 +296,9 @@ export function CasoGenericoCard({
               <Dato label="Tipo solicitud" value={r.tipo_solicitud} />
             )}
             <Dato label={tipo === "phd" ? "Tipo solicitud" : "Tipo ambulancia"} value={tipo === "phd" ? r.tipo_solicitud : r.tipo_ambulancia} />
+            {tipo === "phd" && (
+              <Dato label="Tipo ambulancia" value={r.tipo_ambulancia} />
+            )}
             {evo && (
               <Dato
                 label="Evolución"
@@ -358,7 +371,7 @@ export function CasoGenericoCard({
                 <Dato label="Paciente" value={r.paciente} />
                 <Dato label="Tipo documento" value={r.tipo_documento} />
                 <Dato label="Documento" value={r.documento} />
-                <Dato label="Edad" value={r.edad} />
+                <Dato label="Edad" value={fmtEdad(r.edad)} />
                 <Dato label="CIE-10" value={r.cie10} />
                 <Dato label="EAPB / ERP" value={r.eapb} />
                 <Dato label="Régimen" value={r.regimen} />
@@ -367,7 +380,13 @@ export function CasoGenericoCard({
                 <Dato label="Prioridad" value={r.prioridad} />
                 <Dato label="N° radicado" value={radicado} />
                 <Dato label="Tipo solicitud" value={r.tipo_solicitud} />
+                {(r.unidad_especial || r.tipo_solicitud_detalle) && (
+                  <Dato label="Unidad especial" value={r.unidad_especial || r.tipo_solicitud_detalle} />
+                )}
                 <Dato label="Requiere ambulancia" value={r.requiere_ambulancia} />
+                {r.requiere_ambulancia === "SI" && (
+                  <Dato label="Tipo ambulancia" value={r.tipo_ambulancia} />
+                )}
                 <Dato label="Estado" value={r.estado} />
                 <Dato label="Fecha y hora inicio trámite" value={fmtFechaHora(r.fecha_inicio)} />
                 <Dato label="Fecha y hora radicación" value={fmtFechaHora(r.fecha_radicado)} />
@@ -386,9 +405,8 @@ export function CasoGenericoCard({
                 <Dato label="Servicio" value={r.servicio} />
                 <Dato label="Tipo solicitud" value={r.tipo_solicitud} />
                 <Dato label="Tipo ambulancia" value={r.tipo_ambulancia} />
-                <Dato label="Proveedor / prestador" value={r.proveedor_prestador} />
+                <Dato label="EAPB / ERP" value={r.eapb} />
                 <Dato label="Prioridad" value={r.prioridad} />
-                <Dato label="N° radicado" value={radicado} />
                 <Dato label="Estado" value={r.estado} />
                 <Dato label="Fecha y hora radicación" value={fmtFechaHora(r.fecha_radicado)} />
                 <Dato label="Tiempo del trámite" value={fmtTranscurrido(r.created_at)} />
@@ -400,7 +418,6 @@ export function CasoGenericoCard({
                 <Dato label="Tipo pendiente" value={r.tipo_pendiente} />
                 <Dato label="IPS / área" value={r.ips_area} />
                 <Dato label="Prioridad" value={r.prioridad} />
-                <Dato label="N° radicado" value={radicado} />
                 <Dato label="Estado" value={r.estado} />
                 <Dato label="Fecha y hora" value={fmtFechaHora(r.created_at)} />
                 <Dato label="Tiempo transcurrido" value={fmtTranscurrido(r.created_at)} />
@@ -443,8 +460,10 @@ export function CasoGenericoCard({
                   <SelectField name="prioridad" label="Prioridad" options={PRIORIDAD_OPCIONES} defaultValue={r.prioridad ?? ""} />
                   <Field name="estado_display" label="Estado (se cambia desde Seguimiento)" defaultValue={r.estado ?? ""} readOnly />
                   <SelectField name="tipo_solicitud" label="Tipo de solicitud" options={PHD_SOLICITUD} required defaultValue={r.tipo_solicitud ?? ""} />
+                  <Field name="unidad_especial" label="Unidad especial" defaultValue={(r.unidad_especial || r.tipo_solicitud_detalle) ?? ""} />
                   <SelectField name="requiere_ambulancia" label="Requiere ambulancia" options={SI_NO} defaultValue={r.requiere_ambulancia ?? ""} />
-                  <Field name="codigo_radicacion" label="Código de radicación" defaultValue={r.codigo_radicacion ?? ""} />
+                  <SelectField name="tipo_ambulancia" label="Tipo de ambulancia" options={PHD_AMBULANCIA} defaultValue={r.tipo_ambulancia ?? ""} />
+                  <Field name="radicado_display" label="N° radicado" defaultValue={radicado} readOnly />
                 </div>
                 <SpecialtyList label="Especialidades tratantes" items={tratantes} onChange={setTratantes} suggestions={especialidades} />
                 <div className="grid gap-3 sm:grid-cols-3">
@@ -464,7 +483,7 @@ export function CasoGenericoCard({
                 <SelectField name="servicio" label="Servicio" options={SERVICIO_OPCIONES} required defaultValue={r.servicio ?? ""} />
                 <SelectField name="tipo_solicitud" label="Tipo de solicitud" options={INTERNA_SOLICITUD} required defaultValue={r.tipo_solicitud ?? ""} />
                 <SelectField name="tipo_ambulancia" label="Tipo de ambulancia" options={AMBULANCIA_OPCIONES} defaultValue={r.tipo_ambulancia ?? ""} />
-                <Field name="proveedor_prestador" label="Proveedor / prestador" defaultValue={r.proveedor_prestador ?? ""} />
+                <Field name="eapb" label="EAPB / ERP" defaultValue={r.eapb ?? ""} />
                 <SelectField name="prioridad" label="Prioridad" options={PRIORIDAD_OPCIONES} defaultValue={r.prioridad ?? ""} />
                 <Field name="estado_display" label="Estado" defaultValue={r.estado ?? ""} readOnly />
               </div>

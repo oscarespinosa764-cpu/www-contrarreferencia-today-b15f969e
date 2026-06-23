@@ -843,3 +843,90 @@ export const REVISION_AUT_LABEL_CORTO = "REVISIÓN AUTORIZACIÓN ESTANCIA (CANCE
 export const REVISION_AUT_LABEL_COMPLETO =
   "REVISIÓN AUTORIZACIÓN ESTANCIA HOSPITALARIA PARA CANCELACIÓN DE TRÁMITE DE REMISIÓN";
 
+// ===========================================================================
+// PHD/PAD/O2/ESPECIALES — radicado por tipo de solicitud.
+// ===========================================================================
+
+export type RadicaFlags = {
+  radica_phd?: boolean | null;
+  radica_pad?: boolean | null;
+  radica_oxigeno?: boolean | null;
+  radica_unidad_especial?: boolean | null;
+};
+
+/**
+ * Determina si la EAPB genera radicado para el tipo de solicitud especial.
+ * El tipo de solicitud puede ser combinado (p.ej. "PHD + OXIGENO DOMICILIARIO").
+ */
+export function phdGeneraCodigo(tipoSolicitud: string, flags: RadicaFlags | null | undefined): boolean {
+  if (!flags) return false;
+  const s = (tipoSolicitud || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase();
+  let aplica = false;
+  if (/UNIDAD/.test(s)) aplica = aplica || !!flags.radica_unidad_especial;
+  if (/PHD/.test(s)) aplica = aplica || !!flags.radica_phd;
+  if (/PAD/.test(s)) aplica = aplica || !!flags.radica_pad;
+  if (/OXIGENO|OXÍGENO/.test(s)) aplica = aplica || !!flags.radica_oxigeno;
+  return aplica;
+}
+
+// ===========================================================================
+// REFERENCIA INTERNA — plantillas de seguimiento (texto plano).
+// ===========================================================================
+
+export function generarPlantillaRefInternaPendiente(i: {
+  funcionario?: string;
+  cargo?: string;
+}): string {
+  let t =
+    "SE DEJA TRAZABILIDAD DE LA GESTIÓN DE REFERENCIA INTERNA, LA CUAL SE ENCUENTRA PENDIENTE DE COORDINACIÓN DE FECHA Y HORA DEL EXAMEN.";
+  const f = (i.funcionario || "").trim();
+  const c = (i.cargo || "").trim();
+  if (f || c) {
+    t += ` SE REALIZA ACERCAMIENTO CON ${f ? f.toUpperCase() : "[FUNCIONARIO]"}`;
+    if (c) t += ` (${c.toUpperCase()})`;
+    t += ", QUIEN QUEDA A CARGO DE LA COORDINACIÓN.";
+  }
+  return t;
+}
+
+export function generarPlantillaRefInternaCoordinado(i: {
+  fecha?: string;
+  hora?: string;
+  informoAmbulancia?: boolean;
+  informoServicio?: boolean;
+}): string {
+  const f = ph(i.fecha, "FECHA");
+  const h = ph(i.hora, "HORA");
+  let t = `SE DEJA TRAZABILIDAD DE QUE EL EXAMEN DE REFERENCIA INTERNA QUEDÓ COORDINADO PARA EL DÍA ${f} A LAS ${h}.`;
+  const avisos: string[] = [];
+  if (i.informoAmbulancia) avisos.push("A LA AMBULANCIA");
+  if (i.informoServicio) avisos.push("AL SERVICIO");
+  if (avisos.length > 0) {
+    t += ` YA SE INFORMÓ ${avisos.join(" Y ")} SOBRE LA PROGRAMACIÓN.`;
+  }
+  return t;
+}
+
+export function generarPlantillaRefInternaCulminacion(): string {
+  return "SE CULMINA LA SOLICITUD DE REFERENCIA INTERNA. SE DEJA TRAZABILIDAD DEL CIERRE DEL PROCESO.";
+}
+
+// ===========================================================================
+// PENDIENTES — plantillas de cumplimiento (texto plano).
+// ===========================================================================
+
+export function generarPlantillaPendienteCumplimiento(
+  completo: boolean,
+  observaciones?: string | null,
+): string {
+  let t = completo
+    ? "SE DEJA TRAZABILIDAD DEL CUMPLIMIENTO COMPLETO DEL PENDIENTE. SE CIERRA Y ARCHIVA EL CASO."
+    : "SE DEJA TRAZABILIDAD DEL CUMPLIMIENTO PARCIAL DEL PENDIENTE. EL CASO CONTINÚA ACTIVO PARA SU SEGUIMIENTO.";
+  const obs = (observaciones || "").trim();
+  if (obs) t += `\n\nOBSERVACIONES: ${obs}`;
+  return t;
+}
+
