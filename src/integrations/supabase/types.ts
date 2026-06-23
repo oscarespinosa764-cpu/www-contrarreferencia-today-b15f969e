@@ -190,6 +190,10 @@ export type Database = {
           extra2: string | null
           extra3: string | null
           id: string
+          radica_oxigeno: boolean
+          radica_pad: boolean
+          radica_phd: boolean
+          radica_unidad_especial: boolean
           tipo: string
           updated_at: string
           valor: string
@@ -201,6 +205,10 @@ export type Database = {
           extra2?: string | null
           extra3?: string | null
           id?: string
+          radica_oxigeno?: boolean
+          radica_pad?: boolean
+          radica_phd?: boolean
+          radica_unidad_especial?: boolean
           tipo: string
           updated_at?: string
           valor: string
@@ -212,6 +220,10 @@ export type Database = {
           extra2?: string | null
           extra3?: string | null
           id?: string
+          radica_oxigeno?: boolean
+          radica_pad?: boolean
+          radica_phd?: boolean
+          radica_unidad_especial?: boolean
           tipo?: string
           updated_at?: string
           valor?: string
@@ -349,6 +361,8 @@ export type Database = {
           detalle: string | null
           documento: string | null
           eapb: string | null
+          eapb_genera_codigo: boolean | null
+          eapb_tiene_plataforma: boolean | null
           edad: string | null
           especialidades_tratantes: string | null
           estado: string | null
@@ -361,14 +375,20 @@ export type Database = {
           fecha_radicado: string | null
           id: string
           ips: string | null
+          ips_receptora: string | null
           observaciones: string | null
           paciente: string | null
+          plataforma_funcionando: boolean | null
           prioridad: string | null
           regimen: string | null
           requiere_ambulancia: string | null
           servicio: string | null
+          tipo_ambulancia: string | null
           tipo_documento: string | null
           tipo_solicitud: string | null
+          tipo_solicitud_detalle: string | null
+          tipo_tramite: string | null
+          trazabilidad_indigo: string | null
           unidad_especial: string | null
           updated_at: string
         }
@@ -385,6 +405,8 @@ export type Database = {
           detalle?: string | null
           documento?: string | null
           eapb?: string | null
+          eapb_genera_codigo?: boolean | null
+          eapb_tiene_plataforma?: boolean | null
           edad?: string | null
           especialidades_tratantes?: string | null
           estado?: string | null
@@ -397,14 +419,20 @@ export type Database = {
           fecha_radicado?: string | null
           id?: string
           ips?: string | null
+          ips_receptora?: string | null
           observaciones?: string | null
           paciente?: string | null
+          plataforma_funcionando?: boolean | null
           prioridad?: string | null
           regimen?: string | null
           requiere_ambulancia?: string | null
           servicio?: string | null
+          tipo_ambulancia?: string | null
           tipo_documento?: string | null
           tipo_solicitud?: string | null
+          tipo_solicitud_detalle?: string | null
+          tipo_tramite?: string | null
+          trazabilidad_indigo?: string | null
           unidad_especial?: string | null
           updated_at?: string
         }
@@ -421,6 +449,8 @@ export type Database = {
           detalle?: string | null
           documento?: string | null
           eapb?: string | null
+          eapb_genera_codigo?: boolean | null
+          eapb_tiene_plataforma?: boolean | null
           edad?: string | null
           especialidades_tratantes?: string | null
           estado?: string | null
@@ -433,14 +463,20 @@ export type Database = {
           fecha_radicado?: string | null
           id?: string
           ips?: string | null
+          ips_receptora?: string | null
           observaciones?: string | null
           paciente?: string | null
+          plataforma_funcionando?: boolean | null
           prioridad?: string | null
           regimen?: string | null
           requiere_ambulancia?: string | null
           servicio?: string | null
+          tipo_ambulancia?: string | null
           tipo_documento?: string | null
           tipo_solicitud?: string | null
+          tipo_solicitud_detalle?: string | null
+          tipo_tramite?: string | null
+          trazabilidad_indigo?: string | null
           unidad_especial?: string | null
           updated_at?: string
         }
@@ -715,6 +751,7 @@ export type Database = {
           caso_id: string | null
           created_at: string
           created_by: string | null
+          detalles: Json | null
           estado: string | null
           fecha: string | null
           id: string
@@ -732,6 +769,7 @@ export type Database = {
           caso_id?: string | null
           created_at?: string
           created_by?: string | null
+          detalles?: Json | null
           estado?: string | null
           fecha?: string | null
           id?: string
@@ -749,6 +787,7 @@ export type Database = {
           caso_id?: string | null
           created_at?: string
           created_by?: string | null
+          detalles?: Json | null
           estado?: string | null
           fecha?: string | null
           id?: string
@@ -943,6 +982,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           documento: string | null
+          eapb: string | null
           estado: string | null
           evolucion: string | null
           evolucion_actualizada_at: string | null
@@ -967,6 +1007,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           documento?: string | null
+          eapb?: string | null
           estado?: string | null
           evolucion?: string | null
           evolucion_actualizada_at?: string | null
@@ -991,6 +1032,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           documento?: string | null
+          eapb?: string | null
           estado?: string | null
           evolucion?: string | null
           evolucion_actualizada_at?: string | null
