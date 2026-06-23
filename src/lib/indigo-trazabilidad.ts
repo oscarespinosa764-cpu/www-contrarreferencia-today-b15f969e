@@ -473,3 +473,278 @@ export function generarPlantillaOtro(detalle: string): string {
     "DETALLE",
   )}`;
 }
+
+// ===========================================================================
+// MODAL DE SEGUIMIENTOS SALIENTES v2 — plantillas dinámicas por tipo.
+// Texto plano para copiar/pegar en ÍNDIGO. Cada generador devuelve mayúsculas.
+// ===========================================================================
+
+/** Agrega la observación del usuario como nota al final de la plantilla. */
+export function appendNota(texto: string, observaciones?: string | null): string {
+  const obs = (observaciones || "").trim();
+  if (!obs) return texto;
+  return `${texto}\n\nNOTA: ${obs}`;
+}
+
+// --- Estado del caso normalizado (tolerante a tildes/variaciones). ---
+export type EstadoCasoNorm =
+  | "pendiente"
+  | "aceptado_sin_amb"
+  | "aceptado_con_amb"
+  | "otro";
+
+export function normEstadoCaso(v: string | null | undefined): EstadoCasoNorm {
+  const s = (v || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase();
+  if (/ACEPTAD.*CON.*AMBULANC/.test(s)) return "aceptado_con_amb";
+  if (/ACEPTAD.*SIN.*(PROGRAMAC|AMBULANC|TRASLADO)/.test(s)) return "aceptado_sin_amb";
+  if (/ACEPTAD/.test(s)) return "aceptado_sin_amb";
+  if (/PENDIENTE/.test(s)) return "pendiente";
+  return "otro";
+}
+
+// --- 4. RADICADO DE CASO ---
+export function generarPlantillaRadicado(codigo: string): string {
+  const cod = (codigo || "").trim() || "[RADICADO]";
+  return `SE DEJA TRAZABILIDAD DEL TRÁMITE DE REMISIÓN CORRESPONDIENTE A LA RADICACIÓN DEL CASO ANTE LA EAPB, CON NÚMERO DE RADICADO ${cod}. SE CONTINÚA PENDIENTE A POSIBLE ACEPTACIÓN POR PARTE DE UNA IPS RECEPTORA.`;
+}
+
+// --- 5. EVOLUCIÓN DIARIA (determinada automáticamente). ---
+export type EvolucionDiariaInput = {
+  estadoCaso: string | null;
+  /** Trámite administrativo (caso creado por RED NO CONTRATADA). */
+  esTramiteAdministrativo: boolean;
+  tienePlataforma: boolean;
+  /** ¿La plataforma de la EAPB está funcionando? (solo si tiene plataforma) */
+  plataformaFunciona: boolean | null;
+  enviadoCorreo: boolean;
+  enviadoPlataforma: boolean;
+  motivoPendiente?: string;
+};
+
+export function generarPlantillaEvolucionDiaria(i: EvolucionDiariaInput): string {
+  const plataformaCaida = i.tienePlataforma && i.plataformaFunciona === false;
+  const est = normEstadoCaso(i.estadoCaso);
+
+  // Texto del canal por el que se envió la evolución.
+  let canal: string;
+  if (plataformaCaida) {
+    canal = "POR CORREO ELECTRÓNICO A LA EAPB";
+  } else if (i.tienePlataforma) {
+    if (i.enviadoCorreo && i.enviadoPlataforma) canal = "POR CORREO ELECTRÓNICO Y PLATAFORMA DE LA EAPB";
+    else if (i.enviadoCorreo) canal = "POR CORREO ELECTRÓNICO A LA EAPB";
+    else if (i.enviadoPlataforma) canal = "MEDIANTE LA PLATAFORMA DE LA EAPB";
+    else canal = "A LA EAPB";
+  } else {
+    canal = "POR CORREO ELECTRÓNICO A LA EAPB";
+  }
+
+  let base: string;
+  if (est === "aceptado_sin_amb") {
+    base = `SE REALIZA EVOLUCIÓN DIARIA DEL PROCESO DE REMISIÓN, ENVIANDO EVOLUCIÓN ACTUALIZADA ${canal} CON COPIA A LA IPS RECEPTORA, SOLICITANDO RESERVA DE LA CAMA MIENTRAS SE COORDINA EL TRASLADO.`;
+  } else if (est === "aceptado_con_amb") {
+    base = `SE REALIZA EVOLUCIÓN DIARIA DEL PROCESO DE REMISIÓN ${canal} CON COPIA A LA IPS RECEPTORA. EL CASO YA CUENTA CON COORDINACIÓN DE TRASLADO; SE MANTIENE TRAZABILIDAD DEL PROCESO.`;
+  } else if (i.esTramiteAdministrativo) {
+    base = `SE REALIZA EVOLUCIÓN DIARIA DEL TRÁMITE ADMINISTRATIVO DE REMISIÓN ${canal}, QUEDANDO A LA ESPERA DE RESPUESTA Y DE PROBABLE AUTORIZACIÓN DE ESTANCIA HOSPITALARIA, DEBIDO A QUE CONTAMOS CON LA CAPACIDAD TÉCNICO-CIENTÍFICA Y ESPECIALIDAD REQUERIDA EN LA ACTUALIDAD.`;
+  } else {
+    base = `SE REALIZA EVOLUCIÓN DIARIA DEL PROCESO DE REMISIÓN ${canal}, QUEDANDO A LA ESPERA DE RESPUESTA Y CONTINUIDAD DEL PROCESO. SE CONTINÚA PENDIENTE A POSIBLE ACEPTACIÓN POR PARTE DE UNA IPS RECEPTORA.`;
+  }
+
+  if (plataformaCaida) {
+    base += " SE DEJA TRAZABILIDAD DE QUE LA PLATAFORMA DE LA EAPB PRESENTA FALLA O NO DISPONIBILIDAD AL MOMENTO DEL SEGUIMIENTO.";
+  }
+
+  // Nota de canal pendiente (solo cuando la EAPB tiene plataforma).
+  const motivo = (i.motivoPendiente || "").trim() || "[MOTIVO]";
+  if (i.tienePlataforma && !plataformaCaida) {
+    if (i.enviadoCorreo && !i.enviadoPlataforma) {
+      base += `\n\nNOTA: QUEDA PENDIENTE ENVÍO POR PLATAFORMA. MOTIVO: ${motivo}.`;
+    } else if (!i.enviadoCorreo && i.enviadoPlataforma) {
+      base += `\n\nNOTA: QUEDA PENDIENTE ENVÍO POR CORREO ELECTRÓNICO. MOTIVO: ${motivo}.`;
+    }
+  }
+  return base;
+}
+
+// --- 6/7. CORREO ELECTRÓNICO / PLATAFORMA WEB ---
+export function generarPlantillaCorreoSeg(estadoSolicitud: string, estadoCaso: string): string {
+  let t =
+    "SE REALIZA SEGUIMIENTO POR CORREO ELECTRÓNICO A LA EAPB, DEJANDO TRAZABILIDAD DE LA GESTIÓN DEL PROCESO DE REMISIÓN.";
+  if (estadoCaso.trim()) t += ` ESTADO DEL CASO: ${estadoCaso.trim().toUpperCase()}.`;
+  if (estadoSolicitud.trim()) t += ` ESTADO DE LA SOLICITUD: ${estadoSolicitud.trim().toUpperCase()}.`;
+  return t;
+}
+
+export function generarPlantillaPlataformaSeg(estadoSolicitud: string, estadoCaso: string): string {
+  let t =
+    "SE REALIZA SEGUIMIENTO MEDIANTE LA PLATAFORMA WEB DE LA EAPB, DEJANDO TRAZABILIDAD DE LA GESTIÓN DEL PROCESO DE REMISIÓN.";
+  if (estadoCaso.trim()) t += ` ESTADO DEL CASO: ${estadoCaso.trim().toUpperCase()}.`;
+  if (estadoSolicitud.trim()) t += ` ESTADO DE LA SOLICITUD: ${estadoSolicitud.trim().toUpperCase()}.`;
+  return t;
+}
+
+// --- 8. FÍSICO O PRESENCIAL ---
+export type AcercamientoTipo = "FAMILIAR" | "PACIENTE" | "SERVICIO" | "OTRO";
+
+export const ACERCAMIENTO_OPCIONES: AcercamientoTipo[] = [
+  "FAMILIAR",
+  "PACIENTE",
+  "SERVICIO",
+  "OTRO",
+];
+
+export const SERVICIO_OPCIONES = ["URGENCIAS", "HOSPITALIZACIÓN", "QUIRÓFANO", "UCI"];
+
+export type FisicoInput = {
+  acercamiento: AcercamientoTipo;
+  nombre?: string;
+  parentesco?: string;
+  servicio?: string;
+  funcionario?: string;
+  cargo?: string;
+  conQuien?: string;
+};
+
+export function generarPlantillaFisico(i: FisicoInput): string {
+  const base = "SE REALIZA ACERCAMIENTO FÍSICO O PRESENCIAL";
+  switch (i.acercamiento) {
+    case "FAMILIAR":
+      return `${base} CON EL FAMILIAR ${ph(i.nombre, "NOMBRE Y APELLIDO")} (${ph(
+        i.parentesco,
+        "PARENTESCO",
+      )}), DEJANDO TRAZABILIDAD DE LA GESTIÓN REALIZADA EN EL PROCESO DE REMISIÓN.`;
+    case "PACIENTE":
+      return `${base} CON EL PACIENTE, DEJANDO TRAZABILIDAD DE LA GESTIÓN REALIZADA EN EL PROCESO DE REMISIÓN.`;
+    case "SERVICIO":
+      return `${base} EN EL SERVICIO DE ${ph(i.servicio, "SERVICIO")}, CON EL FUNCIONARIO ${ph(
+        i.funcionario,
+        "NOMBRE DEL FUNCIONARIO",
+      )} (${ph(i.cargo, "CARGO")}), DEJANDO TRAZABILIDAD DE LA GESTIÓN REALIZADA EN EL PROCESO DE REMISIÓN.`;
+    case "OTRO":
+    default:
+      return `${base} CON ${ph(i.conQuien, "CON QUIÉN")} (${ph(
+        i.nombre,
+        "NOMBRE Y APELLIDO",
+      )}), DEJANDO TRAZABILIDAD DE LA GESTIÓN REALIZADA EN EL PROCESO DE REMISIÓN.`;
+  }
+}
+
+// --- 9. CONTACTO TELEFÓNICO ---
+export function generarPlantillaTelefonico(
+  nombre: string,
+  telefono: string,
+  estadoSolicitud: string,
+): string {
+  let t = `SE REALIZA CONTACTO TELEFÓNICO CON ${ph(nombre, "NOMBRE DE CONTACTO")} AL NÚMERO ${ph(
+    telefono,
+    "TELÉFONO",
+  )}, CON EL FIN DE REALIZAR SEGUIMIENTO AL PROCESO DE REMISIÓN.`;
+  if (estadoSolicitud.trim()) t += ` ESTADO DE LA SOLICITUD: ${estadoSolicitud.trim().toUpperCase()}.`;
+  return t;
+}
+
+// --- 10. ACEPTACIÓN DE IPS RECEPTORA ---
+export function generarPlantillaAceptacionIps(ips: string, sede: string): string {
+  const i = ph(ips, "IPS RECEPTORA");
+  const sedeTxt = (sede || "").trim() ? ` (${sede.trim()})` : "";
+  return `SE RECIBE ACEPTACIÓN DEL CASO POR PARTE DE LA IPS RECEPTORA ${i}${sedeTxt}. SE INFORMA AL PACIENTE Y FAMILIAR, Y SE CONTINÚA GESTIÓN PARA LA COORDINACIÓN DEL TRASLADO. ESTADO DE LA SOLICITUD: SÍ ACEPTA.`;
+}
+
+// --- 11. TRAZABILIDAD DE NEGACIONES ---
+export const NEGACION_MOTIVOS = [
+  "NO DISPONIBILIDAD DE CAMAS",
+  "NO DISPONIBILIDAD DE RECURSOS HUMANOS",
+  "NO DISPONIBILIDAD DE INSUMOS O RECURSOS TECNOLÓGICOS",
+  "NIVEL DE COMPETENCIA NO PERTINENTE",
+];
+
+export type NegacionGrupo = { motivo: string; ips: string[] };
+
+export function generarPlantillaNegaciones(grupos: NegacionGrupo[]): string {
+  const validos = grupos.filter((g) => g.motivo && g.ips.length > 0);
+  if (validos.length === 0) {
+    return "SE DEJA TRAZABILIDAD DE NEGACIONES RECIBIDAS DURANTE EL PROCESO DE REMISIÓN. ESTADO DE LA SOLICITUD: NO ACEPTA.";
+  }
+  let t = "SE DEJA TRAZABILIDAD DE NEGACIONES RECIBIDAS DURANTE EL PROCESO DE REMISIÓN:";
+  for (const g of validos) {
+    t += `\n\n${g.motivo.toUpperCase()}:`;
+    for (const ips of g.ips) t += `\n- ${ips.toUpperCase()}`;
+  }
+  t += "\n\nESTADO DE LA SOLICITUD: NO ACEPTA.";
+  return t;
+}
+
+// --- 13. CANCELACIÓN DE TRÁMITE DE REMISIÓN (unificada) ---
+export type CancelacionTipo =
+  | "desistimiento_general"
+  | "cambio_erp"
+  | "administrativo";
+
+export const CANCELACION_TIPOS: { value: CancelacionTipo; label: string }[] = [
+  {
+    value: "desistimiento_general",
+    label: "CANCELACIÓN POR NO ACEPTACIÓN DE FAMILIAR/PACIENTE - FIRMA DE DESISTIMIENTO GENERAL",
+  },
+  {
+    value: "cambio_erp",
+    label: "CANCELACIÓN DE TRÁMITE POR SUPERACIÓN DE TOPE - CAMBIO DE ERP",
+  },
+  { value: "administrativo", label: "CANCELACIÓN DE TRÁMITE ADMINISTRATIVO" },
+];
+
+export const CANCELACION_GESTION = ["SOLICITUD DE CANCELACIÓN AL CHAT DEL ÁREA"];
+
+export const SERVICIO_CANCELACION = [
+  "URGENCIAS",
+  "HOSPITALIZACIÓN",
+  "QUIRÓFANO",
+  "UCI",
+  "FACTURACIÓN / AUTORIZACIONES",
+];
+
+export type CancelacionInput = {
+  tipo: CancelacionTipo;
+  gestion?: string;
+  servicio?: string;
+  funcionario?: string;
+  cargo?: string;
+  nuevoRadicado?: string;
+};
+
+export function generarPlantillaCancelacionRemision(i: CancelacionInput): string {
+  if (i.tipo === "desistimiento_general") {
+    return "SE REALIZA CANCELACIÓN DEL TRÁMITE DE REMISIÓN POR NO ACEPTACIÓN DEL FAMILIAR/PACIENTE, QUIENES FIRMAN DESISTIMIENTO GENERAL. ENTIENDEN LOS RIESGOS Y COMPLICACIONES ASOCIADOS A LA NO REMISIÓN Y ACEPTAN LA RESPONSABILIDAD. SE DEJA TRAZABILIDAD DEL PROCESO.";
+  }
+  if (i.tipo === "cambio_erp") {
+    let t =
+      "SE REALIZA CANCELACIÓN DEL TRÁMITE DE REMISIÓN POR SUPERACIÓN DE TOPE Y CAMBIO DE ERP, PARA DAR CONTINUIDAD AL PROCESO POR LA NUEVA ENTIDAD RESPONSABLE DEL PAGO.";
+    if ((i.nuevoRadicado || "").trim()) {
+      t += ` SE RADICA NUEVAMENTE EL CASO ANTE LA NUEVA EAPB CON NÚMERO DE RADICADO ${i.nuevoRadicado!.trim()}.`;
+    }
+    return t;
+  }
+  // administrativo
+  if (i.gestion === "SOLICITUD DE CANCELACIÓN AL CHAT DEL ÁREA") {
+    return `SE REALIZA SOLICITUD DE CANCELACIÓN DEL TRÁMITE ADMINISTRATIVO DE REMISIÓN AL CHAT DEL ÁREA DE ${ph(
+      i.servicio,
+      "SERVICIO",
+    )}, CON EL FUNCIONARIO ${ph(i.funcionario, "NOMBRE DEL FUNCIONARIO")} (${ph(
+      i.cargo,
+      "CARGO",
+    )}), DEBIDO A QUE EL PACIENTE YA CUENTA CON AUTORIZACIÓN DE ESTANCIA PARA MANEJO EN LA INSTITUCIÓN. SE DEJA TRAZABILIDAD DEL PROCESO.`;
+  }
+  return "SE REALIZA CANCELACIÓN DEL TRÁMITE ADMINISTRATIVO DE REMISIÓN, DEBIDO A QUE EL PACIENTE YA CUENTA CON AUTORIZACIÓN DE ESTANCIA PARA MANEJO EN LA INSTITUCIÓN. SE DEJA TRAZABILIDAD DEL PROCESO.";
+}
+
+// --- 14. OTRO ---
+export function generarPlantillaOtroSeg(cual: string, estadoSolicitud: string): string {
+  let t = `SE DEJA TRAZABILIDAD DE SEGUIMIENTO REALIZADO POR REFERENCIA Y CONTRARREFERENCIA: ${ph(
+    cual,
+    "CUÁL",
+  )}.`;
+  if (estadoSolicitud.trim()) t += ` ESTADO DE LA SOLICITUD: ${estadoSolicitud.trim().toUpperCase()}.`;
+  return t;
+}
+

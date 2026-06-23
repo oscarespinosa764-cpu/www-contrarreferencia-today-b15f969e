@@ -1217,10 +1217,12 @@ export type Database = {
           created_at: string
           created_by: string | null
           detalle: string | null
+          detalles: Json | null
           estado_solicitud: string | null
           id: string
           nombre_contacto: string | null
           nombre_usuario: string | null
+          plantilla_indigo: string | null
           radicado: string | null
           telefono: string | null
           tipo_caso: string
@@ -1233,10 +1235,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           detalle?: string | null
+          detalles?: Json | null
           estado_solicitud?: string | null
           id?: string
           nombre_contacto?: string | null
           nombre_usuario?: string | null
+          plantilla_indigo?: string | null
           radicado?: string | null
           telefono?: string | null
           tipo_caso: string
@@ -1249,10 +1253,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           detalle?: string | null
+          detalles?: Json | null
           estado_solicitud?: string | null
           id?: string
           nombre_contacto?: string | null
           nombre_usuario?: string | null
+          plantilla_indigo?: string | null
           radicado?: string | null
           telefono?: string | null
           tipo_caso?: string

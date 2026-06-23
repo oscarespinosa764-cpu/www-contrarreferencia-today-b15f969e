@@ -8,42 +8,55 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AutoComplete } from "@/components/rc/autocomplete";
 import {
   EVO_CANALES,
   canalesFaltantes,
   evolucionFromDetalle,
   evolucionMeta,
   fmtFechaHora,
+  isFechaValida,
+  isHoraValida,
+  maskFechaInput,
+  maskHoraInput,
   parseEvolucionDetalle,
   splitEspecialidades,
   type EvoEspecialidad,
+  type EvolucionEstado,
 } from "@/lib/remisiones-utils";
 import { toast } from "sonner";
 import { PlantillasEnPaso } from "@/components/coordinacion/plantillas-en-paso";
-import { Copy, RotateCcw } from "lucide-react";
+import { Copy, RotateCcw, Plus, X, Eye } from "lucide-react";
 import {
+  ACERCAMIENTO_OPCIONES,
   AMBULANCIA_VARIANTES,
-  CANCELACION_SUBTIPOS,
-  CIERRE_SUBTIPOS,
-  EVO_SITUACIONES,
+  CANCELACION_GESTION,
+  CANCELACION_TIPOS,
+  NEGACION_MOTIVOS,
   PERTINENCIA_SUBTIPOS,
+  SERVICIO_CANCELACION,
+  SERVICIO_OPCIONES,
+  appendNota,
+  esTramiteAdministrativo,
   esTramiteSoat,
+  generarPlantillaAceptacionIps,
   generarPlantillaAmbulancia,
-  generarPlantillaCanal,
-  generarPlantillaCancelacion,
-  generarPlantillaCierre,
-  generarPlantillaEvolucion,
-  generarPlantillaOtro,
+  generarPlantillaCancelacionRemision,
+  generarPlantillaCorreoSeg,
+  generarPlantillaEvolucionDiaria,
+  generarPlantillaFisico,
+  generarPlantillaNegaciones,
+  
+  generarPlantillaOtroSeg,
   generarPlantillaPertinencia,
-  generarPlantillaRadicacion,
-  generarPlantillaRespuestaIps,
-  plantillaRechazoFamilia,
+  generarPlantillaPlataformaSeg,
+  generarPlantillaRadicado,
+  generarPlantillaTelefonico,
+  type AcercamientoTipo,
   type AmbulanciaVariante,
-  type CancelacionSubtipo,
-  type CierreSubtipo,
-  type EvolucionSituacion,
+  type CancelacionTipo,
+  type NegacionGrupo,
   type PertinenciaSubtipo,
-  type RadicacionTipo,
 } from "@/lib/indigo-trazabilidad";
 
 type Props = {
@@ -54,52 +67,31 @@ type Props = {
   paciente: string;
   documento?: string | null;
   evolucionActual?: string | null;
-  /** JSON con el detalle de evolución por especialidad. */
   evolucionDetalle?: string | null;
-  /** Especialidades tratantes/remisoras (texto separado por comas). */
   especialidades?: string | null;
-  /** Radicado guardado en el caso. */
   radicadoCaso?: string | null;
-  /** Tabla a actualizar para la evolución del caso (remisiones, domiciliarios, etc.). */
   tabla?: string;
-  /** Opciones de estado del caso (solo remisiones y PHD lo cambian desde aquí). */
   estadoOpciones?: string[];
-  /** Estado actual del caso. */
   estadoActual?: string | null;
 };
 
-// --- Tipos de seguimiento para REMISIONES SALIENTES (lista limpia, sin duplicados) ---
+// --- Tipos de seguimiento para REMISIONES SALIENTES (lista nueva) ---
 const T = {
-  RADICADO: "Radicado de caso",
-  EVOLUCION: "Evolución diaria",
-  CORREO: "Correo electrónico",
-  PLATAFORMA: "Plataforma web",
-  FISICO: "Físico o presencial",
-  LLAMADA: "Llamada al centro receptor / contacto telefónico",
-  RESPUESTA: "Respuesta de IPS",
-  AMBULANCIA: "Coordinación de ambulancia",
-  CIERRE: "Cierre de trámite",
-  CANCELACION: "Cancelación de trámite administrativo",
-  PERTINENCIA: "Validación de pertinencia médica",
-  OTRO: "Otro seguimiento",
+  RADICADO: "RADICADO DE CASO",
+  EVOLUCION: "EVOLUCIÓN DIARIA",
+  CORREO: "CORREO ELECTRÓNICO",
+  PLATAFORMA: "PLATAFORMA WEB",
+  FISICO: "FÍSICO O PRESENCIAL",
+  TELEFONO: "CONTACTO TELEFÓNICO",
+  ACEPTACION: "ACEPTACIÓN DE IPS RECEPTORA",
+  NEGACIONES: "TRAZABILIDAD DE NEGACIONES",
+  AMBULANCIA: "AMBULANCIA COORDINADA",
+  CANCELACION: "CANCELACIÓN DE TRÁMITE DE REMISIÓN",
+  PERTINENCIA: "VALIDACIÓN DE PERTINENCIA MÉDICA",
+  OTRO: "OTRO",
 } as const;
 
-const TIPOS_SALIENTES = [
-  T.RADICADO,
-  T.EVOLUCION,
-  T.CORREO,
-  T.PLATAFORMA,
-  T.FISICO,
-  T.LLAMADA,
-  T.RESPUESTA,
-  T.AMBULANCIA,
-  T.CIERRE,
-  T.CANCELACION,
-  T.PERTINENCIA,
-  T.OTRO,
-];
-
-// Lista heredada para otros módulos (domiciliarios, PHD, etc.). No se modifica su flujo.
+// Lista heredada para otros módulos (domiciliarios, PHD, etc.). No se modifica.
 const TIPOS_LEGACY = [
   "Radicado / inicio trámite de remisión",
   "Telefónico / celular",
@@ -140,43 +132,76 @@ export function SeguimientoDialog({
   const especialidadesList = useMemo(() => splitEspecialidades(especialidades), [especialidades]);
 
   const esSaliente = tabla === "remisiones";
-  const TIPOS_SEG = esSaliente ? TIPOS_SALIENTES : TIPOS_LEGACY;
 
-  const [nuevoRadicado, setNuevoRadicado] = useState(false);
-  const [noAplicaRadicado, setNoAplicaRadicado] = useState(false);
-  const [radicado, setRadicado] = useState("");
+  // --- Estados base ---
   const [tipoSeg, setTipoSeg] = useState("");
-  const [detalle, setDetalle] = useState("");
+  const [detalle, setDetalle] = useState(""); // observaciones
   const [estadoSolicitud, setEstadoSolicitud] = useState("");
+  const [estadoCaso, setEstadoCaso] = useState("");
   const [nombreContacto, setNombreContacto] = useState("");
   const [telefono, setTelefono] = useState("");
-  const [evoDetalle, setEvoDetalle] = useState<Record<string, EvoEspecialidad>>({});
-  // Snapshot de lo ya guardado: los canales en true quedan bloqueados.
-  const [inicial, setInicial] = useState<Record<string, EvoEspecialidad>>({});
-  const [motivoEvo, setMotivoEvo] = useState("");
   const [busy, setBusy] = useState(false);
   const [busyEvo, setBusyEvo] = useState(false);
-  const [estadoCaso, setEstadoCaso] = useState("");
 
-  // --- Índigo: plantilla editable y campos por tipo de seguimiento ---
-  const [indigoTexto, setIndigoTexto] = useState("");
-  const [indigoEditada, setIndigoEditada] = useState(false);
-  const [evoSituacion, setEvoSituacion] = useState<EvolucionSituacion>("estandar");
-  const [evoAgregarNacional, setEvoAgregarNacional] = useState(false);
-  const [evoDeptos, setEvoDeptos] = useState<string[]>([]);
-  const [destinatario, setDestinatario] = useState("");
+  // Radicado
+  const [radicado, setRadicado] = useState("");
+
+  // Evolución diaria (legacy por especialidad)
+  const [evoDetalle, setEvoDetalle] = useState<Record<string, EvoEspecialidad>>({});
+  const [inicial, setInicial] = useState<Record<string, EvoEspecialidad>>({});
+  const [motivoEvo, setMotivoEvo] = useState("");
+
+  // Evolución diaria (salientes v2)
+  const [evoCorreo, setEvoCorreo] = useState(false);
+  const [evoPlataforma, setEvoPlataforma] = useState(false);
+  const [plataformaFuncSeg, setPlataformaFuncSeg] = useState<"" | "SI" | "NO">("");
+  const [evoMotivoPend, setEvoMotivoPend] = useState("");
+
+  // Físico / presencial
+  const [acercamiento, setAcercamiento] = useState<AcercamientoTipo>("FAMILIAR");
+  const [fisNombre, setFisNombre] = useState("");
+  const [fisParentesco, setFisParentesco] = useState("");
+  const [fisServicio, setFisServicio] = useState("");
+  const [fisFuncionario, setFisFuncionario] = useState("");
+  const [fisCargo, setFisCargo] = useState("");
+  const [fisConQuien, setFisConQuien] = useState("");
+
+  // Aceptación IPS
   const [ipsReceptora, setIpsReceptora] = useState("");
-  const [rechazoFamilia, setRechazoFamilia] = useState(false);
+  const [ipsReceptoraSede, setIpsReceptoraSede] = useState("");
+
+  // Negaciones
+  const [negMotivo, setNegMotivo] = useState("");
+  const [negIpsInput, setNegIpsInput] = useState("");
+  const [negIpsCurrent, setNegIpsCurrent] = useState<string[]>([]);
+  const [negGrupos, setNegGrupos] = useState<NegacionGrupo[]>([]);
+
+  // Ambulancia
   const [ambVariante, setAmbVariante] = useState<AmbulanciaVariante>("empresa");
   const [empresaAmb, setEmpresaAmb] = useState("");
   const [fechaTraslado, setFechaTraslado] = useState("");
   const [horaTraslado, setHoraTraslado] = useState("");
-  const [cierreSub, setCierreSub] = useState<CierreSubtipo>("rechazo_familia");
-  const [funcionarioFact, setFuncionarioFact] = useState("");
-  const [cancelSub, setCancelSub] = useState<CancelacionSubtipo>("notificacion");
+
+  // Cancelación
+  const [cancelTipo, setCancelTipo] = useState<CancelacionTipo>("desistimiento_general");
+  const [cancelGestion, setCancelGestion] = useState("");
+  const [cancelServicio, setCancelServicio] = useState("");
+  const [cancelFuncionario, setCancelFuncionario] = useState("");
+  const [cancelCargo, setCancelCargo] = useState("");
+  const [cancelNuevoRadicado, setCancelNuevoRadicado] = useState("");
+
+  // Otro / Pertinencia
+  const [otroCual, setOtroCual] = useState("");
   const [pertinenciaSub, setPertinenciaSub] = useState<PertinenciaSubtipo>("con_nota");
 
-  // Datos completos del caso (solo remisiones salientes) para alimentar las plantillas.
+  // Índigo
+  const [indigoTexto, setIndigoTexto] = useState("");
+  const [indigoEditada, setIndigoEditada] = useState(false);
+
+  // Ver detalle / últimos seguimientos
+  const [verDetalle, setVerDetalle] = useState<Record<string, unknown> | null>(null);
+
+  // Datos del caso (solo remisiones salientes).
   const { data: caso } = useQuery({
     queryKey: ["remision-indigo-caso", casoId],
     enabled: open && esSaliente,
@@ -184,7 +209,7 @@ export function SeguimientoDialog({
       const { data } = await supabase
         .from("remisiones")
         .select(
-          "eapb, tipo_tramite, alcance_red, ips_red_local, departamentos_red_nacional, eapb_tiene_plataforma, eapb_genera_codigo, plataforma_funcionando, ips_receptora",
+          "eapb, tipo_tramite, alcance_red, ips_red_local, departamentos_red_nacional, eapb_tiene_plataforma, eapb_genera_codigo, plataforma_funcionando, ips_receptora, codigo_radicacion",
         )
         .eq("id", casoId)
         .maybeSingle();
@@ -198,45 +223,60 @@ export function SeguimientoDialog({
         eapb_genera_codigo: boolean | null;
         plataforma_funcionando: boolean | null;
         ips_receptora: string | null;
+        codigo_radicacion: string | null;
       } | null;
     },
   });
 
-  const { data: catDeptos = [] } = useQuery({
-    queryKey: ["cat-departamento"],
+  // Catálogo IPS con sede (autocompletado inteligente).
+  const { data: ipsCat = [] } = useQuery({
+    queryKey: ["cat-ips-sedes"],
+    enabled: open && esSaliente,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor, extra1, extra2")
+        .eq("tipo", "IPS")
+        .eq("activo", true)
+        .order("valor");
+      return (data ?? []) as { valor: string; extra1: string | null; extra2: string | null }[];
+    },
+  });
+
+  // Catálogo empresas de ambulancia / TEP.
+  const { data: empresasTep = [] } = useQuery({
+    queryKey: ["cat-empresa-tep"],
     enabled: open && esSaliente,
     queryFn: async () => {
       const { data } = await supabase
         .from("catalogos")
         .select("valor")
-        .eq("tipo", "DEPARTAMENTO")
+        .eq("tipo", "EMPRESA_TEP")
         .eq("activo", true)
         .order("valor");
       return (data ?? []).map((d) => d.valor as string);
     },
   });
 
-  // Inicializar el checklist por especialidad y los campos al abrir.
-  useEffect(() => {
-    if (open) {
-      const parsed = parseEvolucionDetalle(evolucionDetalle, especialidadesList);
-      setEvoDetalle(parsed);
-      setInicial(parseEvolucionDetalle(evolucionDetalle, especialidadesList));
-      setMotivoEvo("");
-      setEstadoCaso(estadoActual ?? "");
-      setIndigoEditada(false);
-      setEvoSituacion("estandar");
-      setEvoAgregarNacional(false);
+  // Opciones de IPS expandidas por sede para el autocompletado.
+  const ipsOptions = useMemo(() => {
+    const out: { label: string; ips: string; sede: string }[] = [];
+    for (const row of ipsCat) {
+      const sedes = [
+        ...(row.extra1 ?? "").split(";"),
+        ...(row.extra2 ?? "").split(";"),
+      ]
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (sedes.length === 0) {
+        out.push({ label: row.valor, ips: row.valor, sede: "" });
+      } else {
+        for (const sede of sedes) out.push({ label: `${row.valor} — ${sede}`, ips: row.valor, sede });
+      }
     }
-  }, [open, evolucionDetalle, especialidadesList, estadoActual]);
-
-  // Prefill desde los datos del caso cuando llegan.
-  useEffect(() => {
-    if (open && caso) {
-      setIpsReceptora(caso.ips_receptora ?? "");
-      setEvoDeptos(caso.alcance_red === "LOCAL_NACIONAL" ? splitComma(caso.departamentos_red_nacional) : []);
-    }
-  }, [open, caso]);
+    return out;
+  }, [ipsCat]);
+  const ipsLabels = useMemo(() => ipsOptions.map((o) => o.label), [ipsOptions]);
 
   const { data: historial } = useQuery({
     queryKey: ["seguimientos-caso", casoId],
@@ -251,111 +291,224 @@ export function SeguimientoDialog({
     },
   });
 
-  // --- Flags y datos derivados del caso ---
+  // --- Flags derivados del caso ---
   const generaCodigo = caso?.eapb_genera_codigo === true;
-  const plataformaFueCaida = caso?.plataforma_funcionando === false;
   const tienePlataforma = caso?.eapb_tiene_plataforma === true;
   const esSoatCaso = esTramiteSoat(caso?.tipo_tramite ?? "");
-  const casoLocalNacional = caso?.alcance_red === "LOCAL_NACIONAL";
-  const ipsLocalArr = splitComma(caso?.ips_red_local);
+  const esAdminCaso = esTramiteAdministrativo(caso?.tipo_tramite ?? "");
 
+  const radicadoReal =
+    radicadoCaso && !/PENDIENTE|NO APLICA/i.test(radicadoCaso) ? radicadoCaso.trim() : "";
+
+  // ¿Mostrar la opción "RADICADO DE CASO"? Solo si la EAPB genera código y aún no existe radicado real.
+  const mostrarOpcionRadicado = esSaliente && generaCodigo && !radicadoReal;
+
+  const TIPOS_SALIENTES = useMemo(() => {
+    const arr = [
+      ...(mostrarOpcionRadicado ? [T.RADICADO] : []),
+      T.EVOLUCION,
+      T.CORREO,
+      T.PLATAFORMA,
+      T.FISICO,
+      T.TELEFONO,
+      T.ACEPTACION,
+      T.NEGACIONES,
+      T.AMBULANCIA,
+      T.CANCELACION,
+      T.PERTINENCIA,
+      T.OTRO,
+    ];
+    return arr;
+  }, [mostrarOpcionRadicado]);
+
+  const TIPOS_SEG = esSaliente ? TIPOS_SALIENTES : TIPOS_LEGACY;
+
+  const findEstado = (re: RegExp) => (estadoOpciones ?? []).find((o) => re.test(o)) ?? "";
+
+  // Inicializar al abrir.
+  useEffect(() => {
+    if (!open) return;
+    const parsed = parseEvolucionDetalle(evolucionDetalle, especialidadesList);
+    setEvoDetalle(parsed);
+    setInicial(parseEvolucionDetalle(evolucionDetalle, especialidadesList));
+    setMotivoEvo("");
+    setEstadoCaso(estadoActual ?? "");
+    setIndigoEditada(false);
+    setTipoSeg("");
+  }, [open, evolucionDetalle, especialidadesList, estadoActual]);
+
+  // Prefill desde el caso.
+  useEffect(() => {
+    if (open && caso) {
+      setIpsReceptora(caso.ips_receptora ?? "");
+      setPlataformaFuncSeg(
+        caso.plataforma_funcionando === false ? "NO" : caso.plataforma_funcionando === true ? "SI" : "",
+      );
+    }
+  }, [open, caso]);
+
+  // Al cambiar el tipo de seguimiento: defaults de estado y reactivar auto-generación.
+  useEffect(() => {
+    setIndigoEditada(false);
+    if (!esSaliente || !tipoSeg) return;
+    // Estado de la solicitud automático según el tipo.
+    if (tipoSeg === T.RADICADO || tipoSeg === T.CANCELACION) setEstadoSolicitud("No aplica");
+    else if (tipoSeg === T.ACEPTACION || tipoSeg === T.AMBULANCIA) setEstadoSolicitud("Sí acepta");
+    else if (tipoSeg === T.NEGACIONES) setEstadoSolicitud("No acepta");
+    else setEstadoSolicitud("");
+    // Estado del caso automático según el tipo.
+    if (tipoSeg === T.RADICADO) {
+      const e = findEstado(/PENDIENTE/i);
+      if (e) setEstadoCaso(e);
+    } else if (tipoSeg === T.AMBULANCIA) {
+      const e = findEstado(/ACEPTAD.*CON.*AMBULANC/i);
+      if (e) setEstadoCaso(e);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipoSeg]);
+
+  const esEvolucionSal = esSaliente && tipoSeg === T.EVOLUCION;
   const esRadicado = esSaliente && tipoSeg === T.RADICADO;
-  const esEvolucion = esSaliente && tipoSeg === T.EVOLUCION;
+  const esFisico = esSaliente && tipoSeg === T.FISICO;
+  const esTelefono = esSaliente && tipoSeg === T.TELEFONO;
 
-  const radicacionTipo: RadicacionTipo = !generaCodigo
-    ? "sin_codigo"
-    : plataformaFueCaida
-      ? "plataforma_restablecida"
-      : "con_codigo";
+  // --- Estado de evolución diaria (salientes v2) ---
+  const evoEstadoSal: EvolucionEstado = useMemo(() => {
+    if (tienePlataforma) {
+      const n = (evoCorreo ? 1 : 0) + (evoPlataforma ? 1 : 0);
+      return n === 0 ? "sin" : n === 1 ? "parcial" : "completo";
+    }
+    return evoCorreo ? "completo" : "sin";
+  }, [tienePlataforma, evoCorreo, evoPlataforma]);
+  const evoMetaSal = evolucionMeta[evoEstadoSal];
+  const evoRequiereMotivo = esEvolucionSal && tienePlataforma && evoEstadoSal === "parcial";
 
-  // ¿La evolución incluye red nacional?
-  const evoConNacional = casoLocalNacional ? true : evoAgregarNacional;
-  const evoDeptosUsar = casoLocalNacional
-    ? evoDeptos.length
-      ? evoDeptos
-      : splitComma(caso?.departamentos_red_nacional)
-    : evoDeptos;
+  // Autosugerir motivo cuando solo se envió por correo y la plataforma no funciona.
+  useEffect(() => {
+    if (esEvolucionSal && evoCorreo && !evoPlataforma && plataformaFuncSeg === "NO" && !evoMotivoPend.trim()) {
+      setEvoMotivoPend("PLATAFORMA NO FUNCIONAL");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [esEvolucionSal, evoCorreo, evoPlataforma, plataformaFuncSeg]);
 
-  // Plantilla Índigo generada según el tipo de seguimiento.
+  // Grupo de negación actual (no guardado) para incluirlo en la vista previa.
+  const negGruposPreview = useMemo(() => {
+    const arr = [...negGrupos];
+    if (negMotivo && negIpsCurrent.length > 0) arr.push({ motivo: negMotivo, ips: negIpsCurrent });
+    return arr;
+  }, [negGrupos, negMotivo, negIpsCurrent]);
+
+  // --- Plantilla Índigo generada según el tipo ---
   const plantillaGenerada = useMemo(() => {
     if (!esSaliente || !tipoSeg) return "";
+    let base = "";
     switch (tipoSeg) {
       case T.RADICADO:
-        return generarPlantillaRadicacion(radicacionTipo, radicado);
+        base = generarPlantillaRadicado(radicado);
+        break;
       case T.EVOLUCION:
-        return generarPlantillaEvolucion({
+        base = generarPlantillaEvolucionDiaria({
+          estadoCaso,
+          esTramiteAdministrativo: esAdminCaso,
           tienePlataforma,
-          plataformaFuncionando: caso?.plataforma_funcionando ?? null,
-          esSoat: esSoatCaso,
-          conNacional: evoConNacional,
-          ipsRedLocal: ipsLocalArr,
-          departamentos: evoDeptosUsar,
-          situacion: evoSituacion,
+          plataformaFunciona: tienePlataforma ? plataformaFuncSeg === "SI" : null,
+          enviadoCorreo: evoCorreo,
+          enviadoPlataforma: evoPlataforma,
+          motivoPendiente: evoMotivoPend,
         });
+        break;
       case T.CORREO:
-        return generarPlantillaCanal("correo", { destinatario });
+        base = generarPlantillaCorreoSeg(estadoSolicitud, estadoCaso);
+        break;
       case T.PLATAFORMA:
-        return generarPlantillaCanal("plataforma", {});
+        base = generarPlantillaPlataformaSeg(estadoSolicitud, estadoCaso);
+        break;
       case T.FISICO:
-        return generarPlantillaCanal("fisico", {});
-      case T.LLAMADA:
-        return generarPlantillaCanal("llamada", { nombre: nombreContacto, telefono, detalle });
-      case T.RESPUESTA:
-        return rechazoFamilia
-          ? plantillaRechazoFamilia(ipsReceptora)
-          : generarPlantillaRespuestaIps(estadoSolicitud, ipsReceptora, detalle);
+        base = generarPlantillaFisico({
+          acercamiento,
+          nombre: fisNombre,
+          parentesco: fisParentesco,
+          servicio: fisServicio,
+          funcionario: fisFuncionario,
+          cargo: fisCargo,
+          conQuien: fisConQuien,
+        });
+        break;
+      case T.TELEFONO:
+        base = generarPlantillaTelefonico(nombreContacto, telefono, estadoSolicitud);
+        break;
+      case T.ACEPTACION:
+        base = generarPlantillaAceptacionIps(ipsReceptora, ipsReceptoraSede);
+        break;
+      case T.NEGACIONES:
+        base = generarPlantillaNegaciones(negGruposPreview);
+        break;
       case T.AMBULANCIA:
-        return generarPlantillaAmbulancia(ambVariante, empresaAmb, fechaTraslado, horaTraslado);
-      case T.CIERRE:
-        return generarPlantillaCierre(cierreSub, ipsReceptora, funcionarioFact);
+        base = generarPlantillaAmbulancia(ambVariante, empresaAmb, fechaTraslado, horaTraslado);
+        break;
       case T.CANCELACION:
-        return generarPlantillaCancelacion(cancelSub);
+        base = generarPlantillaCancelacionRemision({
+          tipo: cancelTipo,
+          gestion: cancelGestion,
+          servicio: cancelServicio,
+          funcionario: cancelFuncionario,
+          cargo: cancelCargo,
+          nuevoRadicado: cancelNuevoRadicado,
+        });
+        break;
       case T.PERTINENCIA:
-        return generarPlantillaPertinencia(pertinenciaSub);
+        base = generarPlantillaPertinencia(pertinenciaSub);
+        break;
       case T.OTRO:
-        return generarPlantillaOtro(detalle);
+        base = generarPlantillaOtroSeg(otroCual, estadoSolicitud);
+        break;
       default:
-        return "";
+        base = "";
     }
+    return appendNota(base, detalle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     esSaliente,
     tipoSeg,
-    radicacionTipo,
     radicado,
+    estadoCaso,
+    esAdminCaso,
     tienePlataforma,
-    caso?.plataforma_funcionando,
-    esSoatCaso,
-    evoConNacional,
-    ipsLocalArr.join("|"),
-    evoDeptosUsar.join("|"),
-    evoSituacion,
-    destinatario,
+    plataformaFuncSeg,
+    evoCorreo,
+    evoPlataforma,
+    evoMotivoPend,
+    estadoSolicitud,
+    acercamiento,
+    fisNombre,
+    fisParentesco,
+    fisServicio,
+    fisFuncionario,
+    fisCargo,
+    fisConQuien,
     nombreContacto,
     telefono,
-    detalle,
-    rechazoFamilia,
     ipsReceptora,
-    estadoSolicitud,
+    ipsReceptoraSede,
+    negGruposPreview,
     ambVariante,
     empresaAmb,
     fechaTraslado,
     horaTraslado,
-    cierreSub,
-    funcionarioFact,
-    cancelSub,
+    cancelTipo,
+    cancelGestion,
+    cancelServicio,
+    cancelFuncionario,
+    cancelCargo,
+    cancelNuevoRadicado,
     pertinenciaSub,
+    otroCual,
+    detalle,
   ]);
 
-  // Regenera el textarea mientras el usuario no lo haya editado manualmente.
   useEffect(() => {
     if (!indigoEditada) setIndigoTexto(plantillaGenerada);
   }, [plantillaGenerada, indigoEditada]);
-
-  // Al cambiar el tipo de seguimiento, se vuelve a permitir la auto-generación.
-  useEffect(() => {
-    setIndigoEditada(false);
-  }, [tipoSeg]);
 
   const regenerar = () => {
     setIndigoEditada(false);
@@ -383,40 +536,61 @@ export function SeguimientoDialog({
     }
   };
 
-  const radicadoExistente =
-    radicadoCaso?.trim() || (historial ?? []).find((h) => h.radicado)?.radicado || "";
-  const radicadoEnUso = noAplicaRadicado
-    ? "No aplica"
-    : nuevoRadicado || !radicadoExistente
-      ? radicado
-      : radicadoExistente;
-
-  const isLocked = (esp: string, key: keyof EvoEspecialidad) => !!inicial[esp]?.[key];
-
-  const toggleEvo = (esp: string, key: keyof EvoEspecialidad) => {
-    if (isLocked(esp, key)) return; // No se puede desmarcar lo ya guardado.
-    setEvoDetalle((prev) => ({
-      ...prev,
-      [esp]: { ...prev[esp], [key]: !prev[esp]?.[key] },
-    }));
-  };
-
-  const toggleDepto = (d: string) =>
-    setEvoDeptos((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]));
-
-  const evolucionCalc = evolucionFromDetalle(evoDetalle);
-  const metaCalc = evolucionMeta[evolucionCalc];
-  const faltan = canalesFaltantes(evoDetalle);
-  const requiereMotivo = evolucionCalc === "parcial";
-
-  // ¿Mostrar el bloque de evolución diaria por especialidad?
-  // En salientes solo cuando el tipo es "Evolución diaria"; en otros módulos siempre.
-  const mostrarEvolucionDiaria = esSaliente ? esEvolucion : true;
-  // Panel Índigo: solo para remisiones salientes y con un tipo seleccionado.
+  // --- Visibilidad de campos ---
+  // Contacto y teléfono solo en CONTACTO TELEFÓNICO.
+  const mostrarContacto = esSaliente ? esTelefono : true;
+  // Estado del caso editable salvo en FÍSICO/PRESENCIAL.
+  const estadoCasoEditable = !esFisico;
+  // Estado de solicitud automático (no editable) en ciertos tipos.
+  const estadoSolicAuto =
+    esSaliente &&
+    [T.RADICADO, T.CANCELACION, T.ACEPTACION, T.AMBULANCIA, T.NEGACIONES].includes(tipoSeg as never);
   const mostrarIndigo = esSaliente && !!tipoSeg;
 
-  // Crea, actualiza o archiva el pendiente automático de evolución.
-  const sincronizarPendiente = async (uid: string | undefined) => {
+  // Evolución diaria por especialidad: solo módulos legacy.
+  const mostrarEvolucionLegacy = !esSaliente;
+
+  // --- Negaciones helpers ---
+  const agregarIpsNeg = () => {
+    const v = negIpsInput.trim();
+    if (!v) return;
+    if (!negIpsCurrent.includes(v)) setNegIpsCurrent((p) => [...p, v]);
+    setNegIpsInput("");
+  };
+  const quitarIpsNeg = (v: string) => setNegIpsCurrent((p) => p.filter((x) => x !== v));
+  const agregarGrupoNeg = () => {
+    if (!negMotivo) return toast.error("Selecciona el motivo de negación");
+    if (negIpsCurrent.length === 0) return toast.error("Agrega al menos una IPS al motivo");
+    setNegGrupos((p) => [...p, { motivo: negMotivo, ips: negIpsCurrent }]);
+    setNegMotivo("");
+    setNegIpsCurrent([]);
+    setNegIpsInput("");
+  };
+  const quitarGrupoNeg = (i: number) => setNegGrupos((p) => p.filter((_, idx) => idx !== i));
+
+  // --- Evolución legacy (otros módulos) ---
+  const isLocked = (esp: string, key: keyof EvoEspecialidad) => !!inicial[esp]?.[key];
+  const toggleEvo = (esp: string, key: keyof EvoEspecialidad) => {
+    if (isLocked(esp, key)) return;
+    setEvoDetalle((prev) => ({ ...prev, [esp]: { ...prev[esp], [key]: !prev[esp]?.[key] } }));
+  };
+  const evolucionLegacyCalc = evolucionFromDetalle(evoDetalle);
+  const metaLegacy = evolucionMeta[evolucionLegacyCalc];
+  const faltanLegacy = canalesFaltantes(evoDetalle);
+  const requiereMotivoLegacy = evolucionLegacyCalc === "parcial";
+
+  const refrescar = () => {
+    qc.invalidateQueries({ queryKey: ["seguimientos-caso", casoId] });
+    qc.invalidateQueries({ queryKey: ["remisiones"] });
+    qc.invalidateQueries({ queryKey: ["domiciliarios"] });
+    qc.invalidateQueries({ queryKey: ["referencia-interna"] });
+    qc.invalidateQueries({ queryKey: ["pendientes-rem"] });
+    qc.invalidateQueries({ queryKey: ["pendientes"] });
+    qc.invalidateQueries({ queryKey: ["seguimientos-ult"] });
+  };
+
+  // Sincroniza el pendiente automático de evolución (legacy).
+  const sincronizarPendienteLegacy = async (uid: string | undefined) => {
     const { data: existentes } = await supabase
       .from("pendientes")
       .select("id")
@@ -424,15 +598,15 @@ export function SeguimientoDialog({
       .eq("origen", "evolucion")
       .eq("archivado", false);
     const ids = (existentes ?? []).map((e) => e.id);
-
-    if (evolucionCalc === "parcial") {
+    if (evolucionLegacyCalc === "parcial") {
       const payload = {
         tipo_pendiente: "Evolución pendiente",
         paciente_asunto: documento ? `${paciente} · ${documento}` : paciente,
         prioridad: "ALTA",
         estado: "ABIERTO",
         observacion_entrega:
-          `Falta: ${faltan.join(", ") || "—"}.` + (motivoEvo.trim() ? ` Motivo: ${motivoEvo.trim()}` : ""),
+          `Falta: ${faltanLegacy.join(", ") || "—"}.` +
+          (motivoEvo.trim() ? ` Motivo: ${motivoEvo.trim()}` : ""),
         fecha: new Date().toISOString().slice(0, 10),
         caso_id: casoId,
         tipo_caso: tipoCaso,
@@ -446,38 +620,114 @@ export function SeguimientoDialog({
         await supabase.from("pendientes").insert({ ...payload, created_by: uid });
       }
     } else if (ids.length > 0) {
-      // Completo o sin evolucionar → se elimina (archiva) el pendiente.
       await supabase.from("pendientes").update({ archivado: true }).in("id", ids);
     }
   };
 
-  const refrescar = () => {
-    qc.invalidateQueries({ queryKey: ["seguimientos-caso", casoId] });
-    qc.invalidateQueries({ queryKey: ["remisiones"] });
-    qc.invalidateQueries({ queryKey: ["domiciliarios"] });
-    qc.invalidateQueries({ queryKey: ["referencia-interna"] });
-    qc.invalidateQueries({ queryKey: ["pendientes-rem"] });
-    qc.invalidateQueries({ queryKey: ["pendientes"] });
-    qc.invalidateQueries({ queryKey: ["seguimientos-ult"] });
+  // Detalle JSON específico por tipo (estructura flexible).
+  const construirDetalles = (): Record<string, unknown> | null => {
+    if (!esSaliente) return null;
+    switch (tipoSeg) {
+      case T.RADICADO:
+        return { radicado: radicado.trim() };
+      case T.EVOLUCION:
+        return {
+          plataforma_funcionando: tienePlataforma ? plataformaFuncSeg : null,
+          enviado_correo: evoCorreo,
+          enviado_plataforma: tienePlataforma ? evoPlataforma : null,
+          estado_evolucion: evoEstadoSal,
+          motivo_pendiente: evoRequiereMotivo ? evoMotivoPend.trim() : null,
+        };
+      case T.FISICO:
+        return {
+          acercamiento,
+          nombre: fisNombre.trim() || null,
+          parentesco: fisParentesco.trim() || null,
+          servicio: fisServicio || null,
+          funcionario: fisFuncionario.trim() || null,
+          cargo: fisCargo.trim() || null,
+          con_quien: fisConQuien.trim() || null,
+        };
+      case T.ACEPTACION:
+        return { ips_receptora: ipsReceptora.trim(), sede: ipsReceptoraSede.trim() || null };
+      case T.NEGACIONES:
+        return { grupos: negGruposPreview };
+      case T.AMBULANCIA:
+        return {
+          variante: ambVariante,
+          empresa: empresaAmb.trim() || null,
+          fecha: fechaTraslado.trim() || null,
+          hora: horaTraslado.trim() || null,
+        };
+      case T.CANCELACION:
+        return {
+          tipo: cancelTipo,
+          gestion: cancelGestion || null,
+          servicio: cancelServicio || null,
+          funcionario: cancelFuncionario.trim() || null,
+          cargo: cancelCargo.trim() || null,
+          nuevo_radicado: cancelNuevoRadicado.trim() || null,
+        };
+      case T.OTRO:
+        return { cual: otroCual.trim() };
+      default:
+        return null;
+    }
+  };
+
+  const resetCampos = () => {
+    setDetalle("");
+    setTipoSeg("");
+    setEstadoSolicitud("");
+    setNombreContacto("");
+    setTelefono("");
+    setRadicado("");
+    setEvoCorreo(false);
+    setEvoPlataforma(false);
+    setEvoMotivoPend("");
+    setFisNombre("");
+    setFisParentesco("");
+    setFisServicio("");
+    setFisFuncionario("");
+    setFisCargo("");
+    setFisConQuien("");
+    setIpsReceptoraSede("");
+    setNegMotivo("");
+    setNegIpsInput("");
+    setNegIpsCurrent([]);
+    setNegGrupos([]);
+    setEmpresaAmb("");
+    setFechaTraslado("");
+    setHoraTraslado("");
+    setCancelGestion("");
+    setCancelServicio("");
+    setCancelFuncionario("");
+    setCancelCargo("");
+    setCancelNuevoRadicado("");
+    setOtroCual("");
   };
 
   const guardar = async () => {
-    if (!tipoSeg) {
-      toast.error("Selecciona el tipo de seguimiento");
-      return;
+    if (!tipoSeg) return toast.error("Selecciona el tipo de seguimiento");
+
+    // Validaciones por tipo (salientes).
+    if (esRadicado && generaCodigo && !radicado.trim())
+      return toast.error("Ingresa el número de radicado");
+    if (esSaliente && tipoSeg === T.OTRO && !otroCual.trim())
+      return toast.error("Indica en el campo CUÁL");
+    if (esSaliente && tipoSeg === T.NEGACIONES && negGruposPreview.length === 0)
+      return toast.error("Agrega al menos un motivo de negación con su IPS");
+    if (esSaliente && tipoSeg === T.AMBULANCIA) {
+      if (fechaTraslado.trim() && !isFechaValida(fechaTraslado))
+        return toast.error("Fecha de traslado inválida (DD/MM/AAAA)");
+      if (horaTraslado.trim() && !isHoraValida(horaTraslado))
+        return toast.error("Hora de traslado inválida (HH:MM)");
     }
-    if (requiereMotivo && mostrarEvolucionDiaria && !motivoEvo.trim()) {
-      toast.error("Indica el motivo de la evolución pendiente");
-      return;
-    }
-    if (esRadicado && generaCodigo && !radicado.trim()) {
-      toast.error("El código de radicación es obligatorio para este seguimiento");
-      return;
-    }
-    if (esEvolucion && evoConNacional && evoDeptosUsar.length === 0) {
-      toast.error("Selecciona al menos un departamento de red nacional");
-      return;
-    }
+    if (evoRequiereMotivo && !evoMotivoPend.trim())
+      return toast.error("Indica el motivo del pendiente");
+    if (requiereMotivoLegacy && mostrarEvolucionLegacy && !motivoEvo.trim())
+      return toast.error("Indica el motivo de la evolución pendiente");
+
     setBusy(true);
     const { data: u } = await supabase.auth.getUser();
     const { data: perfil } = await supabase
@@ -486,15 +736,23 @@ export function SeguimientoDialog({
       .eq("user_id", u.user?.id ?? "")
       .maybeSingle();
 
+    const radicadoSeg = !esSaliente
+      ? radicado.trim() || radicadoReal || null
+      : esRadicado
+        ? radicado.trim()
+        : cancelNuevoRadicado.trim() || radicadoReal || null;
+
     const { error } = await supabase.from("seguimientos").insert({
       caso_id: casoId,
       tipo_caso: tipoCaso,
-      radicado: radicadoEnUso || null,
+      radicado: radicadoSeg || null,
       tipo_seguimiento: tipoSeg,
       detalle: detalle || null,
       estado_solicitud: estadoSolicitud || null,
-      nombre_contacto: nombreContacto.trim() || null,
-      telefono: telefono.trim() || null,
+      nombre_contacto: mostrarContacto ? nombreContacto.trim() || null : null,
+      telefono: mostrarContacto ? telefono.trim() || null : null,
+      plantilla_indigo: esSaliente ? indigoTexto.trim() || null : null,
+      detalles: construirDetalles() as never,
       nombre_usuario: perfil?.nombre || u.user?.email || null,
       created_by: u.user?.id,
     });
@@ -506,32 +764,54 @@ export function SeguimientoDialog({
 
     if (tabla) {
       const update: {
-        evolucion: string;
+        evolucion?: string;
         evolucion_detalle?: string;
         evolucion_actualizada_at?: string;
         evolucion_motivo?: string | null;
         codigo_radicacion?: string;
         estado?: string;
         trazabilidad_indigo?: string;
-      } = { evolucion: evolucionCalc };
-      if (especialidadesList.length > 0 && mostrarEvolucionDiaria) {
+      } = {};
+      // Evolución legacy (otros módulos).
+      if (mostrarEvolucionLegacy && especialidadesList.length > 0) {
+        update.evolucion = evolucionLegacyCalc;
         update.evolucion_detalle = JSON.stringify(evoDetalle);
         update.evolucion_actualizada_at = new Date().toISOString();
-        update.evolucion_motivo = requiereMotivo ? motivoEvo.trim() : null;
+        update.evolucion_motivo = requiereMotivoLegacy ? motivoEvo.trim() : null;
       }
-      if (radicadoEnUso) update.codigo_radicacion = radicadoEnUso;
-      if (esRadicado && generaCodigo && radicado.trim()) update.codigo_radicacion = radicado.trim();
+      // Evolución diaria salientes v2: refleja estado en la tarjeta.
+      if (esEvolucionSal) {
+        update.evolucion = evoEstadoSal;
+        if (especialidadesList.length > 0) {
+          const cell: EvoEspecialidad =
+            evoEstadoSal === "completo"
+              ? { indigo: true, eapb_correo: true, eapb_plataforma: true }
+              : evoEstadoSal === "sin"
+                ? { indigo: false, eapb_correo: false, eapb_plataforma: false }
+                : { indigo: true, eapb_correo: evoCorreo, eapb_plataforma: evoPlataforma };
+          update.evolucion_detalle = JSON.stringify(
+            Object.fromEntries(especialidadesList.map((e) => [e, cell])),
+          );
+          update.evolucion_actualizada_at = new Date().toISOString();
+          update.evolucion_motivo = evoRequiereMotivo ? evoMotivoPend.trim() : null;
+        }
+      }
+      if (esRadicado && radicado.trim()) update.codigo_radicacion = radicado.trim();
+      if (esSaliente && tipoSeg === T.CANCELACION && cancelNuevoRadicado.trim())
+        update.codigo_radicacion = cancelNuevoRadicado.trim();
       if (estadoOpciones && estadoCaso) update.estado = estadoCaso;
       if (esSaliente && indigoTexto.trim()) update.trazabilidad_indigo = indigoTexto.trim();
-      await supabase
-        .from(tabla as "remisiones")
-        .update(update)
-        .eq("id", casoId);
-      if (especialidadesList.length > 0 && mostrarEvolucionDiaria)
-        await sincronizarPendiente(u.user?.id);
+
+      if (Object.keys(update).length > 0) {
+        await supabase
+          .from(tabla as "remisiones")
+          .update(update)
+          .eq("id", casoId);
+      }
+      if (mostrarEvolucionLegacy && especialidadesList.length > 0)
+        await sincronizarPendienteLegacy(u.user?.id);
     }
 
-    // Auditoría de seguimiento y radicación (no bloquea el flujo).
     try {
       await (supabase as any).rpc("registrar_auditoria", {
         _accion: esRadicado ? "radicacion_en_plataforma" : "crear_seguimiento",
@@ -546,37 +826,27 @@ export function SeguimientoDialog({
     }
 
     toast.success("Seguimiento registrado");
-    setDetalle("");
-    setTipoSeg("");
-    setEstadoSolicitud("");
-    setNombreContacto("");
-    setTelefono("");
-    setNuevoRadicado(false);
-    setRechazoFamilia(false);
+    resetCampos();
     setBusy(false);
     refrescar();
   };
 
-  // Guarda únicamente la evolución por especialidad, sin exigir tipo de seguimiento.
-  const guardarEvolucion = async () => {
+  // Guarda solo la evolución por especialidad (legacy).
+  const guardarEvolucionLegacy = async () => {
     if (!tabla) return;
-    if (especialidadesList.length === 0) {
-      toast.error("No hay especialidades tratantes registradas en este caso.");
-      return;
-    }
-    if (requiereMotivo && !motivoEvo.trim()) {
-      toast.error("Indica el motivo de la evolución pendiente");
-      return;
-    }
+    if (especialidadesList.length === 0)
+      return toast.error("No hay especialidades tratantes registradas en este caso.");
+    if (requiereMotivoLegacy && !motivoEvo.trim())
+      return toast.error("Indica el motivo de la evolución pendiente");
     setBusyEvo(true);
     const { data: u } = await supabase.auth.getUser();
     const { error } = await supabase
       .from(tabla as "remisiones")
       .update({
-        evolucion: evolucionCalc,
+        evolucion: evolucionLegacyCalc,
         evolucion_detalle: JSON.stringify(evoDetalle),
         evolucion_actualizada_at: new Date().toISOString(),
-        evolucion_motivo: requiereMotivo ? motivoEvo.trim() : null,
+        evolucion_motivo: requiereMotivoLegacy ? motivoEvo.trim() : null,
       })
       .eq("id", casoId);
     if (error) {
@@ -584,11 +854,15 @@ export function SeguimientoDialog({
       setBusyEvo(false);
       return;
     }
-    await sincronizarPendiente(u.user?.id);
+    await sincronizarPendienteLegacy(u.user?.id);
     toast.success("Evolución guardada");
     setBusyEvo(false);
     refrescar();
   };
+
+  const sectionCls = "space-y-2 rounded-lg border border-border/60 bg-muted/30 p-3";
+  const labelCls =
+    "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -600,49 +874,39 @@ export function SeguimientoDialog({
         <div className="space-y-4">
           {/* Número de radicado */}
           <div className="space-y-1.5">
-            <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Número de radicado
-            </Label>
-            {radicadoExistente && !nuevoRadicado && !noAplicaRadicado ? (
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
-                <span className="text-sm font-medium">{radicadoExistente}</span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full"
-                  onClick={() => setNuevoRadicado(true)}
-                >
-                  Agregar nuevo radicado
-                </Button>
+            <Label className={labelCls}>Número de radicado</Label>
+            {radicadoReal ? (
+              <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-medium">
+                {radicadoReal}
               </div>
-            ) : (
+            ) : !esSaliente ? (
               <Input
                 value={radicado}
                 onChange={(e) => setRadicado(e.target.value)}
                 placeholder="Ej. 2026-000123"
-                disabled={noAplicaRadicado}
               />
-            )}
-            {/* "No aplica" solo cuando aún no hay radicado generado/guardado. */}
-            {!radicadoExistente && (
-              <label className="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
-                <Checkbox
-                  checked={noAplicaRadicado}
-                  onCheckedChange={(v) => setNoAplicaRadicado(!!v)}
-                />
-                No aplica (esta EPS no genera radicado)
-              </label>
+            ) : !generaCodigo ? (
+              <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-medium text-muted-foreground">
+                NO APLICA
+              </div>
+            ) : esRadicado ? (
+              <Input
+                value={radicado}
+                onChange={(e) => setRadicado(e.target.value)}
+                placeholder="Ej. 2026-000123"
+              />
+            ) : (
+              <div className="rounded-md border border-dashed border-border px-3 py-2 text-xs italic text-muted-foreground">
+                Pendiente de radicación. Selecciona "RADICADO DE CASO" para registrarlo.
+              </div>
             )}
           </div>
 
-          {/* Estado del caso (solo remisiones y PHD) */}
+          {/* Estado del caso */}
           {estadoOpciones && estadoOpciones.length > 0 && (
             <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Estado del caso
-              </Label>
-              <Select value={estadoCaso} onValueChange={setEstadoCaso}>
+              <Label className={labelCls}>Estado del caso</Label>
+              <Select value={estadoCaso} onValueChange={setEstadoCaso} disabled={!estadoCasoEditable}>
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccionar estado…" />
                 </SelectTrigger>
@@ -654,16 +918,17 @@ export function SeguimientoDialog({
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-[10px] text-muted-foreground">
-                El estado del caso solo se cambia desde aquí.
-              </p>
+              {!estadoCasoEditable && (
+                <p className="text-[10px] text-muted-foreground">
+                  Este tipo de seguimiento no modifica el estado del caso.
+                </p>
+              )}
             </div>
           )}
 
+          {/* Tipo de seguimiento */}
           <div className="space-y-1.5">
-            <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Tipo de seguimiento
-            </Label>
+            <Label className={labelCls}>Tipo de seguimiento</Label>
             <Select value={tipoSeg} onValueChange={setTipoSeg}>
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar…" />
@@ -678,142 +943,268 @@ export function SeguimientoDialog({
             </Select>
           </div>
 
-          {/* ====== Campos por tipo (solo salientes) ====== */}
+          {/* ======= Campos por tipo (salientes) ======= */}
 
-          {/* Radicado de caso: código de radicación */}
+          {/* RADICADO DE CASO */}
           {esRadicado && (
-            <div className="space-y-2 rounded-lg border border-border/60 bg-muted/30 p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Radicado de caso · Trazabilidad Índigo
+            <div className={sectionCls}>
+              <p className={labelCls}>Radicado de caso · Trazabilidad Índigo</p>
+              <div className="space-y-1.5">
+                <Label className={labelCls}>Número de radicado *</Label>
+                <Input
+                  value={radicado}
+                  onChange={(e) => setRadicado(e.target.value)}
+                  placeholder="Ingresa el número de radicado"
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Estado del caso → PENDIENTE DE ACEPTACIÓN · Estado de solicitud → NO APLICA.
               </p>
-              {generaCodigo ? (
+            </div>
+          )}
+
+          {/* EVOLUCIÓN DIARIA (salientes v2) */}
+          {esEvolucionSal && (
+            <div className={sectionCls}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className={labelCls}>Evolución diaria</p>
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${evoMetaSal.chip}`}
+                >
+                  <span className={`h-2 w-2 rounded-full ${evoMetaSal.dot}`} />
+                  {evoMetaSal.label.toUpperCase()}
+                </span>
+              </div>
+
+              {tienePlataforma && (
                 <div className="space-y-1.5">
-                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Código de radicación *
+                  <Label className={labelCls}>¿Plataforma EAPB funcionando?</Label>
+                  <Select
+                    value={plataformaFuncSeg}
+                    onValueChange={(v) => setPlataformaFuncSeg(v as "SI" | "NO")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SI">Sí</SelectItem>
+                      <SelectItem value="NO">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox checked={evoCorreo} onCheckedChange={(v) => setEvoCorreo(!!v)} />
+                  EAPB CORREO
+                </label>
+                {tienePlataforma && (
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={evoPlataforma} onCheckedChange={(v) => setEvoPlataforma(!!v)} />
+                    EAPB PLATAFORMA
+                  </label>
+                )}
+              </div>
+
+              {evoRequiereMotivo && (
+                <div className="space-y-1.5">
+                  <Label className={labelCls}>
+                    Motivo del pendiente ({evoCorreo ? "falta plataforma" : "falta correo"})
                   </Label>
-                  <Input
-                    value={radicado}
-                    onChange={(e) => {
-                      setRadicado(e.target.value);
-                      setNuevoRadicado(true);
-                    }}
-                    placeholder="Ingresa el código de radicación"
+                  <Textarea
+                    value={evoMotivoPend}
+                    onChange={(e) => setEvoMotivoPend(e.target.value)}
+                    rows={2}
+                    placeholder="¿Por qué queda pendiente el otro canal?"
                   />
                 </div>
-              ) : (
-                <p className="text-[11px] text-muted-foreground">
-                  Esta EAPB <strong>NO APLICA</strong> código de radicación. No se exige código.
-                </p>
               )}
             </div>
           )}
 
-          {/* Evolución diaria: situación + red nacional opcional */}
-          {esEvolucion && (
-            <div className="space-y-3 rounded-lg border border-border/60 bg-muted/30 p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Evolución diaria · Trazabilidad Índigo
-              </p>
+          {/* FÍSICO O PRESENCIAL */}
+          {esFisico && (
+            <div className={sectionCls}>
               <div className="space-y-1.5">
-                <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Situación de la evolución
-                </Label>
-                <Select value={evoSituacion} onValueChange={(v) => setEvoSituacion(v as EvolucionSituacion)}>
+                <Label className={labelCls}>Acercamiento con</Label>
+                <Select value={acercamiento} onValueChange={(v) => setAcercamiento(v as AcercamientoTipo)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="max-w-[calc(100vw-2rem)]">
-                    {EVO_SITUACIONES.map((s) => (
-                      <SelectItem key={s.value} value={s.value} className="whitespace-normal">
-                        {s.label}
+                  <SelectContent>
+                    {ACERCAMIENTO_OPCIONES.map((a) => (
+                      <SelectItem key={a} value={a}>
+                        {a}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-
-              {evoSituacion === "estandar" && (
-                <>
-                  <p className="text-[11px] text-muted-foreground">
-                    IPS de red local del caso: {ipsLocalArr.length ? ipsLocalArr.join(", ") : "—"}
-                  </p>
-                  {!casoLocalNacional && (
-                    <label className="flex items-center gap-2 text-xs text-foreground">
-                      <Checkbox
-                        checked={evoAgregarNacional}
-                        onCheckedChange={(v) => setEvoAgregarNacional(!!v)}
-                      />
-                      Agregar red nacional a esta evolución
-                    </label>
-                  )}
-                  {evoConNacional && (
+              {acercamiento === "FAMILIAR" && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Nombre y apellido</Label>
+                    <Input value={fisNombre} onChange={(e) => setFisNombre(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Parentesco</Label>
+                    <Input value={fisParentesco} onChange={(e) => setFisParentesco(e.target.value)} />
+                  </div>
+                </div>
+              )}
+              {acercamiento === "SERVICIO" && (
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Servicio</Label>
+                    <Select value={fisServicio} onValueChange={setFisServicio}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SERVICIO_OPCIONES.map((s) => (
+                          <SelectItem key={s} value={s} className="whitespace-normal">
+                            {s}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                      <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        Departamentos de red nacional *
-                      </Label>
-                      <div className="max-h-32 space-y-1 overflow-auto rounded-md border border-border bg-background p-2">
-                        {catDeptos.length === 0 ? (
-                          <p className="text-[11px] italic text-muted-foreground">Sin departamentos en catálogo.</p>
-                        ) : (
-                          catDeptos.map((d) => (
-                            <label key={d} className="flex items-center gap-2 text-xs">
-                              <Checkbox checked={evoDeptos.includes(d)} onCheckedChange={() => toggleDepto(d)} />
-                              {d}
-                            </label>
-                          ))
-                        )}
-                      </div>
+                      <Label className={labelCls}>Nombre del funcionario</Label>
+                      <Input value={fisFuncionario} onChange={(e) => setFisFuncionario(e.target.value)} />
                     </div>
-                  )}
-                </>
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Cargo del funcionario</Label>
+                      <Input value={fisCargo} onChange={(e) => setFisCargo(e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              )}
+              {acercamiento === "OTRO" && (
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>¿Con quién se realizó el acercamiento?</Label>
+                    <Input value={fisConQuien} onChange={(e) => setFisConQuien(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Nombre y apellido</Label>
+                    <Input value={fisNombre} onChange={(e) => setFisNombre(e.target.value)} />
+                  </div>
+                </div>
               )}
             </div>
           )}
 
-          {/* Correo electrónico: destinatario */}
-          {esSaliente && tipoSeg === T.CORREO && (
-            <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Destinatario del correo
-              </Label>
-              <Input
-                value={destinatario}
-                onChange={(e) => setDestinatario(e.target.value)}
-                placeholder="Ej. EAPB / CRUE / IPS receptora"
+          {/* ACEPTACIÓN DE IPS RECEPTORA */}
+          {esSaliente && tipoSeg === T.ACEPTACION && (
+            <div className={sectionCls}>
+              <Label className={labelCls}>IPS receptora</Label>
+              <AutoComplete
+                value={ipsReceptora}
+                options={ipsLabels}
+                placeholder="Escribe para buscar IPS…"
+                minChars={2}
+                onChange={(v) => {
+                  setIpsReceptora(v);
+                  setIpsReceptoraSede("");
+                }}
+                onPick={(label) => {
+                  const opt = ipsOptions.find((o) => o.label === label);
+                  if (opt) {
+                    setIpsReceptora(opt.ips);
+                    setIpsReceptoraSede(opt.sede);
+                  }
+                }}
               />
+              {ipsReceptoraSede && (
+                <p className="text-[11px] text-muted-foreground">Sede: {ipsReceptoraSede}</p>
+              )}
+              <p className="text-[10px] text-muted-foreground">Estado de solicitud → SÍ ACEPTA.</p>
             </div>
           )}
 
-          {/* Respuesta de IPS: IPS receptora + rechazo familia */}
-          {esSaliente && tipoSeg === T.RESPUESTA && (
-            <div className="space-y-2 rounded-lg border border-border/60 bg-muted/30 p-3">
+          {/* TRAZABILIDAD DE NEGACIONES */}
+          {esSaliente && tipoSeg === T.NEGACIONES && (
+            <div className={sectionCls}>
               <div className="space-y-1.5">
-                <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  IPS receptora
-                </Label>
-                <Input
-                  value={ipsReceptora}
-                  onChange={(e) => setIpsReceptora(e.target.value)}
-                  placeholder="Nombre de la IPS receptora"
-                />
+                <Label className={labelCls}>Motivo de negación</Label>
+                <Select value={negMotivo} onValueChange={setNegMotivo}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar…" />
+                  </SelectTrigger>
+                  <SelectContent className="max-w-[calc(100vw-2rem)]">
+                    {NEGACION_MOTIVOS.map((m) => (
+                      <SelectItem key={m} value={m} className="whitespace-normal">
+                        {m}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <label className="flex items-center gap-2 text-xs text-foreground">
-                <Checkbox checked={rechazoFamilia} onCheckedChange={(v) => setRechazoFamilia(!!v)} />
-                Rechazo de la aceptación por el paciente / familia
-              </label>
-              <p className="text-[10px] text-muted-foreground">
-                La plantilla usa el campo "Estado de la solicitud" salvo que marques el rechazo familiar.
-              </p>
+              <div className="space-y-1.5">
+                <Label className={labelCls}>IPS</Label>
+                <div className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <AutoComplete
+                      value={negIpsInput}
+                      options={ipsLabels}
+                      placeholder="Escribe para buscar IPS…"
+                      minChars={2}
+                      onChange={setNegIpsInput}
+                      onPick={setNegIpsInput}
+                    />
+                  </div>
+                  <Button type="button" variant="outline" size="sm" className="h-9 shrink-0" onClick={agregarIpsNeg}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                {negIpsCurrent.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {negIpsCurrent.map((ips) => (
+                      <span
+                        key={ips}
+                        className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px]"
+                      >
+                        {ips}
+                        <button type="button" onClick={() => quitarIpsNeg(ips)}>
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <Button type="button" variant="outline" size="sm" className="w-full rounded-full" onClick={agregarGrupoNeg}>
+                Agregar negación
+              </Button>
+              {negGrupos.length > 0 && (
+                <div className="space-y-1.5 pt-1">
+                  {negGrupos.map((g, i) => (
+                    <div
+                      key={`${g.motivo}-${i}`}
+                      className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs"
+                    >
+                      <span className="break-words">
+                        {g.motivo} — {g.ips.length} IPS
+                      </span>
+                      <button type="button" onClick={() => quitarGrupoNeg(i)}>
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-[10px] text-muted-foreground">Estado de solicitud → NO ACEPTA.</p>
             </div>
           )}
 
-          {/* Coordinación de ambulancia */}
+          {/* AMBULANCIA COORDINADA */}
           {esSaliente && tipoSeg === T.AMBULANCIA && (
-            <div className="space-y-2 rounded-lg border border-border/60 bg-muted/30 p-3">
+            <div className={sectionCls}>
               <div className="space-y-1.5">
-                <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Quién informa
-                </Label>
+                <Label className={labelCls}>Quién informa</Label>
                 <Select value={ambVariante} onValueChange={(v) => setAmbVariante(v as AmbulanciaVariante)}>
                   <SelectTrigger>
                     <SelectValue />
@@ -828,41 +1219,50 @@ export function SeguimientoDialog({
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Empresa de ambulancia / TEP
-                </Label>
-                <Input value={empresaAmb} onChange={(e) => setEmpresaAmb(e.target.value)} placeholder="Empresa" />
+                <Label className={labelCls}>Empresa de ambulancia</Label>
+                <AutoComplete
+                  value={empresaAmb}
+                  options={empresasTep}
+                  placeholder="Escribe para buscar empresa…"
+                  minChars={2}
+                  onChange={setEmpresaAmb}
+                  onPick={setEmpresaAmb}
+                />
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Fecha de traslado
-                  </Label>
-                  <Input value={fechaTraslado} onChange={(e) => setFechaTraslado(e.target.value)} placeholder="DD/MM/AAAA" />
+                  <Label className={labelCls}>Fecha del traslado</Label>
+                  <Input
+                    value={fechaTraslado}
+                    inputMode="numeric"
+                    onChange={(e) => setFechaTraslado(maskFechaInput(e.target.value))}
+                    placeholder="DD/MM/AAAA"
+                  />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Hora de traslado
-                  </Label>
-                  <Input value={horaTraslado} onChange={(e) => setHoraTraslado(e.target.value)} placeholder="HH:MM" />
+                  <Label className={labelCls}>Hora del traslado</Label>
+                  <Input
+                    value={horaTraslado}
+                    inputMode="numeric"
+                    onChange={(e) => setHoraTraslado(maskHoraInput(e.target.value))}
+                    placeholder="HH:MM"
+                  />
                 </div>
               </div>
             </div>
           )}
 
-          {/* Cierre de trámite */}
-          {esSaliente && tipoSeg === T.CIERRE && (
-            <div className="space-y-2 rounded-lg border border-border/60 bg-muted/30 p-3">
+          {/* CANCELACIÓN DE TRÁMITE DE REMISIÓN */}
+          {esSaliente && tipoSeg === T.CANCELACION && (
+            <div className={sectionCls}>
               <div className="space-y-1.5">
-                <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Motivo del cierre
-                </Label>
-                <Select value={cierreSub} onValueChange={(v) => setCierreSub(v as CierreSubtipo)}>
+                <Label className={labelCls}>Tipo de cancelación</Label>
+                <Select value={cancelTipo} onValueChange={(v) => setCancelTipo(v as CancelacionTipo)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="max-w-[calc(100vw-2rem)]">
-                    {CIERRE_SUBTIPOS.map((s) => (
+                    {CANCELACION_TIPOS.map((s) => (
                       <SelectItem key={s.value} value={s.value} className="whitespace-normal">
                         {s.label}
                       </SelectItem>
@@ -870,55 +1270,86 @@ export function SeguimientoDialog({
                   </SelectContent>
                 </Select>
               </div>
-              {cierreSub === "rechazo_familia" ? (
-                <div className="space-y-1.5">
-                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    IPS receptora
-                  </Label>
-                  <Input value={ipsReceptora} onChange={(e) => setIpsReceptora(e.target.value)} placeholder="IPS receptora" />
+
+              {cancelTipo === "administrativo" && (
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Motivo / gestión administrativa</Label>
+                    <Select value={cancelGestion} onValueChange={setCancelGestion}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar…" />
+                      </SelectTrigger>
+                      <SelectContent className="max-w-[calc(100vw-2rem)]">
+                        {CANCELACION_GESTION.map((g) => (
+                          <SelectItem key={g} value={g} className="whitespace-normal">
+                            {g}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {cancelGestion === "SOLICITUD DE CANCELACIÓN AL CHAT DEL ÁREA" && (
+                    <>
+                      <div className="space-y-1.5">
+                        <Label className={labelCls}>Servicio</Label>
+                        <Select value={cancelServicio} onValueChange={setCancelServicio}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar…" />
+                          </SelectTrigger>
+                          <SelectContent className="max-w-[calc(100vw-2rem)]">
+                            {SERVICIO_CANCELACION.map((s) => (
+                              <SelectItem key={s} value={s} className="whitespace-normal">
+                                {s}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label className={labelCls}>Nombre del funcionario</Label>
+                          <Input value={cancelFuncionario} onChange={(e) => setCancelFuncionario(e.target.value)} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className={labelCls}>Cargo del funcionario</Label>
+                          <Input value={cancelCargo} onChange={(e) => setCancelCargo(e.target.value)} />
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
-              ) : (
+              )}
+
+              {cancelTipo === "cambio_erp" && (esSoatCaso || !generaCodigo) && (
                 <div className="space-y-1.5">
-                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Funcionario de facturación
-                  </Label>
+                  <Label className={labelCls}>Nuevo radicado (si la nueva EAPB genera código)</Label>
                   <Input
-                    value={funcionarioFact}
-                    onChange={(e) => setFuncionarioFact(e.target.value)}
-                    placeholder="Nombre del funcionario"
+                    value={cancelNuevoRadicado}
+                    onChange={(e) => setCancelNuevoRadicado(e.target.value)}
+                    placeholder="Número de radicado nuevo"
                   />
                 </div>
               )}
+              <p className="text-[10px] text-muted-foreground">Estado de solicitud → NO APLICA.</p>
             </div>
           )}
 
-          {/* Cancelación de trámite administrativo */}
-          {esSaliente && tipoSeg === T.CANCELACION && (
-            <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Tipo de cancelación
-              </Label>
-              <Select value={cancelSub} onValueChange={(v) => setCancelSub(v as CancelacionSubtipo)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="max-w-[calc(100vw-2rem)]">
-                  {CANCELACION_SUBTIPOS.map((s) => (
-                    <SelectItem key={s.value} value={s.value} className="whitespace-normal">
-                      {s.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* OTRO */}
+          {esSaliente && tipoSeg === T.OTRO && (
+            <div className={sectionCls}>
+              <Label className={labelCls}>¿Cuál? *</Label>
+              <Input
+                value={otroCual}
+                onChange={(e) => setOtroCual(e.target.value)}
+                placeholder="Indica el tipo de seguimiento realizado"
+              />
             </div>
           )}
 
-          {/* Validación de pertinencia médica */}
+          {/* VALIDACIÓN DE PERTINENCIA MÉDICA */}
           {esSaliente && tipoSeg === T.PERTINENCIA && (
             <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Estado de la nota
-              </Label>
+              <Label className={labelCls}>Estado de la nota</Label>
               <Select value={pertinenciaSub} onValueChange={(v) => setPertinenciaSub(v as PertinenciaSubtipo)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -936,10 +1367,8 @@ export function SeguimientoDialog({
 
           {/* Estado de la solicitud */}
           <div className="space-y-1.5">
-            <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Estado de la solicitud
-            </Label>
-            <Select value={estadoSolicitud} onValueChange={setEstadoSolicitud}>
+            <Label className={labelCls}>Estado de la solicitud</Label>
+            <Select value={estadoSolicitud} onValueChange={setEstadoSolicitud} disabled={estadoSolicAuto}>
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar…" />
               </SelectTrigger>
@@ -953,45 +1382,42 @@ export function SeguimientoDialog({
             </Select>
           </div>
 
-          {/* Contacto y teléfono */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Nombre de contacto
-              </Label>
-              <Input
-                value={nombreContacto}
-                onChange={(e) => setNombreContacto(e.target.value)}
-                placeholder="Nombre del contacto"
-                maxLength={120}
-              />
+          {/* Contacto y teléfono (solo CONTACTO TELEFÓNICO en salientes) */}
+          {mostrarContacto && (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className={labelCls}>Nombre de contacto</Label>
+                <Input
+                  value={nombreContacto}
+                  onChange={(e) => setNombreContacto(e.target.value)}
+                  placeholder="Nombre del contacto"
+                  maxLength={120}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className={labelCls}>Teléfono</Label>
+                <Input
+                  value={telefono}
+                  onChange={(e) => setTelefono(e.target.value)}
+                  placeholder="Teléfono"
+                  inputMode="tel"
+                  maxLength={30}
+                />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Teléfono
-              </Label>
-              <Input
-                value={telefono}
-                onChange={(e) => setTelefono(e.target.value)}
-                placeholder="Teléfono"
-                inputMode="tel"
-                maxLength={30}
-              />
-            </div>
-          </div>
+          )}
 
+          {/* Observaciones */}
           <div className="space-y-1.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Observaciones
-              </Label>
+              <Label className={labelCls}>Observaciones</Label>
               <PlantillasEnPaso
                 paso="salientes_seguimiento"
                 condicion={tipoSeg}
                 datos={{
                   PACIENTE: paciente,
                   DOCUMENTO: documento,
-                  RADICADO: radicadoEnUso,
+                  RADICADO: radicadoReal,
                   ESPECIALIDAD: especialidadesList.join(", "),
                   ESTADO: estadoCaso,
                 }}
@@ -1001,7 +1427,7 @@ export function SeguimientoDialog({
             <Textarea value={detalle} onChange={(e) => setDetalle(e.target.value)} rows={3} />
           </div>
 
-          {/* ====== Plantilla Índigo (texto plano editable) ====== */}
+          {/* Plantilla Índigo */}
           {mostrarIndigo && (
             <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1044,19 +1470,17 @@ export function SeguimientoDialog({
             {busy ? "Guardando…" : "Registrar seguimiento"}
           </Button>
 
-          {/* Evolución diaria por especialidad (solo cuando aplica) */}
-          {mostrarEvolucionDiaria && (
+          {/* Evolución diaria por especialidad (solo módulos legacy) */}
+          {mostrarEvolucionLegacy && (
             <div className="space-y-2 rounded-lg border border-border p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Evolución diaria
-                </Label>
+                <Label className={labelCls}>Evolución diaria</Label>
                 <div className="flex items-center gap-2">
                   <span
-                    className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${metaCalc.chip}`}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${metaLegacy.chip}`}
                   >
-                    <span className={`h-2 w-2 rounded-full ${metaCalc.dot}`} />
-                    {metaCalc.label}
+                    <span className={`h-2 w-2 rounded-full ${metaLegacy.dot}`} />
+                    {metaLegacy.label}
                   </span>
                   {tabla && especialidadesList.length > 0 && (
                     <Button
@@ -1065,7 +1489,7 @@ export function SeguimientoDialog({
                       variant="outline"
                       className="h-7 rounded-full px-3 text-xs"
                       disabled={busyEvo}
-                      onClick={guardarEvolucion}
+                      onClick={guardarEvolucionLegacy}
                     >
                       {busyEvo ? "Guardando…" : "Guardar"}
                     </Button>
@@ -1103,15 +1527,10 @@ export function SeguimientoDialog({
                       ))}
                     </div>
                   ))}
-                  <p className="pt-1 text-[10px] text-muted-foreground">
-                    Índigo = sistema · EAPB Correo = enviada por correo · EAPB Plataforma = cargada en plataforma. Lo ya
-                    guardado queda bloqueado.
-                  </p>
-
-                  {requiereMotivo && (
+                  {requiereMotivoLegacy && (
                     <div className="space-y-1.5 pt-1">
                       <Label className="text-[11px] font-semibold uppercase tracking-wide text-status-amber">
-                        Motivo del pendiente {faltan.length ? `(falta ${faltan.join(", ")})` : ""}
+                        Motivo del pendiente {faltanLegacy.length ? `(falta ${faltanLegacy.join(", ")})` : ""}
                       </Label>
                       <Textarea
                         value={motivoEvo}
@@ -1126,7 +1545,7 @@ export function SeguimientoDialog({
             </div>
           )}
 
-          {/* Historial: solo los 2 últimos seguimientos */}
+          {/* Últimos seguimientos (mínimo 5) */}
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               Últimos seguimientos
@@ -1137,28 +1556,31 @@ export function SeguimientoDialog({
               </p>
             ) : (
               <div className="space-y-2">
-                {historial!.slice(0, 2).map((h) => (
+                {historial!.slice(0, 5).map((h) => (
                   <div key={h.id} className="rounded-lg border border-border bg-card p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-xs font-semibold text-foreground">{h.tipo_seguimiento || "Seguimiento"}</span>
+                      <span className="text-xs font-semibold text-foreground">
+                        {h.tipo_seguimiento || "Seguimiento"}
+                      </span>
                       <span className="text-[11px] text-muted-foreground">{fmtFechaHora(h.created_at)}</span>
                     </div>
-                    {h.estado_solicitud && (
-                      <span className="mt-1 inline-block rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-foreground">
-                        {h.estado_solicitud}
-                      </span>
-                    )}
-                    {h.detalle && <p className="mt-1 break-words text-xs text-muted-foreground">{h.detalle}</p>}
-                    {(h.nombre_contacto || h.telefono) && (
-                      <p className="mt-1 break-words text-[11px] text-muted-foreground">
-                        Contacto: {h.nombre_contacto || "—"}
-                        {h.telefono ? ` · ${h.telefono}` : ""}
-                      </p>
-                    )}
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      {h.radicado ? `Radicado ${h.radicado} · ` : ""}
-                      {h.nombre_usuario || "—"}
-                    </p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      {h.estado_solicitud && (
+                        <span className="inline-block rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-foreground">
+                          {h.estado_solicitud}
+                        </span>
+                      )}
+                      <span className="text-[11px] text-muted-foreground">{h.nombre_usuario || "—"}</span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="ml-auto h-6 gap-1 px-2 text-[11px]"
+                        onClick={() => setVerDetalle(h as Record<string, unknown>)}
+                      >
+                        <Eye className="h-3.5 w-3.5" /> Ver detalle
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1166,6 +1588,61 @@ export function SeguimientoDialog({
           </div>
         </div>
       </DialogContent>
+
+      {/* Detalle de un seguimiento */}
+      <Dialog open={!!verDetalle} onOpenChange={(v) => !v && setVerDetalle(null)}>
+        <DialogContent className="max-h-[90vh] w-[calc(100vw-1.5rem)] overflow-auto p-4 sm:max-w-lg sm:p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base">
+              {(verDetalle?.tipo_seguimiento as string) || "Detalle del seguimiento"}
+            </DialogTitle>
+          </DialogHeader>
+          {verDetalle && (
+            <div className="space-y-3 text-sm">
+              <p className="text-xs text-muted-foreground">
+                {fmtFechaHora(verDetalle.created_at as string)} ·{" "}
+                {(verDetalle.nombre_usuario as string) || "—"}
+              </p>
+              {(verDetalle.estado_solicitud as string) && (
+                <p>
+                  <span className={labelCls}>Estado de solicitud:</span>{" "}
+                  {verDetalle.estado_solicitud as string}
+                </p>
+              )}
+              {(verDetalle.radicado as string) && (
+                <p>
+                  <span className={labelCls}>Radicado:</span> {verDetalle.radicado as string}
+                </p>
+              )}
+              {(verDetalle.nombre_contacto as string) && (
+                <p>
+                  <span className={labelCls}>Contacto:</span> {verDetalle.nombre_contacto as string}
+                  {(verDetalle.telefono as string) ? ` · ${verDetalle.telefono as string}` : ""}
+                </p>
+              )}
+              {(verDetalle.detalle as string) && (
+                <div>
+                  <p className={labelCls}>Observaciones</p>
+                  <p className="whitespace-pre-wrap break-words text-foreground">
+                    {verDetalle.detalle as string}
+                  </p>
+                </div>
+              )}
+              {(verDetalle.plantilla_indigo as string) && (
+                <div>
+                  <p className={labelCls}>Plantilla Índigo</p>
+                  <Textarea
+                    readOnly
+                    value={verDetalle.plantilla_indigo as string}
+                    rows={6}
+                    className="font-mono text-xs leading-relaxed"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
