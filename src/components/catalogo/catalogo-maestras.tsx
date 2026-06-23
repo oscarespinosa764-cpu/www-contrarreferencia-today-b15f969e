@@ -175,7 +175,9 @@ export function CatalogoMaestras() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("catalogos")
-        .select("id, tipo, valor, extra1, extra2, extra3, activo")
+        .select(
+          "id, tipo, valor, extra1, extra2, extra3, activo, radica_phd, radica_pad, radica_oxigeno, radica_unidad_especial",
+        )
         .neq("tipo", "plantilla")
         .order("tipo")
         .order("valor");
