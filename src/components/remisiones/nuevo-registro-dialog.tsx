@@ -270,7 +270,7 @@ export function NuevoRegistroDialog({
         _tabla: "remisiones",
         _registro_id: inserted?.id ?? null,
         _resultado: "exito",
-        _detalles: { tipo_tramite: tipoTramiteSel, alcance },
+        _detalles: { tipo_tramite: tipoTramiteDerivado, alcance },
       });
       await (supabase as any).rpc("registrar_auditoria", {
         _accion: "generar_plantilla_indigo_inicial",
