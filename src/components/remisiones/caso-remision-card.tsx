@@ -23,7 +23,9 @@ const ESTADO_OPCIONES = [
 ];
 import {
   evolucionMeta,
+  fmtEdad,
   fmtFechaHora,
+  fmtRadicado,
   fmtTranscurrido,
   prioridadMeta,
   resumenEvolucion,
