@@ -1321,6 +1321,16 @@ export function SeguimientoDialog({
                   </SelectContent>
                 </Select>
               </div>
+              {negMotivo === "OTRO" && (
+                <div className="space-y-1.5">
+                  <Label className={labelCls}>¿Cuál? *</Label>
+                  <Input
+                    value={negCual}
+                    onChange={(e) => setNegCual(e.target.value)}
+                    placeholder="Escribe el motivo de negación"
+                  />
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label className={labelCls}>IPS</Label>
                 <div className="flex items-end gap-2">
