@@ -1690,6 +1690,8 @@ export function SeguimientoDialog({
               </div>
             </div>
           )}
+          </>
+          )}
 
           {/* Observaciones */}
           <div className="space-y-1.5">
