@@ -690,7 +690,7 @@ function HistorialPage() {
       contacto: v(e.tipo) || "—",
       funcionario: "—",
     }));
-    generarBitacoraPDF({
+    void generarBitacoraPDF({
       tipoDocumento: "REMISIÓN ENTRANTE",
       referencia: v(b.documento) || v(b.codigo) || g.key,
       datosPaciente,
@@ -724,7 +724,7 @@ function HistorialPage() {
       { label: "IPS receptora", value: v(r.ips_receptora) || "N/A" },
       { label: "Estado actual", value: estadoLabel(r.estado) },
     ];
-    generarBitacoraPDF({
+    void generarBitacoraPDF({
       tipoDocumento: "REMISIÓN SALIENTE",
       referencia: v(r.codigo_radicacion) || v(r.documento) || r.id,
       datosPaciente,
@@ -763,7 +763,7 @@ function HistorialPage() {
       { label: "Teléfono", value: v(r.contacto_telefono) || "N/A" },
       { label: "Observaciones", value: v(r.observaciones) || "N/A" },
     ];
-    generarBitacoraPDF({
+    void generarBitacoraPDF({
       tipoDocumento: "PHD / PAD / O2 / ESPECIALES",
       referencia: v(r.codigo_radicacion) || v(r.documento) || r.id,
       datosPaciente,
@@ -789,7 +789,7 @@ function HistorialPage() {
       { label: "Fecha/hora creación", value: fmtFechaHora((r.fecha_inicio as string) || r.created_at) },
       { label: "Observaciones", value: v(r.observaciones) || "N/A" },
     ];
-    generarBitacoraPDF({
+    void generarBitacoraPDF({
       tipoDocumento: "REFERENCIA INTERNA",
       referencia: v(r.documento) || r.id,
       datosPaciente,
@@ -812,7 +812,7 @@ function HistorialPage() {
       { label: "Fecha creación", value: fmtFechaHora((r.fecha as string) || r.created_at) },
       { label: "Observación de entrega", value: v(r.observacion_entrega) || "N/A" },
     ];
-    generarBitacoraPDF({
+    void generarBitacoraPDF({
       tipoDocumento: "PENDIENTE",
       referencia: r.id,
       datosPaciente,
