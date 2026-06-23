@@ -483,7 +483,7 @@ export function CasoGenericoCard({
                 <SelectField name="servicio" label="Servicio" options={SERVICIO_OPCIONES} required defaultValue={r.servicio ?? ""} />
                 <SelectField name="tipo_solicitud" label="Tipo de solicitud" options={INTERNA_SOLICITUD} required defaultValue={r.tipo_solicitud ?? ""} />
                 <SelectField name="tipo_ambulancia" label="Tipo de ambulancia" options={AMBULANCIA_OPCIONES} defaultValue={r.tipo_ambulancia ?? ""} />
-                <Field name="proveedor_prestador" label="Proveedor / prestador" defaultValue={r.proveedor_prestador ?? ""} />
+                <Field name="eapb" label="EAPB / ERP" defaultValue={r.eapb ?? ""} />
                 <SelectField name="prioridad" label="Prioridad" options={PRIORIDAD_OPCIONES} defaultValue={r.prioridad ?? ""} />
                 <Field name="estado_display" label="Estado" defaultValue={r.estado ?? ""} readOnly />
               </div>
