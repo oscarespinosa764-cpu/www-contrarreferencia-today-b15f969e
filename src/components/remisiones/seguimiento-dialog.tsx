@@ -862,17 +862,21 @@ export function SeguimientoDialog({
 
     const radicadoSeg = !esSaliente
       ? radicado.trim() || radicadoReal || null
-      : esRadicado
-        ? radicado.trim()
-        : cancelNuevoRadicado.trim() || radicadoReal || null;
+      : nuevoRadicadoMode
+        ? nuevoRadicado.trim()
+        : esRadicado
+          ? radicado.trim()
+          : cancelNuevoRadicado.trim() || radicadoReal || null;
+
+    const tipoSegFinal = nuevoRadicadoMode ? "RADICADO ADICIONAL" : tipoSeg;
 
     const { error } = await supabase.from("seguimientos").insert({
       caso_id: casoId,
       tipo_caso: tipoCaso,
       radicado: radicadoSeg || null,
-      tipo_seguimiento: tipoSeg,
+      tipo_seguimiento: tipoSegFinal,
       detalle: detalle || null,
-      estado_solicitud: estadoSolicitud || null,
+      estado_solicitud: nuevoRadicadoMode ? null : estadoSolicitud || null,
       nombre_contacto: mostrarContacto ? nombreContacto.trim() || null : null,
       telefono: mostrarContacto ? telefono.trim() || null : null,
       plantilla_indigo: esSaliente ? indigoTexto.trim() || null : null,
