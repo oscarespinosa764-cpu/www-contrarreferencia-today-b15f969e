@@ -482,7 +482,34 @@ export function SeguimientoDialog({
 
   // --- Plantilla Índigo generada según el tipo ---
   const plantillaGenerada = useMemo(() => {
-    if (!esSaliente) return "";
+    if (esInterna) {
+      switch (tipoSeg) {
+        case TI.PENDIENTE:
+          return appendNota(
+            generarPlantillaRefInternaPendiente({ funcionario: riFuncionario, cargo: riCargo }),
+            detalle,
+          );
+        case TI.COORDINADO:
+          return appendNota(
+            generarPlantillaRefInternaCoordinado({
+              fecha: riFecha,
+              hora: riHora,
+              informoAmbulancia: riInformoAmb,
+              informoServicio: riInformoServ,
+            }),
+            detalle,
+          );
+        case TI.CULMINACION:
+          return appendNota(generarPlantillaRefInternaCulminacion(), detalle);
+        default:
+          return "";
+      }
+    }
+    if (esPendiente) {
+      if (!tipoSeg) return "";
+      return generarPlantillaPendienteCumplimiento(tipoSeg === TP.COMPLETO, detalle);
+    }
+    if (!usaIndigo) return "";
     // Flujo de radicado adicional ("+"): independiente del tipo de seguimiento.
     if (nuevoRadicadoMode) {
       return appendNota(generarPlantillaNuevoRadicado(ultimoRadicado, nuevoRadicado), detalle);
