@@ -510,6 +510,29 @@ export function NuevoRegistroDialog({
                     )}
                   </div>
 
+                  <SelectField
+                    name="regimen"
+                    label="Régimen"
+                    required
+                    options={
+                      regimenes.length > 0
+                        ? regimenes
+                        : [
+                            "CONTRIBUTIVO",
+                            "SUBSIDIADO",
+                            "ESPECIAL",
+                            "EXCEPCIÓN",
+                            "PARTICULAR",
+                            "SOAT",
+                            "ARL",
+                            "PREPAGADA",
+                            "NO APLICA",
+                          ]
+                    }
+                  />
+
+
+
                   {mostrarPreguntaPlataforma && (
                     <div className="space-y-1.5">
                       <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
