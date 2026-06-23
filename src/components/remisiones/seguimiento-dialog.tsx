@@ -614,8 +614,10 @@ export function SeguimientoDialog({
   // Estado de solicitud automático (no editable) en ciertos tipos.
   const estadoSolicAuto =
     esSaliente &&
-    [T.RADICADO, T.CANCELACION, T.ACEPTACION, T.AMBULANCIA, T.NEGACIONES].includes(tipoSeg as never);
-  const mostrarIndigo = esSaliente && !!tipoSeg;
+    [T.RADICADO, T.CANCELACION, T.ACEPTACION, T.AMBULANCIA, T.NEGACIONES, T.EVOLUCION].includes(
+      tipoSeg as never,
+    );
+  const mostrarIndigo = esSaliente && (!!tipoSeg || nuevoRadicadoMode);
 
   // Evolución diaria por especialidad: solo módulos legacy.
   const mostrarEvolucionLegacy = !esSaliente;
