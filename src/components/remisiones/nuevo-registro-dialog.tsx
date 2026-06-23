@@ -37,14 +37,14 @@ export function NuevoRegistroDialog({
   const [resetKey, setResetKey] = useState(0);
 
   // --- Trazabilidad ÍNDIGO (remisión saliente) ---
-  const [eapbSel, setEapbSel] = useState("");
+  const [eapbSel, setEapbSel] = useState(""); // autocompletado EAPB / ERP
   const [plataformaFunc, setPlataformaFunc] = useState<string>(""); // "SI" | "NO" | ""
-  const [tipoTramiteSel, setTipoTramiteSel] = useState("");
-  const [alcance, setAlcance] = useState<AlcanceRed | "">("");
+  const [remisionPor, setRemisionPor] = useState("");
+  const [redLocal, setRedLocal] = useState(false);
+  const [redNacional, setRedNacional] = useState(false);
   const [ipsSel, setIpsSel] = useState<string[]>([]);
   const [deptosSel, setDeptosSel] = useState<string[]>([]);
   const [deptoOtro, setDeptoOtro] = useState("");
-  const [motivoNota, setMotivoNota] = useState<MotivoNota>("ninguno");
   const [indigoOpen, setIndigoOpen] = useState(false);
   const [indigoTexto, setIndigoTexto] = useState("");
 
