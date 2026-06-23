@@ -130,7 +130,8 @@ export function CasoRemisionCard({
   const evo = evolucionMeta[evoRes.estado];
   const pendiente = /PENDIENTE/i.test(r.estado || "");
   const nombre = r.paciente || "Sin nombre";
-  const radicado = r.codigo_radicacion?.trim() || "No aplica";
+  const radicado = fmtRadicado(r.codigo_radicacion, r.eapb_genera_codigo);
+  const aseguradorTxt = r.eapb || r.asegurador || "";
   const prio = prioridadMeta(r.prioridad);
 
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
