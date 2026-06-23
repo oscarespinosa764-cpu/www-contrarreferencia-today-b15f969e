@@ -299,7 +299,18 @@ export function CasoRemisionCard({
             <Dato label="Régimen" value={r.regimen} />
             <Dato label="Remisión por" value={r.remision_por} />
             <Dato label="Justificación remisión" value={r.especificacion || r.observaciones} />
-            <Dato label="Red comentada" value={r.alcance_red === "LOCAL_NACIONAL" ? "Red local y nacional" : r.alcance_red === "LOCAL" ? "Red local" : "—"} />
+            <Dato
+              label="Red comentada"
+              value={
+                r.alcance_red === "LOCAL_NACIONAL"
+                  ? "Red local y nacional"
+                  : r.alcance_red === "NACIONAL"
+                    ? "Red nacional"
+                    : r.alcance_red === "LOCAL"
+                      ? "Red local"
+                      : "—"
+              }
+            />
             <Dato label="Tipo ambulancia" value={r.tipo_ambulancia} />
             <Dato label="Servicio" value={r.servicio} />
             <Dato label="Cama" value={r.cama} />
