@@ -893,6 +893,12 @@ export function SeguimientoDialog({
     setRevCargo("");
     setNuevoRadicadoMode(false);
     setNuevoRadicado("");
+    setRiFuncionario("");
+    setRiCargo("");
+    setRiFecha("");
+    setRiHora("");
+    setRiInformoAmb(false);
+    setRiInformoServ(false);
   };
 
   const guardar = async () => {
