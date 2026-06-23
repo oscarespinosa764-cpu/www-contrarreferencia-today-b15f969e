@@ -61,27 +61,32 @@ export function NuevoRegistroDialog({
     },
   });
 
-  // EAPB con sus flags (tiene plataforma / genera código).
+  // EAPB con sus flags (tipo entidad / tiene plataforma / genera código).
   const { data: eapbList = [] } = useQuery({
     queryKey: ["cat-eapb-flags"],
     queryFn: async () => {
       const { data } = await supabase
         .from("catalogos")
-        .select("valor, extra1, extra2")
+        .select("valor, extra1, extra2, extra3")
         .eq("tipo", "EAPB")
         .eq("activo", true)
         .order("valor");
-      return (data ?? []) as { valor: string; extra1: string | null; extra2: string | null }[];
+      return (data ?? []) as {
+        valor: string;
+        extra1: string | null;
+        extra2: string | null;
+        extra3: string | null;
+      }[];
     },
   });
 
-  const { data: tiposTramite = [] } = useQuery({
-    queryKey: ["cat-tipo-tramite"],
+  const { data: regimenes = [] } = useQuery({
+    queryKey: ["cat-regimen"],
     queryFn: async () => {
       const { data } = await supabase
         .from("catalogos")
         .select("valor")
-        .eq("tipo", "TIPO_TRAMITE")
+        .eq("tipo", "REGIMEN")
         .eq("activo", true)
         .order("valor");
       return (data ?? []).map((d) => d.valor as string);
