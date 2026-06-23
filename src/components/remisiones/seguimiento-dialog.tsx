@@ -89,7 +89,7 @@ const T = {
   NEGACIONES: "TRAZABILIDAD DE NEGACIONES",
   AMBULANCIA: "AMBULANCIA COORDINADA",
   CANCELACION: "CANCELACIÓN DE TRÁMITE DE REMISIÓN",
-  PERTINENCIA: "VALIDACIÓN DE PERTINENCIA MÉDICA",
+  PERTINENCIA: "REVISIÓN AUTORIZACIÓN ESTANCIA (CANCELACIÓN)",
   OTRO: "OTRO",
 } as const;
 
@@ -174,6 +174,7 @@ export function SeguimientoDialog({
 
   // Negaciones
   const [negMotivo, setNegMotivo] = useState("");
+  const [negCual, setNegCual] = useState(""); // motivo personalizado cuando es "OTRO"
   const [negIpsInput, setNegIpsInput] = useState("");
   const [negIpsCurrent, setNegIpsCurrent] = useState<string[]>([]);
   const [negGrupos, setNegGrupos] = useState<NegacionGrupo[]>([]);
@@ -192,9 +193,25 @@ export function SeguimientoDialog({
   const [cancelCargo, setCancelCargo] = useState("");
   const [cancelNuevoRadicado, setCancelNuevoRadicado] = useState("");
 
-  // Otro / Pertinencia
+  // Otro
   const [otroCual, setOtroCual] = useState("");
-  const [pertinenciaSub, setPertinenciaSub] = useState<PertinenciaSubtipo>("con_nota");
+
+  // Revisión autorización estancia hospitalaria (antes pertinencia médica)
+  const [revAutoriza, setRevAutoriza] = useState<"" | "SI" | "NO">("");
+  const [revNota, setRevNota] = useState<"" | "SI" | "NO">("");
+  const [revFuncionario, setRevFuncionario] = useState("");
+  const [revCargo, setRevCargo] = useState("");
+
+  // Asunto (correo / plataforma web)
+  const [asunto, setAsunto] = useState("");
+
+  // Contacto telefónico
+  const [contactoDestino, setContactoDestino] = useState<ContactoDestino | "">("");
+  const [contactoIps, setContactoIps] = useState("");
+
+  // Radicado adicional ("+")
+  const [nuevoRadicadoMode, setNuevoRadicadoMode] = useState(false);
+  const [nuevoRadicado, setNuevoRadicado] = useState("");
 
   // Índigo
   const [indigoTexto, setIndigoTexto] = useState("");
