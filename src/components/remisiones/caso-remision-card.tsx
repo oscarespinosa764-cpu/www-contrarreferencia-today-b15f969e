@@ -13,7 +13,17 @@ import { SeguimientoDialog } from "./seguimiento-dialog";
 
 const SERVICIO_OPCIONES = ["URGENCIAS", "HOSPITALIZACION", "UCI ADULTOS", "QUIROFANO"];
 const PRIORIDAD_OPCIONES = ["ALTA", "MEDIA", "BAJA"];
-const TIPO_DOC_OPCIONES = ["CC", "CE", "TI", "RC", "RNV", "ASI", "MSI"];
+const TIPO_AMB_OPCIONES = ["TAB", "TAM", "TAM-N"];
+const REMISION_POR_OPCIONES = [
+  "RED NO CONTRATADA",
+  "NO RECURSO HUMANO",
+  "NO DISPONIBILIDAD DE INSUMO O TECNOLOGIA",
+  "NO DISPONIBILIDAD DE UNIDAD",
+  "NO DISPONIBILIDAD DE CAMAS",
+  "NIVEL DE COMPETENCIA",
+  "PETICION VOLUNTARIA",
+  "EN TRAMITE",
+];
 const ESTADO_OPCIONES = [
   "PENDIENTE ACEPTACION",
   "ACEPTADO SIN PROGRAMACION DE AMBULANCIA",
@@ -137,20 +147,22 @@ export function CasoRemisionCard({
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    // Solo se actualizan los campos autorizados para edición.
     const { error } = await supabase
       .from("remisiones")
       .update({
-        paciente: String(f.get("paciente")),
-        documento: String(f.get("documento")),
-        tipo_documento: String(f.get("tipo_documento")),
-        edad: String(f.get("edad")),
         cie10: String(f.get("cie10")),
         servicio: String(f.get("servicio")),
         cama: String(f.get("cama")),
-        asegurador: String(f.get("asegurador")),
         prioridad: String(f.get("prioridad")),
+        remision_por: String(f.get("remision_por")),
+        tipo_ambulancia: String(f.get("tipo_ambulancia")),
         especialidades_tratantes: tratantes.join(", "),
         especialidades_receptoras: receptoras.join(", "),
+        especificacion: String(f.get("especificacion")),
+        contacto_nombre: String(f.get("contacto_nombre")),
+        contacto_parentesco: String(f.get("contacto_parentesco")),
+        contacto_telefono: String(f.get("contacto_telefono")),
         observaciones: String(f.get("observaciones")),
       })
       .eq("id", r.id);
@@ -287,7 +299,18 @@ export function CasoRemisionCard({
             <Dato label="Régimen" value={r.regimen} />
             <Dato label="Remisión por" value={r.remision_por} />
             <Dato label="Justificación remisión" value={r.especificacion || r.observaciones} />
-            <Dato label="Red comentada" value={r.alcance_red === "LOCAL_NACIONAL" ? "Red local y nacional" : r.alcance_red === "LOCAL" ? "Red local" : "—"} />
+            <Dato
+              label="Red comentada"
+              value={
+                r.alcance_red === "LOCAL_NACIONAL"
+                  ? "Red local y nacional"
+                  : r.alcance_red === "NACIONAL"
+                    ? "Red nacional"
+                    : r.alcance_red === "LOCAL"
+                      ? "Red local"
+                      : "—"
+              }
+            />
             <Dato label="Tipo ambulancia" value={r.tipo_ambulancia} />
             <Dato label="Servicio" value={r.servicio} />
             <Dato label="Cama" value={r.cama} />
@@ -320,6 +343,7 @@ export function CasoRemisionCard({
             <DialogTitle>Editar remisión · {nombre}</DialogTitle>
           </DialogHeader>
           <form key={editar ? "open" : "closed"} onSubmit={handleUpdate} className="space-y-4">
+            {/* Datos solo lectura */}
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <Field
                 name="fecha_inicio_display"
@@ -339,18 +363,29 @@ export function CasoRemisionCard({
                 defaultValue={fmtTranscurrido(r.fecha_inicio ?? r.created_at)}
                 readOnly
               />
-              <Field name="paciente" label="Paciente" required defaultValue={r.paciente ?? ""} />
-              <SelectField
-                name="tipo_documento"
-                label="Tipo de documento"
-                options={TIPO_DOC_OPCIONES}
-                required
-                defaultValue={r.tipo_documento ?? ""}
+              <Field name="paciente_display" label="Paciente" defaultValue={r.paciente ?? ""} readOnly />
+              <Field name="tipo_documento_display" label="Tipo de documento" defaultValue={r.tipo_documento ?? ""} readOnly />
+              <Field name="documento_display" label="Documento" defaultValue={r.documento ?? ""} readOnly />
+              <Field name="edad_display" label="Edad" defaultValue={fmtEdad(r.edad)} readOnly />
+              <Field name="eapb_display" label="EAPB / EPS / Asegurador" defaultValue={aseguradorTxt} readOnly />
+              <Field name="regimen_display" label="Régimen" defaultValue={r.regimen ?? ""} readOnly />
+              <Field
+                name="estado_display"
+                label="Estado (se cambia desde Seguimiento)"
+                defaultValue={r.estado ?? ""}
+                readOnly
               />
-              <Field name="documento" label="Documento" required defaultValue={r.documento ?? ""} />
-              <Field name="edad" label="Edad" required defaultValue={r.edad ?? ""} />
+              <Field
+                name="radicado_display"
+                label="N° radicado (se gestiona desde Seguimiento)"
+                defaultValue={radicado}
+                readOnly
+              />
+            </div>
+
+            {/* Campos editables */}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <Cie10Field name="cie10" label="CIE-10" defaultValue={r.cie10 ?? ""} />
-              <Field name="asegurador" label="Asegurador" required defaultValue={r.asegurador ?? ""} />
               <SelectField
                 name="servicio"
                 label="Servicio"
@@ -366,17 +401,17 @@ export function CasoRemisionCard({
                 required
                 defaultValue={r.prioridad ?? ""}
               />
-              <Field
-                name="estado_display"
-                label="Estado (se cambia desde Seguimiento)"
-                defaultValue={r.estado ?? ""}
-                readOnly
+              <SelectField
+                name="remision_por"
+                label="Remisión por"
+                options={REMISION_POR_OPCIONES}
+                defaultValue={r.remision_por ?? ""}
               />
-              <Field
-                name="codigo_radicacion"
-                label="N° radicado"
-                defaultValue={r.codigo_radicacion ?? ""}
-                readOnly
+              <SelectField
+                name="tipo_ambulancia"
+                label="Tipo de ambulancia"
+                options={TIPO_AMB_OPCIONES}
+                defaultValue={r.tipo_ambulancia ?? ""}
               />
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -384,11 +419,28 @@ export function CasoRemisionCard({
               <SpecialtyList label="Especialidad destino" items={receptoras} onChange={setReceptoras} suggestions={especialidades} />
             </div>
             <div className="space-y-1.5">
+              <Label htmlFor="especificacion" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Justificación remisión
+              </Label>
+              <Textarea
+                id="especificacion"
+                name="especificacion"
+                rows={2}
+                defaultValue={r.especificacion ?? ""}
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Field name="contacto_nombre" label="Nombre y apellido familiar" defaultValue={r.contacto_nombre ?? ""} />
+              <Field name="contacto_parentesco" label="Parentesco" defaultValue={r.contacto_parentesco ?? ""} />
+              <Field name="contacto_telefono" label="Número telefónico" defaultValue={r.contacto_telefono ?? ""} />
+            </div>
+            <div className="space-y-1.5">
               <Label htmlFor="observaciones" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Observaciones
               </Label>
               <Textarea id="observaciones" name="observaciones" rows={3} defaultValue={r.observaciones ?? ""} />
             </div>
+
             <DialogFooter>
               <Button type="submit" className="rounded-full">
                 Guardar cambios

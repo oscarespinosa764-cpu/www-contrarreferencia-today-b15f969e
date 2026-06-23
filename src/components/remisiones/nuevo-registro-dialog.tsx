@@ -132,7 +132,10 @@ export function NuevoRegistroDialog({
   const generaCodigo = !esSoat && (eapbActual?.extra2 ?? "").toUpperCase() === "SI";
   const mostrarPreguntaPlataforma = tienePlataforma && !esSoat;
   const incluyeNacional = redNacional;
+  // Para la plantilla Índigo se mantiene la lógica original (LOCAL / LOCAL_NACIONAL).
   const alcance: AlcanceRed = redNacional ? "LOCAL_NACIONAL" : "LOCAL";
+  // Para almacenamiento/visualización se distingue también "NACIONAL".
+  const alcanceStore = redLocal && redNacional ? "LOCAL_NACIONAL" : redNacional ? "NACIONAL" : "LOCAL";
   // El tipo de trámite se deriva (ya no se selecciona manualmente).
   const tipoTramiteDerivado = derivarTipoTramite(remisionPor, tipoEntidad);
 
@@ -186,11 +189,19 @@ export function NuevoRegistroDialog({
     e.preventDefault();
     const f = new FormData(e.currentTarget);
 
-    // Validaciones de trazabilidad ÍNDIGO.
+    // Validaciones de campos obligatorios.
+    if (tratantes.length === 0)
+      return toast.error("Agrega al menos una especialidad tratante");
+    if (receptoras.length === 0)
+      return toast.error("Agrega al menos una especialidad receptora");
     if (!remisionPor) return toast.error("Selecciona el motivo en 'Remisión por'");
+    if (!String(f.get("regimen") || "").trim())
+      return toast.error("Selecciona el régimen");
     if (!eapbSel.trim()) return toast.error("Indica la EAPB / ERP");
     if (!redLocal && !redNacional)
       return toast.error("Marca la red a la que se comenta (local y/o nacional)");
+    if (!String(f.get("especificacion") || "").trim())
+      return toast.error("Escribe la justificación de la remisión");
     if (mostrarPreguntaPlataforma && !plataformaFunc)
       return toast.error("Indica si la plataforma se encuentra funcionando");
     if (redLocal && ipsSel.length === 0)
@@ -246,7 +257,7 @@ export function NuevoRegistroDialog({
         observaciones: String(f.get("observaciones")),
         // Trazabilidad ÍNDIGO
         eapb: eapbSel || null,
-        alcance_red: alcance,
+        alcance_red: alcanceStore,
         ips_red_local: ipsSel.join(", "),
         departamentos_red_nacional: deptosFinal.join(", "),
         eapb_tiene_plataforma: tienePlataforma,
@@ -421,8 +432,8 @@ export function NuevoRegistroDialog({
                 <Cie10Field key={`rem-cie-${resetKey}`} required />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <SpecialtyList label="Esp. tratantes" items={tratantes} onChange={handleTratantesChange} suggestions={especialidades} />
-                <SpecialtyList label="Esp. receptoras" items={receptoras} onChange={setReceptoras} suggestions={especialidades} />
+                <SpecialtyList label="Esp. tratantes *" items={tratantes} onChange={handleTratantesChange} suggestions={especialidades} />
+                <SpecialtyList label="Esp. receptoras *" items={receptoras} onChange={setReceptoras} suggestions={especialidades} />
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <SelectField
@@ -463,15 +474,6 @@ export function NuevoRegistroDialog({
                   )}
                 </div>
                 <SelectField
-                  name="regimen"
-                  label="Régimen"
-                  options={
-                    regimenes.length > 0
-                      ? regimenes
-                      : ["CONTRIBUTIVO", "SUBSIDIADO", "ESPECIAL", "NO APLICA"]
-                  }
-                />
-                <SelectField
                   name="tipo_ambulancia"
                   label="Tipo de ambulancia"
                   options={["TAB", "TAM", "TAM-N"]}
@@ -507,6 +509,29 @@ export function NuevoRegistroDialog({
                       </p>
                     )}
                   </div>
+
+                  <SelectField
+                    name="regimen"
+                    label="Régimen"
+                    required
+                    options={
+                      regimenes.length > 0
+                        ? regimenes
+                        : [
+                            "CONTRIBUTIVO",
+                            "SUBSIDIADO",
+                            "ESPECIAL",
+                            "EXCEPCIÓN",
+                            "PARTICULAR",
+                            "SOAT",
+                            "ARL",
+                            "PREPAGADA",
+                            "NO APLICA",
+                          ]
+                    }
+                  />
+
+
 
                   {mostrarPreguntaPlataforma && (
                     <div className="space-y-1.5">
@@ -590,7 +615,7 @@ export function NuevoRegistroDialog({
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="especificacion" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Justificación remisión
+                  Justificación remisión <span className="text-status-red">*</span>
                 </Label>
                 <Textarea id="especificacion" name="especificacion" rows={2} />
               </div>
