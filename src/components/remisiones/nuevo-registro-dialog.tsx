@@ -19,6 +19,7 @@ import {
   generarPlantillaInicio,
   codigoInicial,
   derivarTipoTramite,
+  phdGeneraCodigo,
   type AlcanceRed,
 } from "@/lib/indigo-trazabilidad";
 
