@@ -25,6 +25,10 @@ type CatRow = {
   extra2: string | null;
   extra3: string | null;
   activo: boolean;
+  radica_phd?: boolean | null;
+  radica_pad?: boolean | null;
+  radica_oxigeno?: boolean | null;
+  radica_unidad_especial?: boolean | null;
 };
 
 // Etiqueta legible + dónde se usa + módulo agrupador
