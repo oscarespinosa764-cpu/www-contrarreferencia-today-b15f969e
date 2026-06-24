@@ -462,12 +462,13 @@ function AccionDialog({
         });
         if (error) throw error;
         try {
-          await (supabase as any).rpc("registrar_auditoria", {
-            _accion: "ampliar_cupo",
-            _modulo: "entrantes",
-            _tabla: "casos_entrantes",
-            _registro_id: caso.codigo,
-            _resultado: "exito",
+          await registrarAuditoria({
+            data: {
+              accion: "ampliar_cupo",
+              modulo: "entrantes",
+              tabla: "casos_entrantes",
+              registroId: caso.codigo,
+            },
           });
         } catch {
           /* no bloquea el flujo */
