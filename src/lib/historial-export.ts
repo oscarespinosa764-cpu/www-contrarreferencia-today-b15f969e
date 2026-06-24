@@ -208,7 +208,7 @@ export function seccionPendientes(rows: Record<string, unknown>[], segMap: SegMa
 // Helpers de estado / seguimientos
 // ============================================================
 
-export type SegMap = Map<string, { created_at: string; detalle: string; estado: string; tipo: string; usuario: string }[]>;
+export type SegMap = Map<string, { created_at: string; detalle: string; estado: string; tipo: string; usuario: string; contacto: string }[]>;
 
 export function buildSegMap(seguimientos: Record<string, unknown>[]): SegMap {
   const map: SegMap = new Map();
@@ -222,6 +222,7 @@ export function buildSegMap(seguimientos: Record<string, unknown>[]): SegMap {
       estado: v(s.estado_solicitud),
       tipo: v(s.tipo_seguimiento),
       usuario: v(s.nombre_usuario),
+      contacto: v(s.nombre_contacto),
     });
     map.set(id, arr);
   }
