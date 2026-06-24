@@ -104,10 +104,10 @@ export const generarPlantillaTexto = createServerFn({ method: "POST" })
       const json = await res.json();
       const texto = json?.choices?.[0]?.message?.content ?? "";
 
-      await (supabase as any).rpc("registrar_auditoria", {
-        _accion: "ia_plantilla_generada",
-        _modulo: "ia",
-        _resultado: "exito",
+      const { registrarAuditoriaServer } = await import("./auditoria.server");
+      await registrarAuditoriaServer(userId, {
+        accion: "ia_plantilla_generada",
+        modulo: "ia",
       });
 
       return { texto, error: null as string | null };
