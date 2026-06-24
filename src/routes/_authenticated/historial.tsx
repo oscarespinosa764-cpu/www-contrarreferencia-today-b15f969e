@@ -1577,3 +1577,178 @@ function GenericoCard({
     </div>
   );
 }
+
+function parseDateInput(s: string): Date | undefined {
+  if (!s) return undefined;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return undefined;
+  return new Date(+m[1], +m[2] - 1, +m[3]);
+}
+
+function BitacoraBuscadorDialog({
+  open,
+  onClose,
+  buscar,
+  onPDF,
+  onConsolidado,
+}: {
+  open: boolean;
+  onClose: () => void;
+  buscar: (doc: string, ini?: Date, fin?: Date) => ResultadosBitacora;
+  onPDF: (c: Construido) => void;
+  onConsolidado: (cs: Construido[], doc: string, filtros: string) => void;
+}) {
+  const [doc, setDoc] = useState("");
+  const [iniStr, setIniStr] = useState("");
+  const [finStr, setFinStr] = useState("");
+  const [res, setRes] = useState<ResultadosBitacora | null>(null);
+
+  const consultar = () => {
+    if (!doc.trim()) {
+      toast.info("Ingresa un número de documento.");
+      return;
+    }
+    setRes(buscar(doc, parseDateInput(iniStr), parseDateInput(finStr)));
+  };
+
+  const filtrosTxt = `Documento=${doc.trim()}${iniStr ? `; Desde=${iniStr}` : ""}${finStr ? `; Hasta=${finStr}` : ""}`;
+  const todos = res ? [...res.entrantes, ...res.salientes, ...res.phd, ...res.internas] : [];
+
+  const reset = () => {
+    setDoc("");
+    setIniStr("");
+    setFinStr("");
+    setRes(null);
+  };
+
+  const grupos: { label: string; items: Construido[] }[] = res
+    ? [
+        { label: "Entrantes", items: res.entrantes },
+        { label: "Salientes", items: res.salientes },
+        { label: "PHD/PAD/O2/Esp.", items: res.phd },
+        { label: "Ref. Internas", items: res.internas },
+      ]
+    : [];
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) {
+          reset();
+          onClose();
+        }
+      }}
+    >
+      <DialogContent className="max-h-[90vh] overflow-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <FileText className="h-5 w-5 text-status-red" /> Generar Bitácora PDF
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="grid gap-3">
+          <div className="grid gap-1.5">
+            <Label htmlFor="bit-doc" className="text-xs">
+              Número de documento
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                id="bit-doc"
+                value={doc}
+                onChange={(e) => setDoc(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && consultar()}
+                placeholder="Ej. 1117545825"
+              />
+              <Button onClick={consultar} className="bg-status-blue text-white hover:bg-status-blue/90">
+                <Search className="mr-1.5 h-4 w-4" /> Consultar
+              </Button>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="bit-ini" className="text-xs">
+                Fecha inicio (opcional)
+              </Label>
+              <Input id="bit-ini" type="date" value={iniStr} onChange={(e) => setIniStr(e.target.value)} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="bit-fin" className="text-xs">
+                Fecha fin (opcional)
+              </Label>
+              <Input id="bit-fin" type="date" value={finStr} onChange={(e) => setFinStr(e.target.value)} />
+            </div>
+          </div>
+        </div>
+
+        {res && (
+          <div className="mt-2 grid gap-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-muted-foreground">{todos.length} caso(s) encontrado(s)</p>
+              {todos.length > 0 && (
+                <Button
+                  size="sm"
+                  className="h-8 bg-status-teal text-[11px] text-white hover:bg-status-teal/90"
+                  onClick={() => onConsolidado(todos, doc.trim(), filtrosTxt)}
+                >
+                  <FileText className="mr-1.5 h-3.5 w-3.5" /> Bitácora consolidada del paciente
+                </Button>
+              )}
+            </div>
+
+            {todos.length === 0 ? (
+              <div className="rounded-lg border border-border bg-card py-10 text-center">
+                <p className="text-sm font-semibold text-foreground">Sin registros</p>
+                <p className="text-xs text-muted-foreground">No se hallaron casos para ese documento y rango.</p>
+              </div>
+            ) : (
+              grupos.map((g) => (
+                <div key={g.label}>
+                  <p className="mb-1 text-xs font-bold uppercase tracking-wide text-status-blue">{g.label}</p>
+                  {g.items.length === 0 ? (
+                    <p className="rounded-md border border-dashed border-border px-2 py-1.5 text-[11px] text-muted-foreground">
+                      Sin registros
+                    </p>
+                  ) : (
+                    <div className="grid gap-1.5">
+                      {g.items.map((c, i) => (
+                        <div
+                          key={`${g.label}-${i}`}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-2.5 py-2"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-bold text-foreground">
+                              {c.bloque.tipoDocumento} · {c.paciente}
+                            </p>
+                            <p className="truncate text-[10px] text-muted-foreground">
+                              Doc {c.documento || "—"}
+                              {c.codigo ? ` · ${c.codigo}` : ""} · {fmtFechaHora(c.fechaBase)} · {c.estado}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 rounded-md border-status-red/40 text-[11px] font-semibold text-status-red hover:bg-status-red/10"
+                            onClick={() => onPDF(c)}
+                          >
+                            <FileText className="mr-1 h-3.5 w-3.5" /> Bitácora PDF
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>
+            Cerrar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
