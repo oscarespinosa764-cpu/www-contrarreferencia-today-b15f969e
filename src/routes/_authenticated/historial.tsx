@@ -329,6 +329,24 @@ type MensajeItem = {
   mensaje: string;
 };
 
+type Construido = {
+  documento: string;
+  paciente: string;
+  fechaBase: string;
+  estado: string;
+  codigo: string;
+  datosPaciente: CampoPDF[];
+  referencia: string;
+  bloque: BloqueCaso;
+};
+
+type ResultadosBitacora = {
+  entrantes: Construido[];
+  salientes: Construido[];
+  phd: Construido[];
+  internas: Construido[];
+};
+
 const v = (x: unknown): string => (x == null ? "" : String(x).trim());
 const joinList = (x: unknown): string => (Array.isArray(x) ? x.filter(Boolean).join(", ") : v(x));
 
