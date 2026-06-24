@@ -67,21 +67,23 @@ export const limpiarDatos = createServerFn({ method: "POST" })
         .neq("id", "00000000-0000-0000-0000-000000000000");
       if (error) {
         console.error("limpiarDatos error:", def.tabla);
-        await (supabase as any).rpc("registrar_auditoria", {
-          _accion: "borrado_masivo",
-          _modulo: "borrado",
-          _tabla: def.tabla,
-          _resultado: "fallido",
+        const { registrarAuditoriaServer } = await import("./auditoria.server");
+        await registrarAuditoriaServer(userId, {
+          accion: "borrado_masivo",
+          modulo: "borrado",
+          tabla: def.tabla,
+          resultado: "fallido",
         });
         return { ok: false, resultados, error: `Error al vaciar ${def.label}.` as string | null };
       }
       resultados.push({ grupo: def.label, eliminadas: count ?? 0 });
-      await (supabase as any).rpc("registrar_auditoria", {
-        _accion: "borrado_masivo",
-        _modulo: "borrado",
-        _tabla: def.tabla,
-        _resultado: "exito",
-        _detalles: { eliminadas: count ?? 0 },
+      const { registrarAuditoriaServer } = await import("./auditoria.server");
+      await registrarAuditoriaServer(userId, {
+        accion: "borrado_masivo",
+        modulo: "borrado",
+        tabla: def.tabla,
+        resultado: "exito",
+        detalles: { eliminadas: count ?? 0 },
       });
     }
 
