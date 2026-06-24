@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { supabase } from "@/lib/backend-client";
+import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -413,12 +414,13 @@ function AccionDialog({
           .eq("id", caso.id);
         if (e2) throw e2;
         try {
-          await (supabase as any).rpc("registrar_auditoria", {
-            _accion: "confirmar_ingreso",
-            _modulo: "entrantes",
-            _tabla: "casos_entrantes",
-            _registro_id: caso.codigo,
-            _resultado: "exito",
+          await registrarAuditoria({
+            data: {
+              accion: "confirmar_ingreso",
+              modulo: "entrantes",
+              tabla: "casos_entrantes",
+              registroId: caso.codigo,
+            },
           });
         } catch {
           /* no bloquea el flujo */
@@ -462,12 +464,13 @@ function AccionDialog({
         });
         if (error) throw error;
         try {
-          await (supabase as any).rpc("registrar_auditoria", {
-            _accion: "ampliar_cupo",
-            _modulo: "entrantes",
-            _tabla: "casos_entrantes",
-            _registro_id: caso.codigo,
-            _resultado: "exito",
+          await registrarAuditoria({
+            data: {
+              accion: "ampliar_cupo",
+              modulo: "entrantes",
+              tabla: "casos_entrantes",
+              registroId: caso.codigo,
+            },
           });
         } catch {
           /* no bloquea el flujo */
@@ -523,12 +526,13 @@ function AccionDialog({
           .eq("id", caso.id);
         if (e2) throw e2;
         try {
-          await (supabase as any).rpc("registrar_auditoria", {
-            _accion: esArchivar ? "archivar_vencimiento" : "cancelar_cupo",
-            _modulo: "entrantes",
-            _tabla: "casos_entrantes",
-            _registro_id: caso.codigo,
-            _resultado: "exito",
+          await registrarAuditoria({
+            data: {
+              accion: esArchivar ? "archivar_vencimiento" : "cancelar_cupo",
+              modulo: "entrantes",
+              tabla: "casos_entrantes",
+              registroId: caso.codigo,
+            },
           });
         } catch {
           /* no bloquea el flujo */

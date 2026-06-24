@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
+import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -654,13 +655,14 @@ export function SeguimientoDialog({
       await navigator.clipboard.writeText(indigoTexto);
       toast.success("Texto copiado para Índigo");
       try {
-        await (supabase as any).rpc("registrar_auditoria", {
-          _accion: "copiar_plantilla_indigo",
-          _modulo: "remisiones",
-          _tabla: tabla ?? "seguimientos",
-          _registro_id: casoId,
-          _resultado: "exito",
-          _detalles: { tipo_seguimiento: tipoSeg },
+        await registrarAuditoria({
+          data: {
+            accion: "copiar_plantilla_indigo",
+            modulo: "remisiones",
+            tabla: tabla ?? "seguimientos",
+            registroId: casoId,
+            detalles: { tipo_seguimiento: tipoSeg },
+          },
         });
       } catch {
         /* la auditoría no debe interrumpir el copiado */
@@ -1051,13 +1053,14 @@ export function SeguimientoDialog({
 
 
     try {
-      await (supabase as any).rpc("registrar_auditoria", {
-        _accion: esRadicado ? "radicacion_en_plataforma" : "crear_seguimiento",
-        _modulo: "remisiones",
-        _tabla: tabla ?? "seguimientos",
-        _registro_id: casoId,
-        _resultado: "exito",
-        _detalles: { tipo_seguimiento: tipoSeg },
+      await registrarAuditoria({
+        data: {
+          accion: esRadicado ? "radicacion_en_plataforma" : "crear_seguimiento",
+          modulo: "remisiones",
+          tabla: tabla ?? "seguimientos",
+          registroId: casoId,
+          detalles: { tipo_seguimiento: tipoSeg },
+        },
       });
     } catch {
       /* la auditoría no debe interrumpir el seguimiento */

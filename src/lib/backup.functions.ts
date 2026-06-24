@@ -99,11 +99,11 @@ export const respaldoTotal = createServerFn({ method: "POST" })
 
     const totalFilas = tablas.reduce((acc, t) => acc + t.filas.length, 0);
 
-    await (supabase as any).rpc("registrar_auditoria", {
-      _accion: "respaldo_total",
-      _modulo: "control_mando",
-      _resultado: "exito",
-      _detalles: { tablas: tablas.length, filas: totalFilas },
+    const { registrarAuditoriaServer } = await import("./auditoria.server");
+    await registrarAuditoriaServer(userId, {
+      accion: "respaldo_total",
+      modulo: "control_mando",
+      detalles: { tablas: tablas.length, filas: totalFilas },
     });
 
     return { ok: true, tablas, error: null as string | null };

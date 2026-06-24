@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/lib/backend-client";
+import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { useAuth } from "@/lib/auth";
 import { AutoComplete } from "@/components/rc/autocomplete";
 import { ResultadoCard } from "@/components/rc/resultado-card";
@@ -389,13 +390,14 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
 
       // Auditoría de la acción crítica (creación de caso entrante).
       try {
-        await (supabase as any).rpc("registrar_auditoria", {
-          _accion: "crear_caso_entrante",
-          _modulo: "entrantes",
-          _tabla: "casos_entrantes",
-          _registro_id: codigo,
-          _resultado: "exito",
-          _detalles: { tipo },
+        await registrarAuditoria({
+          data: {
+            accion: "crear_caso_entrante",
+            modulo: "entrantes",
+            tabla: "casos_entrantes",
+            registroId: codigo,
+            detalles: { tipo },
+          },
         });
       } catch {
         /* no bloquea el flujo si falla la auditoría */

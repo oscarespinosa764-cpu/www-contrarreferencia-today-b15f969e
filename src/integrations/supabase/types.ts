@@ -1405,6 +1405,20 @@ export type Database = {
         }
         Returns: undefined
       }
+      registrar_auditoria_srv: {
+        Args: {
+          _accion: string
+          _detalles?: Json
+          _ip?: string
+          _modulo?: string
+          _registro_id?: string
+          _resultado?: string
+          _tabla?: string
+          _user_agent?: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "operativa" | "temporal"
