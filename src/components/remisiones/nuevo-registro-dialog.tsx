@@ -343,20 +343,22 @@ export function NuevoRegistroDialog({
 
     // Auditoría (no bloquea el flujo).
     try {
-      await (supabase as any).rpc("registrar_auditoria", {
-        _accion: "crear_caso_saliente",
-        _modulo: "remisiones",
-        _tabla: "remisiones",
-        _registro_id: inserted?.id ?? null,
-        _resultado: "exito",
-        _detalles: { tipo_tramite: tipoTramiteDerivado, alcance },
+      await registrarAuditoria({
+        data: {
+          accion: "crear_caso_saliente",
+          modulo: "remisiones",
+          tabla: "remisiones",
+          registroId: inserted?.id ?? null,
+          detalles: { tipo_tramite: tipoTramiteDerivado, alcance },
+        },
       });
-      await (supabase as any).rpc("registrar_auditoria", {
-        _accion: "generar_plantilla_indigo_inicial",
-        _modulo: "remisiones",
-        _tabla: "remisiones",
-        _registro_id: inserted?.id ?? null,
-        _resultado: "exito",
+      await registrarAuditoria({
+        data: {
+          accion: "generar_plantilla_indigo_inicial",
+          modulo: "remisiones",
+          tabla: "remisiones",
+          registroId: inserted?.id ?? null,
+        },
       });
     } catch {
       /* la auditoría no debe interrumpir el registro */
