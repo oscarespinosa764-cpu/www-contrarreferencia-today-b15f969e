@@ -345,6 +345,7 @@ function HistorialPage() {
   const [periodo, setPeriodo] = useState<Periodo>("Todos");
   const [fechaEspecifica, setFechaEspecifica] = useState<Date | undefined>(undefined);
   const [ingresoFor, setIngresoFor] = useState<Grupo | null>(null);
+  const [bitacoraOpen, setBitacoraOpen] = useState(false);
 
   const { data: casos, isLoading } = useQuery({
     queryKey: ["historial-casos"],
