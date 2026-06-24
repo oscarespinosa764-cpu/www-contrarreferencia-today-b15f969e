@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
+import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/app-header";
 import { Panel } from "@/components/stat-card";
