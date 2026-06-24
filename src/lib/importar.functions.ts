@@ -287,12 +287,12 @@ export const exportarMasivo = createServerFn({ method: "POST" })
       return out;
     });
 
-    await (supabase as any).rpc("registrar_auditoria", {
-      _accion: "exportar",
-      _modulo: "exportacion",
-      _tabla: def.tabla,
-      _resultado: "exito",
-      _detalles: { filas: filas.length },
+    const { registrarAuditoriaServer } = await import("./auditoria.server");
+    await registrarAuditoriaServer(userId, {
+      accion: "exportar",
+      modulo: "exportacion",
+      tabla: def.tabla,
+      detalles: { filas: filas.length },
     });
 
     return {
