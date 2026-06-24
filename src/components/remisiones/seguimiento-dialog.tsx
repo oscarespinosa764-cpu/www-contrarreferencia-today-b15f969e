@@ -1053,13 +1053,14 @@ export function SeguimientoDialog({
 
 
     try {
-      await (supabase as any).rpc("registrar_auditoria", {
-        _accion: esRadicado ? "radicacion_en_plataforma" : "crear_seguimiento",
-        _modulo: "remisiones",
-        _tabla: tabla ?? "seguimientos",
-        _registro_id: casoId,
-        _resultado: "exito",
-        _detalles: { tipo_seguimiento: tipoSeg },
+      await registrarAuditoria({
+        data: {
+          accion: esRadicado ? "radicacion_en_plataforma" : "crear_seguimiento",
+          modulo: "remisiones",
+          tabla: tabla ?? "seguimientos",
+          registroId: casoId,
+          detalles: { tipo_seguimiento: tipoSeg },
+        },
       });
     } catch {
       /* la auditoría no debe interrumpir el seguimiento */
