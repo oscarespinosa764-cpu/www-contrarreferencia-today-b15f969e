@@ -28,7 +28,7 @@ import {
   ArrowUpRight,
   Home,
   Stethoscope,
-  ClipboardList,
+  
   Filter,
   CalendarDays,
   ChevronDown,
