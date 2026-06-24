@@ -42,11 +42,12 @@ export const generarPlantillaTexto = createServerFn({ method: "POST" })
 
     // 2) Barrera: no permitir datos personales/sensibles en el prompt.
     if (pareceDatoSensible(`${data.descripcion} ${data.paso}`)) {
-      await (supabase as any).rpc("registrar_auditoria", {
-        _accion: "ia_plantilla_bloqueada",
-        _modulo: "ia",
-        _resultado: "rechazado",
-        _detalles: { motivo: "posible_dato_sensible" },
+      const { registrarAuditoriaServer } = await import("./auditoria.server");
+      await registrarAuditoriaServer(userId, {
+        accion: "ia_plantilla_bloqueada",
+        modulo: "ia",
+        resultado: "rechazado",
+        detalles: { motivo: "posible_dato_sensible" },
       });
       return {
         texto: "",
