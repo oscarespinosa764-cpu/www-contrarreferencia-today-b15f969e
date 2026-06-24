@@ -692,16 +692,6 @@ function HistorialPage() {
   };
 
   // ---- Constructores de bitácora (reutilizados por caso y por consolidado) ----
-  type Construido = {
-    documento: string;
-    paciente: string;
-    fechaBase: string;
-    estado: string;
-    codigo: string;
-    datosPaciente: CampoPDF[];
-    referencia: string;
-    bloque: BloqueCaso;
-  };
 
   const estadoFinalEntrante = (g: Grupo): string => {
     const tipos = g.eventos.map((e) => (e.tipo || "").toUpperCase());
