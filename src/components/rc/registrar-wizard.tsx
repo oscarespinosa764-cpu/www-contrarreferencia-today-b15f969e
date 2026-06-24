@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/lib/backend-client";
+import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { useAuth } from "@/lib/auth";
 import { AutoComplete } from "@/components/rc/autocomplete";
 import { ResultadoCard } from "@/components/rc/resultado-card";
