@@ -1209,6 +1209,14 @@ function HistorialPage() {
 
 
       <IngresoDialog grupo={ingresoFor} onClose={() => setIngresoFor(null)} onConfirmar={handleConfirmarIngreso} />
+      <BitacoraBuscadorDialog
+        open={bitacoraOpen}
+        onClose={() => setBitacoraOpen(false)}
+        buscar={buscarBitacoras}
+        onPDF={pdfConstruido}
+        onConsolidado={pdfConsolidado}
+      />
+
     </div>
   );
 }
