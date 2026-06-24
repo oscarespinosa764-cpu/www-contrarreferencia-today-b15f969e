@@ -523,12 +523,13 @@ function AccionDialog({
           .eq("id", caso.id);
         if (e2) throw e2;
         try {
-          await (supabase as any).rpc("registrar_auditoria", {
-            _accion: esArchivar ? "archivar_vencimiento" : "cancelar_cupo",
-            _modulo: "entrantes",
-            _tabla: "casos_entrantes",
-            _registro_id: caso.codigo,
-            _resultado: "exito",
+          await registrarAuditoria({
+            data: {
+              accion: esArchivar ? "archivar_vencimiento" : "cancelar_cupo",
+              modulo: "entrantes",
+              tabla: "casos_entrantes",
+              registroId: caso.codigo,
+            },
           });
         } catch {
           /* no bloquea el flujo */
