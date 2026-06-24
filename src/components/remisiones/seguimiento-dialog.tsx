@@ -654,13 +654,14 @@ export function SeguimientoDialog({
       await navigator.clipboard.writeText(indigoTexto);
       toast.success("Texto copiado para Índigo");
       try {
-        await (supabase as any).rpc("registrar_auditoria", {
-          _accion: "copiar_plantilla_indigo",
-          _modulo: "remisiones",
-          _tabla: tabla ?? "seguimientos",
-          _registro_id: casoId,
-          _resultado: "exito",
-          _detalles: { tipo_seguimiento: tipoSeg },
+        await registrarAuditoria({
+          data: {
+            accion: "copiar_plantilla_indigo",
+            modulo: "remisiones",
+            tabla: tabla ?? "seguimientos",
+            registroId: casoId,
+            detalles: { tipo_seguimiento: tipoSeg },
+          },
         });
       } catch {
         /* la auditoría no debe interrumpir el copiado */
