@@ -42,16 +42,22 @@ import {
   buildSegMap,
   descargarLibro,
   estadoLabel,
+  splitNombre,
   seccionRecibidas,
   seccionRemisiones,
   seccionPHD,
   seccionInternas,
-  seccionPendientes,
   type SegMap,
   type Seccion,
   type GrupoEntrante,
 } from "@/lib/historial-export";
-import { generarBitacoraPDF, type SeguimientoPDF, type CampoPDF } from "@/lib/bitacora-pdf";
+import {
+  generarBitacoraPDF,
+  generarBitacoraConsolidadaPDF,
+  type SeguimientoPDF,
+  type CampoPDF,
+  type BloqueCaso,
+} from "@/lib/bitacora-pdf";
 
 export const Route = createFileRoute("/_authenticated/historial")({
   component: HistorialPage,
@@ -156,8 +162,30 @@ const VISTAS: { key: Vista; label: string; icon: typeof Home; color: string }[] 
   { key: "salientes", label: "Salientes", icon: ArrowUpRight, color: "bg-status-teal" },
   { key: "phd", label: "PHD/PAD/O2/Esp.", icon: Home, color: "bg-status-sky" },
   { key: "interna", label: "Ref. Internas", icon: Stethoscope, color: "bg-status-blue" },
-  { key: "pendientes", label: "Pendientes", icon: ClipboardList, color: "bg-status-amber" },
 ];
+
+// --- Mapeo de acciones / estados para la bitácora de ENTRANTES ---
+function accionEntrante(tipo: string): string {
+  const t = (tipo || "").toUpperCase();
+  if (t.includes("ACEP")) return "ACEPTACIÓN";
+  if (t.includes("AMP")) return "AMPLIACIÓN";
+  if (t.includes("CAN")) return "CANCELACIÓN";
+  if (t.includes("ING")) return "INGRESO CONFIRMADO";
+  if (t.includes("NEG")) return "NEGACIÓN";
+  if (t.includes("CRUE")) return "CASO CRUE";
+  return t || "REGISTRO";
+}
+
+function estadoEntrante(tipo: string): string {
+  const t = (tipo || "").toUpperCase();
+  if (t.includes("ACEP")) return "ACEPTADO";
+  if (t.includes("AMP")) return "RESERVA AMPLIADA";
+  if (t.includes("CAN")) return "RESERVA CANCELADA";
+  if (t.includes("ING")) return "INGRESO CONFIRMADO";
+  if (t.includes("NEG")) return "NEGADO";
+  if (t.includes("CRUE")) return "CASO CRUE";
+  return "REGISTRADO";
+}
 
 const tipoChip: Record<string, string> = {
   ACEP: "bg-status-teal/15 text-status-teal border-status-teal/40",
@@ -617,7 +645,6 @@ function HistorialPage() {
     if (vista === "salientes") return seccionRemisiones(remisionesF as Record<string, unknown>[], segMap);
     if (vista === "phd") return seccionPHD(phdF as Record<string, unknown>[], segMap);
     if (vista === "interna") return seccionInternas(internasF as Record<string, unknown>[], segMap);
-    if (vista === "pendientes") return seccionPendientes(pendientesF as Record<string, unknown>[], segMap);
     return null;
   };
 
@@ -638,7 +665,6 @@ function HistorialPage() {
       seccionRemisiones(remisionesF as Record<string, unknown>[], segMap),
       seccionPHD(phdF as Record<string, unknown>[], segMap),
       seccionInternas(internasF as Record<string, unknown>[], segMap),
-      seccionPendientes(pendientesF as Record<string, unknown>[], segMap),
     ];
     const total = secciones.reduce((s, x) => s + x.rows.length, 0);
     if (total === 0) {
@@ -651,177 +677,305 @@ function HistorialPage() {
   };
 
   // ---- PDF bitácora ----
-  const segPDFpara = (casoId: string): SeguimientoPDF[] => {
+  const segPDFpara = (casoId: string, defaultEntidad = ""): SeguimientoPDF[] => {
     const arr = segMap.get(casoId) ?? [];
     return arr.map((s) => ({
       fecha: fmtFechaHora(s.created_at),
-      entidad: "",
+      entidad: s.contacto || defaultEntidad || "—",
       observaciones: s.detalle || "—",
       estado: s.estado || "—",
-      contacto: s.tipo || "—",
+      accion: s.tipo || "—",
       funcionario: s.usuario || "—",
+      _orden: new Date(s.created_at || 0).getTime(),
     }));
   };
 
-  const pdfEntrante = (g: Grupo) => {
+  // ---- Constructores de bitácora (reutilizados por caso y por consolidado) ----
+  type Construido = {
+    documento: string;
+    paciente: string;
+    fechaBase: string;
+    estado: string;
+    codigo: string;
+    datosPaciente: CampoPDF[];
+    referencia: string;
+    bloque: BloqueCaso;
+  };
+
+  const estadoFinalEntrante = (g: Grupo): string => {
+    const tipos = g.eventos.map((e) => (e.tipo || "").toUpperCase());
+    const has = (t: string) => tipos.some((x) => x.includes(t));
+    if (has("ING")) return "Aceptado con ingreso confirmado";
+    if (has("NEG")) {
+      const neg = g.eventos.find((e) => (e.tipo || "").toUpperCase().includes("NEG"));
+      const m = v(neg?.detalle);
+      return m ? `Negado por ${m}` : "Negado";
+    }
+    if (has("CAN")) {
+      const can = g.eventos.find((e) => (e.tipo || "").toUpperCase().includes("CAN"));
+      const m = v(can?.detalle);
+      return m ? `Cancelado por ${m}` : "Cancelado por vencimiento de tiempo de reserva";
+    }
+    if (has("AMP")) return "Aceptada con ampliación de reserva otorgada";
+    if (has("ACEP")) return "Aceptado con espera de ingreso";
+    if (has("CRUE")) return "Caso CRUE";
+    return g.estadoFinal.label;
+  };
+
+  const buildEntrante = (g: Grupo): Construido => {
     const b = g.base;
+    const ingreso = g.eventos.find((e) => (e.tipo || "").toUpperCase().includes("ING"));
     const datosPaciente: CampoPDF[] = [
-      { label: "Nombres", value: v(b.nombres) },
-      { label: "Apellidos", value: v(b.apellidos) },
+      { label: "Apellidos", value: v(b.apellidos) || "—" },
+      { label: "Nombres", value: v(b.nombres) || "—" },
       { label: "Tipo documento", value: "CC" },
-      { label: "Documento", value: v(b.documento) },
+      { label: "Número documento", value: v(b.documento) || "—" },
       { label: "Edad", value: fmtEdad(b.edad) },
-      { label: "EAPB / Asegurador", value: v(b.eapb) || "N/A" },
-      { label: "Régimen", value: v(b.regimen) || "N/A" },
-      { label: "IPS que remite", value: v(b.ips) || "N/A" },
-      { label: "CIE-10", value: v(b.cie10) || "N/A" },
-      { label: "Especialidad", value: v(b.especialidad) || "N/A" },
+      { label: "Entidad responsable / EAPB", value: v(b.eapb) || v((b as Record<string, unknown>).aseguramiento) || "—" },
+      { label: "Régimen", value: v(b.regimen) || "—" },
+      { label: "Teléfono", value: v((b as Record<string, unknown>).telefono) || "—" },
     ];
     const datosReferencia: CampoPDF[] = [
-      { label: "Fecha recepción", value: fmtFechaHora(b.fecha || b.created_at) },
-      { label: "Unidad / Servicio", value: v(b.unidad) || "N/A" },
-      { label: "Estado final", value: g.estadoFinal.label },
+      { label: "Tipo de trámite", value: "REMISIONES ENTRANTES" },
+      { label: "IPS remitente", value: v(b.ips) || "—" },
+      { label: "Estado final del caso", value: estadoFinalEntrante(g) },
+      { label: "Códigos del caso", value: g.eventos.map((e) => v(e.codigo)).filter(Boolean).join(" · ") || "—" },
+      { label: "Especialidad", value: v(b.especialidad) || "—" },
+      { label: "Unidad / Servicio", value: v(b.unidad) || "—" },
+      { label: "Fecha y hora de ingreso", value: ingreso ? fmtFechaHora(ingreso.created_at || ingreso.fecha) : "—" },
     ];
-    const seguimientos: SeguimientoPDF[] = g.eventos.map((e) => ({
-      fecha: fmtFechaHora(e.created_at || e.fecha),
-      entidad: v(e.ips),
-      observaciones: v(e.detalle) || v(e.texto_ia) || "—",
-      estado: v(e.estado) || v(e.tipo) || "—",
-      contacto: v(e.tipo) || "—",
-      funcionario: "—",
-    }));
-    void generarBitacoraPDF({
-      tipoDocumento: "REMISIÓN ENTRANTE",
+    const seguimientos: SeguimientoPDF[] = g.eventos
+      .map((e) => ({
+        fecha: fmtFechaHora(e.created_at || e.fecha),
+        entidad: v(e.ips) || "—",
+        observaciones: v(e.detalle) || v(e.texto_ia) || "—",
+        estado: estadoEntrante(e.tipo || ""),
+        accion: accionEntrante(e.tipo || ""),
+        funcionario: v((e as Record<string, unknown>).usuario_registro) || "—",
+        _orden: new Date(e.created_at || e.fecha || 0).getTime(),
+      }));
+    return {
+      documento: v(b.documento),
+      paciente: [b.nombres, b.apellidos].filter(Boolean).join(" ") || "—",
+      fechaBase: v(b.fecha) || v(b.created_at),
+      estado: g.estadoFinal.label,
+      codigo: g.eventos.map((e) => v(e.codigo)).filter(Boolean).join(" · "),
       referencia: v(b.documento) || v(b.codigo) || g.key,
       datosPaciente,
-      datosReferencia,
-      seguimientos,
-      usuario,
-    });
-    auditar("exportar_pdf_bitacora", { vista: "entrantes", caso: v(b.codigo) || v(b.documento) });
+      bloque: { tipoDocumento: "REMISIÓN ENTRANTE", datosReferencia, seguimientos },
+    };
   };
 
-  const pdfSaliente = (r: Remision) => {
+  const buildSaliente = (r: Remision): Construido => {
+    const nm = splitNombre(v(r.paciente));
+    const eapb = v(r.eapb) || v(r.asegurador);
     const datosPaciente: CampoPDF[] = [
-      { label: "Paciente", value: v(r.paciente) },
-      { label: "Documento", value: v(r.documento) },
+      { label: "Apellidos", value: [nm.primerApellido, nm.segundoApellido].filter(Boolean).join(" ") || "—" },
+      { label: "Nombres", value: [nm.primerNombre, nm.segundoNombre].filter(Boolean).join(" ") || "—" },
+      { label: "Tipo documento", value: v(r.tipo_documento) || "CC" },
+      { label: "Número documento", value: v(r.documento) || "—" },
       { label: "Edad", value: fmtEdad(r.edad as string) },
-      { label: "EAPB / ERP", value: v(r.eapb) || v(r.asegurador) || "N/A" },
-      { label: "Régimen", value: v(r.regimen) || "N/A" },
-      { label: "Tipo afiliado", value: "N/A" },
+      { label: "Entidad responsable / EAPB / ERP", value: eapb || "—" },
+      { label: "Régimen", value: v(r.regimen) || "—" },
+      { label: "Teléfono", value: v(r.telefono) || "—" },
     ];
     const datosReferencia: CampoPDF[] = [
-      { label: "Fecha solicitud", value: fmtFechaHora((r.fecha_inicio as string) || r.created_at) },
-      { label: "Servicio que remite", value: v(r.servicio) || "N/A" },
-      { label: "Especialidad remitente", value: joinList(r.especialidades_tratantes) || "N/A" },
-      { label: "Especialidad destino", value: joinList(r.especialidades_receptoras) || "N/A" },
-      { label: "Motivo de remisión", value: v(r.remision_por) || "N/A" },
-      { label: "Diagnóstico CIE-10", value: v(r.cie10) || "N/A" },
-      { label: "Descripción", value: v(r.especificacion) || "N/A" },
-      { label: "N° radicado", value: fmtRadicado(v(r.codigo_radicacion), r.eapb_genera_codigo as boolean) },
-      { label: "Red comentada", value: redComentadaTxt(r) },
-      { label: "Tipo de ambulancia", value: v(r.tipo_ambulancia) || "N/A" },
-      { label: "IPS receptora", value: v(r.ips_receptora) || "N/A" },
+      { label: "Tipo de trámite", value: "REMISIONES SALIENTES" },
+      { label: "Fecha de solicitud", value: fmtFechaHora((r.fecha_inicio as string) || r.created_at) },
+      { label: "Servicio remitente", value: v(r.servicio) || "—" },
+      { label: "Especialidad remitente", value: joinList(r.especialidades_tratantes) || "—" },
+      { label: "Especialidad receptora", value: joinList(r.especialidades_receptoras) || "—" },
+      { label: "Motivo de remisión", value: v(r.remision_por) || "—" },
+      { label: "Diagnóstico CIE-10", value: v(r.cie10) || "—" },
+      { label: "Tipo de ambulancia requerida", value: v(r.tipo_ambulancia) || "—" },
       { label: "Estado actual", value: estadoLabel(r.estado) },
+      { label: "EAPB / ERP", value: eapb || "—" },
+      { label: "Régimen", value: v(r.regimen) || "—" },
+      { label: "Número de radicado", value: fmtRadicado(v(r.codigo_radicacion), r.eapb_genera_codigo as boolean) },
+      { label: "Red comentada", value: redComentadaTxt(r) },
     ];
-    void generarBitacoraPDF({
-      tipoDocumento: "REMISIÓN SALIENTE",
+    return {
+      documento: v(r.documento),
+      paciente: v(r.paciente) || "—",
+      fechaBase: v(r.fecha_inicio) || v(r.created_at),
+      estado: estadoLabel(r.estado),
+      codigo: fmtRadicado(v(r.codigo_radicacion), r.eapb_genera_codigo as boolean),
       referencia: v(r.codigo_radicacion) || v(r.documento) || r.id,
       datosPaciente,
-      datosReferencia,
-      seguimientos: segPDFpara(r.id),
-      usuario,
-    });
-    auditar("exportar_pdf_bitacora", { vista: "salientes", caso: v(r.codigo_radicacion) || v(r.documento) });
+      bloque: {
+        tipoDocumento: "REMISIÓN SALIENTE",
+        datosReferencia,
+        seguimientos: segPDFpara(r.id, eapb || v(r.ips_receptora)),
+      },
+    };
   };
 
-  const pdfPHD = (r: Generico) => {
+  const buildPHD = (r: Generico): Construido => {
+    const nm = splitNombre(v(r.paciente));
+    const eapb = v(r.eapb);
     const datosPaciente: CampoPDF[] = [
-      { label: "Paciente", value: v(r.paciente) },
-      { label: "Tipo documento", value: v(r.tipo_documento) || "N/A" },
-      { label: "Documento", value: v(r.documento) },
+      { label: "Apellidos", value: [nm.primerApellido, nm.segundoApellido].filter(Boolean).join(" ") || "—" },
+      { label: "Nombres", value: [nm.primerNombre, nm.segundoNombre].filter(Boolean).join(" ") || "—" },
+      { label: "Tipo documento", value: v(r.tipo_documento) || "CC" },
+      { label: "Número documento", value: v(r.documento) || "—" },
       { label: "Edad", value: fmtEdad(r.edad as string) },
-      { label: "EAPB / ERP", value: v(r.eapb) || "N/A" },
-      { label: "Régimen", value: v(r.regimen) || "N/A" },
-      { label: "CIE-10", value: v(r.cie10) || "N/A" },
-      { label: "Servicio", value: v(r.servicio) || "N/A" },
-      { label: "Cama", value: v(r.cama) || "N/A" },
-      { label: "Tipo de solicitud", value: v(r.tipo_solicitud_detalle) || v(r.tipo_solicitud) || "N/A" },
-      { label: "Unidad especial", value: v(r.unidad_especial) || "N/A" },
-      { label: "Especialidad tratante", value: joinList(r.especialidades_tratantes) || "N/A" },
-      { label: "Requiere ambulancia", value: r.requiere_ambulancia ? "SI" : "NO" },
-      { label: "Tipo ambulancia", value: v(r.tipo_ambulancia) || "N/A" },
-      { label: "Código radicación", value: fmtRadicado(v(r.codigo_radicacion), r.eapb_genera_codigo as boolean) },
-      { label: "Estado actual", value: estadoGenerico(r.estado).label },
+      { label: "Entidad responsable / EAPB / ERP", value: eapb || "—" },
+      { label: "Régimen", value: v(r.regimen) || "—" },
+      { label: "Teléfono", value: v(r.telefono) || "—" },
     ];
     const datosReferencia: CampoPDF[] = [
-      { label: "Fecha inicio trámite", value: fmtFechaHora((r.fecha_inicio as string) || r.created_at) },
-      { label: "Fecha radicación", value: fmtFechaHora(r.fecha_radicado as string) },
-      { label: "Tipo de solicitud", value: v(r.tipo_solicitud_detalle) || v(r.tipo_solicitud) || "N/A" },
-      { label: "Familiar", value: v(r.contacto_nombre) || "N/A" },
-      { label: "Parentesco", value: v(r.contacto_parentesco) || "N/A" },
-      { label: "Teléfono", value: v(r.contacto_telefono) || "N/A" },
-      { label: "Observaciones", value: v(r.observaciones) || "N/A" },
+      { label: "Tipo de trámite", value: "PHD/PAD/O2/ESPECIALES" },
+      { label: "Fecha de solicitud", value: fmtFechaHora((r.fecha_inicio as string) || r.created_at) },
+      { label: "Tipo de solicitud", value: v(r.tipo_solicitud_detalle) || v(r.tipo_solicitud) || "—" },
+      { label: "Unidad especial", value: v(r.unidad_especial) || "—" },
+      { label: "Servicio solicitante", value: v(r.servicio) || "—" },
+      { label: "Especialidad solicitante", value: joinList(r.especialidades_tratantes) || "—" },
+      { label: "Diagnóstico CIE-10", value: v(r.cie10) || "—" },
+      { label: "Requiere ambulancia", value: r.requiere_ambulancia ? "SI" : "NO" },
+      { label: "Tipo de ambulancia", value: v(r.tipo_ambulancia) || "—" },
+      { label: "Datos familiar", value: v(r.contacto_nombre) || "—" },
+      { label: "Teléfono familiar", value: v(r.contacto_telefono) || "—" },
+      { label: "Parentesco familiar", value: v(r.contacto_parentesco) || "—" },
+      { label: "EAPB / ERP", value: eapb || "—" },
+      { label: "Régimen", value: v(r.regimen) || "—" },
+      { label: "Código de radicación", value: fmtRadicado(v(r.codigo_radicacion), r.eapb_genera_codigo as boolean) },
+      { label: "Estado actual", value: estadoGenerico(r.estado).label },
     ];
-    void generarBitacoraPDF({
-      tipoDocumento: "PHD / PAD / O2 / ESPECIALES",
+    return {
+      documento: v(r.documento),
+      paciente: v(r.paciente) || "—",
+      fechaBase: v(r.fecha_inicio) || v(r.created_at),
+      estado: estadoGenerico(r.estado).label,
+      codigo: fmtRadicado(v(r.codigo_radicacion), r.eapb_genera_codigo as boolean),
       referencia: v(r.codigo_radicacion) || v(r.documento) || r.id,
       datosPaciente,
-      datosReferencia,
-      seguimientos: segPDFpara(r.id),
-      usuario,
-    });
-    auditar("exportar_pdf_bitacora", { vista: "phd", caso: v(r.documento) });
+      bloque: {
+        tipoDocumento: "PHD / PAD / O2 / ESPECIALES",
+        datosReferencia,
+        seguimientos: segPDFpara(r.id, eapb),
+      },
+    };
   };
 
-  const pdfInterna = (r: Generico) => {
+  const buildInterna = (r: Generico): Construido => {
+    const nm = splitNombre(v(r.paciente));
+    const eapb = v(r.eapb) || v(r.proveedor_prestador);
     const datosPaciente: CampoPDF[] = [
-      { label: "Paciente", value: v(r.paciente) },
-      { label: "Tipo documento", value: v(r.tipo_documento) || "N/A" },
-      { label: "Documento", value: v(r.documento) },
-      { label: "Servicio", value: v(r.servicio) || "N/A" },
-      { label: "EAPB / ERP", value: v(r.eapb) || v(r.proveedor_prestador) || "N/A" },
-      { label: "Tipo solicitud / examen", value: v(r.tipo_solicitud) || "N/A" },
-      { label: "Tipo ambulancia", value: v(r.tipo_ambulancia) || "N/A" },
-      { label: "Estado actual", value: estadoGenerico(r.estado).label },
+      { label: "Apellidos", value: [nm.primerApellido, nm.segundoApellido].filter(Boolean).join(" ") || "—" },
+      { label: "Nombres", value: [nm.primerNombre, nm.segundoNombre].filter(Boolean).join(" ") || "—" },
+      { label: "Tipo documento", value: v(r.tipo_documento) || "CC" },
+      { label: "Número documento", value: v(r.documento) || "—" },
+      { label: "Edad", value: fmtEdad(r.edad as string) },
+      { label: "Entidad responsable / EAPB / ERP", value: eapb || "—" },
+      { label: "Régimen", value: v(r.regimen) || "—" },
+      { label: "Teléfono", value: v(r.telefono) || "—" },
     ];
     const datosReferencia: CampoPDF[] = [
-      { label: "Fecha/hora creación", value: fmtFechaHora((r.fecha_inicio as string) || r.created_at) },
-      { label: "Observaciones", value: v(r.observaciones) || "N/A" },
+      { label: "Tipo de trámite", value: "REFERENCIA INTERNA" },
+      { label: "Fecha de solicitud", value: fmtFechaHora((r.fecha_inicio as string) || r.created_at) },
+      { label: "Servicio solicitante", value: v(r.servicio) || "—" },
+      { label: "Tipo de solicitud", value: v(r.tipo_solicitud) || "—" },
+      { label: "Tipo de ambulancia requerida", value: v(r.tipo_ambulancia) || "—" },
+      { label: "Estado actual", value: estadoGenerico(r.estado).label },
     ];
-    void generarBitacoraPDF({
-      tipoDocumento: "REFERENCIA INTERNA",
+    return {
+      documento: v(r.documento),
+      paciente: v(r.paciente) || "—",
+      fechaBase: v(r.fecha_inicio) || v(r.created_at),
+      estado: estadoGenerico(r.estado).label,
+      codigo: "",
       referencia: v(r.documento) || r.id,
       datosPaciente,
-      datosReferencia,
-      seguimientos: segPDFpara(r.id),
-      usuario,
-    });
-    auditar("exportar_pdf_bitacora", { vista: "interna", caso: v(r.documento) });
+      bloque: {
+        tipoDocumento: "REFERENCIA INTERNA",
+        datosReferencia,
+        seguimientos: segPDFpara(r.id, v(r.servicio) || eapb),
+      },
+    };
   };
 
-  const pdfPendiente = (r: Generico) => {
-    const datosPaciente: CampoPDF[] = [
-      { label: "Paciente / Asunto", value: v(r.paciente_asunto) },
-      { label: "Tipo pendiente", value: v(r.tipo_pendiente) || "N/A" },
-      { label: "Destino (IPS / Área)", value: v(r.ips_area) || "N/A" },
-      { label: "Prioridad", value: v(r.prioridad) || "N/A" },
-      { label: "Estado", value: estadoGenerico(r.estado).label },
-    ];
-    const datosReferencia: CampoPDF[] = [
-      { label: "Fecha creación", value: fmtFechaHora((r.fecha as string) || r.created_at) },
-      { label: "Observación de entrega", value: v(r.observacion_entrega) || "N/A" },
-    ];
+  const generarUno = (c: Construido, vistaAud: string) => {
     void generarBitacoraPDF({
-      tipoDocumento: "PENDIENTE",
-      referencia: r.id,
-      datosPaciente,
-      datosReferencia,
-      seguimientos: segPDFpara(r.id),
+      tipoDocumento: c.bloque.tipoDocumento,
+      referencia: c.referencia,
+      datosPaciente: c.datosPaciente,
+      datosReferencia: c.bloque.datosReferencia,
+      seguimientos: c.bloque.seguimientos,
       usuario,
     });
-    auditar("exportar_pdf_bitacora", { vista: "pendientes", caso: v(r.paciente_asunto) });
+    auditar("exportar_pdf_bitacora", { vista: vistaAud, caso: c.referencia, documento: c.documento });
   };
+
+  const pdfEntrante = (g: Grupo) => generarUno(buildEntrante(g), "entrantes");
+  const pdfSaliente = (r: Remision) => generarUno(buildSaliente(r), "salientes");
+  const pdfPHD = (r: Generico) => generarUno(buildPHD(r), "phd");
+  const pdfInterna = (r: Generico) => generarUno(buildInterna(r), "interna");
+
+  // ---- Búsqueda de bitácora por documento (con rango de fechas opcional) ----
+  const recortarRango = (c: Construido, lo: number, hi: number): Construido => {
+    if (lo === -Infinity && hi === Infinity) return c;
+    return {
+      ...c,
+      bloque: {
+        ...c.bloque,
+        seguimientos: c.bloque.seguimientos.filter((s) => {
+          const t = s._orden ?? 0;
+          return t >= lo && t <= hi;
+        }),
+      },
+    };
+  };
+
+  const buscarBitacoras = (
+    doc: string,
+    ini?: Date,
+    fin?: Date,
+  ): { entrantes: Construido[]; salientes: Construido[]; phd: Construido[]; internas: Construido[] } => {
+    const d = doc.trim().toLowerCase();
+    const lo = ini ? new Date(ini.getFullYear(), ini.getMonth(), ini.getDate()).getTime() : -Infinity;
+    const hi = fin ? new Date(fin.getFullYear(), fin.getMonth(), fin.getDate(), 23, 59, 59, 999).getTime() : Infinity;
+    const sinRango = lo === -Infinity && hi === Infinity;
+    const match = (docu: unknown) => {
+      const s = v(docu).toLowerCase();
+      return s !== "" && s.includes(d);
+    };
+    const incluye = (c: Construido): boolean => {
+      if (sinRango) return true;
+      const bt = new Date(c.fechaBase || 0).getTime();
+      const baseIn = !Number.isNaN(bt) && bt >= lo && bt <= hi;
+      const segIn = c.bloque.seguimientos.some((s) => {
+        const t = s._orden ?? 0;
+        return t >= lo && t <= hi;
+      });
+      return baseIn || segIn;
+    };
+    const proc = (arr: Construido[]) => arr.map((c) => recortarRango(c, lo, hi)).filter(incluye);
+    return {
+      entrantes: proc(grupos.filter((g) => match(g.base.documento)).map(buildEntrante)),
+      salientes: proc((remisiones ?? []).filter((r) => match(r.documento)).map(buildSaliente)),
+      phd: proc(((phd ?? []) as Generico[]).filter((r) => match(r.documento)).map(buildPHD)),
+      internas: proc(((internas ?? []) as Generico[]).filter((r) => match(r.documento)).map(buildInterna)),
+    };
+  };
+
+  const pdfConstruido = (c: Construido) => generarUno(c, c.bloque.tipoDocumento);
+
+  const pdfConsolidado = (cs: Construido[], doc: string, filtros: string) => {
+    if (cs.length === 0) {
+      toast.info("No hay casos para consolidar.");
+      return;
+    }
+    void generarBitacoraConsolidadaPDF({
+      referencia: doc || cs[0].documento || "consolidada",
+      datosPaciente: cs[0].datosPaciente,
+      bloques: cs.map((c) => c.bloque),
+      usuario,
+    });
+    auditar("exportar_pdf_bitacora_consolidada", { documento: doc, casos: cs.length, filtros });
+    toast.success("Bitácora consolidada generada");
+  };
+
+
 
   const cargando =
     vista === "entrantes" ? isLoading
@@ -1024,7 +1178,7 @@ function HistorialPage() {
               />
             ))}
           </div>
-        ) : vista === "interna" ? (
+        ) : (
           <div className="grid gap-2">
             {(internasF as Generico[]).map((r) => (
               <GenericoCard
@@ -1037,21 +1191,9 @@ function HistorialPage() {
               />
             ))}
           </div>
-        ) : (
-          <div className="grid gap-2">
-            {(pendientesF as Generico[]).map((r) => (
-              <GenericoCard
-                key={r.id}
-                titulo={`${v(r.paciente_asunto) || "Pendiente"}`}
-                sub={[v(r.tipo_pendiente), v(r.ips_area), v(r.prioridad)]}
-                estado={estadoGenerico(r.estado)}
-                fecha={fmtFechaHora((r.fecha as string) || r.created_at)}
-                onPDF={() => pdfPendiente(r)}
-              />
-            ))}
-          </div>
         )}
       </Panel>
+
 
       <IngresoDialog grupo={ingresoFor} onClose={() => setIngresoFor(null)} onConfirmar={handleConfirmarIngreso} />
     </div>

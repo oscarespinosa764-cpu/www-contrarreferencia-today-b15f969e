@@ -1,17 +1,19 @@
 // Generador de PDF tipo "Bitácora de Referencia" institucional (CEDIM IPS).
-// Reproduce el formato del documento institucional: encabezado centrado, NIT,
-// título GESTIÓN DE REFERENCIA, secciones con fondo gris, tabla de seguimientos
-// con paginación y pie de página en cada hoja.
+// Reproduce el formato del documento institucional: logo arriba a la izquierda,
+// encabezado centrado, NIT a la derecha, título GESTIÓN DE REFERENCIA, secciones
+// con fondo gris, tabla SEGUIMIENTOS REFERENCIA con paginación y pie de página en
+// cada hoja.
 //
 // Pensado para ejecutarse en el navegador (cliente). jsPDF + autotable son
 // librerías 100% JS, compatibles con el bundler.
 
 import type { jsPDF } from "jspdf";
+import logoAsset from "@/assets/cedim-logo.png.asset.json";
 
 const INSTITUCION = "CENTRO DE IMAGENES DIAGNOSTICAS CEDIM I.P.S S.A.S";
 const NIT = "NIT: 900559103-5";
 const TITULO = "GESTIÓN DE REFERENCIA";
-const PIE = "CEDIM IPS - Referencia y Contrarreferencia";
+const PIE = "SISTEMA DE REFERENCIA Y CONTRARREFERENCIA";
 
 export type CampoPDF = { label: string; value: string };
 
@@ -20,8 +22,19 @@ export type SeguimientoPDF = {
   entidad: string;
   observaciones: string;
   estado: string;
-  contacto: string; // nombre de contacto o tipo de seguimiento
+  /** Acción realizada (antes "Nombre contacto"). */
+  accion: string;
   funcionario: string;
+  /** Marca interna para ordenar cronológicamente (timestamp). */
+  _orden?: number;
+};
+
+/** Un bloque de caso dentro de la bitácora (consolidada o individual). */
+export type BloqueCaso = {
+  /** Tipo de trámite legible, ej. "REMISIÓN SALIENTE". */
+  tipoDocumento: string;
+  datosReferencia: CampoPDF[];
+  seguimientos: SeguimientoPDF[];
 };
 
 export type BitacoraInput = {
@@ -35,6 +48,56 @@ export type BitacoraInput = {
   /** Usuario autenticado que genera el documento. */
   usuario: string;
 };
+
+export type BitacoraConsolidadaInput = {
+  referencia: string;
+  datosPaciente: CampoPDF[];
+  bloques: BloqueCaso[];
+  usuario: string;
+};
+
+// ---------------------------------------------------------------------------
+// Limpieza de texto (markdown / marcas de resaltado) para Observaciones.
+// ---------------------------------------------------------------------------
+export function limpiarTexto(s: string | null | undefined): string {
+  if (!s) return "—";
+  let t = String(s);
+  // Quitar marcadores de resaltado/negrilla/markdown manteniendo el contenido.
+  t = t.replace(/={2,}/g, " "); // ==texto==
+  t = t.replace(/`{1,}/g, ""); // backticks
+  t = t.replace(/#{1,}/g, ""); // encabezados markdown
+  t = t.replace(/\*{1,}/g, ""); // **negrilla** / *itálica*
+  t = t.replace(/_{2,}/g, ""); // __subrayado__
+  t = t.replace(/~{1,}/g, ""); // ~tachado~
+  // Normalizar espacios y saltos de línea.
+  t = t.replace(/[ \t]{2,}/g, " ");
+  t = t.replace(/[ \t]+\n/g, "\n");
+  t = t.replace(/\n{3,}/g, "\n\n");
+  return t.trim() || "—";
+}
+
+// ---------------------------------------------------------------------------
+// Logo institucional (cacheado como dataURL).
+// ---------------------------------------------------------------------------
+let logoCache: string | null | undefined;
+
+async function getLogo(): Promise<string | null> {
+  if (logoCache !== undefined) return logoCache;
+  try {
+    const res = await fetch((logoAsset as { url: string }).url);
+    const blob = await res.blob();
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result as string);
+      fr.onerror = reject;
+      fr.readAsDataURL(blob);
+    });
+    logoCache = dataUrl;
+  } catch {
+    logoCache = null;
+  }
+  return logoCache;
+}
 
 function fechaLarga(d: Date): string {
   const dias = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
@@ -105,20 +168,34 @@ function camposGrid(
   return cursor + 1;
 }
 
-export async function generarBitacoraPDF(input: BitacoraInput): Promise<void> {
+// ---------------------------------------------------------------------------
+// Render principal compartido (individual + consolidado).
+// ---------------------------------------------------------------------------
+async function renderBitacora(input: BitacoraConsolidadaInput): Promise<void> {
   const [{ jsPDF }, autoTableMod] = await Promise.all([
     import("jspdf"),
     import("jspdf-autotable"),
   ]);
   const autoTable = autoTableMod.default;
+  const logo = await getLogo();
+
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const margin = 12;
   const ancho = pageW - margin * 2;
   const ahora = new Date();
+  const headerBottom = 33;
 
   const drawHeader = () => {
+    if (logo) {
+      try {
+        // Proporción aproximada del logo 650x470.
+        doc.addImage(logo, "PNG", margin, 7, 20, 14.5);
+      } catch {
+        /* si falla el logo, continuar sin él */
+      }
+    }
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.setTextColor(15, 35, 65);
@@ -141,6 +218,7 @@ export async function generarBitacoraPDF(input: BitacoraInput): Promise<void> {
   };
 
   const drawFooter = (page: number, total: number) => {
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.setTextColor(110, 110, 110);
     doc.text(
@@ -148,52 +226,74 @@ export async function generarBitacoraPDF(input: BitacoraInput): Promise<void> {
       margin,
       pageH - 9,
     );
+    doc.setFont("helvetica", "bold");
     doc.text(PIE, margin, pageH - 6);
+    doc.setFont("helvetica", "normal");
     doc.text(`Página ${page}/${total}`, pageW - margin, pageH - 6, { align: "right" });
   };
 
-  // Primera página: encabezado + datos
+  const ensureSpace = (need: number, y: number): number => {
+    if (y + need > pageH - 16) {
+      doc.addPage();
+      drawHeader();
+      return headerBottom + 2;
+    }
+    return y;
+  };
+
+  // Primera página
   drawHeader();
   let y = 35;
-  y = seccion(doc, `DATOS DEL PACIENTE  (${input.tipoDocumento})`, y, margin, ancho);
+  y = seccion(doc, "DATOS DEL PACIENTE", y, margin, ancho);
   y = camposGrid(doc, input.datosPaciente, y, margin, ancho);
   y += 2;
-  y = seccion(doc, "DATOS DE LA REFERENCIA", y, margin, ancho);
-  y = camposGrid(doc, input.datosReferencia, y, margin, ancho);
-  y += 3;
-  y = seccion(doc, "SEGUIMIENTOS REFERENCIA", y, margin, ancho);
 
-  const body =
-    input.seguimientos.length > 0
-      ? input.seguimientos.map((s) => [
-          s.fecha,
-          s.entidad,
-          s.observaciones,
-          s.estado,
-          s.contacto,
-          s.funcionario,
-        ])
-      : [["—", "—", "Sin seguimientos registrados.", "—", "—", "—"]];
+  input.bloques.forEach((bloque, idx) => {
+    if (idx > 0) y += 2;
+    y = ensureSpace(30, y);
+    y = seccion(doc, "DATOS DE REFERENCIA", y, margin, ancho);
+    y = camposGrid(doc, bloque.datosReferencia, y, margin, ancho);
+    y += 3;
+    y = ensureSpace(20, y);
+    y = seccion(doc, "SEGUIMIENTOS REFERENCIA", y, margin, ancho);
 
-  autoTable(doc, {
-    startY: y + 1,
-    margin: { left: margin, right: margin, top: 33, bottom: 14 },
-    head: [["Fecha registro", "Entidad / IPS / Otra", "Observaciones", "Estado", "Nombre contacto", "Funcionario"]],
-    body,
-    styles: { fontSize: 7, cellPadding: 1.5, valign: "top", overflow: "linebreak", textColor: [25, 25, 25] },
-    headStyles: { fillColor: [30, 60, 100], textColor: [255, 255, 255], fontSize: 7, fontStyle: "bold" },
-    alternateRowStyles: { fillColor: [243, 246, 250] },
-    columnStyles: {
-      0: { cellWidth: 22 },
-      1: { cellWidth: 28 },
-      2: { cellWidth: "auto" },
-      3: { cellWidth: 20 },
-      4: { cellWidth: 26 },
-      5: { cellWidth: 26 },
-    },
-    didDrawPage: () => {
-      drawHeader();
-    },
+    const segs = [...bloque.seguimientos].sort((a, b) => (a._orden ?? 0) - (b._orden ?? 0));
+    const body =
+      segs.length > 0
+        ? segs.map((s) => [
+            s.fecha,
+            s.entidad || "—",
+            limpiarTexto(s.observaciones),
+            s.estado || "—",
+            s.accion || "—",
+            s.funcionario || "—",
+          ])
+        : [["—", "—", "Sin seguimientos registrados.", "—", "—", "—"]];
+
+    autoTable(doc, {
+      startY: y + 1,
+      margin: { left: margin, right: margin, top: headerBottom, bottom: 14 },
+      head: [["Fecha registro", "Entidad", "Observaciones", "Estado", "Acción realizada", "Funcionario"]],
+      body,
+      styles: { fontSize: 7, cellPadding: 1.5, valign: "top", overflow: "linebreak", textColor: [25, 25, 25] },
+      headStyles: { fillColor: [30, 60, 100], textColor: [255, 255, 255], fontSize: 7, fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [243, 246, 250] },
+      rowPageBreak: "avoid",
+      columnStyles: {
+        0: { cellWidth: 22 },
+        1: { cellWidth: 26 },
+        2: { cellWidth: "auto" },
+        3: { cellWidth: 22 },
+        4: { cellWidth: 26 },
+        5: { cellWidth: 24 },
+      },
+      didDrawPage: () => {
+        drawHeader();
+      },
+    });
+
+    const finalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY;
+    y = (finalY ?? y) + 4;
   });
 
   // Pie en todas las páginas
@@ -205,4 +305,25 @@ export async function generarBitacoraPDF(input: BitacoraInput): Promise<void> {
 
   const safeRef = (input.referencia || "caso").replace(/[^\w\-]+/g, "_");
   doc.save(`bitacora_${safeRef}_${ahora.toISOString().slice(0, 10)}.pdf`);
+}
+
+/** Bitácora de un único caso. */
+export async function generarBitacoraPDF(input: BitacoraInput): Promise<void> {
+  await renderBitacora({
+    referencia: input.referencia,
+    datosPaciente: input.datosPaciente,
+    usuario: input.usuario,
+    bloques: [
+      {
+        tipoDocumento: input.tipoDocumento,
+        datosReferencia: input.datosReferencia,
+        seguimientos: input.seguimientos,
+      },
+    ],
+  });
+}
+
+/** Bitácora consolidada del paciente (varios casos en un solo documento). */
+export async function generarBitacoraConsolidadaPDF(input: BitacoraConsolidadaInput): Promise<void> {
+  await renderBitacora(input);
 }
