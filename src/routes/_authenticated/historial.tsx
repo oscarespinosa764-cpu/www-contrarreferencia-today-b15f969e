@@ -1104,6 +1104,18 @@ function HistorialPage() {
 
             {usaMensajes && <MensajesRecientesButton vista={vista} mensajes={mensajes} />}
 
+            {/* Bitácora PDF por documento */}
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 rounded-full border-status-red/40 bg-status-red/10 text-[11px] font-semibold text-status-red hover:bg-status-red/20"
+              onClick={() => setBitacoraOpen(true)}
+            >
+              <FileText className="mr-1.5 h-3.5 w-3.5" /> Bitácora PDF
+            </Button>
+
+
+
             {/* Exportación */}
             <Popover>
               <PopoverTrigger asChild>
