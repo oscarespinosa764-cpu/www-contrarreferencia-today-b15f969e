@@ -639,16 +639,9 @@ function HistorialPage() {
   // ---- Auditoría de exportación ----
   const auditar = async (accion: string, detalles: Record<string, unknown>) => {
     try {
-      await (supabase as unknown as { rpc: (n: string, a: Record<string, unknown>) => Promise<unknown> }).rpc(
-        "registrar_auditoria",
-        {
-          _accion: accion,
-          _modulo: "historial",
-          _tabla: "varios",
-          _resultado: "exito",
-          _detalles: detalles,
-        },
-      );
+      await registrarAuditoria({
+        data: { accion, modulo: "historial", tabla: "varios", detalles },
+      });
     } catch {
       /* la auditoría no debe bloquear la exportación */
     }
