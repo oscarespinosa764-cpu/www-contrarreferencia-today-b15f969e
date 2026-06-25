@@ -1642,14 +1642,15 @@ function BitacoraBuscadorDialog({
   const tramiteTxt = TRAMITE_OPS.find((t) => t.key === tipoTramite)?.label ?? "Todos";
   const filtrosTxt = `Documento=${doc.trim()}${iniStr ? `; Desde=${iniStr}` : ""}${finStr ? `; Hasta=${finStr}` : ""}; Tipo=${tramiteTxt}`;
 
-  const grupos: { label: string; key: TramiteKey; items: Construido[] }[] = res
+  const gruposTodos: { label: string; key: TramiteKey; items: Construido[] }[] = res
     ? [
         { label: "Entrantes", key: "entrantes", items: res.entrantes },
         { label: "Salientes", key: "salientes", items: res.salientes },
         { label: "PHD/PAD/O2/Esp.", key: "phd", items: res.phd },
         { label: "Ref. Internas", key: "internas", items: res.internas },
-      ].filter((g) => incluir(g.key))
+      ]
     : [];
+  const grupos = gruposTodos.filter((g) => incluir(g.key));
 
   const todos = grupos.flatMap((g) => g.items);
 
