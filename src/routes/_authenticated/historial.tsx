@@ -818,7 +818,7 @@ function HistorialPage() {
       .map((e) => ({
         fecha: fmtFechaHora(e.created_at || e.fecha),
         entidad: v(e.ips) || "—",
-        observaciones: v(e.detalle) || v(e.texto_ia) || "—",
+        observaciones: observacionEntrante(e),
         estado: estadoEntrante(e.tipo || ""),
         accion: accionEntrante(e.tipo || ""),
         funcionario: v((e as Record<string, unknown>).usuario_registro) || "—",
