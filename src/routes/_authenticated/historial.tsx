@@ -977,10 +977,20 @@ function HistorialPage() {
       toast.info("No hay casos para consolidar.");
       return;
     }
+    // En consolidado se inyecta "Fecha de la gestión" en cada bloque de DATOS DE REFERENCIA
+    // (justo después del Tipo de trámite) para diferenciar varias gestiones del mismo paciente.
+    const bloques = cs.map((c) => {
+      const dr = [...c.bloque.datosReferencia];
+      const idx = dr.findIndex((f) => f.label === "Tipo de trámite");
+      const campoFecha: CampoPDF = { label: "Fecha de la gestión", value: fmtFechaHora(c.fechaBase) };
+      if (idx >= 0) dr.splice(idx + 1, 0, campoFecha);
+      else dr.unshift(campoFecha);
+      return { ...c.bloque, datosReferencia: dr };
+    });
     void generarBitacoraConsolidadaPDF({
       referencia: doc || cs[0].documento || "consolidada",
       datosPaciente: cs[0].datosPaciente,
-      bloques: cs.map((c) => c.bloque),
+      bloques,
       usuario,
     });
     auditar("exportar_pdf_bitacora_consolidada", { documento: doc, casos: cs.length, filtros });
