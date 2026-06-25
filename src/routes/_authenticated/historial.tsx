@@ -1614,6 +1614,7 @@ function BitacoraBuscadorDialog({
   const [doc, setDoc] = useState("");
   const [iniStr, setIniStr] = useState("");
   const [finStr, setFinStr] = useState("");
+  const [tipoTramite, setTipoTramite] = useState<TramiteKey>("todos");
   const [res, setRes] = useState<ResultadosBitacora | null>(null);
 
   const consultar = () => {
@@ -1624,24 +1625,29 @@ function BitacoraBuscadorDialog({
     setRes(buscar(doc, parseDateInput(iniStr), parseDateInput(finStr)));
   };
 
-  const filtrosTxt = `Documento=${doc.trim()}${iniStr ? `; Desde=${iniStr}` : ""}${finStr ? `; Hasta=${finStr}` : ""}`;
-  const todos = res ? [...res.entrantes, ...res.salientes, ...res.phd, ...res.internas] : [];
+  const incluir = (k: TramiteKey) => tipoTramite === "todos" || tipoTramite === k;
+
+  const tramiteTxt = TRAMITE_OPS.find((t) => t.key === tipoTramite)?.label ?? "Todos";
+  const filtrosTxt = `Documento=${doc.trim()}${iniStr ? `; Desde=${iniStr}` : ""}${finStr ? `; Hasta=${finStr}` : ""}; Tipo=${tramiteTxt}`;
+
+  const grupos: { label: string; key: TramiteKey; items: Construido[] }[] = res
+    ? [
+        { label: "Entrantes", key: "entrantes", items: res.entrantes },
+        { label: "Salientes", key: "salientes", items: res.salientes },
+        { label: "PHD/PAD/O2/Esp.", key: "phd", items: res.phd },
+        { label: "Ref. Internas", key: "internas", items: res.internas },
+      ].filter((g) => incluir(g.key))
+    : [];
+
+  const todos = grupos.flatMap((g) => g.items);
 
   const reset = () => {
     setDoc("");
     setIniStr("");
     setFinStr("");
+    setTipoTramite("todos");
     setRes(null);
   };
-
-  const grupos: { label: string; items: Construido[] }[] = res
-    ? [
-        { label: "Entrantes", items: res.entrantes },
-        { label: "Salientes", items: res.salientes },
-        { label: "PHD/PAD/O2/Esp.", items: res.phd },
-        { label: "Ref. Internas", items: res.internas },
-      ]
-    : [];
 
   return (
     <Dialog
