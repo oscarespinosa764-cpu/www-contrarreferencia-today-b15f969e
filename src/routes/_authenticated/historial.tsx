@@ -1711,7 +1711,28 @@ function BitacoraBuscadorDialog({
               <Input id="bit-fin" type="date" value={finStr} onChange={(e) => setFinStr(e.target.value)} />
             </div>
           </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+            <div className="grid gap-1.5">
+              <Label className="text-xs">Tipo de trámite</Label>
+              <Select value={tipoTramite} onValueChange={(val) => setTipoTramite(val as TramiteKey)}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TRAMITE_OPS.map((t) => (
+                    <SelectItem key={t.key} value={t.key}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button variant="outline" className="h-9" onClick={reset}>
+              <X className="mr-1.5 h-4 w-4" /> Borrar filtros
+            </Button>
+          </div>
         </div>
+
 
         {res && (
           <div className="mt-2 grid gap-3">
