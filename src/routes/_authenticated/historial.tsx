@@ -1560,9 +1560,6 @@ function GenericoCard({
         ))}
         {radicado && <span className="font-mono">Rad. {radicado}</span>}
         <span className="font-mono">{fecha}</span>
-        <div className="ml-auto">
-          <PDFButton onClick={onPDF} />
-        </div>
       </div>
     </div>
   );
