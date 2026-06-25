@@ -1481,7 +1481,6 @@ function CasoCard({
           </div>
         ))}
         <div className="ml-auto flex items-center gap-1.5">
-          <PDFButton onClick={onPDF} />
           {confirmable && canEdit && (
             <Button
               size="sm"
