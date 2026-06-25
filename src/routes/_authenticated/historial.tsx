@@ -20,6 +20,13 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Search,
   FileSpreadsheet,
   FileText,
@@ -728,13 +735,19 @@ function HistorialPage() {
   const buildEntrante = (g: Grupo): Construido => {
     const b = g.base;
     const ingreso = g.eventos.find((e) => (e.tipo || "").toUpperCase().includes("ING"));
+    const tiposEv = g.eventos.map((e) => (e.tipo || "").toUpperCase());
+    // El flujo no requiere especialidad/unidad/ingreso cuando el caso termina en negación
+    // o cancelación sin ingreso registrado.
+    const sinIngreso =
+      !ingreso && (tiposEv.some((t) => t.includes("NEG")) || tiposEv.some((t) => t.includes("CAN")));
+    const naSiNoAplica = (val: string) => (sinIngreso ? "NO APLICA" : val || "—");
     const datosPaciente: CampoPDF[] = [
       { label: "Apellidos", value: v(b.apellidos) || "—" },
       { label: "Nombres", value: v(b.nombres) || "—" },
       { label: "Tipo documento", value: "CC" },
       { label: "Número documento", value: v(b.documento) || "—" },
       { label: "Edad", value: fmtEdad(b.edad) },
-      { label: "Entidad responsable / EAPB", value: v(b.eapb) || v((b as Record<string, unknown>).aseguramiento) || "—" },
+      { label: "Entidad responsable", value: v(b.eapb) || v((b as Record<string, unknown>).aseguramiento) || "—" },
       { label: "Régimen", value: v(b.regimen) || "—" },
       { label: "Teléfono", value: v((b as Record<string, unknown>).telefono) || "—" },
     ];
@@ -743,9 +756,12 @@ function HistorialPage() {
       { label: "IPS remitente", value: v(b.ips) || "—" },
       { label: "Estado final del caso", value: estadoFinalEntrante(g) },
       { label: "Códigos del caso", value: g.eventos.map((e) => v(e.codigo)).filter(Boolean).join(" · ") || "—" },
-      { label: "Especialidad", value: v(b.especialidad) || "—" },
-      { label: "Unidad / Servicio", value: v(b.unidad) || "—" },
-      { label: "Fecha y hora de ingreso", value: ingreso ? fmtFechaHora(ingreso.created_at || ingreso.fecha) : "—" },
+      { label: "Especialidad", value: naSiNoAplica(v(b.especialidad)) },
+      { label: "Unidad / Servicio", value: naSiNoAplica(v(b.unidad)) },
+      {
+        label: "Fecha y hora de ingreso",
+        value: ingreso ? fmtFechaHora(ingreso.created_at || ingreso.fecha) : sinIngreso ? "NO APLICA" : "—",
+      },
     ];
     const seguimientos: SeguimientoPDF[] = g.eventos
       .map((e) => ({
@@ -778,7 +794,7 @@ function HistorialPage() {
       { label: "Tipo documento", value: v(r.tipo_documento) || "CC" },
       { label: "Número documento", value: v(r.documento) || "—" },
       { label: "Edad", value: fmtEdad(r.edad as string) },
-      { label: "Entidad responsable / EAPB / ERP", value: eapb || "—" },
+      { label: "Entidad responsable", value: eapb || "—" },
       { label: "Régimen", value: v(r.regimen) || "—" },
       { label: "Teléfono", value: v(r.telefono) || "—" },
     ];
@@ -822,7 +838,7 @@ function HistorialPage() {
       { label: "Tipo documento", value: v(r.tipo_documento) || "CC" },
       { label: "Número documento", value: v(r.documento) || "—" },
       { label: "Edad", value: fmtEdad(r.edad as string) },
-      { label: "Entidad responsable / EAPB / ERP", value: eapb || "—" },
+      { label: "Entidad responsable", value: eapb || "—" },
       { label: "Régimen", value: v(r.regimen) || "—" },
       { label: "Teléfono", value: v(r.telefono) || "—" },
     ];
@@ -869,7 +885,7 @@ function HistorialPage() {
       { label: "Tipo documento", value: v(r.tipo_documento) || "CC" },
       { label: "Número documento", value: v(r.documento) || "—" },
       { label: "Edad", value: fmtEdad(r.edad as string) },
-      { label: "Entidad responsable / EAPB / ERP", value: eapb || "—" },
+      { label: "Entidad responsable", value: eapb || "—" },
       { label: "Régimen", value: v(r.regimen) || "—" },
       { label: "Teléfono", value: v(r.telefono) || "—" },
     ];
@@ -968,10 +984,20 @@ function HistorialPage() {
       toast.info("No hay casos para consolidar.");
       return;
     }
+    // En consolidado se inyecta "Fecha de la gestión" en cada bloque de DATOS DE REFERENCIA
+    // (justo después del Tipo de trámite) para diferenciar varias gestiones del mismo paciente.
+    const bloques = cs.map((c) => {
+      const dr = [...c.bloque.datosReferencia];
+      const idx = dr.findIndex((f) => f.label === "Tipo de trámite");
+      const campoFecha: CampoPDF = { label: "Fecha de la gestión", value: fmtFechaHora(c.fechaBase) };
+      if (idx >= 0) dr.splice(idx + 1, 0, campoFecha);
+      else dr.unshift(campoFecha);
+      return { ...c.bloque, datosReferencia: dr };
+    });
     void generarBitacoraConsolidadaPDF({
       referencia: doc || cs[0].documento || "consolidada",
       datosPaciente: cs[0].datosPaciente,
-      bloques: cs.map((c) => c.bloque),
+      bloques,
       usuario,
     });
     auditar("exportar_pdf_bitacora_consolidada", { documento: doc, casos: cs.length, filtros });
@@ -1481,7 +1507,6 @@ function CasoCard({
           </div>
         ))}
         <div className="ml-auto flex items-center gap-1.5">
-          <PDFButton onClick={onPDF} />
           {confirmable && canEdit && (
             <Button
               size="sm"
@@ -1522,9 +1547,6 @@ function RemisionCard({ remision: r, onPDF }: { remision: Remision; onPDF: () =>
         <span className="font-mono">Rad. {fmtRadicado(v(r.codigo_radicacion), r.eapb_genera_codigo as boolean)}</span>
         {(r.eapb || r.asegurador) && <span className="rounded border px-1.5 py-0.5">{r.eapb || r.asegurador}</span>}
         <span className="font-mono">{fmtFecha(r.created_at, r.fecha_radicado as string)}</span>
-        <div className="ml-auto">
-          <PDFButton onClick={onPDF} />
-        </div>
       </div>
     </div>
   );
@@ -1564,9 +1586,6 @@ function GenericoCard({
         ))}
         {radicado && <span className="font-mono">Rad. {radicado}</span>}
         <span className="font-mono">{fecha}</span>
-        <div className="ml-auto">
-          <PDFButton onClick={onPDF} />
-        </div>
       </div>
     </div>
   );
@@ -1578,6 +1597,18 @@ function parseDateInput(s: string): Date | undefined {
   if (!m) return undefined;
   return new Date(+m[1], +m[2] - 1, +m[3]);
 }
+
+type TramiteKey = "todos" | "entrantes" | "salientes" | "phd" | "internas";
+
+const TRAMITE_OPS: { key: TramiteKey; label: string }[] = [
+  { key: "todos", label: "Todos" },
+  { key: "entrantes", label: "Entrantes" },
+  { key: "salientes", label: "Salientes" },
+  { key: "phd", label: "PHD/PAD/O2/Especiales" },
+  { key: "internas", label: "Referencias internas" },
+];
+
+
 
 function BitacoraBuscadorDialog({
   open,
@@ -1595,6 +1626,7 @@ function BitacoraBuscadorDialog({
   const [doc, setDoc] = useState("");
   const [iniStr, setIniStr] = useState("");
   const [finStr, setFinStr] = useState("");
+  const [tipoTramite, setTipoTramite] = useState<TramiteKey>("todos");
   const [res, setRes] = useState<ResultadosBitacora | null>(null);
 
   const consultar = () => {
@@ -1605,24 +1637,30 @@ function BitacoraBuscadorDialog({
     setRes(buscar(doc, parseDateInput(iniStr), parseDateInput(finStr)));
   };
 
-  const filtrosTxt = `Documento=${doc.trim()}${iniStr ? `; Desde=${iniStr}` : ""}${finStr ? `; Hasta=${finStr}` : ""}`;
-  const todos = res ? [...res.entrantes, ...res.salientes, ...res.phd, ...res.internas] : [];
+  const incluir = (k: TramiteKey) => tipoTramite === "todos" || tipoTramite === k;
+
+  const tramiteTxt = TRAMITE_OPS.find((t) => t.key === tipoTramite)?.label ?? "Todos";
+  const filtrosTxt = `Documento=${doc.trim()}${iniStr ? `; Desde=${iniStr}` : ""}${finStr ? `; Hasta=${finStr}` : ""}; Tipo=${tramiteTxt}`;
+
+  const gruposTodos: { label: string; key: TramiteKey; items: Construido[] }[] = res
+    ? [
+        { label: "Entrantes", key: "entrantes", items: res.entrantes },
+        { label: "Salientes", key: "salientes", items: res.salientes },
+        { label: "PHD/PAD/O2/Esp.", key: "phd", items: res.phd },
+        { label: "Ref. Internas", key: "internas", items: res.internas },
+      ]
+    : [];
+  const grupos = gruposTodos.filter((g) => incluir(g.key));
+
+  const todos = grupos.flatMap((g) => g.items);
 
   const reset = () => {
     setDoc("");
     setIniStr("");
     setFinStr("");
+    setTipoTramite("todos");
     setRes(null);
   };
-
-  const grupos: { label: string; items: Construido[] }[] = res
-    ? [
-        { label: "Entrantes", items: res.entrantes },
-        { label: "Salientes", items: res.salientes },
-        { label: "PHD/PAD/O2/Esp.", items: res.phd },
-        { label: "Ref. Internas", items: res.internas },
-      ]
-    : [];
 
   return (
     <Dialog
@@ -1673,7 +1711,28 @@ function BitacoraBuscadorDialog({
               <Input id="bit-fin" type="date" value={finStr} onChange={(e) => setFinStr(e.target.value)} />
             </div>
           </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+            <div className="grid gap-1.5">
+              <Label className="text-xs">Tipo de trámite</Label>
+              <Select value={tipoTramite} onValueChange={(val) => setTipoTramite(val as TramiteKey)}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TRAMITE_OPS.map((t) => (
+                    <SelectItem key={t.key} value={t.key}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button variant="outline" className="h-9" onClick={reset}>
+              <X className="mr-1.5 h-4 w-4" /> Borrar filtros
+            </Button>
+          </div>
         </div>
+
 
         {res && (
           <div className="mt-2 grid gap-3">
