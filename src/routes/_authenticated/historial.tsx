@@ -62,6 +62,7 @@ import {
 import {
   generarBitacoraPDF,
   generarBitacoraConsolidadaPDF,
+  limpiarTexto,
   type SeguimientoPDF,
   type CampoPDF,
   type BloqueCaso,
