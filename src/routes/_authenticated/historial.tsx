@@ -728,6 +728,12 @@ function HistorialPage() {
   const buildEntrante = (g: Grupo): Construido => {
     const b = g.base;
     const ingreso = g.eventos.find((e) => (e.tipo || "").toUpperCase().includes("ING"));
+    const tiposEv = g.eventos.map((e) => (e.tipo || "").toUpperCase());
+    // El flujo no requiere especialidad/unidad/ingreso cuando el caso termina en negación
+    // o cancelación sin ingreso registrado.
+    const sinIngreso =
+      !ingreso && (tiposEv.some((t) => t.includes("NEG")) || tiposEv.some((t) => t.includes("CAN")));
+    const naSiNoAplica = (val: string) => (sinIngreso ? "NO APLICA" : val || "—");
     const datosPaciente: CampoPDF[] = [
       { label: "Apellidos", value: v(b.apellidos) || "—" },
       { label: "Nombres", value: v(b.nombres) || "—" },
@@ -743,9 +749,12 @@ function HistorialPage() {
       { label: "IPS remitente", value: v(b.ips) || "—" },
       { label: "Estado final del caso", value: estadoFinalEntrante(g) },
       { label: "Códigos del caso", value: g.eventos.map((e) => v(e.codigo)).filter(Boolean).join(" · ") || "—" },
-      { label: "Especialidad", value: v(b.especialidad) || "—" },
-      { label: "Unidad / Servicio", value: v(b.unidad) || "—" },
-      { label: "Fecha y hora de ingreso", value: ingreso ? fmtFechaHora(ingreso.created_at || ingreso.fecha) : "—" },
+      { label: "Especialidad", value: naSiNoAplica(v(b.especialidad)) },
+      { label: "Unidad / Servicio", value: naSiNoAplica(v(b.unidad)) },
+      {
+        label: "Fecha y hora de ingreso",
+        value: ingreso ? fmtFechaHora(ingreso.created_at || ingreso.fecha) : sinIngreso ? "NO APLICA" : "—",
+      },
     ];
     const seguimientos: SeguimientoPDF[] = g.eventos
       .map((e) => ({
