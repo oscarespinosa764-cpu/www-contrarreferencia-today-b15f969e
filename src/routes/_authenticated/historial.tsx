@@ -869,7 +869,7 @@ function HistorialPage() {
       { label: "Tipo documento", value: v(r.tipo_documento) || "CC" },
       { label: "Número documento", value: v(r.documento) || "—" },
       { label: "Edad", value: fmtEdad(r.edad as string) },
-      { label: "Entidad responsable / EAPB / ERP", value: eapb || "—" },
+      { label: "Entidad responsable", value: eapb || "—" },
       { label: "Régimen", value: v(r.regimen) || "—" },
       { label: "Teléfono", value: v(r.telefono) || "—" },
     ];
