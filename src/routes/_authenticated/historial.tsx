@@ -196,6 +196,45 @@ function estadoEntrante(tipo: string): string {
   return "REGISTRADO";
 }
 
+// Motivos de negación normalizados aceptados institucionalmente.
+const MOTIVOS_NEGACION = [
+  "RED NO CONTRATADA",
+  "NO RECURSO HUMANO",
+  "NO DISPONIBILIDAD DE UNIDAD",
+  "NO DISPONIBILIDAD DE CAMAS",
+  "NO DISPONIBILIDAD DE INSUMO O TECNOLOGIA",
+  "NO DISPONIBILIDAD DE INSUMO O TECNOLOGÍA",
+  "NIVEL DE COMPLEJIDAD",
+  "FALTA DE DOCUMENTACION",
+  "FALTA DE DOCUMENTACIÓN",
+  "SIN AFILIACION DE OFICIO",
+  "SIN AFILIACIÓN DE OFICIO",
+];
+
+// Devuelve el motivo real de negación a partir del campo `detalle` del evento NEG.
+// `detalle` es el lugar donde se guarda el motivo seleccionado al registrar la
+// negación (p.ej. "RED NO CONTRATADA"). El texto generado vive en `texto_ia`,
+// por lo que NUNCA se usa como motivo. Se devuelve limpio de marcas markdown.
+function motivoNegacion(detalle: string | null | undefined): string {
+  const raw = limpiarTexto(detalle);
+  if (!raw || raw === "—") return "";
+  const up = raw.toUpperCase().trim();
+  // Coincidencia exacta o por inclusión con un motivo normalizado.
+  const match = MOTIVOS_NEGACION.find((m) => up === m || up.includes(m));
+  return (match || raw).trim();
+}
+
+// Texto que se mostrará en la columna OBSERVACIONES de un evento de ENTRANTES.
+// Prioriza la RESPUESTA / PLANTILLA generada (texto_ia) sobre el motivo corto
+// almacenado en `detalle`. Devuelve el texto limpio de marcas markdown.
+function observacionEntrante(e: Caso): string {
+  const generada = limpiarTexto(e.texto_ia);
+  if (generada && generada !== "—") return generada;
+  const det = limpiarTexto(e.detalle);
+  if (det && det !== "—") return det;
+  return "—";
+}
+
 const tipoChip: Record<string, string> = {
   ACEP: "bg-status-teal/15 text-status-teal border-status-teal/40",
   NEG: "bg-status-red/15 text-status-red border-status-red/40",
