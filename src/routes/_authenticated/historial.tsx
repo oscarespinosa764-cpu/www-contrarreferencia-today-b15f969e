@@ -1521,9 +1521,6 @@ function RemisionCard({ remision: r, onPDF }: { remision: Remision; onPDF: () =>
         <span className="font-mono">Rad. {fmtRadicado(v(r.codigo_radicacion), r.eapb_genera_codigo as boolean)}</span>
         {(r.eapb || r.asegurador) && <span className="rounded border px-1.5 py-0.5">{r.eapb || r.asegurador}</span>}
         <span className="font-mono">{fmtFecha(r.created_at, r.fecha_radicado as string)}</span>
-        <div className="ml-auto">
-          <PDFButton onClick={onPDF} />
-        </div>
       </div>
     </div>
   );
