@@ -1598,6 +1598,18 @@ function parseDateInput(s: string): Date | undefined {
   return new Date(+m[1], +m[2] - 1, +m[3]);
 }
 
+type TramiteKey = "todos" | "entrantes" | "salientes" | "phd" | "internas";
+
+const TRAMITE_OPS: { key: TramiteKey; label: string }[] = [
+  { key: "todos", label: "Todos" },
+  { key: "entrantes", label: "Entrantes" },
+  { key: "salientes", label: "Salientes" },
+  { key: "phd", label: "PHD/PAD/O2/Especiales" },
+  { key: "internas", label: "Referencias internas" },
+];
+
+
+
 function BitacoraBuscadorDialog({
   open,
   onClose,
