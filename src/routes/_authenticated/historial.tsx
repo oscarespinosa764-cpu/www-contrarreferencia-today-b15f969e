@@ -755,20 +755,31 @@ function HistorialPage() {
   const estadoFinalEntrante = (g: Grupo): string => {
     const tipos = g.eventos.map((e) => (e.tipo || "").toUpperCase());
     const has = (t: string) => tipos.some((x) => x.includes(t));
-    if (has("ING")) return "Aceptado con ingreso confirmado";
+    // 2.1 Negación: usa el MOTIVO real (campo detalle del evento NEG), nunca la
+    // respuesta generada. La negación es terminal y tiene prioridad.
     if (has("NEG")) {
       const neg = g.eventos.find((e) => (e.tipo || "").toUpperCase().includes("NEG"));
-      const m = v(neg?.detalle);
-      return m ? `Negado por ${m}` : "Negado";
+      const motivo = motivoNegacion(neg?.detalle);
+      return motivo ? `Negación por ${motivo}` : "Negación";
     }
+    // 2.5 CRUE.
+    if (has("CRUE")) {
+      const crue = g.eventos.find((e) => (e.tipo || "").toUpperCase().includes("CRUE"));
+      const sub = limpiarTexto(crue?.detalle);
+      return sub && sub !== "—" ? `Caso CRUE — ${sub}` : "Caso CRUE";
+    }
+    // 2.4 Cancelación de reserva (con motivo si existe).
     if (has("CAN")) {
       const can = g.eventos.find((e) => (e.tipo || "").toUpperCase().includes("CAN"));
-      const m = v(can?.detalle);
-      return m ? `Cancelado por ${m}` : "Cancelado por vencimiento de tiempo de reserva";
+      const motivo = motivoNegacion(can?.detalle);
+      return motivo ? `Cancelación de reserva por ${motivo}` : "Cancelación de reserva";
     }
-    if (has("AMP")) return "Aceptada con ampliación de reserva otorgada";
-    if (has("ACEP")) return "Aceptado con espera de ingreso";
-    if (has("CRUE")) return "Caso CRUE";
+    // 2.2 Aceptación con ingreso confirmado.
+    if (has("ING")) return "Aceptación con ingreso confirmado";
+    // 2.3 Aceptación con ampliación de reserva otorgada (sin ingreso ni cancelación).
+    if (has("AMP")) return "Aceptación con ampliación de reserva otorgada";
+    // 2.2 Aceptación sin ingreso confirmado (redacción consistente).
+    if (has("ACEP")) return "Aceptación con espera de ingreso";
     return g.estadoFinal.label;
   };
 
