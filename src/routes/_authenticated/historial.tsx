@@ -62,6 +62,7 @@ import {
 import {
   generarBitacoraPDF,
   generarBitacoraConsolidadaPDF,
+  limpiarTexto,
   type SeguimientoPDF,
   type CampoPDF,
   type BloqueCaso,
@@ -193,6 +194,45 @@ function estadoEntrante(tipo: string): string {
   if (t.includes("NEG")) return "NEGADO";
   if (t.includes("CRUE")) return "CASO CRUE";
   return "REGISTRADO";
+}
+
+// Motivos de negación normalizados aceptados institucionalmente.
+const MOTIVOS_NEGACION = [
+  "RED NO CONTRATADA",
+  "NO RECURSO HUMANO",
+  "NO DISPONIBILIDAD DE UNIDAD",
+  "NO DISPONIBILIDAD DE CAMAS",
+  "NO DISPONIBILIDAD DE INSUMO O TECNOLOGIA",
+  "NO DISPONIBILIDAD DE INSUMO O TECNOLOGÍA",
+  "NIVEL DE COMPLEJIDAD",
+  "FALTA DE DOCUMENTACION",
+  "FALTA DE DOCUMENTACIÓN",
+  "SIN AFILIACION DE OFICIO",
+  "SIN AFILIACIÓN DE OFICIO",
+];
+
+// Devuelve el motivo real de negación a partir del campo `detalle` del evento NEG.
+// `detalle` es el lugar donde se guarda el motivo seleccionado al registrar la
+// negación (p.ej. "RED NO CONTRATADA"). El texto generado vive en `texto_ia`,
+// por lo que NUNCA se usa como motivo. Se devuelve limpio de marcas markdown.
+function motivoNegacion(detalle: string | null | undefined): string {
+  const raw = limpiarTexto(detalle);
+  if (!raw || raw === "—") return "";
+  const up = raw.toUpperCase().trim();
+  // Coincidencia exacta o por inclusión con un motivo normalizado.
+  const match = MOTIVOS_NEGACION.find((m) => up === m || up.includes(m));
+  return (match || raw).trim();
+}
+
+// Texto que se mostrará en la columna OBSERVACIONES de un evento de ENTRANTES.
+// Prioriza la RESPUESTA / PLANTILLA generada (texto_ia) sobre el motivo corto
+// almacenado en `detalle`. Devuelve el texto limpio de marcas markdown.
+function observacionEntrante(e: Caso): string {
+  const generada = limpiarTexto(e.texto_ia);
+  if (generada && generada !== "—") return generada;
+  const det = limpiarTexto(e.detalle);
+  if (det && det !== "—") return det;
+  return "—";
 }
 
 const tipoChip: Record<string, string> = {
@@ -715,20 +755,31 @@ function HistorialPage() {
   const estadoFinalEntrante = (g: Grupo): string => {
     const tipos = g.eventos.map((e) => (e.tipo || "").toUpperCase());
     const has = (t: string) => tipos.some((x) => x.includes(t));
-    if (has("ING")) return "Aceptado con ingreso confirmado";
+    // 2.1 Negación: usa el MOTIVO real (campo detalle del evento NEG), nunca la
+    // respuesta generada. La negación es terminal y tiene prioridad.
     if (has("NEG")) {
       const neg = g.eventos.find((e) => (e.tipo || "").toUpperCase().includes("NEG"));
-      const m = v(neg?.detalle);
-      return m ? `Negado por ${m}` : "Negado";
+      const motivo = motivoNegacion(neg?.detalle);
+      return motivo ? `Negación por ${motivo}` : "Negación";
     }
+    // 2.5 CRUE.
+    if (has("CRUE")) {
+      const crue = g.eventos.find((e) => (e.tipo || "").toUpperCase().includes("CRUE"));
+      const sub = limpiarTexto(crue?.detalle);
+      return sub && sub !== "—" ? `Caso CRUE — ${sub}` : "Caso CRUE";
+    }
+    // 2.4 Cancelación de reserva (con motivo si existe).
     if (has("CAN")) {
       const can = g.eventos.find((e) => (e.tipo || "").toUpperCase().includes("CAN"));
-      const m = v(can?.detalle);
-      return m ? `Cancelado por ${m}` : "Cancelado por vencimiento de tiempo de reserva";
+      const motivo = motivoNegacion(can?.detalle);
+      return motivo ? `Cancelación de reserva por ${motivo}` : "Cancelación de reserva";
     }
-    if (has("AMP")) return "Aceptada con ampliación de reserva otorgada";
-    if (has("ACEP")) return "Aceptado con espera de ingreso";
-    if (has("CRUE")) return "Caso CRUE";
+    // 2.2 Aceptación con ingreso confirmado.
+    if (has("ING")) return "Aceptación con ingreso confirmado";
+    // 2.3 Aceptación con ampliación de reserva otorgada (sin ingreso ni cancelación).
+    if (has("AMP")) return "Aceptación con ampliación de reserva otorgada";
+    // 2.2 Aceptación sin ingreso confirmado (redacción consistente).
+    if (has("ACEP")) return "Aceptación con espera de ingreso";
     return g.estadoFinal.label;
   };
 
@@ -767,7 +818,7 @@ function HistorialPage() {
       .map((e) => ({
         fecha: fmtFechaHora(e.created_at || e.fecha),
         entidad: v(e.ips) || "—",
-        observaciones: v(e.detalle) || v(e.texto_ia) || "—",
+        observaciones: observacionEntrante(e),
         estado: estadoEntrante(e.tipo || ""),
         accion: accionEntrante(e.tipo || ""),
         funcionario: v((e as Record<string, unknown>).usuario_registro) || "—",
