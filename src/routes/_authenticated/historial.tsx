@@ -734,7 +734,7 @@ function HistorialPage() {
       { label: "Tipo documento", value: "CC" },
       { label: "Número documento", value: v(b.documento) || "—" },
       { label: "Edad", value: fmtEdad(b.edad) },
-      { label: "Entidad responsable / EAPB", value: v(b.eapb) || v((b as Record<string, unknown>).aseguramiento) || "—" },
+      { label: "Entidad responsable", value: v(b.eapb) || v((b as Record<string, unknown>).aseguramiento) || "—" },
       { label: "Régimen", value: v(b.regimen) || "—" },
       { label: "Teléfono", value: v((b as Record<string, unknown>).telefono) || "—" },
     ];
