@@ -125,7 +125,7 @@ export function ReglasPanel() {
     setCreandoBase(true);
     const { error } = await supabase
       .from("reglas_operativas")
-      .insert(REGLAS_BASE.map((r) => ({ ...r, activo: true, archivado: false })));
+      .insert(REGLAS_BASE.map((r) => ({ ...r, activo: true, archivado: false, created_by: user?.id ?? null })));
     setCreandoBase(false);
     if (error) return toast.error(error.message);
     audit("crear_reglas_base", { cantidad: REGLAS_BASE.length });
