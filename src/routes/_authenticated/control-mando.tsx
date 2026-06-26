@@ -5,6 +5,7 @@ import { ControlMandoPanel } from "@/components/coordinacion/control-mando-panel
 import { HistoricosPanel } from "@/components/coordinacion/historicos-panel";
 import { UsuariosPanel } from "@/components/coordinacion/usuarios-panel";
 import { AuditPanel } from "@/components/coordinacion/audit-panel";
+import { DictadoPanel } from "@/components/coordinacion/dictado-panel";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/_authenticated/control-mando")({
