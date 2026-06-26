@@ -266,6 +266,20 @@ export function UsuariosPanel() {
                           variant="outline"
                           size="sm"
                           className="h-8 rounded-full"
+                          onClick={() =>
+                            setActividadDe({
+                              userId: u.user_id,
+                              nombre: u.nombre || "Sin nombre",
+                              email: null,
+                            })
+                          }
+                        >
+                          <Activity className="mr-1 h-4 w-4" /> Actividad
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 rounded-full"
                           disabled={esYo}
                           onClick={() => toggleActivo(u.user_id, !u.activo)}
                         >
