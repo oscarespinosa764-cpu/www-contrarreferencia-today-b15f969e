@@ -236,7 +236,8 @@ export function ReglaFormDialog({
 
           <div className="space-y-1.5">
             <Label htmlFor="r-mensaje">Mensaje del aviso *</Label>
-            <Textarea
+            <DictationTextarea
+              dictationKey="reglas.regla.mensaje"
               id="r-mensaje"
               rows={2}
               value={mensaje}
