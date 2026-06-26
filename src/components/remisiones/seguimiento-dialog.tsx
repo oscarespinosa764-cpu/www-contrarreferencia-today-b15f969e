@@ -1577,8 +1577,33 @@ export function SeguimientoDialog({
                   />
                 </div>
               </div>
+              <div className="rounded-md border border-dashed p-3">
+                <p className="mb-2 text-xs text-muted-foreground">
+                  Llegada de ambulancia / entrega documental: genere portada, checklist y QR de
+                  firma para el tripulante.
+                </p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setEntregaOpen(true)}
+                >
+                  Entrega documental · Firma por QR
+                </Button>
+              </div>
+              <EntregaDocumentalDialog
+                open={entregaOpen}
+                onOpenChange={setEntregaOpen}
+                casoId={casoId}
+                tipoCaso={tipoCaso}
+                paciente={paciente}
+                documento={documento}
+                empresaTraslado={empresaAmb}
+              />
             </div>
           )}
+
 
           {/* CANCELACIÓN DE TRÁMITE DE REMISIÓN */}
           {esSaliente && tipoSeg === T.CANCELACION && (
