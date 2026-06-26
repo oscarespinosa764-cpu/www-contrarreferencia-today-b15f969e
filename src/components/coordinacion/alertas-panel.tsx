@@ -79,7 +79,7 @@ export function AlertasPanel() {
     } else {
       const { data, error } = await supabase
         .from("avisos")
-        .insert({ ...values, estado: "ACTIVO", archivado: false })
+        .insert({ ...values, estado: "ACTIVO", archivado: false, created_by: user?.id ?? null })
         .select("id")
         .single();
       if (error) {
