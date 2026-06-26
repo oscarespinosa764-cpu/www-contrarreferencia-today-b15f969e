@@ -970,7 +970,7 @@ export function NuevoRegistroDialog({
                 <Label htmlFor="phd-obs" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Observaciones
                 </Label>
-                <Textarea id="phd-obs" name="observaciones" rows={3} />
+                <DictationTextarea dictationKey="phd.nuevo.observaciones" id="phd-obs" name="observaciones" rows={3} />
               </div>
               <DialogFooter>
                 <Button type="submit" className="rounded-full">
