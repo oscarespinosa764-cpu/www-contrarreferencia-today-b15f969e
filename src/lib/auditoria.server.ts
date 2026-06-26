@@ -1,6 +1,7 @@
 // Server-only audit writer. Runs with the service role and attributes every
 // entry to the server-verified user id. NEVER import this from client code.
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { sanitizeAuditoria } from "./auditoria-allowlist";
 
 export type AuditoriaPayload = {
   accion: string;
@@ -12,22 +13,24 @@ export type AuditoriaPayload = {
 };
 
 // Writes an audit entry attributed to `userId`. Never throws: auditing must
-// not interrupt the underlying operation.
+// not interrupt the underlying operation. All fields are sanitized against the
+// shared allowlists (defense in depth for internal server callers too).
 export async function registrarAuditoriaServer(
   userId: string,
   payload: AuditoriaPayload,
 ): Promise<void> {
   try {
+    const clean = sanitizeAuditoria(payload);
     await (supabaseAdmin as unknown as {
       rpc: (n: string, a: Record<string, unknown>) => Promise<unknown>;
     }).rpc("registrar_auditoria_srv", {
       _user_id: userId,
-      _accion: payload.accion,
-      _modulo: payload.modulo ?? null,
-      _tabla: payload.tabla ?? null,
-      _registro_id: payload.registroId ?? null,
-      _resultado: payload.resultado ?? "exito",
-      _detalles: payload.detalles ?? null,
+      _accion: clean.accion,
+      _modulo: clean.modulo,
+      _tabla: clean.tabla,
+      _registro_id: clean.registroId,
+      _resultado: clean.resultado,
+      _detalles: clean.detalles,
     });
   } catch {
     /* la auditoría no debe interrumpir la operación */
