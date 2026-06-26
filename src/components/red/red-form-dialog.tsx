@@ -478,7 +478,8 @@ export function RedFormDialog({
               </div>
               <div className="mt-3 space-y-1.5">
                 <Label>Novedades</Label>
-                <Textarea
+                <DictationTextarea
+                  dictationKey="red.novedades"
                   rows={2}
                   value={f.novedad_disponibilidad}
                   onChange={(e) => set("novedad_disponibilidad", e.target.value)}
