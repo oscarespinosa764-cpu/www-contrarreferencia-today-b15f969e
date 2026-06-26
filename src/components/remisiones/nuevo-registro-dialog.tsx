@@ -457,7 +457,7 @@ export function NuevoRegistroDialog({
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const { data: u } = await supabase.auth.getUser();
-    const { error } = await supabase.from("referencia_interna").insert({
+    const { data: internaIns, error } = await supabase.from("referencia_interna").insert({
       fecha_inicio: null,
       fecha_radicado: new Date().toISOString(),
       servicio: String(f.get("servicio")),
@@ -471,8 +471,23 @@ export function NuevoRegistroDialog({
       estado: "ACTIVO",
       evolucion: "sin",
       created_by: u.user?.id,
-    });
+    })
+      .select("id")
+      .single();
     if (error) return toast.error(error.message);
+    try {
+      await registrarAuditoria({
+        data: {
+          accion: "crear_caso_interna",
+          modulo: "referencia_interna",
+          tabla: "referencia_interna",
+          registroId: internaIns?.id ?? null,
+          detalles: { servicio: String(f.get("servicio")) },
+        },
+      });
+    } catch {
+      /* la auditoría no debe interrumpir el registro */
+    }
     toast.success("Referencia interna registrada");
     reset();
     onOpenChange(false);
