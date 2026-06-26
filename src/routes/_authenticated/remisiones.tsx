@@ -25,17 +25,6 @@ export const Route = createFileRoute("/_authenticated/remisiones")({
   component: RemisionesPage,
 });
 
-type Aviso = {
-  id: string;
-  nombre: string;
-  tipoDoc: string;
-  motivo: string;
-  accion: string;
-  origen: string;
-  fuente: string;
-  prioridad: "ALTO" | "MEDIO" | "BAJO";
-};
-
 function RemisionesPage() {
   const { canEdit, user } = useAuth();
   const qc = useQueryClient();
