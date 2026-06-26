@@ -29,7 +29,7 @@ interface SpeechRecognitionLike {
   onstart: (() => void) | null;
 }
 
-function getRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
+export function getRecognitionCtor(): (new () => SpeechRecognitionLike) | null {
   if (typeof window === "undefined") return null;
   return (
     (window as any).SpeechRecognition ||

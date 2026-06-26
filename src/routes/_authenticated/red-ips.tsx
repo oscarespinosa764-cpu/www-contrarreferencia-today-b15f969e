@@ -3,7 +3,6 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
-import { useCatalogos } from "@/lib/use-rc-data";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { AppHeader } from "@/components/app-header";
 import { Button } from "@/components/ui/button";
@@ -43,7 +42,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { RedCard } from "@/components/red/red-card";
-import { RedFormDialog } from "@/components/red/red-form-dialog";
 import {
   RED_TABS,
   TIPO_RED_LABEL,
@@ -65,21 +63,30 @@ export const Route = createFileRoute("/_authenticated/red-ips")({
 const IPS_TIPOS: TipoRed[] = ["ips_nacional", "ips_departamental", "ips_aliada"];
 
 function RedIpsPage() {
-  const { isAdmin, canEdit, user } = useAuth();
+  const { canEdit, user } = useAuth();
   const qc = useQueryClient();
-  const catalogos = useCatalogos();
 
   const [tab, setTab] = useState<TipoRed>("ips_nacional");
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState("todos");
 
-  const [formOpen, setFormOpen] = useState(false);
-  const [formTipo, setFormTipo] = useState<TipoRed>("ips_nacional");
-  const [editing, setEditing] = useState<RedRegistro | null>(null);
-
   const [detalle, setDetalle] = useState<RedRegistro | null>(null);
   const [verNovedades, setVerNovedades] = useState(false);
-  const [delTarget, setDelTarget] = useState<RedRegistro | null>(null);
+
+  // Confirmación de cambio de disponibilidad + novedad opcional.
+  const [dispTarget, setDispTarget] = useState<{ reg: RedRegistro; value: boolean } | null>(null);
+  const [novedadInput, setNovedadInput] = useState("");
+
+  const { data: perfiles } = useQuery({
+    queryKey: ["perfiles-nombres"],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("user_id, nombre");
+      const map: Record<string, string> = {};
+      (data ?? []).forEach((p: any) => (map[p.user_id] = p.nombre));
+      return map;
+    },
+    staleTime: 300_000,
+  });
 
   const { data: registros, isLoading } = useQuery({
     queryKey: ["red-operativa"],
@@ -151,49 +158,27 @@ function RedIpsPage() {
     }).catch(() => {});
   };
 
-  const abrirEditar = (r: RedRegistro) => {
-    setEditing(r);
-    setFormTipo((r.tipo_red as TipoRed) || "ips_departamental");
-    setFormOpen(true);
-  };
-
-  const guardar = async (payload: Record<string, unknown>, id?: string): Promise<boolean> => {
-    const meta = {
-      fecha_actualizacion_disponibilidad: new Date().toISOString(),
-      usuario_actualizacion: user?.id ?? null,
-    };
-    if (id) {
-      const { error } = await supabase
-        .from("red_operativa")
-        .update({ ...payload, ...meta })
-        .eq("id", id);
-      if (error) {
-        toast.error(error.message);
-        return false;
-      }
-      auditar("editar_red", id, { tipo_red: payload.tipo_red });
-      toast.success("Registro actualizado");
-    } else {
-      const { data, error } = await supabase
-        .from("red_operativa")
-        .insert({ ...payload, ...meta, archivado: false })
-        .select("id")
-        .single();
-      if (error) {
-        toast.error(error.message);
-        return false;
-      }
-      auditar("crear_red", data?.id ?? "", { tipo_red: payload.tipo_red });
-      toast.success("Registro creado");
+  // El operativo puede actualizar disponibilidad durante el turno.
+  // Abre la confirmación; el cambio real se aplica en aplicarDisponibilidad().
+  const pedirCambio = (r: RedRegistro, value: boolean) => {
+    if (!canEdit) {
+      toast.error("No tienes permisos para modificar disponibilidad.");
+      return;
     }
-    qc.invalidateQueries({ queryKey: ["red-operativa"] });
-    return true;
+    setNovedadInput("");
+    setDispTarget({ reg: r, value });
   };
 
-  const toggleDisponible = async (r: RedRegistro, value: boolean) => {
-    const novedad = `${r.entidad || "Institución"} marcada como ${
-      value ? "DISPONIBLE" : "NO DISPONIBLE"
-    } para remisiones.`;
+  const aplicarDisponibilidad = async () => {
+    if (!dispTarget) return;
+    const { reg: r, value } = dispTarget;
+    const estadoAnterior = r.disponible_para_remisiones ? "disponible" : "no_disponible";
+    const estadoNuevo = value ? "disponible" : "no_disponible";
+    const novedad =
+      novedadInput.trim() ||
+      `${r.entidad || "Institución"} marcada como ${
+        value ? "DISPONIBLE" : "NO DISPONIBLE"
+      } para remisiones.`;
     const { error } = await supabase
       .from("red_operativa")
       .update({
@@ -203,39 +188,20 @@ function RedIpsPage() {
         usuario_actualizacion: user?.id ?? null,
       })
       .eq("id", r.id);
-    if (error) return toast.error(error.message);
-    auditar("cambiar_disponibilidad_red", r.id, { disponible: value });
-    qc.invalidateQueries({ queryKey: ["red-operativa"] });
-  };
-
-  const toggleActivo = async (r: RedRegistro) => {
-    const nuevo = esActivo(r) ? "inactivo" : "activo";
-    const { error } = await supabase
-      .from("red_operativa")
-      .update({
-        estado: nuevo,
-        ...(nuevo === "inactivo" ? { disponible_para_remisiones: false } : {}),
-        fecha_actualizacion_disponibilidad: new Date().toISOString(),
-        usuario_actualizacion: user?.id ?? null,
-      })
-      .eq("id", r.id);
-    if (error) return toast.error(error.message);
-    auditar("cambiar_estado_red", r.id, { estado: nuevo });
-    toast.success(nuevo === "inactivo" ? "Registro desactivado" : "Registro reactivado");
-    qc.invalidateQueries({ queryKey: ["red-operativa"] });
-  };
-
-  const eliminar = async () => {
-    if (!delTarget) return;
-    // Borrado lógico (archivado) para no perder histórico.
-    const { error } = await supabase
-      .from("red_operativa")
-      .update({ archivado: true })
-      .eq("id", delTarget.id);
-    if (error) return toast.error(error.message);
-    auditar("eliminar_red", delTarget.id, { entidad: delTarget.entidad });
-    toast.success("Registro eliminado");
-    setDelTarget(null);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    auditar("cambiar_disponibilidad_red", r.id, {
+      recurso: r.entidad || "",
+      tipo_red: r.tipo_red || "",
+      estado_anterior: estadoAnterior,
+      estado_nuevo: estadoNuevo,
+      novedad: novedad,
+    });
+    toast.success(value ? "Recurso marcado como disponible" : "Recurso marcado como no disponible");
+    setDispTarget(null);
+    setNovedadInput("");
     qc.invalidateQueries({ queryKey: ["red-operativa"] });
   };
 
@@ -343,21 +309,17 @@ function RedIpsPage() {
                     reg={r}
                     tab={tabCfg}
                     canEdit={canEdit}
-                    isAdmin={isAdmin}
                     onView={setDetalle}
-                    onEdit={abrirEditar}
-                    onToggle={toggleDisponible}
-                    onDeactivate={toggleActivo}
-                    onDelete={setDelTarget}
+                    onToggle={pedirCambio}
                   />
                 ))}
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2 py-14 text-center text-muted-foreground">
                 <Network className="h-10 w-10 opacity-40" />
-                <p className="text-sm">
-                  No hay registros en «{tabCfg.label}». La gestión de registros se realiza desde
-                  Control de Mando → Históricos.
+                <p className="max-w-sm text-sm">
+                  No hay registros en esta categoría. La gestión administrativa de la red se
+                  realiza desde Control de Mando → Históricos → Red y disponibilidad.
                 </p>
               </div>
             )}
@@ -434,17 +396,7 @@ function RedIpsPage() {
         </div>
       </div>
 
-      {/* Formulario de ingreso / edición */}
-      <RedFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        tipo={formTipo}
-        onTipoChange={setFormTipo}
-        editing={editing}
-        especialidades={catalogos.data.especialidades}
-        ipsOptions={catalogos.data.ips}
-        onSubmit={guardar}
-      />
+
 
       {/* Detalle */}
       <Dialog open={!!detalle} onOpenChange={(v) => !v && setDetalle(null)}>
@@ -475,6 +427,22 @@ function RedIpsPage() {
                 <DetRow k="Tipo de apoyo" v={detalle.tipo_apoyo || ""} />
                 <DetRow k="Observaciones" v={detalle.observaciones || ""} />
                 <DetRow k="Novedad" v={detalle.novedad_disponibilidad || ""} />
+                <DetRow
+                  k="Última actualización"
+                  v={
+                    detalle.fecha_actualizacion_disponibilidad
+                      ? fmtFechaHora(detalle.fecha_actualizacion_disponibilidad)
+                      : ""
+                  }
+                />
+                <DetRow
+                  k="Actualizado por"
+                  v={
+                    detalle.usuario_actualizacion && perfiles?.[detalle.usuario_actualizacion]
+                      ? perfiles[detalle.usuario_actualizacion]
+                      : ""
+                  }
+                />
                 {(detalle.relaciones_red?.length ?? 0) > 0 && (
                   <div>
                     <p className="font-semibold text-foreground">Red externa / IPS aliadas</p>

@@ -205,18 +205,46 @@ export function DictadoPanel() {
     refrescar();
   };
 
-  const probar = (selectorOrKey: string) => {
-    try {
-      const el = document.querySelector(selectorOrKey);
-      if (el) toast.success("Campo encontrado correctamente.");
+  const probar = (key: string, selector?: string | null) => {
+    const esc =
+      typeof CSS !== "undefined" && CSS.escape ? CSS.escape(key) : key;
+    const candidatos = [
+      `[data-dictation-key="${key}"]`,
+      selector || "",
+      `#${esc}`,
+      `[name="${esc}"]`,
+    ].filter(Boolean);
+    let encontrado: Element | null = null;
+    let selectorInvalido = false;
+    for (const sel of candidatos) {
+      try {
+        const el = document.querySelector(sel);
+        if (el) {
+          encontrado = el;
+          break;
+        }
+      } catch {
+        selectorInvalido = true;
+      }
+    }
+    if (encontrado) {
+      const compatible =
+        encontrado instanceof HTMLTextAreaElement ||
+        encontrado instanceof HTMLInputElement ||
+        (encontrado as HTMLElement).isContentEditable;
+      if (compatible) toast.success("Campo encontrado correctamente.");
       else
         toast.warning(
-          "No se encontró el campo en esta pantalla. Esta ubicación solo puede probarse desde la ventana correspondiente.",
+          "Campo encontrado, pero no es compatible con dictado (no es área de texto editable).",
         );
-    } catch {
+    } else if (selectorInvalido) {
       toast.error("Selector inválido. Revise la configuración.");
+    } else {
+      toast.warning(
+        "No se encontró el campo en esta pantalla. Esta ubicación solo puede probarse desde la ventana correspondiente.",
+      );
     }
-    audit("probar_ubicacion_dictado", { selector: selectorOrKey });
+    audit("probar_ubicacion_dictado", { key });
   };
 
   return (
@@ -302,9 +330,7 @@ export function DictadoPanel() {
                       size="icon"
                       className="h-8 w-8"
                       title="Probar ubicación"
-                      onClick={() =>
-                        probar(p.selector || `[data-dictation-key="${p.key}"]`)
-                      }
+                      onClick={() => probar(p.key, p.selector)}
                     >
                       <MapPin className="h-4 w-4" />
                     </Button>
