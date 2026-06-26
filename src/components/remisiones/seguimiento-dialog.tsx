@@ -660,7 +660,7 @@ export function SeguimientoDialog({
         await registrarAuditoria({
           data: {
             accion: "copiar_plantilla_indigo",
-            modulo: "remisiones",
+            modulo: moduloAuditoria,
             tabla: tabla ?? "seguimientos",
             registroId: casoId,
             detalles: { tipo_seguimiento: tipoSeg },
