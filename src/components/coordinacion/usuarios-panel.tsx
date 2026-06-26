@@ -58,6 +58,11 @@ export function UsuariosPanel() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [guardando, setGuardando] = useState(false);
+  const [actividadDe, setActividadDe] = useState<{
+    userId: string;
+    nombre: string;
+    email: string | null;
+  } | null>(null);
 
   const crear = useServerFn(crearUsuario);
   const cambiarRolFn = useServerFn(cambiarRolUsuario);
