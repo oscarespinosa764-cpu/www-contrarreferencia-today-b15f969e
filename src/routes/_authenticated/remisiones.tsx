@@ -164,7 +164,7 @@ function RemisionesPage() {
     desistGeneral: count((r) => /DESIST/i.test(r.estado || "") && /GENERAL/i.test(r.estado || "")),
   };
 
-  const avisos: Aviso[] = [];
+  const { combinados: avisos } = useAvisosOperativos();
 
   const nombreRecibe = recibeOpciones.find((a) => a.user_id === recibe)?.nombre || "el siguiente turno";
 
