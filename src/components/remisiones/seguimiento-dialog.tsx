@@ -152,6 +152,8 @@ export function SeguimientoDialog({
   const esPhd = tabla === "domiciliarios";
   const esInterna = tabla === "referencia_interna";
   const esPendiente = tabla === "pendientes";
+  // Módulo real para la auditoría (refleja el tablero de origen).
+  const moduloAuditoria = tabla === "remisiones" ? "remisiones" : (tabla ?? "remisiones");
   // Módulos que reutilizan toda la lógica de trazabilidad Índigo.
   const usaIndigo = esSaliente || esPhd;
 
@@ -658,7 +660,7 @@ export function SeguimientoDialog({
         await registrarAuditoria({
           data: {
             accion: "copiar_plantilla_indigo",
-            modulo: "remisiones",
+            modulo: moduloAuditoria,
             tabla: tabla ?? "seguimientos",
             registroId: casoId,
             detalles: { tipo_seguimiento: tipoSeg },
@@ -1056,7 +1058,7 @@ export function SeguimientoDialog({
       await registrarAuditoria({
         data: {
           accion: esRadicado ? "radicacion_en_plataforma" : "crear_seguimiento",
-          modulo: "remisiones",
+          modulo: moduloAuditoria,
           tabla: tabla ?? "seguimientos",
           registroId: casoId,
           detalles: { tipo_seguimiento: tipoSeg },

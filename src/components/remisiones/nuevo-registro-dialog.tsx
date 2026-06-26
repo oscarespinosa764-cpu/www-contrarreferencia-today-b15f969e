@@ -402,7 +402,7 @@ export function NuevoRegistroDialog({
     const { data: u } = await supabase.auth.getUser();
     const inicioRaw = String(f.get("fecha_inicio") || "");
     const genera = phdGenera;
-    const { error } = await supabase.from("domiciliarios").insert({
+    const { data: phdIns, error } = await supabase.from("domiciliarios").insert({
       fecha_inicio: inicioRaw ? new Date(inicioRaw).toISOString() : null,
       fecha_radicado: new Date().toISOString(),
       servicio: String(f.get("servicio")),
@@ -430,8 +430,23 @@ export function NuevoRegistroDialog({
       estado: "PENDIENTE ACEPTACION",
       evolucion: "sin",
       created_by: u.user?.id,
-    });
+    })
+      .select("id")
+      .single();
     if (error) return toast.error(error.message);
+    try {
+      await registrarAuditoria({
+        data: {
+          accion: "crear_caso_domiciliario",
+          modulo: "domiciliarios",
+          tabla: "domiciliarios",
+          registroId: phdIns?.id ?? null,
+          detalles: { servicio: String(f.get("servicio")), tipo_solicitud: phdTipoSolicitud },
+        },
+      });
+    } catch {
+      /* la auditoría no debe interrumpir el registro */
+    }
     toast.success("Solicitud especial registrada");
     reset();
     onOpenChange(false);
@@ -442,7 +457,7 @@ export function NuevoRegistroDialog({
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const { data: u } = await supabase.auth.getUser();
-    const { error } = await supabase.from("referencia_interna").insert({
+    const { data: internaIns, error } = await supabase.from("referencia_interna").insert({
       fecha_inicio: null,
       fecha_radicado: new Date().toISOString(),
       servicio: String(f.get("servicio")),
@@ -456,8 +471,23 @@ export function NuevoRegistroDialog({
       estado: "ACTIVO",
       evolucion: "sin",
       created_by: u.user?.id,
-    });
+    })
+      .select("id")
+      .single();
     if (error) return toast.error(error.message);
+    try {
+      await registrarAuditoria({
+        data: {
+          accion: "crear_caso_interna",
+          modulo: "referencia_interna",
+          tabla: "referencia_interna",
+          registroId: internaIns?.id ?? null,
+          detalles: { servicio: String(f.get("servicio")) },
+        },
+      });
+    } catch {
+      /* la auditoría no debe interrumpir el registro */
+    }
     toast.success("Referencia interna registrada");
     reset();
     onOpenChange(false);
@@ -489,7 +519,7 @@ export function NuevoRegistroDialog({
     if (pendTipo === "OTRO") detalles.cual = pendCual.trim();
     if (pendTipo === "EVOLUCIONAR") detalles.evolucion_pendiente_en = pendEvoEn;
 
-    const { error } = await supabase.from("pendientes").insert({
+    const { data: pendIns, error } = await supabase.from("pendientes").insert({
       tipo_pendiente: tipoFinal,
       ips_area: destinoValor,
       paciente_asunto: String(f.get("paciente_asunto")),
@@ -498,8 +528,23 @@ export function NuevoRegistroDialog({
       detalles: detalles as never,
       estado: "ABIERTO",
       created_by: u.user?.id,
-    });
+    })
+      .select("id")
+      .single();
     if (error) return toast.error(error.message);
+    try {
+      await registrarAuditoria({
+        data: {
+          accion: "crear_pendiente",
+          modulo: "pendientes",
+          tabla: "pendientes",
+          registroId: pendIns?.id ?? null,
+          detalles: { tipo_pendiente: tipoFinal, prioridad: pendPrioridad },
+        },
+      });
+    } catch {
+      /* la auditoría no debe interrumpir el registro */
+    }
     toast.success("Pendiente registrado");
     reset();
     onOpenChange(false);

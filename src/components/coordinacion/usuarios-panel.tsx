@@ -22,9 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, UserPlus, Loader2 } from "lucide-react";
+import { Search, UserPlus, Loader2, Activity } from "lucide-react";
 import { toast } from "sonner";
 import { crearUsuario, cambiarRolUsuario, cambiarEstadoUsuario } from "@/lib/usuarios.functions";
+import { UsuarioActividadDialog } from "@/components/coordinacion/usuario-actividad-dialog";
 
 type Rol = "admin" | "operativa" | "temporal";
 
@@ -57,6 +58,11 @@ export function UsuariosPanel() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [guardando, setGuardando] = useState(false);
+  const [actividadDe, setActividadDe] = useState<{
+    userId: string;
+    nombre: string;
+    email: string | null;
+  } | null>(null);
 
   const crear = useServerFn(crearUsuario);
   const cambiarRolFn = useServerFn(cambiarRolUsuario);
@@ -260,6 +266,20 @@ export function UsuariosPanel() {
                           variant="outline"
                           size="sm"
                           className="h-8 rounded-full"
+                          onClick={() =>
+                            setActividadDe({
+                              userId: u.user_id,
+                              nombre: u.nombre || "Sin nombre",
+                              email: null,
+                            })
+                          }
+                        >
+                          <Activity className="mr-1 h-4 w-4" /> Actividad
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 rounded-full"
                           disabled={esYo}
                           onClick={() => toggleActivo(u.user_id, !u.activo)}
                         >
@@ -380,6 +400,14 @@ export function UsuariosPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <UsuarioActividadDialog
+        open={Boolean(actividadDe)}
+        onOpenChange={(v) => !v && setActividadDe(null)}
+        userId={actividadDe?.userId ?? null}
+        nombre={actividadDe?.nombre ?? ""}
+        email={actividadDe?.email ?? null}
+      />
     </Panel>
   );
 }
