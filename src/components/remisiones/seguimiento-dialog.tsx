@@ -1838,7 +1838,7 @@ export function SeguimientoDialog({
                 onUsar={(texto) => setDetalle((d) => (d.trim() ? `${d}\n${texto}` : texto))}
               />
             </div>
-            <Textarea value={detalle} onChange={(e) => setDetalle(e.target.value)} rows={3} />
+            <DictationTextarea dictationKey={`${dictPrefix}.seguimiento.observaciones`} value={detalle} onChange={(e) => setDetalle(e.target.value)} rows={3} />
           </div>
 
           {/* Plantilla Índigo */}
