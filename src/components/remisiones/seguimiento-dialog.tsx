@@ -180,6 +180,8 @@ export function SeguimientoDialog({
   const [telefono, setTelefono] = useState("");
   const [busy, setBusy] = useState(false);
   const [busyEvo, setBusyEvo] = useState(false);
+  const [entregaOpen, setEntregaOpen] = useState(false);
+
 
   // Radicado
   const [radicado, setRadicado] = useState("");
