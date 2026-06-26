@@ -1324,7 +1324,8 @@ export function SeguimientoDialog({
                   <Label className={labelCls}>
                     Motivo del pendiente ({evoCorreo ? "falta plataforma" : "falta correo"})
                   </Label>
-                  <Textarea
+                  <DictationTextarea
+                    dictationKey="salientes.seguimiento.motivo_pendiente"
                     value={evoMotivoPend}
                     onChange={(e) => setEvoMotivoPend(e.target.value)}
                     rows={2}
