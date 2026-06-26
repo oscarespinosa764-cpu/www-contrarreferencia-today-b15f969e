@@ -430,8 +430,23 @@ export function NuevoRegistroDialog({
       estado: "PENDIENTE ACEPTACION",
       evolucion: "sin",
       created_by: u.user?.id,
-    });
+    })
+      .select("id")
+      .single();
     if (error) return toast.error(error.message);
+    try {
+      await registrarAuditoria({
+        data: {
+          accion: "crear_caso_domiciliario",
+          modulo: "domiciliarios",
+          tabla: "domiciliarios",
+          registroId: phdIns?.id ?? null,
+          detalles: { servicio: String(f.get("servicio")), tipo_solicitud: phdTipoSolicitud },
+        },
+      });
+    } catch {
+      /* la auditoría no debe interrumpir el registro */
+    }
     toast.success("Solicitud especial registrada");
     reset();
     onOpenChange(false);
