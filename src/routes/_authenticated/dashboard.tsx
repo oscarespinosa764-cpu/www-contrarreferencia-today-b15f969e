@@ -4,6 +4,8 @@ import { supabase } from "@/lib/backend-client";
 import { AppHeader } from "@/components/app-header";
 import { StatCard, SplitStatCard, MiniStat, SectionTitle, Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
+import { useAvisosOperativos } from "@/lib/use-avisos-operativos";
+import { NIVEL_BADGE } from "@/lib/avisos-reglas";
 
 import {
   metricasRemisiones,
