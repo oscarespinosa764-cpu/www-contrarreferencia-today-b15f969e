@@ -21,6 +21,7 @@ import { Route as AuthenticatedRedIpsRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedIndicadoresRouteImport } from './routes/_authenticated/indicadores'
 import { Route as AuthenticatedHistorialRouteImport } from './routes/_authenticated/historial'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedCuadroTurnoRouteImport } from './routes/_authenticated/cuadro-turno'
 import { Route as AuthenticatedControlMandoRouteImport } from './routes/_authenticated/control-mando'
 import { Route as AuthenticatedCatalogoRouteImport } from './routes/_authenticated/catalogo'
 import { Route as AuthenticatedCasosRouteImport } from './routes/_authenticated/casos'
@@ -86,6 +87,12 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedCuadroTurnoRoute =
+  AuthenticatedCuadroTurnoRouteImport.update({
+    id: '/cuadro-turno',
+    path: '/cuadro-turno',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedControlMandoRoute =
   AuthenticatedControlMandoRouteImport.update({
     id: '/control-mando',
@@ -111,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/casos': typeof AuthenticatedCasosRoute
   '/catalogo': typeof AuthenticatedCatalogoRoute
   '/control-mando': typeof AuthenticatedControlMandoRoute
+  '/cuadro-turno': typeof AuthenticatedCuadroTurnoRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/historial': typeof AuthenticatedHistorialRoute
   '/indicadores': typeof AuthenticatedIndicadoresRoute
@@ -127,6 +135,7 @@ export interface FileRoutesByTo {
   '/casos': typeof AuthenticatedCasosRoute
   '/catalogo': typeof AuthenticatedCatalogoRoute
   '/control-mando': typeof AuthenticatedControlMandoRoute
+  '/cuadro-turno': typeof AuthenticatedCuadroTurnoRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/historial': typeof AuthenticatedHistorialRoute
   '/indicadores': typeof AuthenticatedIndicadoresRoute
@@ -145,6 +154,7 @@ export interface FileRoutesById {
   '/_authenticated/casos': typeof AuthenticatedCasosRoute
   '/_authenticated/catalogo': typeof AuthenticatedCatalogoRoute
   '/_authenticated/control-mando': typeof AuthenticatedControlMandoRoute
+  '/_authenticated/cuadro-turno': typeof AuthenticatedCuadroTurnoRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/historial': typeof AuthenticatedHistorialRoute
   '/_authenticated/indicadores': typeof AuthenticatedIndicadoresRoute
@@ -163,6 +173,7 @@ export interface FileRouteTypes {
     | '/casos'
     | '/catalogo'
     | '/control-mando'
+    | '/cuadro-turno'
     | '/dashboard'
     | '/historial'
     | '/indicadores'
@@ -179,6 +190,7 @@ export interface FileRouteTypes {
     | '/casos'
     | '/catalogo'
     | '/control-mando'
+    | '/cuadro-turno'
     | '/dashboard'
     | '/historial'
     | '/indicadores'
@@ -196,6 +208,7 @@ export interface FileRouteTypes {
     | '/_authenticated/casos'
     | '/_authenticated/catalogo'
     | '/_authenticated/control-mando'
+    | '/_authenticated/cuadro-turno'
     | '/_authenticated/dashboard'
     | '/_authenticated/historial'
     | '/_authenticated/indicadores'
@@ -299,6 +312,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/cuadro-turno': {
+      id: '/_authenticated/cuadro-turno'
+      path: '/cuadro-turno'
+      fullPath: '/cuadro-turno'
+      preLoaderRoute: typeof AuthenticatedCuadroTurnoRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/control-mando': {
       id: '/_authenticated/control-mando'
       path: '/control-mando'
@@ -327,6 +347,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedCasosRoute: typeof AuthenticatedCasosRoute
   AuthenticatedCatalogoRoute: typeof AuthenticatedCatalogoRoute
   AuthenticatedControlMandoRoute: typeof AuthenticatedControlMandoRoute
+  AuthenticatedCuadroTurnoRoute: typeof AuthenticatedCuadroTurnoRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedHistorialRoute: typeof AuthenticatedHistorialRoute
   AuthenticatedIndicadoresRoute: typeof AuthenticatedIndicadoresRoute
@@ -340,6 +361,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedCasosRoute: AuthenticatedCasosRoute,
   AuthenticatedCatalogoRoute: AuthenticatedCatalogoRoute,
   AuthenticatedControlMandoRoute: AuthenticatedControlMandoRoute,
+  AuthenticatedCuadroTurnoRoute: AuthenticatedCuadroTurnoRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedHistorialRoute: AuthenticatedHistorialRoute,
   AuthenticatedIndicadoresRoute: AuthenticatedIndicadoresRoute,

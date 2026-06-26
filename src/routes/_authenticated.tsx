@@ -18,6 +18,7 @@ import {
   Zap,
   BookOpen,
   Gauge,
+  CalendarDays,
   PanelLeftClose,
   PanelLeftOpen,
   Menu,
