@@ -1058,7 +1058,7 @@ export function SeguimientoDialog({
       await registrarAuditoria({
         data: {
           accion: esRadicado ? "radicacion_en_plataforma" : "crear_seguimiento",
-          modulo: "remisiones",
+          modulo: moduloAuditoria,
           tabla: tabla ?? "seguimientos",
           registroId: casoId,
           detalles: { tipo_seguimiento: tipoSeg },
