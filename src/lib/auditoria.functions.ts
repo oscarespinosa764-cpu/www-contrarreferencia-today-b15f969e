@@ -1,10 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { sanitizeAuditoria } from "./auditoria-allowlist";
 
 // Public-facing audit entry point for the client. The action metadata comes
 // from the caller, but the user id is taken from the verified session on the
 // server — a browser can no longer forge entries for other users or bypass
-// the active-member check.
+// the active-member check. All free-form fields are normalized against strict
+// server-side allowlists so a caller cannot inject misleading content.
 export const registrarAuditoria = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
@@ -19,14 +21,9 @@ export const registrarAuditoria = createServerFn({ method: "POST" })
       if (!data || typeof data.accion !== "string" || data.accion.length === 0) {
         throw new Error("accion requerida");
       }
-      return {
-        accion: data.accion.slice(0, 120),
-        modulo: data.modulo ?? null,
-        tabla: data.tabla ?? null,
-        registroId: data.registroId ?? null,
-        resultado: data.resultado ?? "exito",
-        detalles: data.detalles ?? null,
-      };
+      // Saneamiento contra allowlists: accion -> slug, modulo/tabla/resultado
+      // contra listas conocidas, detalles limitado a objeto plano acotado.
+      return sanitizeAuditoria(data);
     },
   )
   .handler(async ({ data, context }) => {
