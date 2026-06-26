@@ -84,7 +84,7 @@ export function ReglasPanel() {
     } else {
       const { data, error } = await supabase
         .from("reglas_operativas")
-        .insert({ ...values, archivado: false })
+        .insert({ ...values, archivado: false, created_by: user?.id ?? null })
         .select("id")
         .single();
       if (error) {
