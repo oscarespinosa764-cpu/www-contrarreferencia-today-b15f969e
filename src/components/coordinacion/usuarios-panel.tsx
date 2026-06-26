@@ -158,7 +158,7 @@ export function UsuariosPanel() {
 
   return (
     <Panel
-      title="Usuarios internos del turno"
+      title="Usuarios internos"
       action={
         <Button size="sm" className="rounded-full" onClick={() => setDialogOpen(true)}>
           <UserPlus className="mr-1.5 h-4 w-4" /> Nuevo usuario

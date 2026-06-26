@@ -4,7 +4,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ControlMandoPanel } from "@/components/coordinacion/control-mando-panel";
 import { HistoricosPanel } from "@/components/coordinacion/historicos-panel";
 import { UsuariosPanel } from "@/components/coordinacion/usuarios-panel";
-import { AuditPanel } from "@/components/coordinacion/audit-panel";
 import { DictadoPanel } from "@/components/coordinacion/dictado-panel";
 import { useAuth } from "@/lib/auth";
 
@@ -30,28 +29,24 @@ function ControlMandoPage() {
     <div>
       <AppHeader
         title="Control de Mando"
-        subtitle="Auditoría del turno, importaciones y gestión de usuarios"
+        subtitle="Gestión de usuarios, históricos y estado técnico del turno"
       />
 
-      <Tabs defaultValue="auditoria" className="w-full">
-        <TabsList className="mb-4 grid h-auto w-full grid-cols-2 sm:grid-cols-4">
-          <TabsTrigger className="whitespace-normal" value="auditoria">Auditoría</TabsTrigger>
-          <TabsTrigger className="whitespace-normal" value="historicos">Históricos</TabsTrigger>
+      <Tabs defaultValue="usuarios" className="w-full">
+        <TabsList className="mb-4 grid h-auto w-full grid-cols-3">
           <TabsTrigger className="whitespace-normal" value="usuarios">Usuarios</TabsTrigger>
+          <TabsTrigger className="whitespace-normal" value="historicos">Históricos</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="dictado">Dictado por voz</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="auditoria">
+        <TabsContent value="usuarios">
           <div className="space-y-4">
+            <UsuariosPanel />
             <ControlMandoPanel />
-            <AuditPanel />
           </div>
         </TabsContent>
         <TabsContent value="historicos">
           <HistoricosPanel />
-        </TabsContent>
-        <TabsContent value="usuarios">
-          <UsuariosPanel />
         </TabsContent>
         <TabsContent value="dictado">
           <DictadoPanel />
@@ -60,3 +55,4 @@ function ControlMandoPage() {
     </div>
   );
 }
+
