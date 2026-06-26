@@ -53,6 +53,9 @@ function ControlMandoPage() {
         <TabsContent value="usuarios">
           <UsuariosPanel />
         </TabsContent>
+        <TabsContent value="dictado">
+          <DictadoPanel />
+        </TabsContent>
       </Tabs>
     </div>
   );
