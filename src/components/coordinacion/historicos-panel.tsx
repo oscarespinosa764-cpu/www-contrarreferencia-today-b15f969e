@@ -108,47 +108,7 @@ export function HistoricosPanel() {
     }
   };
 
-  const guardarRed = async (payload: Record<string, unknown>, id?: string): Promise<boolean> => {
-    const meta = {
-      fecha_actualizacion_disponibilidad: new Date().toISOString(),
-      usuario_actualizacion: user?.id ?? null,
-    };
-    if (id) {
-      const { error } = await supabase
-        .from("red_operativa")
-        .update({ ...payload, ...meta })
-        .eq("id", id);
-      if (error) {
-        toast.error(error.message);
-        return false;
-      }
-      registrarAuditoria({
-        data: { accion: "editar_red", modulo: "control-mando", tabla: "red_operativa", registroId: id },
-      }).catch(() => {});
-      toast.success("Registro actualizado");
-    } else {
-      const { data, error } = await supabase
-        .from("red_operativa")
-        .insert({ ...payload, ...meta, archivado: false })
-        .select("id")
-        .single();
-      if (error) {
-        toast.error(error.message);
-        return false;
-      }
-      registrarAuditoria({
-        data: {
-          accion: "crear_red",
-          modulo: "control-mando",
-          tabla: "red_operativa",
-          registroId: data?.id ?? "",
-        },
-      }).catch(() => {});
-      toast.success("Registro creado");
-    }
-    qc.invalidateQueries({ queryKey: ["red-operativa"] });
-    return true;
-  };
+
 
   return (
     <div className="space-y-5">
