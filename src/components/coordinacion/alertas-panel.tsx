@@ -29,7 +29,7 @@ import { useAvisosOperativos } from "@/lib/use-avisos-operativos";
 import { avisoVencido, NIVEL_BADGE, type Aviso } from "@/lib/avisos-reglas";
 
 export function AlertasPanel() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState("todas");
