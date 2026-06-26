@@ -65,6 +65,9 @@ import {
   type ContactoDestino,
   type NegacionGrupo,
 } from "@/lib/indigo-trazabilidad";
+import { EntregaDocumentalDialog } from "@/components/remisiones/entrega-documental-dialog";
+
+
 
 
 type Props = {
