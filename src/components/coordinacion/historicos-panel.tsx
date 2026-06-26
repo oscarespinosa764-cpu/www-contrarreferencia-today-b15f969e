@@ -54,17 +54,14 @@ function AdminBadge({ tone = "amber" }: { tone?: "amber" | "red" }) {
 
 export function HistoricosPanel() {
   const { isAdmin, user } = useAuth();
-  const qc = useQueryClient();
-  const catalogos = useCatalogos();
 
   const [activo, setActivo] = useState<ImportItem | null>(null);
   const [indOpen, setIndOpen] = useState(false);
   const [borradoOpen, setBorradoOpen] = useState(false);
   const [respaldando, setRespaldando] = useState(false);
 
-  // Gestión de red / disponibilidad (creación de registros individuales)
-  const [redFormOpen, setRedFormOpen] = useState(false);
-  const [redTipo, setRedTipo] = useState<TipoRed>("ips_nacional");
+  // Gestión administrativa de red / disponibilidad
+  const [redAdminOpen, setRedAdminOpen] = useState(false);
 
   const generarRespaldo = useServerFn(respaldoTotal);
 
