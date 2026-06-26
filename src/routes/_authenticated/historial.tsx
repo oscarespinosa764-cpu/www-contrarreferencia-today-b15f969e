@@ -833,12 +833,13 @@ function HistorialPage() {
   const estadoFinalEntrante = (g: Grupo): string => {
     const tipos = g.eventos.map((e) => (e.tipo || "").toUpperCase());
     const has = (t: string) => tipos.some((x) => x.includes(t));
-    // 2.1 Negación: usa el MOTIVO real (campo detalle del evento NEG), nunca la
-    // respuesta generada. La negación es terminal y tiene prioridad.
+    // 2.1 Negación: usa el MOTIVO REAL respetando la prioridad estructurado >
+    // respuesta generada (texto_ia) > detalle normalizado. `detalle` nunca es la
+    // primera fuente. La negación es terminal y tiene prioridad.
     if (has("NEG")) {
       const neg = g.eventos.find((e) => (e.tipo || "").toUpperCase().includes("NEG"));
-      const motivo = motivoNegacion(neg?.detalle);
-      return motivo ? `Negación por ${motivo}` : "Negación";
+      const motivo = motivoRealNegacion(neg);
+      return motivo ? `NEGACIÓN POR ${motivo}` : "NEGACIÓN";
     }
     // 2.5 CRUE.
     if (has("CRUE")) {
