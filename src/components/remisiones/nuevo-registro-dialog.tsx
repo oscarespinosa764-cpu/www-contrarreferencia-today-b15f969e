@@ -788,7 +788,7 @@ export function NuevoRegistroDialog({
                 <Label htmlFor="especificacion" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Justificación remisión <span className="text-status-red">*</span>
                 </Label>
-                <Textarea id="especificacion" name="especificacion" rows={2} />
+                <DictationTextarea dictationKey="salientes.nuevo.justificacion" id="especificacion" name="especificacion" rows={2} />
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
                 <Field name="contacto_nombre" label="Nombre y apellido familiar" />
