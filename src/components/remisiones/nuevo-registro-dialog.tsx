@@ -402,7 +402,7 @@ export function NuevoRegistroDialog({
     const { data: u } = await supabase.auth.getUser();
     const inicioRaw = String(f.get("fecha_inicio") || "");
     const genera = phdGenera;
-    const { error } = await supabase.from("domiciliarios").insert({
+    const { data: phdIns, error } = await supabase.from("domiciliarios").insert({
       fecha_inicio: inicioRaw ? new Date(inicioRaw).toISOString() : null,
       fecha_radicado: new Date().toISOString(),
       servicio: String(f.get("servicio")),
