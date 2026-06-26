@@ -248,7 +248,8 @@ export function ReglaFormDialog({
 
           <div className="space-y-1.5">
             <Label htmlFor="r-accion">Acción sugerida</Label>
-            <Textarea
+            <DictationTextarea
+              dictationKey="reglas.regla.accion"
               id="r-accion"
               rows={2}
               value={accion}
