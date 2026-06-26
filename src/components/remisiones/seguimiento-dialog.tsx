@@ -155,6 +155,16 @@ export function SeguimientoDialog({
   const esPendiente = tabla === "pendientes";
   // Módulo real para la auditoría (refleja el tablero de origen).
   const moduloAuditoria = tabla === "remisiones" ? "remisiones" : (tabla ?? "remisiones");
+  // Prefijo de las claves de dictado por voz según el tablero de origen.
+  const dictPrefix = esSaliente
+    ? "salientes"
+    : esPhd
+      ? "phd"
+      : esInterna
+        ? "referencia_interna"
+        : esPendiente
+          ? "pendientes"
+          : "salientes";
   // Módulos que reutilizan toda la lógica de trazabilidad Índigo.
   const usaIndigo = esSaliente || esPhd;
 
