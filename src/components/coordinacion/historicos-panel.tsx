@@ -233,16 +233,7 @@ export function HistoricosPanel() {
       <IndicadoresDatosDialog open={indOpen} onOpenChange={setIndOpen} />
       <BorradoSeguroDialog open={borradoOpen} onOpenChange={setBorradoOpen} />
 
-      <RedFormDialog
-        open={redFormOpen}
-        onOpenChange={setRedFormOpen}
-        tipo={redTipo}
-        onTipoChange={setRedTipo}
-        editing={null}
-        especialidades={catalogos.data.especialidades}
-        ipsOptions={catalogos.data.ips}
-        onSubmit={guardarRed}
-      />
+      <RedAdminDialog open={redAdminOpen} onOpenChange={setRedAdminOpen} />
     </div>
   );
 }
