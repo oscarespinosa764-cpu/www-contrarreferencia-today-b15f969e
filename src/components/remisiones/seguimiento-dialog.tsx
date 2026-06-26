@@ -1868,7 +1868,8 @@ export function SeguimientoDialog({
                   </Button>
                 </div>
               </div>
-              <Textarea
+              <DictationTextarea
+                dictationKey={`${dictPrefix}.seguimiento.plantilla_indigo`}
                 value={indigoTexto}
                 onChange={(e) => {
                   setIndigoTexto(e.target.value);
