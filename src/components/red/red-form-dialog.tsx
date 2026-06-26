@@ -407,7 +407,8 @@ export function RedFormDialog({
                 )}
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label>Observaciones</Label>
-                  <Textarea
+                  <DictationTextarea
+                    dictationKey="red.observaciones"
                     rows={2}
                     value={f.observaciones}
                     onChange={(e) => set("observaciones", e.target.value)}
