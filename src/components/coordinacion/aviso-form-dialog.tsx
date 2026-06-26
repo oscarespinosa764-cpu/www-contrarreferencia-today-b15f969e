@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { DictationTextarea } from "@/components/voz/dictation-textarea";
 import {
   Select,
   SelectContent,
@@ -93,7 +94,8 @@ export function AvisoFormDialog({
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="aviso-msg">Mensaje del aviso *</Label>
-            <Textarea
+            <DictationTextarea
+              dictationKey="reglas.aviso.mensaje"
               id="aviso-msg"
               rows={3}
               value={mensaje}

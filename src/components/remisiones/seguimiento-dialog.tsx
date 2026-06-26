@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { DictationTextarea } from "@/components/voz/dictation-textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AutoComplete } from "@/components/rc/autocomplete";
@@ -154,6 +155,16 @@ export function SeguimientoDialog({
   const esPendiente = tabla === "pendientes";
   // Módulo real para la auditoría (refleja el tablero de origen).
   const moduloAuditoria = tabla === "remisiones" ? "remisiones" : (tabla ?? "remisiones");
+  // Prefijo de las claves de dictado por voz según el tablero de origen.
+  const dictPrefix = esSaliente
+    ? "salientes"
+    : esPhd
+      ? "phd"
+      : esInterna
+        ? "referencia_interna"
+        : esPendiente
+          ? "pendientes"
+          : "salientes";
   // Módulos que reutilizan toda la lógica de trazabilidad Índigo.
   const usaIndigo = esSaliente || esPhd;
 
@@ -1313,7 +1324,8 @@ export function SeguimientoDialog({
                   <Label className={labelCls}>
                     Motivo del pendiente ({evoCorreo ? "falta plataforma" : "falta correo"})
                   </Label>
-                  <Textarea
+                  <DictationTextarea
+                    dictationKey="salientes.seguimiento.motivo_pendiente"
                     value={evoMotivoPend}
                     onChange={(e) => setEvoMotivoPend(e.target.value)}
                     rows={2}
@@ -1826,7 +1838,7 @@ export function SeguimientoDialog({
                 onUsar={(texto) => setDetalle((d) => (d.trim() ? `${d}\n${texto}` : texto))}
               />
             </div>
-            <Textarea value={detalle} onChange={(e) => setDetalle(e.target.value)} rows={3} />
+            <DictationTextarea dictationKey={`${dictPrefix}.seguimiento.observaciones`} value={detalle} onChange={(e) => setDetalle(e.target.value)} rows={3} />
           </div>
 
           {/* Plantilla Índigo */}
@@ -1856,7 +1868,8 @@ export function SeguimientoDialog({
                   </Button>
                 </div>
               </div>
-              <Textarea
+              <DictationTextarea
+                dictationKey={`${dictPrefix}.seguimiento.plantilla_indigo`}
                 value={indigoTexto}
                 onChange={(e) => {
                   setIndigoTexto(e.target.value);

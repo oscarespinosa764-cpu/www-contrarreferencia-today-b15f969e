@@ -5,6 +5,7 @@ import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { DictationTextarea } from "@/components/voz/dictation-textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -787,7 +788,7 @@ export function NuevoRegistroDialog({
                 <Label htmlFor="especificacion" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Justificación remisión <span className="text-status-red">*</span>
                 </Label>
-                <Textarea id="especificacion" name="especificacion" rows={2} />
+                <DictationTextarea dictationKey="salientes.nuevo.justificacion" id="especificacion" name="especificacion" rows={2} />
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
                 <Field name="contacto_nombre" label="Nombre y apellido familiar" />
@@ -801,7 +802,7 @@ export function NuevoRegistroDialog({
                   </Label>
                   <PlantillasEnPaso paso="salientes_inicio" datos={{}} />
                 </div>
-                <Textarea id="observaciones" name="observaciones" rows={3} />
+                <DictationTextarea dictationKey="salientes.nuevo.observaciones" id="observaciones" name="observaciones" rows={3} />
               </div>
 
               <DialogFooter>
@@ -969,7 +970,7 @@ export function NuevoRegistroDialog({
                 <Label htmlFor="phd-obs" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Observaciones
                 </Label>
-                <Textarea id="phd-obs" name="observaciones" rows={3} />
+                <DictationTextarea dictationKey="phd.nuevo.observaciones" id="phd-obs" name="observaciones" rows={3} />
               </div>
               <DialogFooter>
                 <Button type="submit" className="rounded-full">
@@ -1031,7 +1032,7 @@ export function NuevoRegistroDialog({
                 <Label htmlFor="ri-obs" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Observaciones
                 </Label>
-                <Textarea id="ri-obs" name="observaciones" rows={2} />
+                <DictationTextarea dictationKey="referencia_interna.nuevo.observaciones" id="ri-obs" name="observaciones" rows={2} />
               </div>
               <DialogFooter>
                 <Button type="submit" className="rounded-full">
@@ -1209,7 +1210,7 @@ export function NuevoRegistroDialog({
                 <Label htmlFor="pend-obs" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Observación de entrega
                 </Label>
-                <Textarea id="pend-obs" name="observacion_entrega" rows={2} />
+                <DictationTextarea dictationKey="pendientes.nuevo.observacion_entrega" id="pend-obs" name="observacion_entrega" rows={2} />
               </div>
               <DialogFooter>
                 <Button type="submit" className="rounded-full">

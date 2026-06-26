@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { DictationTextarea } from "@/components/voz/dictation-textarea";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -406,7 +407,8 @@ export function RedFormDialog({
                 )}
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label>Observaciones</Label>
-                  <Textarea
+                  <DictationTextarea
+                    dictationKey="red.observaciones"
                     rows={2}
                     value={f.observaciones}
                     onChange={(e) => set("observaciones", e.target.value)}
@@ -476,7 +478,8 @@ export function RedFormDialog({
               </div>
               <div className="mt-3 space-y-1.5">
                 <Label>Novedades</Label>
-                <Textarea
+                <DictationTextarea
+                  dictationKey="red.novedades"
                   rows={2}
                   value={f.novedad_disponibilidad}
                   onChange={(e) => set("novedad_disponibilidad", e.target.value)}

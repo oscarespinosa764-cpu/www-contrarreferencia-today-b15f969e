@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { DictationTextarea } from "@/components/voz/dictation-textarea";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -235,7 +236,8 @@ export function ReglaFormDialog({
 
           <div className="space-y-1.5">
             <Label htmlFor="r-mensaje">Mensaje del aviso *</Label>
-            <Textarea
+            <DictationTextarea
+              dictationKey="reglas.regla.mensaje"
               id="r-mensaje"
               rows={2}
               value={mensaje}
@@ -246,7 +248,8 @@ export function ReglaFormDialog({
 
           <div className="space-y-1.5">
             <Label htmlFor="r-accion">Acción sugerida</Label>
-            <Textarea
+            <DictationTextarea
+              dictationKey="reglas.regla.accion"
               id="r-accion"
               rows={2}
               value={accion}

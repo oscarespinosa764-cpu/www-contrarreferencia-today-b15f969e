@@ -1423,6 +1423,66 @@ export type Database = {
         }
         Relationships: []
       }
+      voice_dictation_config: {
+        Row: {
+          activo: boolean
+          actualizado_por: string | null
+          creado_por: string | null
+          created_at: string
+          id: string
+          idioma: string
+          key: string
+          modo_insercion: string
+          modulo: string
+          nombre_campo: string
+          roles_permitidos: string[]
+          selector: string | null
+          subventana: string
+          texto_ayuda: string | null
+          tipo_campo: string
+          updated_at: string
+          ventana: string
+        }
+        Insert: {
+          activo?: boolean
+          actualizado_por?: string | null
+          creado_por?: string | null
+          created_at?: string
+          id?: string
+          idioma?: string
+          key: string
+          modo_insercion?: string
+          modulo?: string
+          nombre_campo?: string
+          roles_permitidos?: string[]
+          selector?: string | null
+          subventana?: string
+          texto_ayuda?: string | null
+          tipo_campo?: string
+          updated_at?: string
+          ventana?: string
+        }
+        Update: {
+          activo?: boolean
+          actualizado_por?: string | null
+          creado_por?: string | null
+          created_at?: string
+          id?: string
+          idioma?: string
+          key?: string
+          modo_insercion?: string
+          modulo?: string
+          nombre_campo?: string
+          roles_permitidos?: string[]
+          selector?: string | null
+          subventana?: string
+          texto_ayuda?: string | null
+          tipo_campo?: string
+          updated_at?: string
+          ventana?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
