@@ -802,7 +802,7 @@ export function NuevoRegistroDialog({
                   </Label>
                   <PlantillasEnPaso paso="salientes_inicio" datos={{}} />
                 </div>
-                <Textarea id="observaciones" name="observaciones" rows={3} />
+                <DictationTextarea dictationKey="salientes.nuevo.observaciones" id="observaciones" name="observaciones" rows={3} />
               </div>
 
               <DialogFooter>
