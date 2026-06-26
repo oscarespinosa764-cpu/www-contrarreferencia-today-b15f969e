@@ -56,6 +56,7 @@ export interface RedRegistro {
   disponible_para_remisiones: boolean | null;
   novedad_disponibilidad: string | null;
   fecha_actualizacion_disponibilidad: string | null;
+  usuario_actualizacion: string | null;
   fecha_inicio: string | null;
   fecha_final: string | null;
   observaciones: string | null;
