@@ -43,7 +43,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, sess) => {
       // Al iniciar sesión activamente en esta pestaña, marcarla como viva.
-      if (event === "SIGNED_IN") sessionStorage.setItem(TAB_KEY, "1");
+      if (event === "SIGNED_IN") {
+        // Solo registrar como inicio de sesión real cuando la pestaña aún no
+        // estaba marcada (login activo), no en refrescos de token.
+        const eraNuevo = !sessionStorage.getItem(TAB_KEY);
+        sessionStorage.setItem(TAB_KEY, "1");
+        if (eraNuevo) {
+          import("@/lib/auditoria.functions")
+            .then(({ registrarAuditoria }) =>
+              registrarAuditoria({
+                data: { accion: "INICIO_SESION", modulo: "auth", tabla: "auth", resultado: "exito" },
+              }),
+            )
+            .catch(() => {});
+        }
+      }
       if (event === "SIGNED_OUT") sessionStorage.removeItem(TAB_KEY);
 
       setSession(sess);
