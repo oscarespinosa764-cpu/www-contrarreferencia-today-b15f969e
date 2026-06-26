@@ -18,6 +18,7 @@ import {
   Zap,
   BookOpen,
   Gauge,
+  CalendarDays,
   PanelLeftClose,
   PanelLeftOpen,
   Menu,
@@ -50,6 +51,7 @@ const groups: NavGroup[] = [
       { to: "/dashboard", label: "Dashboard General", icon: LayoutDashboard },
       { to: "/historial", label: "Historial de Casos E & S", icon: Search },
       { to: "/red-ips", label: "Red / Disponibilidad IPS", icon: Network },
+      { to: "/cuadro-turno", label: "Cuadro de Turno", icon: CalendarDays },
     ],
   },
   {

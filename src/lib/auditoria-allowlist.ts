@@ -50,6 +50,9 @@ export const AUDIT_MODULOS = new Set<string>([
   "coordinacion",
   "ambulancias",
   "motivos",
+  "cuadro_turno",
+  "ausentismo",
+  "firmas",
   "otros",
 ]);
 
@@ -77,6 +80,12 @@ export const AUDIT_TABLAS = new Set<string>([
   "control_mando",
   "voice_dictation_config",
   "audit_logs",
+  "shift_schedules",
+  "shift_schedule_days",
+  "shift_requests",
+  "shift_absenteeism_records",
+  "user_signatures",
+  "shift_types",
   "auth",
   "varios",
 ]);

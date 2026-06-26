@@ -1357,6 +1357,533 @@ export type Database = {
         }
         Relationships: []
       }
+      shift_absenteeism_records: {
+        Row: {
+          additional_details: string | null
+          annulled_reason: string | null
+          approved_at: string | null
+          approved_by: string | null
+          arl: string | null
+          created_at: string
+          created_by: string | null
+          daily_salary: number | null
+          days_number: number
+          end_date: string | null
+          end_time: string | null
+          eps: string | null
+          event_code: string | null
+          event_name: string | null
+          id: string
+          identification_number: string | null
+          minutes_number: number
+          origin: string
+          reason: string | null
+          registration_date: string
+          request_id: string | null
+          required_resources: string | null
+          role_name: string | null
+          start_date: string | null
+          start_time: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string | null
+          worker_name: string | null
+        }
+        Insert: {
+          additional_details?: string | null
+          annulled_reason?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          arl?: string | null
+          created_at?: string
+          created_by?: string | null
+          daily_salary?: number | null
+          days_number?: number
+          end_date?: string | null
+          end_time?: string | null
+          eps?: string | null
+          event_code?: string | null
+          event_name?: string | null
+          id?: string
+          identification_number?: string | null
+          minutes_number?: number
+          origin?: string
+          reason?: string | null
+          registration_date?: string
+          request_id?: string | null
+          required_resources?: string | null
+          role_name?: string | null
+          start_date?: string | null
+          start_time?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string | null
+          worker_name?: string | null
+        }
+        Update: {
+          additional_details?: string | null
+          annulled_reason?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          arl?: string | null
+          created_at?: string
+          created_by?: string | null
+          daily_salary?: number | null
+          days_number?: number
+          end_date?: string | null
+          end_time?: string | null
+          eps?: string | null
+          event_code?: string | null
+          event_name?: string | null
+          id?: string
+          identification_number?: string | null
+          minutes_number?: number
+          origin?: string
+          reason?: string | null
+          registration_date?: string
+          request_id?: string | null
+          required_resources?: string | null
+          role_name?: string | null
+          start_date?: string | null
+          start_time?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string | null
+          worker_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_absenteeism_records_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "shift_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shift_request_audit: {
+        Row: {
+          action: string
+          created_at: string
+          detail: string | null
+          id: string
+          new_status: string | null
+          previous_status: string | null
+          request_id: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          new_status?: string | null
+          previous_status?: string | null
+          request_id: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          new_status?: string | null
+          previous_status?: string | null
+          request_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_request_audit_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "shift_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shift_request_recovery_logs: {
+        Row: {
+          created_at: string
+          end_time: string | null
+          id: string
+          observation: string | null
+          recovery_date: string | null
+          request_id: string
+          start_time: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          end_time?: string | null
+          id?: string
+          observation?: string | null
+          recovery_date?: string | null
+          request_id: string
+          start_time?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          end_time?: string | null
+          id?: string
+          observation?: string | null
+          recovery_date?: string | null
+          request_id?: string
+          start_time?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_request_recovery_logs_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "shift_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shift_requests: {
+        Row: {
+          approval_observation: string | null
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          end_date: string | null
+          end_time: string | null
+          id: string
+          observations: string | null
+          original_shift_code: string | null
+          original_shift_date: string | null
+          other_reason: string | null
+          out_of_rule_justification: string | null
+          paid: boolean | null
+          reason_detail: string | null
+          reason_type: string | null
+          register_absenteeism: boolean
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
+          replacement_name: string | null
+          replacement_role: string | null
+          request_type: string
+          requested_shift_code: string | null
+          requested_shift_date: string | null
+          requester_id: string
+          requester_identification: string | null
+          requester_name: string | null
+          requester_role: string | null
+          requester_sede: string | null
+          requester_signature_hash: string | null
+          requester_signature_id: string | null
+          requires_replacement: boolean
+          response_observation: string | null
+          start_date: string | null
+          start_time: string | null
+          status: string
+          swap_partner_name: string | null
+          swap_user_id: string | null
+          updated_at: string
+          will_recover_time: boolean
+        }
+        Insert: {
+          approval_observation?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          end_date?: string | null
+          end_time?: string | null
+          id?: string
+          observations?: string | null
+          original_shift_code?: string | null
+          original_shift_date?: string | null
+          other_reason?: string | null
+          out_of_rule_justification?: string | null
+          paid?: boolean | null
+          reason_detail?: string | null
+          reason_type?: string | null
+          register_absenteeism?: boolean
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          replacement_name?: string | null
+          replacement_role?: string | null
+          request_type?: string
+          requested_shift_code?: string | null
+          requested_shift_date?: string | null
+          requester_id: string
+          requester_identification?: string | null
+          requester_name?: string | null
+          requester_role?: string | null
+          requester_sede?: string | null
+          requester_signature_hash?: string | null
+          requester_signature_id?: string | null
+          requires_replacement?: boolean
+          response_observation?: string | null
+          start_date?: string | null
+          start_time?: string | null
+          status?: string
+          swap_partner_name?: string | null
+          swap_user_id?: string | null
+          updated_at?: string
+          will_recover_time?: boolean
+        }
+        Update: {
+          approval_observation?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          end_date?: string | null
+          end_time?: string | null
+          id?: string
+          observations?: string | null
+          original_shift_code?: string | null
+          original_shift_date?: string | null
+          other_reason?: string | null
+          out_of_rule_justification?: string | null
+          paid?: boolean | null
+          reason_detail?: string | null
+          reason_type?: string | null
+          register_absenteeism?: boolean
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          replacement_name?: string | null
+          replacement_role?: string | null
+          request_type?: string
+          requested_shift_code?: string | null
+          requested_shift_date?: string | null
+          requester_id?: string
+          requester_identification?: string | null
+          requester_name?: string | null
+          requester_role?: string | null
+          requester_sede?: string | null
+          requester_signature_hash?: string | null
+          requester_signature_id?: string | null
+          requires_replacement?: boolean
+          response_observation?: string | null
+          start_date?: string | null
+          start_time?: string | null
+          status?: string
+          swap_partner_name?: string | null
+          swap_user_id?: string | null
+          updated_at?: string
+          will_recover_time?: boolean
+        }
+        Relationships: []
+      }
+      shift_schedule_days: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          day_number: number
+          hours: number
+          id: string
+          member_id: string
+          notes: string | null
+          origin: string
+          schedule_id: string
+          shift_code: string | null
+          shift_date: string | null
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          day_number: number
+          hours?: number
+          id?: string
+          member_id: string
+          notes?: string | null
+          origin?: string
+          schedule_id: string
+          shift_code?: string | null
+          shift_date?: string | null
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          day_number?: number
+          hours?: number
+          id?: string
+          member_id?: string
+          notes?: string | null
+          origin?: string
+          schedule_id?: string
+          shift_code?: string | null
+          shift_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_schedule_days_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "shift_schedule_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_schedule_days_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "shift_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shift_schedule_members: {
+        Row: {
+          active: boolean
+          base_hours: number | null
+          created_at: string
+          full_name: string
+          id: string
+          identification_number: string | null
+          notes: string | null
+          pending_hours: number
+          role_name: string | null
+          schedule_id: string
+          sede: string | null
+          sort_order: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          active?: boolean
+          base_hours?: number | null
+          created_at?: string
+          full_name?: string
+          id?: string
+          identification_number?: string | null
+          notes?: string | null
+          pending_hours?: number
+          role_name?: string | null
+          schedule_id: string
+          sede?: string | null
+          sort_order?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          active?: boolean
+          base_hours?: number | null
+          created_at?: string
+          full_name?: string
+          id?: string
+          identification_number?: string | null
+          notes?: string | null
+          pending_hours?: number
+          role_name?: string | null
+          schedule_id?: string
+          sede?: string | null
+          sort_order?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_schedule_members_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "shift_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shift_schedules: {
+        Row: {
+          approved_by: string | null
+          approved_by_name: string | null
+          base_hours: number
+          created_at: string
+          created_by: string | null
+          dependency: string
+          elaborated_by: string | null
+          id: string
+          month: number
+          notes: string | null
+          status: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          approved_by?: string | null
+          approved_by_name?: string | null
+          base_hours?: number
+          created_at?: string
+          created_by?: string | null
+          dependency?: string
+          elaborated_by?: string | null
+          id?: string
+          month: number
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          approved_by?: string | null
+          approved_by_name?: string | null
+          base_hours?: number
+          created_at?: string
+          created_by?: string | null
+          dependency?: string
+          elaborated_by?: string | null
+          id?: string
+          month?: number
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      shift_types: {
+        Row: {
+          active: boolean
+          code: string
+          color: string
+          created_at: string
+          created_by: string | null
+          end_time: string | null
+          hours: number
+          id: string
+          name: string
+          observation: string | null
+          start_time: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          end_time?: string | null
+          hours?: number
+          id?: string
+          name?: string
+          observation?: string | null
+          start_time?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          end_time?: string | null
+          hours?: number
+          id?: string
+          name?: string
+          observation?: string | null
+          start_time?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       turnos: {
         Row: {
           activo: boolean
@@ -1419,6 +1946,39 @@ export type Database = {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_signatures: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          signature_hash: string | null
+          signature_path: string | null
+          updated_at: string
+          uploaded_by: string | null
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          signature_hash?: string | null
+          signature_path?: string | null
+          updated_at?: string
+          uploaded_by?: string | null
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          signature_hash?: string | null
+          signature_path?: string | null
+          updated_at?: string
+          uploaded_by?: string | null
           user_id?: string
         }
         Relationships: []
