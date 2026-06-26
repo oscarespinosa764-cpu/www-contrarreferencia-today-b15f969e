@@ -1032,7 +1032,7 @@ export function NuevoRegistroDialog({
                 <Label htmlFor="ri-obs" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Observaciones
                 </Label>
-                <Textarea id="ri-obs" name="observaciones" rows={2} />
+                <DictationTextarea dictationKey="referencia_interna.nuevo.observaciones" id="ri-obs" name="observaciones" rows={2} />
               </div>
               <DialogFooter>
                 <Button type="submit" className="rounded-full">
