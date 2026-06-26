@@ -400,6 +400,14 @@ export function UsuariosPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <UsuarioActividadDialog
+        open={Boolean(actividadDe)}
+        onOpenChange={(v) => !v && setActividadDe(null)}
+        userId={actividadDe?.userId ?? null}
+        nombre={actividadDe?.nombre ?? ""}
+        email={actividadDe?.email ?? null}
+      />
     </Panel>
   );
 }
