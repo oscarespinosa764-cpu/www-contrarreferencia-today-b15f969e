@@ -153,6 +153,27 @@ export const DICTATION_REGISTRY: DictationRegistryItem[] = [
     "Registro IPS",
     "Observaciones generales",
   ),
+  point(
+    "phd.nuevo.observaciones",
+    "PHD / PAD / O2 / Especiales",
+    "Nuevo registro",
+    "Datos del registro",
+    "Observaciones",
+  ),
+  point(
+    "referencia_interna.nuevo.observaciones",
+    "Referencias internas",
+    "Nuevo registro",
+    "Datos del registro",
+    "Observaciones",
+  ),
+  point(
+    "pendientes.nuevo.observacion_entrega",
+    "Pendientes",
+    "Nuevo registro",
+    "Datos del registro",
+    "Observación de entrega",
+  ),
 ];
 
 export const DICTATION_REGISTRY_BY_KEY: Record<string, DictationRegistryItem> =
