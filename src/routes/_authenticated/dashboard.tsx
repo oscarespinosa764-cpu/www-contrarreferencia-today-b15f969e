@@ -4,6 +4,8 @@ import { supabase } from "@/lib/backend-client";
 import { AppHeader } from "@/components/app-header";
 import { StatCard, SplitStatCard, MiniStat, SectionTitle, Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
+import { useAvisosOperativos } from "@/lib/use-avisos-operativos";
+import { NIVEL_BADGE } from "@/lib/avisos-reglas";
 
 import {
   metricasRemisiones,
@@ -25,6 +27,7 @@ function fmtVence(min: number): string {
 }
 
 function Dashboard() {
+  const { combinados } = useAvisosOperativos();
   const { data } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
@@ -133,15 +136,33 @@ function Dashboard() {
         <Panel
           title="Avisos operativos"
           action={
-            <span className="rounded-full border border-border bg-secondary px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-secondary-foreground">
-              {data?.avisosActivos ?? 0} activos
-            </span>
+            <Button asChild variant="outline" size="sm" className="rounded-full">
+              <Link to="/reglas">{combinados.length} activos</Link>
+            </Button>
           }
         >
-          {(data?.avisosActivos ?? 0) === 0 ? (
+          {combinados.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">Sin avisos operativos activos. Todo en orden ✓</p>
           ) : (
-            <p className="py-8 text-center text-sm text-muted-foreground">{data?.avisosActivos} aviso(s) operativo(s) activo(s).</p>
+            <div className="max-h-72 space-y-2 overflow-y-auto">
+              {combinados.slice(0, 8).map((a) => (
+                <div key={a.key} className="rounded-lg border-l-4 border-l-status-amber bg-card px-3 py-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-medium text-foreground">{a.titulo}</p>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${NIVEL_BADGE[a.severidad] ?? ""}`}>
+                      {a.severidad}
+                    </span>
+                  </div>
+                  {a.detalle && <p className="text-xs text-muted-foreground">{a.detalle}</p>}
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{a.sub}</p>
+                </div>
+              ))}
+              {combinados.length > 8 && (
+                <p className="pt-1 text-center text-xs text-muted-foreground">
+                  +{combinados.length - 8} más en Reglas y Alertas
+                </p>
+              )}
+            </div>
           )}
         </Panel>
         <Panel
