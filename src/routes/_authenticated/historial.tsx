@@ -196,32 +196,110 @@ function estadoEntrante(tipo: string): string {
   return "REGISTRADO";
 }
 
-// Motivos de negación normalizados aceptados institucionalmente.
+// Motivos de negación normalizados aceptados institucionalmente (rótulo final).
 const MOTIVOS_NEGACION = [
   "RED NO CONTRATADA",
   "NO RECURSO HUMANO",
   "NO DISPONIBILIDAD DE UNIDAD",
-  "NO DISPONIBILIDAD DE CAMAS",
-  "NO DISPONIBILIDAD DE INSUMO O TECNOLOGIA",
+  "NO DISPONIBILIDAD DE CAMAS POR SOBREOCUPACIÓN",
   "NO DISPONIBILIDAD DE INSUMO O TECNOLOGÍA",
-  "NIVEL DE COMPLEJIDAD",
-  "FALTA DE DOCUMENTACION",
+  "POR NIVEL DE COMPLEJIDAD",
+  "POR SOLICITUD DE AFILIACIÓN DE OFICIO",
   "FALTA DE DOCUMENTACIÓN",
-  "SIN AFILIACION DE OFICIO",
-  "SIN AFILIACIÓN DE OFICIO",
+  "OTRO",
 ];
 
-// Devuelve el motivo real de negación a partir del campo `detalle` del evento NEG.
-// `detalle` es el lugar donde se guarda el motivo seleccionado al registrar la
-// negación (p.ej. "RED NO CONTRATADA"). El texto generado vive en `texto_ia`,
-// por lo que NUNCA se usa como motivo. Se devuelve limpio de marcas markdown.
+// Mapa de normalización de claves crudas (snake_case / mayúsculas / variantes)
+// hacia el rótulo institucional definitivo (1.4).
+const MOTIVO_NORMALIZA: Record<string, string> = {
+  RED_NO_CONTRATADA: "RED NO CONTRATADA",
+  NO_RECURSO_HUMANO: "NO RECURSO HUMANO",
+  NO_DISPONIBILIDAD_UNIDAD: "NO DISPONIBILIDAD DE UNIDAD",
+  NO_DISPONIBILIDAD_CAMAS: "NO DISPONIBILIDAD DE CAMAS POR SOBREOCUPACIÓN",
+  NO_DISPONIBILIDAD_INSUMO: "NO DISPONIBILIDAD DE INSUMO O TECNOLOGÍA",
+  NIVEL_COMPLEJIDAD: "POR NIVEL DE COMPLEJIDAD",
+  AFILIACION_OFICIO: "POR SOLICITUD DE AFILIACIÓN DE OFICIO",
+  FALTA_DOCUMENTACION: "FALTA DE DOCUMENTACIÓN",
+  OTRO: "OTRO",
+};
+
+// Quita tildes para comparaciones tolerantes.
+function sinTildes(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+// Normaliza un valor CRUDO (de un campo estructurado o de `detalle`) a un motivo
+// institucional. Devuelve "" si el texto NO corresponde a un motivo conocido,
+// de modo que texto libre como "NO TENEMOS CONTRATO" no se use como motivo.
+function normalizarMotivoNeg(raw: string | null | undefined): string {
+  const clean = limpiarTexto(raw);
+  if (!clean || clean === "—") return "";
+  const up = sinTildes(clean).toUpperCase().trim();
+  // 1. Coincidencia por clave snake_case / normalizada.
+  const key = up.replace(/[\s-]+/g, "_");
+  if (MOTIVO_NORMALIZA[key]) return MOTIVO_NORMALIZA[key];
+  // 2. Coincidencia exacta / por inclusión con un rótulo institucional.
+  const match = MOTIVOS_NEGACION.find((m) => {
+    const mu = sinTildes(m).toUpperCase();
+    return up === mu || up.includes(mu) || mu.includes(up);
+  });
+  return match || "";
+}
+
+// Detecta el motivo real de negación a partir de la RESPUESTA GENERADA
+// (texto_ia), que es donde queda embebida la plantilla del motivo seleccionado.
+function motivoNegDesdeTexto(textoIa: string | null | undefined): string {
+  const t = sinTildes(limpiarTexto(textoIa)).toUpperCase();
+  if (!t || t === "—") return "";
+  if (t.includes("AFILIACION DE OFICIO") || t.includes("SIN SEGURIDAD SOCIAL"))
+    return "POR SOLICITUD DE AFILIACIÓN DE OFICIO";
+  if (t.includes("NIVEL DE COMPLEJIDAD")) return "POR NIVEL DE COMPLEJIDAD";
+  if (t.includes("RED PRESTADORA CONTRATADA") || t.includes("NO INTEGRA LA RED"))
+    return "RED NO CONTRATADA";
+  if (t.includes("ALTA OCUPACION") || (t.includes("DISPONIBILIDAD DE CAMAS") && t.includes("OCUPAC")))
+    return "NO DISPONIBILIDAD DE CAMAS POR SOBREOCUPACIÓN";
+  if (t.includes("DISPONIBILIDAD DE LA ESPECIALIDAD")) return "NO RECURSO HUMANO";
+  if (t.includes("DISPONIBILIDAD DE LA UNIDAD")) return "NO DISPONIBILIDAD DE UNIDAD";
+  if (t.includes("INSUMO") || t.includes("TECNOLOG")) return "NO DISPONIBILIDAD DE INSUMO O TECNOLOGÍA";
+  if (t.includes("FALTA DE DOCUMENTACION") || t.includes("DOCUMENTACION INCOMPLETA"))
+    return "FALTA DE DOCUMENTACIÓN";
+  return "";
+}
+
+// Determina el MOTIVO REAL de una negación entrante respetando la prioridad
+// (1.3): 1) campo estructurado, 2) respuesta generada (texto_ia), 3) detalle
+// SOLO si coincide con un motivo conocido. `detalle` nunca es la primera fuente.
+function motivoRealNegacion(ev: Caso | undefined): string {
+  if (!ev) return "";
+  const r = ev as Record<string, unknown>;
+  // 1. Campos estructurados posibles (compatibilidad / futuro).
+  const estructCandidatos = [
+    r.motivo_negacion,
+    r.motivo,
+    r.subtipo,
+    r.clasificacion,
+    r.tipo_negacion,
+    r.causa_negacion,
+    r.razon_negacion,
+  ];
+  for (const c of estructCandidatos) {
+    const norm = normalizarMotivoNeg(typeof c === "string" ? c : undefined);
+    if (norm) return norm;
+  }
+  // 2. Respuesta / plantilla generada.
+  const desdeTexto = motivoNegDesdeTexto(ev.texto_ia);
+  if (desdeTexto) return desdeTexto;
+  // 3. Fallback: detalle, solo si normaliza a un motivo conocido.
+  return normalizarMotivoNeg(ev.detalle);
+}
+
+// (compat) Devuelve un motivo normalizado a partir de un texto libre; usado por
+// otros flujos (p.ej. cancelaciones) donde el texto sí representa el motivo.
 function motivoNegacion(detalle: string | null | undefined): string {
   const raw = limpiarTexto(detalle);
   if (!raw || raw === "—") return "";
-  const up = raw.toUpperCase().trim();
-  // Coincidencia exacta o por inclusión con un motivo normalizado.
-  const match = MOTIVOS_NEGACION.find((m) => up === m || up.includes(m));
-  return (match || raw).trim();
+  const norm = normalizarMotivoNeg(raw);
+  return norm || raw.trim();
 }
 
 // Texto que se mostrará en la columna OBSERVACIONES de un evento de ENTRANTES.
