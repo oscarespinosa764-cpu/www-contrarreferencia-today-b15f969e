@@ -27,6 +27,7 @@ function fmtVence(min: number): string {
 }
 
 function Dashboard() {
+  const { combinados } = useAvisosOperativos();
   const { data } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
