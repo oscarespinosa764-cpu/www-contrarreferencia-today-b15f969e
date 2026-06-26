@@ -519,7 +519,7 @@ export function NuevoRegistroDialog({
     if (pendTipo === "OTRO") detalles.cual = pendCual.trim();
     if (pendTipo === "EVOLUCIONAR") detalles.evolucion_pendiente_en = pendEvoEn;
 
-    const { error } = await supabase.from("pendientes").insert({
+    const { data: pendIns, error } = await supabase.from("pendientes").insert({
       tipo_pendiente: tipoFinal,
       ips_area: destinoValor,
       paciente_asunto: String(f.get("paciente_asunto")),
@@ -528,8 +528,23 @@ export function NuevoRegistroDialog({
       detalles: detalles as never,
       estado: "ABIERTO",
       created_by: u.user?.id,
-    });
+    })
+      .select("id")
+      .single();
     if (error) return toast.error(error.message);
+    try {
+      await registrarAuditoria({
+        data: {
+          accion: "crear_pendiente",
+          modulo: "pendientes",
+          tabla: "pendientes",
+          registroId: pendIns?.id ?? null,
+          detalles: { tipo_pendiente: tipoFinal, prioridad: pendPrioridad },
+        },
+      });
+    } catch {
+      /* la auditoría no debe interrumpir el registro */
+    }
     toast.success("Pendiente registrado");
     reset();
     onOpenChange(false);
