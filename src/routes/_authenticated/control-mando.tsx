@@ -3,6 +3,7 @@ import { AppHeader } from "@/components/app-header";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ControlMandoPanel } from "@/components/coordinacion/control-mando-panel";
 import { HistoricosPanel } from "@/components/coordinacion/historicos-panel";
+import { AlmacenamientoPanel } from "@/components/coordinacion/almacenamiento-panel";
 import { UsuariosPanel } from "@/components/coordinacion/usuarios-panel";
 import { DictadoPanel } from "@/components/coordinacion/dictado-panel";
 import { useAuth } from "@/lib/auth";
@@ -46,7 +47,10 @@ function ControlMandoPage() {
           </div>
         </TabsContent>
         <TabsContent value="historicos">
-          <HistoricosPanel />
+          <div className="space-y-4">
+            <AlmacenamientoPanel />
+            <HistoricosPanel />
+          </div>
         </TabsContent>
         <TabsContent value="dictado">
           <DictadoPanel />

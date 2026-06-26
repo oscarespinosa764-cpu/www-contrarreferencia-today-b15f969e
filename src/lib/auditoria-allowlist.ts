@@ -86,6 +86,7 @@ export const AUDIT_TABLAS = new Set<string>([
   "shift_absenteeism_records",
   "user_signatures",
   "shift_types",
+  "entrega_firmas",
   "auth",
   "varios",
 ]);

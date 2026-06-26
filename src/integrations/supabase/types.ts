@@ -482,6 +482,87 @@ export type Database = {
         }
         Relationships: []
       }
+      entrega_firmas: {
+        Row: {
+          aceptacion: boolean
+          caso_id: string
+          codigo_verificacion: string | null
+          created_at: string
+          estado: string
+          expira_at: string
+          firma_data: string | null
+          firma_ip: string | null
+          firma_user_agent: string | null
+          firmado_at: string | null
+          firmante_cargo: string | null
+          firmante_documento: string | null
+          firmante_empresa: string | null
+          firmante_nombre: string | null
+          firmante_telefono: string | null
+          id: string
+          nombre_usuario: string | null
+          pdf_hash: string | null
+          seguimiento_id: string | null
+          snapshot: Json
+          tipo_caso: string
+          token_hash: string
+          updated_at: string
+          usuario_genero: string | null
+        }
+        Insert: {
+          aceptacion?: boolean
+          caso_id: string
+          codigo_verificacion?: string | null
+          created_at?: string
+          estado?: string
+          expira_at: string
+          firma_data?: string | null
+          firma_ip?: string | null
+          firma_user_agent?: string | null
+          firmado_at?: string | null
+          firmante_cargo?: string | null
+          firmante_documento?: string | null
+          firmante_empresa?: string | null
+          firmante_nombre?: string | null
+          firmante_telefono?: string | null
+          id?: string
+          nombre_usuario?: string | null
+          pdf_hash?: string | null
+          seguimiento_id?: string | null
+          snapshot?: Json
+          tipo_caso?: string
+          token_hash: string
+          updated_at?: string
+          usuario_genero?: string | null
+        }
+        Update: {
+          aceptacion?: boolean
+          caso_id?: string
+          codigo_verificacion?: string | null
+          created_at?: string
+          estado?: string
+          expira_at?: string
+          firma_data?: string | null
+          firma_ip?: string | null
+          firma_user_agent?: string | null
+          firmado_at?: string | null
+          firmante_cargo?: string | null
+          firmante_documento?: string | null
+          firmante_empresa?: string | null
+          firmante_nombre?: string | null
+          firmante_telefono?: string | null
+          id?: string
+          nombre_usuario?: string | null
+          pdf_hash?: string | null
+          seguimiento_id?: string | null
+          snapshot?: Json
+          tipo_caso?: string
+          token_hash?: string
+          updated_at?: string
+          usuario_genero?: string | null
+        }
+        Relationships: []
+      }
       entregas_turno: {
         Row: {
           created_at: string
