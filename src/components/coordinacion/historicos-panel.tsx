@@ -1,12 +1,22 @@
 import { useState } from "react";
+import * as XLSX from "xlsx";
+import { useServerFn } from "@tanstack/react-start";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/lib/backend-client";
 import { Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
-import { BarChart3 } from "lucide-react";
+import { useCatalogos } from "@/lib/use-rc-data";
+import { registrarAuditoria } from "@/lib/auditoria.functions";
+import { BarChart3, DatabaseBackup, Loader2, Network } from "lucide-react";
+import { toast } from "sonner";
 import { ImportarDialog } from "./importar-dialog";
 import { IndicadoresDatosDialog } from "./indicadores-datos";
 import { BorradoSeguroDialog } from "./borrado-seguro-dialog";
+import { RedFormDialog } from "@/components/red/red-form-dialog";
+import { respaldoTotal } from "@/lib/backup.functions";
 import type { DestinoKey } from "@/lib/importar.functions";
+import type { TipoRed } from "@/lib/red-ips-utils";
 
 type ImportItem = { emoji: string; label: string; destino: DestinoKey };
 type Grupo = { titulo: string; items: ImportItem[] };
@@ -15,30 +25,24 @@ const grupos: Grupo[] = [
   {
     titulo: "Dashboard Operativo salientes",
     items: [
-      { emoji: "🚑", label: "Importar remisiones salientes", destino: "remisiones" },
-      { emoji: "🏠", label: "Importar PHD / PAD / Oxígeno y especiales", destino: "domiciliarios" },
-      { emoji: "🔁", label: "Importar referencias internas", destino: "referencia_interna" },
-      { emoji: "📌", label: "Importar pendientes", destino: "pendientes" },
-    ],
-  },
-  {
-    titulo: "Red y disponibilidad",
-    items: [
-      { emoji: "🔗", label: "Importar red / disponibilidad IPS", destino: "red_operativa" },
+      { emoji: "🚑", label: "Remisiones salientes", destino: "remisiones" },
+      { emoji: "🏠", label: "PHD / PAD / Oxígeno y especiales", destino: "domiciliarios" },
+      { emoji: "🔁", label: "Referencias internas", destino: "referencia_interna" },
+      { emoji: "📌", label: "Pendientes", destino: "pendientes" },
     ],
   },
   {
     titulo: "Históricos",
     items: [
-      { emoji: "📥", label: "Importar histórico de remisiones entrantes", destino: "historicos_entrante" },
-      { emoji: "📤", label: "Importar histórico de remisiones salientes", destino: "historicos_saliente" },
+      { emoji: "📥", label: "Histórico de remisiones entrantes", destino: "historicos_entrante" },
+      { emoji: "📤", label: "Histórico de remisiones salientes", destino: "historicos_saliente" },
     ],
   },
   {
     titulo: "Catálogos y plantillas",
     items: [
-      { emoji: "📚", label: "Importar catálogo", destino: "catalogos" },
-      { emoji: "✉️", label: "Importar plantillas", destino: "plantillas" },
+      { emoji: "📚", label: "Catálogo", destino: "catalogos" },
+      { emoji: "✉️", label: "Plantillas", destino: "plantillas" },
     ],
   },
 ];
@@ -54,10 +58,20 @@ function AdminBadge({ tone = "amber" }: { tone?: "amber" | "red" }) {
 }
 
 export function HistoricosPanel() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
+  const qc = useQueryClient();
+  const catalogos = useCatalogos();
+
   const [activo, setActivo] = useState<ImportItem | null>(null);
   const [indOpen, setIndOpen] = useState(false);
   const [borradoOpen, setBorradoOpen] = useState(false);
+  const [respaldando, setRespaldando] = useState(false);
+
+  // Gestión de red / disponibilidad (creación de registros individuales)
+  const [redFormOpen, setRedFormOpen] = useState(false);
+  const [redTipo, setRedTipo] = useState<TipoRed>("ips_nacional");
+
+  const generarRespaldo = useServerFn(respaldoTotal);
 
   if (!isAdmin) {
     return (
@@ -69,32 +83,124 @@ export function HistoricosPanel() {
     );
   }
 
+  const descargarRespaldo = async () => {
+    setRespaldando(true);
+    try {
+      const res = await generarRespaldo();
+      if (!res.ok) {
+        toast.error(res.error ?? "No se pudo generar el respaldo.");
+        return;
+      }
+      const wb = XLSX.utils.book_new();
+      let totalFilas = 0;
+      for (const t of res.tablas) {
+        const cols = t.columnas;
+        const matriz =
+          cols.length > 0
+            ? [cols, ...t.filas.map((f) => cols.map((c) => f[c] ?? ""))]
+            : [["(sin registros)"]];
+        const ws = XLSX.utils.aoa_to_sheet(matriz);
+        XLSX.utils.book_append_sheet(wb, ws, t.nombre.slice(0, 31));
+        totalFilas += t.filas.length;
+      }
+      const fecha = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `respaldo_cedim_${fecha}.xlsx`);
+      toast.success(
+        `Respaldo generado: ${res.tablas.length} tabla(s), ${totalFilas} registro(s).`,
+      );
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al generar el respaldo. Intenta de nuevo.");
+    } finally {
+      setRespaldando(false);
+    }
+  };
+
+  const guardarRed = async (payload: Record<string, unknown>, id?: string): Promise<boolean> => {
+    const meta = {
+      fecha_actualizacion_disponibilidad: new Date().toISOString(),
+      usuario_actualizacion: user?.id ?? null,
+    };
+    if (id) {
+      const { error } = await supabase
+        .from("red_operativa")
+        .update({ ...payload, ...meta })
+        .eq("id", id);
+      if (error) {
+        toast.error(error.message);
+        return false;
+      }
+      registrarAuditoria({
+        data: { accion: "editar_red", modulo: "control-mando", tabla: "red_operativa", registroId: id },
+      }).catch(() => {});
+      toast.success("Registro actualizado");
+    } else {
+      const { data, error } = await supabase
+        .from("red_operativa")
+        .insert({ ...payload, ...meta, archivado: false })
+        .select("id")
+        .single();
+      if (error) {
+        toast.error(error.message);
+        return false;
+      }
+      registrarAuditoria({
+        data: {
+          accion: "crear_red",
+          modulo: "control-mando",
+          tabla: "red_operativa",
+          registroId: data?.id ?? "",
+        },
+      }).catch(() => {});
+      toast.success("Registro creado");
+    }
+    qc.invalidateQueries({ queryKey: ["red-operativa"] });
+    return true;
+  };
+
   return (
     <div className="space-y-5">
-      <Panel title="Importaciones masivas" action={<AdminBadge />}>
+      <Panel title="Importaciones / exportaciones" action={<AdminBadge />}>
         <div className="space-y-5">
-          {grupos.map((g) => (
-            <div key={g.titulo}>
-              <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-                {g.titulo}
-              </p>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {g.items.map((it) => (
-                  <Button
-                    key={it.destino}
-                    variant="outline"
-                    className="h-auto justify-start gap-2 whitespace-normal rounded-xl py-3 text-left text-sm font-semibold"
-                    onClick={() => setActivo(it)}
-                  >
-                    <span className="text-base">{it.emoji}</span>
-                    <span>{it.label}</span>
-                  </Button>
-                ))}
-              </div>
-            </div>
+          {grupos.slice(0, 1).map((g) => (
+            <GrupoBotones key={g.titulo} g={g} onSelect={setActivo} />
           ))}
 
-          {/* Indicadores: misma lógica de importar/exportar, dentro del mismo panel */}
+          {/* Red y disponibilidad: importación + gestión individual */}
+          <div>
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Red y disponibilidad
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <Button
+                variant="outline"
+                className="h-auto justify-start gap-2 whitespace-normal rounded-xl py-3 text-left text-sm font-semibold"
+                onClick={() =>
+                  setActivo({ emoji: "🔗", label: "Red / disponibilidad IPS", destino: "red_operativa" })
+                }
+              >
+                <span className="text-base">🔗</span>
+                <span>Red / disponibilidad IPS</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto justify-start gap-2 whitespace-normal rounded-xl py-3 text-left text-sm font-semibold"
+                onClick={() => {
+                  setRedTipo("ips_nacional");
+                  setRedFormOpen(true);
+                }}
+              >
+                <Network className="h-4 w-4 text-primary" />
+                <span>Agregar registro de red</span>
+              </Button>
+            </div>
+          </div>
+
+          {grupos.slice(1).map((g) => (
+            <GrupoBotones key={g.titulo} g={g} onSelect={setActivo} />
+          ))}
+
+          {/* Indicadores: misma lógica de importar/exportar */}
           <div>
             <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
               Indicadores y mediciones
@@ -106,7 +212,7 @@ export function HistoricosPanel() {
                 onClick={() => setIndOpen(true)}
               >
                 <BarChart3 className="h-4 w-4 text-primary" />
-                <span>Importar / exportar mediciones de indicadores</span>
+                <span>Mediciones de indicadores</span>
               </Button>
             </div>
           </div>
@@ -117,14 +223,43 @@ export function HistoricosPanel() {
         </p>
       </Panel>
 
+      {/* COPIA DE SEGURIDAD */}
       <Panel
-        title={<span className="text-status-red">⚠️ Zona de borrado — dejar en ceros</span>}
+        title="Copia de seguridad"
+        action={
+          <Button size="sm" className="rounded-full" onClick={descargarRespaldo} disabled={respaldando}>
+            {respaldando ? (
+              <>
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Generando…
+              </>
+            ) : (
+              <>
+                <DatabaseBackup className="mr-1.5 h-4 w-4" /> Respaldo total
+              </>
+            )}
+          </Button>
+        }
+      >
+        <p className="text-sm text-muted-foreground">
+          Genera y descarga un archivo Excel con <strong>todas las tablas</strong> del sistema
+          (remisiones, casos, seguimientos, red operativa, catálogos, indicadores, usuarios y más),
+          una hoja por tabla. Úsalo como copia de seguridad periódica fuera de línea.
+        </p>
+        <p className="mt-3 rounded-lg border border-status-amber/30 bg-status-amber/10 px-3 py-2 text-xs text-status-amber">
+          Contiene datos sensibles de pacientes. Guárdalo en un lugar seguro y bórralo cuando ya no
+          se necesite. La acción queda registrada en auditoría.
+        </p>
+      </Panel>
+
+      {/* ZONA DE BORRADO */}
+      <Panel
+        title={<span className="text-status-red">⚠️ Zona de borrado</span>}
         action={<AdminBadge tone="red" />}
       >
         <p className="text-center text-sm text-muted-foreground">
           Vacía los datos transaccionales para migrar limpio desde tus aplicativos viejos.{" "}
-          <span className="font-bold text-foreground">Preserva siempre</span> catálogos,
-          plantillas, usuarios, reglas, red e indicadores.
+          <span className="font-bold text-foreground">Se preservan siempre</span> catálogos,
+          plantillas, usuarios, roles, reglas, red e indicadores. Nunca se tocan.
         </p>
         <div className="mt-4 flex justify-center">
           <Button
@@ -132,7 +267,7 @@ export function HistoricosPanel() {
             className="rounded-xl border-status-red/40 text-status-red hover:bg-status-red/10"
             onClick={() => setBorradoOpen(true)}
           >
-            🗑️ Abrir panel de borrado seguro
+            🗑️ Panel de borrado seguro
           </Button>
         </div>
       </Panel>
@@ -148,6 +283,40 @@ export function HistoricosPanel() {
 
       <IndicadoresDatosDialog open={indOpen} onOpenChange={setIndOpen} />
       <BorradoSeguroDialog open={borradoOpen} onOpenChange={setBorradoOpen} />
+
+      <RedFormDialog
+        open={redFormOpen}
+        onOpenChange={setRedFormOpen}
+        tipo={redTipo}
+        onTipoChange={setRedTipo}
+        editing={null}
+        especialidades={catalogos.data.especialidades}
+        ipsOptions={catalogos.data.ips}
+        onSubmit={guardarRed}
+      />
+    </div>
+  );
+}
+
+function GrupoBotones({ g, onSelect }: { g: Grupo; onSelect: (it: ImportItem) => void }) {
+  return (
+    <div>
+      <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+        {g.titulo}
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {g.items.map((it) => (
+          <Button
+            key={it.destino}
+            variant="outline"
+            className="h-auto justify-start gap-2 whitespace-normal rounded-xl py-3 text-left text-sm font-semibold"
+            onClick={() => onSelect(it)}
+          >
+            <span className="text-base">{it.emoji}</span>
+            <span>{it.label}</span>
+          </Button>
+        ))}
+      </div>
     </div>
   );
 }

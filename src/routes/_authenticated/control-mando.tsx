@@ -32,25 +32,24 @@ function ControlMandoPage() {
         subtitle="Auditoría del turno, importaciones y gestión de usuarios"
       />
 
-      <Tabs defaultValue="control" className="w-full">
-        <TabsList className="mb-4 grid h-auto w-full grid-cols-4">
-          <TabsTrigger className="whitespace-normal" value="control">Control de Mando</TabsTrigger>
+      <Tabs defaultValue="auditoria" className="w-full">
+        <TabsList className="mb-4 grid h-auto w-full grid-cols-3">
+          <TabsTrigger className="whitespace-normal" value="auditoria">Auditoría</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="historicos">Históricos</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="usuarios">Usuarios</TabsTrigger>
-          <TabsTrigger className="whitespace-normal" value="auditoria">Auditoría</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="control">
-          <ControlMandoPanel />
+        <TabsContent value="auditoria">
+          <div className="space-y-4">
+            <ControlMandoPanel />
+            <AuditPanel />
+          </div>
         </TabsContent>
         <TabsContent value="historicos">
           <HistoricosPanel />
         </TabsContent>
         <TabsContent value="usuarios">
           <UsuariosPanel />
-        </TabsContent>
-        <TabsContent value="auditoria">
-          <AuditPanel />
         </TabsContent>
       </Tabs>
     </div>

@@ -32,7 +32,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Plus,
   Search,
   Network,
   Building2,
@@ -152,11 +151,6 @@ function RedIpsPage() {
     }).catch(() => {});
   };
 
-  const abrirNuevo = () => {
-    setEditing(null);
-    setFormTipo(tab);
-    setFormOpen(true);
-  };
   const abrirEditar = (r: RedRegistro) => {
     setEditing(r);
     setFormTipo((r.tipo_red as TipoRed) || "ips_departamental");
@@ -336,11 +330,6 @@ function RedIpsPage() {
                   <SelectItem value="jornada-completa">Jornada completa</SelectItem>
                 </SelectContent>
               </Select>
-              {canEdit && (
-                <Button className="rounded-full" onClick={abrirNuevo}>
-                  <Plus className="mr-1.5 h-4 w-4" /> {tabCfg.addLabel}
-                </Button>
-              )}
             </div>
 
             {/* Listado */}
@@ -367,8 +356,8 @@ function RedIpsPage() {
               <div className="flex flex-col items-center gap-2 py-14 text-center text-muted-foreground">
                 <Network className="h-10 w-10 opacity-40" />
                 <p className="text-sm">
-                  No hay registros en «{tabCfg.label}».
-                  {canEdit ? ` Usa «${tabCfg.addLabel}» para empezar.` : ""}
+                  No hay registros en «{tabCfg.label}». La gestión de registros se realiza desde
+                  Control de Mando → Históricos.
                 </p>
               </div>
             )}
