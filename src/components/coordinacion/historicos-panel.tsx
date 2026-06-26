@@ -1,22 +1,17 @@
 import { useState } from "react";
 import * as XLSX from "xlsx";
 import { useServerFn } from "@tanstack/react-start";
-import { useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/backend-client";
 import { Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
-import { useCatalogos } from "@/lib/use-rc-data";
-import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { BarChart3, DatabaseBackup, Loader2, Network } from "lucide-react";
 import { toast } from "sonner";
 import { ImportarDialog } from "./importar-dialog";
 import { IndicadoresDatosDialog } from "./indicadores-datos";
 import { BorradoSeguroDialog } from "./borrado-seguro-dialog";
-import { RedFormDialog } from "@/components/red/red-form-dialog";
+import { RedAdminDialog } from "@/components/red/red-admin-dialog";
 import { respaldoTotal } from "@/lib/backup.functions";
 import type { DestinoKey } from "@/lib/importar.functions";
-import type { TipoRed } from "@/lib/red-ips-utils";
 
 type ImportItem = { emoji: string; label: string; destino: DestinoKey };
 type Grupo = { titulo: string; items: ImportItem[] };
