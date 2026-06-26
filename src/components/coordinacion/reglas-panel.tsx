@@ -29,7 +29,7 @@ import {
 } from "@/lib/avisos-reglas";
 
 export function ReglasPanel() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const qc = useQueryClient();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Regla | null>(null);
