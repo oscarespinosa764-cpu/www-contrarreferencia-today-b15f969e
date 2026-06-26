@@ -137,13 +137,10 @@ export function HistoricosPanel() {
               <Button
                 variant="outline"
                 className="h-auto justify-start gap-2 whitespace-normal rounded-xl py-3 text-left text-sm font-semibold"
-                onClick={() => {
-                  setRedTipo("ips_nacional");
-                  setRedFormOpen(true);
-                }}
+                onClick={() => setRedAdminOpen(true)}
               >
                 <Network className="h-4 w-4 text-primary" />
-                <span>Agregar registro de red</span>
+                <span>Red y disponibilidad (gestión)</span>
               </Button>
             </div>
           </div>
