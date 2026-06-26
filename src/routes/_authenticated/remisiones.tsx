@@ -17,6 +17,8 @@ import { getTurno } from "@/lib/turno";
 import { CasoRemisionCard, type Remision } from "@/components/remisiones/caso-remision-card";
 import { CasoGenericoCard, type GenericoTipo } from "@/components/remisiones/caso-generico-card";
 import { NuevoRegistroDialog } from "@/components/remisiones/nuevo-registro-dialog";
+import { useAvisosOperativos } from "@/lib/use-avisos-operativos";
+import { NIVEL_BADGE } from "@/lib/avisos-reglas";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/remisiones")({
