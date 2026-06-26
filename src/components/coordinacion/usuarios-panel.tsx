@@ -22,9 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, UserPlus, Loader2 } from "lucide-react";
+import { Search, UserPlus, Loader2, Activity } from "lucide-react";
 import { toast } from "sonner";
 import { crearUsuario, cambiarRolUsuario, cambiarEstadoUsuario } from "@/lib/usuarios.functions";
+import { UsuarioActividadDialog } from "@/components/coordinacion/usuario-actividad-dialog";
 
 type Rol = "admin" | "operativa" | "temporal";
 
