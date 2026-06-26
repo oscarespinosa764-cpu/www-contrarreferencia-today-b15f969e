@@ -33,9 +33,19 @@ function generarCodigoVerificacion(): string {
   return out;
 }
 
+export type EntregaSnapshot = {
+  paciente?: string;
+  documento?: string;
+  ips_receptora?: string;
+  empresa_traslado?: string;
+  fecha_entrega?: string;
+  documentos?: string[];
+  caso_id?: string;
+};
+
 type SesionPublica = {
   estado: "PENDIENTE" | "FIRMADA" | "VENCIDA" | "ANULADA" | "NO_EXISTE";
-  snapshot?: Record<string, unknown>;
+  snapshot?: EntregaSnapshot;
   codigo_verificacion?: string | null;
 };
 
@@ -71,7 +81,7 @@ export const obtenerSesionFirma = createServerFn({ method: "POST" })
       return { estado: "VENCIDA" };
     }
 
-    return { estado: "PENDIENTE", snapshot: row.snapshot as Record<string, unknown> };
+    return { estado: "PENDIENTE", snapshot: (row.snapshot ?? {}) as EntregaSnapshot };
   });
 
 const firmaInput = z.object({
@@ -90,7 +100,7 @@ type FirmaResultado =
       ok: true;
       codigo_verificacion: string;
       firmado_at: string;
-      snapshot: Record<string, unknown>;
+      snapshot: EntregaSnapshot;
       firmante: {
         nombre: string;
         cargo: string;
@@ -183,7 +193,7 @@ export const firmarEntrega = createServerFn({ method: "POST" })
       ok: true,
       codigo_verificacion: codigo,
       firmado_at: firmadoAt,
-      snapshot: row.snapshot as Record<string, unknown>,
+      snapshot: (row.snapshot ?? {}) as EntregaSnapshot,
       firmante: {
         nombre: data.firmante_nombre,
         cargo: data.firmante_cargo,
