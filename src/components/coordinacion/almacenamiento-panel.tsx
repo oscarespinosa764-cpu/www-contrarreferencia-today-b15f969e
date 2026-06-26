@@ -5,21 +5,8 @@ import { HardDrive, PenLine, QrCode, FileClock, AlertTriangle } from "lucide-rea
 // Bloque informativo de bajo consumo: cuenta SOLO datos estructurados livianos.
 // Los PDF/Excel se generan bajo demanda y NO se cuentan porque no persisten.
 
-async function contar(tabla: string, filtros?: (q: ReturnType<typeof base>) => unknown) {
-  function _base() {
-    return supabase.from(tabla as never).select("id", { count: "exact", head: true });
-  }
-  const q = _base();
-  const final = filtros ? (filtros as never) : null;
-  void final;
-  const { count } = await q;
-  return count ?? 0;
-}
-function base() {
-  return supabase.from("entrega_firmas").select("id", { count: "exact", head: true });
-}
-
 function Metric({
+
   icon,
   label,
   value,
