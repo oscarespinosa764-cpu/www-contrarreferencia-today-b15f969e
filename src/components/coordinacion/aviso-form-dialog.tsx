@@ -94,7 +94,8 @@ export function AvisoFormDialog({
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="aviso-msg">Mensaje del aviso *</Label>
-            <Textarea
+            <DictationTextarea
+              dictationKey="reglas.aviso.mensaje"
               id="aviso-msg"
               rows={3}
               value={mensaje}
