@@ -56,7 +56,6 @@ export function AlmacenamientoPanel() {
     },
   });
 
-  void contar;
   const kb = stats.data?.kb ?? 0;
   const tam = kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb} KB`;
   const crecimientoInusual = (stats.data?.fe ?? 0) > 500 || kb > 50 * 1024;
