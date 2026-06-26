@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "../lib/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/lib/backend-client";
+import { DictationInjector } from "@/lib/dictation-injector";
 
 function NotFoundComponent() {
   return (
@@ -136,6 +137,7 @@ function RootComponent() {
       <AuthProvider>
         <AuthInvalidator />
         <Outlet />
+        <DictationInjector />
         <Toaster richColors position="top-right" />
       </AuthProvider>
     </QueryClientProvider>

@@ -66,7 +66,7 @@ export function DictadoFormDialog({
   /** True si el punto proviene del registro del sistema (la clave no se edita). */
   isRegistro: boolean;
   onSubmit: (values: PuntoDictadoValues) => Promise<boolean>;
-  onTest: (selectorOrKey: string) => void;
+  onTest: (key: string, selector?: string | null) => void;
 }) {
   const [v, setV] = useState<PuntoDictadoValues>(empty());
   const [advanced, setAdvanced] = useState(false);
@@ -351,7 +351,7 @@ export function DictadoFormDialog({
           </Button>
           <Button
             variant="outline"
-            onClick={() => onTest(advanced && v.selector ? v.selector : `[data-dictation-key="${v.key}"]`)}
+            onClick={() => onTest(v.key, advanced ? v.selector : null)}
           >
             <MapPin className="mr-1.5 h-4 w-4" /> Probar ubicación
           </Button>

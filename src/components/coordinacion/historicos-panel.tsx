@@ -1,22 +1,17 @@
 import { useState } from "react";
 import * as XLSX from "xlsx";
 import { useServerFn } from "@tanstack/react-start";
-import { useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/backend-client";
 import { Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
-import { useCatalogos } from "@/lib/use-rc-data";
-import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { BarChart3, DatabaseBackup, Loader2, Network } from "lucide-react";
 import { toast } from "sonner";
 import { ImportarDialog } from "./importar-dialog";
 import { IndicadoresDatosDialog } from "./indicadores-datos";
 import { BorradoSeguroDialog } from "./borrado-seguro-dialog";
-import { RedFormDialog } from "@/components/red/red-form-dialog";
+import { RedAdminDialog } from "@/components/red/red-admin-dialog";
 import { respaldoTotal } from "@/lib/backup.functions";
 import type { DestinoKey } from "@/lib/importar.functions";
-import type { TipoRed } from "@/lib/red-ips-utils";
 
 type ImportItem = { emoji: string; label: string; destino: DestinoKey };
 type Grupo = { titulo: string; items: ImportItem[] };
@@ -59,17 +54,14 @@ function AdminBadge({ tone = "amber" }: { tone?: "amber" | "red" }) {
 
 export function HistoricosPanel() {
   const { isAdmin, user } = useAuth();
-  const qc = useQueryClient();
-  const catalogos = useCatalogos();
 
   const [activo, setActivo] = useState<ImportItem | null>(null);
   const [indOpen, setIndOpen] = useState(false);
   const [borradoOpen, setBorradoOpen] = useState(false);
   const [respaldando, setRespaldando] = useState(false);
 
-  // Gestión de red / disponibilidad (creación de registros individuales)
-  const [redFormOpen, setRedFormOpen] = useState(false);
-  const [redTipo, setRedTipo] = useState<TipoRed>("ips_nacional");
+  // Gestión administrativa de red / disponibilidad
+  const [redAdminOpen, setRedAdminOpen] = useState(false);
 
   const generarRespaldo = useServerFn(respaldoTotal);
 
@@ -116,47 +108,7 @@ export function HistoricosPanel() {
     }
   };
 
-  const guardarRed = async (payload: Record<string, unknown>, id?: string): Promise<boolean> => {
-    const meta = {
-      fecha_actualizacion_disponibilidad: new Date().toISOString(),
-      usuario_actualizacion: user?.id ?? null,
-    };
-    if (id) {
-      const { error } = await supabase
-        .from("red_operativa")
-        .update({ ...payload, ...meta })
-        .eq("id", id);
-      if (error) {
-        toast.error(error.message);
-        return false;
-      }
-      registrarAuditoria({
-        data: { accion: "editar_red", modulo: "control-mando", tabla: "red_operativa", registroId: id },
-      }).catch(() => {});
-      toast.success("Registro actualizado");
-    } else {
-      const { data, error } = await supabase
-        .from("red_operativa")
-        .insert({ ...payload, ...meta, archivado: false })
-        .select("id")
-        .single();
-      if (error) {
-        toast.error(error.message);
-        return false;
-      }
-      registrarAuditoria({
-        data: {
-          accion: "crear_red",
-          modulo: "control-mando",
-          tabla: "red_operativa",
-          registroId: data?.id ?? "",
-        },
-      }).catch(() => {});
-      toast.success("Registro creado");
-    }
-    qc.invalidateQueries({ queryKey: ["red-operativa"] });
-    return true;
-  };
+
 
   return (
     <div className="space-y-5">
@@ -185,13 +137,10 @@ export function HistoricosPanel() {
               <Button
                 variant="outline"
                 className="h-auto justify-start gap-2 whitespace-normal rounded-xl py-3 text-left text-sm font-semibold"
-                onClick={() => {
-                  setRedTipo("ips_nacional");
-                  setRedFormOpen(true);
-                }}
+                onClick={() => setRedAdminOpen(true)}
               >
                 <Network className="h-4 w-4 text-primary" />
-                <span>Agregar registro de red</span>
+                <span>Red y disponibilidad (gestión)</span>
               </Button>
             </div>
           </div>
@@ -284,16 +233,7 @@ export function HistoricosPanel() {
       <IndicadoresDatosDialog open={indOpen} onOpenChange={setIndOpen} />
       <BorradoSeguroDialog open={borradoOpen} onOpenChange={setBorradoOpen} />
 
-      <RedFormDialog
-        open={redFormOpen}
-        onOpenChange={setRedFormOpen}
-        tipo={redTipo}
-        onTipoChange={setRedTipo}
-        editing={null}
-        especialidades={catalogos.data.especialidades}
-        ipsOptions={catalogos.data.ips}
-        onSubmit={guardarRed}
-      />
+      <RedAdminDialog open={redAdminOpen} onOpenChange={setRedAdminOpen} />
     </div>
   );
 }

@@ -4,10 +4,6 @@ import {
   MapPin,
   MoreVertical,
   Eye,
-  Pencil,
-  RefreshCw,
-  Power,
-  Trash2,
   Stethoscope,
   Clock,
   Copy,
@@ -17,7 +13,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
@@ -32,26 +27,13 @@ import {
 interface Props {
   reg: RedRegistro;
   tab: TabConfig;
+  /** Si el usuario puede marcar disponibilidad (Admin / Operativo activo). */
   canEdit: boolean;
-  isAdmin: boolean;
   onView: (r: RedRegistro) => void;
-  onEdit: (r: RedRegistro) => void;
   onToggle: (r: RedRegistro, value: boolean) => void;
-  onDeactivate: (r: RedRegistro) => void;
-  onDelete: (r: RedRegistro) => void;
 }
 
-export function RedCard({
-  reg,
-  tab,
-  canEdit,
-  isAdmin,
-  onView,
-  onEdit,
-  onToggle,
-  onDeactivate,
-  onDelete,
-}: Props) {
+export function RedCard({ reg, tab, canEdit, onView, onToggle }: Props) {
   const disponible = !!reg.disponible_para_remisiones;
   const activo = esActivo(reg);
   const Icon = tab.icon;
@@ -173,9 +155,9 @@ export function RedCard({
           )}
         </div>
 
-        {/* Acciones a la derecha */}
+        {/* Acciones a la derecha — solo consulta y disponibilidad */}
         <div className="flex shrink-0 flex-col items-end gap-2">
-          {canEdit && (
+          {canEdit ? (
             <div className="flex flex-col items-center">
               <span className="text-[10px] font-medium text-muted-foreground">
                 Marcar disponibilidad
@@ -187,6 +169,10 @@ export function RedCard({
                 className="mt-1"
               />
             </div>
+          ) : (
+            <span className="max-w-[120px] text-right text-[10px] text-muted-foreground">
+              Sin permisos para modificar disponibilidad
+            </span>
           )}
           <DropdownMenu>
             <DropdownMenuTrigger className="rounded-full p-1.5 text-muted-foreground hover:bg-accent">
@@ -196,30 +182,6 @@ export function RedCard({
               <DropdownMenuItem onClick={() => onView(reg)}>
                 <Eye className="mr-2 h-4 w-4" /> Ver detalle
               </DropdownMenuItem>
-              {canEdit && (
-                <>
-                  <DropdownMenuItem onClick={() => onEdit(reg)}>
-                    <Pencil className="mr-2 h-4 w-4" /> Editar
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onToggle(reg, !disponible)} disabled={!activo}>
-                    <RefreshCw className="mr-2 h-4 w-4" /> Cambiar disponibilidad
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onDeactivate(reg)}>
-                    <Power className="mr-2 h-4 w-4" /> {activo ? "Desactivar" : "Reactivar"}
-                  </DropdownMenuItem>
-                </>
-              )}
-              {isAdmin && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => onDelete(reg)}
-                    className="text-status-red focus:text-status-red"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" /> Eliminar
-                  </DropdownMenuItem>
-                </>
-              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

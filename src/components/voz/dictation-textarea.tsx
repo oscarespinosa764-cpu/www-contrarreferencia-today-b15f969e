@@ -109,6 +109,7 @@ export const DictationTextarea = React.forwardRef<
         ref={setRefs}
         className={className}
         data-dictation-key={dictationKey}
+        data-dictation-managed="component"
         {...props}
       />
     );
@@ -120,6 +121,7 @@ export const DictationTextarea = React.forwardRef<
         ref={setRefs}
         className={cn("pr-2", className)}
         data-dictation-key={dictationKey}
+        data-dictation-managed="component"
         {...props}
       />
       <div className="pointer-events-none absolute right-1.5 top-1.5 flex justify-end">
