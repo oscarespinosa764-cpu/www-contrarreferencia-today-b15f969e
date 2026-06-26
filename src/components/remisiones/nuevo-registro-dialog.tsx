@@ -1210,7 +1210,7 @@ export function NuevoRegistroDialog({
                 <Label htmlFor="pend-obs" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Observación de entrega
                 </Label>
-                <Textarea id="pend-obs" name="observacion_entrega" rows={2} />
+                <DictationTextarea dictationKey="pendientes.nuevo.observacion_entrega" id="pend-obs" name="observacion_entrega" rows={2} />
               </div>
               <DialogFooter>
                 <Button type="submit" className="rounded-full">
