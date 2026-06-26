@@ -500,19 +500,44 @@ function RedIpsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Confirmar eliminación */}
-      <AlertDialog open={!!delTarget} onOpenChange={(v) => !v && setDelTarget(null)}>
+      {/* Confirmar cambio de disponibilidad + novedad */}
+      <AlertDialog open={!!dispTarget} onOpenChange={(v) => !v && setDispTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar registro?</AlertDialogTitle>
+            <AlertDialogTitle>¿Confirmar cambio de disponibilidad?</AlertDialogTitle>
             <AlertDialogDescription>
-              «{delTarget?.entidad}» se archivará y dejará de mostrarse en la red. Esta acción no
-              elimina el histórico.
+              {dispTarget && (
+                <>
+                  «{dispTarget.reg.entidad || "Recurso"}» pasará a{" "}
+                  <span
+                    className={
+                      dispTarget.value ? "font-bold text-status-green" : "font-bold text-status-red"
+                    }
+                  >
+                    {dispTarget.value ? "DISPONIBLE" : "NO DISPONIBLE"}
+                  </span>
+                  .
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {dispTarget && !dispTarget.value && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-foreground">
+                Novedad (opcional)
+              </label>
+              <textarea
+                value={novedadInput}
+                onChange={(e) => setNovedadInput(e.target.value)}
+                rows={2}
+                placeholder="Ej: Sin disponibilidad de UCI adultos por sobreocupación."
+                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={eliminar}>Eliminar</AlertDialogAction>
+            <AlertDialogAction onClick={aplicarDisponibilidad}>Confirmar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
