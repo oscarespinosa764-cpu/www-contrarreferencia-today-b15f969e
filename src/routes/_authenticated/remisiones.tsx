@@ -326,33 +326,27 @@ function RemisionesPage() {
               Sin avisos operativos activos para el turno.
             </p>
           ) : (
-            <div className="space-y-2">
+            <div className="max-h-80 space-y-2 overflow-y-auto">
               {avisos.map((a) => {
-                const alto = a.prioridad === "ALTO";
+                const fuerte = a.severidad === "ALTO" || a.severidad === "CRITICO";
                 return (
                   <div
-                    key={a.id}
-                    className={`flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border-l-4 px-3 py-2 text-xs ${
-                      alto
-                        ? "border-l-status-red bg-status-red/10"
-                        : "border-l-border bg-card"
+                    key={a.key}
+                    className={`rounded-lg border-l-4 px-3 py-2 ${
+                      fuerte ? "border-l-status-red bg-status-red/10" : "border-l-status-amber bg-card"
                     }`}
                   >
-                    <span className="font-bold uppercase text-foreground">{a.nombre}</span>
-                    <span className="text-muted-foreground">{a.tipoDoc}</span>
-                    <span className="text-foreground">· {a.motivo}</span>
-                    <span className="text-muted-foreground">→ {a.accion}</span>
-                    <span className="ml-auto flex items-center gap-1.5">
-                      <Badge variant="outline" className="text-[10px]">{a.origen}</Badge>
-                      <Badge variant="outline" className="text-[10px]">{a.fuente}</Badge>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                          alto ? "bg-status-red text-white" : "bg-secondary text-secondary-foreground"
-                        }`}
-                      >
-                        {a.prioridad}
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-medium text-foreground">{a.titulo}</p>
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${NIVEL_BADGE[a.severidad] ?? ""}`}>
+                        {a.severidad}
                       </span>
-                    </span>
+                    </div>
+                    {a.detalle && <p className="text-xs text-muted-foreground">{a.detalle}</p>}
+                    <div className="mt-0.5 flex items-center gap-1.5">
+                      <Badge variant="outline" className="text-[10px]">{a.kind === "IA" ? "AUTOMÁTICO" : "MANUAL"}</Badge>
+                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{a.sub}</span>
+                    </div>
                   </div>
                 );
               })}
