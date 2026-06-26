@@ -47,7 +47,10 @@ function ControlMandoPage() {
           </div>
         </TabsContent>
         <TabsContent value="historicos">
-          <HistoricosPanel />
+          <div className="space-y-4">
+            <AlmacenamientoPanel />
+            <HistoricosPanel />
+          </div>
         </TabsContent>
         <TabsContent value="dictado">
           <DictadoPanel />
