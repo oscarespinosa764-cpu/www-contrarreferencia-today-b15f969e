@@ -894,85 +894,130 @@ export type Database = {
           archivado: boolean
           categoria: string | null
           ciudad: string | null
+          codigo_alterno: string | null
+          codigo_principal: string | null
+          codigos_apoyo: Json
           contacto: string | null
+          contacto_principal: string | null
           correo: string | null
           created_at: string
           created_by: string | null
           cups: string | null
           departamento: string | null
+          direccion: string | null
+          disponible_para_remisiones: boolean
           entidad: string | null
           eps: string | null
           estado: string | null
+          fecha_actualizacion_disponibilidad: string | null
           fecha_final: string | null
           fecha_inicio: string | null
+          horario: string | null
           id: string
           ips: string | null
+          jornada: string | null
           link: string | null
           medico: string | null
+          novedad_disponibilidad: string | null
           observaciones: string | null
+          relaciones_red: Json
           rondas: string | null
+          sede: string | null
           servicio_especialidad: string | null
           subcategoria: string | null
           telefono: string | null
           tipo_ambulancia: string | null
+          tipo_apoyo: string | null
           tipo_contacto: string | null
+          tipo_red: string | null
           updated_at: string
+          usuario_actualizacion: string | null
         }
         Insert: {
           archivado?: boolean
           categoria?: string | null
           ciudad?: string | null
+          codigo_alterno?: string | null
+          codigo_principal?: string | null
+          codigos_apoyo?: Json
           contacto?: string | null
+          contacto_principal?: string | null
           correo?: string | null
           created_at?: string
           created_by?: string | null
           cups?: string | null
           departamento?: string | null
+          direccion?: string | null
+          disponible_para_remisiones?: boolean
           entidad?: string | null
           eps?: string | null
           estado?: string | null
+          fecha_actualizacion_disponibilidad?: string | null
           fecha_final?: string | null
           fecha_inicio?: string | null
+          horario?: string | null
           id?: string
           ips?: string | null
+          jornada?: string | null
           link?: string | null
           medico?: string | null
+          novedad_disponibilidad?: string | null
           observaciones?: string | null
+          relaciones_red?: Json
           rondas?: string | null
+          sede?: string | null
           servicio_especialidad?: string | null
           subcategoria?: string | null
           telefono?: string | null
           tipo_ambulancia?: string | null
+          tipo_apoyo?: string | null
           tipo_contacto?: string | null
+          tipo_red?: string | null
           updated_at?: string
+          usuario_actualizacion?: string | null
         }
         Update: {
           archivado?: boolean
           categoria?: string | null
           ciudad?: string | null
+          codigo_alterno?: string | null
+          codigo_principal?: string | null
+          codigos_apoyo?: Json
           contacto?: string | null
+          contacto_principal?: string | null
           correo?: string | null
           created_at?: string
           created_by?: string | null
           cups?: string | null
           departamento?: string | null
+          direccion?: string | null
+          disponible_para_remisiones?: boolean
           entidad?: string | null
           eps?: string | null
           estado?: string | null
+          fecha_actualizacion_disponibilidad?: string | null
           fecha_final?: string | null
           fecha_inicio?: string | null
+          horario?: string | null
           id?: string
           ips?: string | null
+          jornada?: string | null
           link?: string | null
           medico?: string | null
+          novedad_disponibilidad?: string | null
           observaciones?: string | null
+          relaciones_red?: Json
           rondas?: string | null
+          sede?: string | null
           servicio_especialidad?: string | null
           subcategoria?: string | null
           telefono?: string | null
           tipo_ambulancia?: string | null
+          tipo_apoyo?: string | null
           tipo_contacto?: string | null
+          tipo_red?: string | null
           updated_at?: string
+          usuario_actualizacion?: string | null
         }
         Relationships: []
       }
