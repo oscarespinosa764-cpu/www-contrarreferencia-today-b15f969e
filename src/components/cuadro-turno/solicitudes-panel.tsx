@@ -114,7 +114,24 @@ function RevisionDialog({
   const [razon, setRazon] = useState("");
   const [registrarAus, setRegistrarAus] = useState(defaultRegistrarAusentismo(request.reason_type));
   const [saving, setSaving] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
   const pendiente = request.status === "PENDIENTE" || request.status === "DEVUELTA PARA AJUSTE";
+
+  const descargarPDF = async () => {
+    setPdfBusy(true);
+    try {
+      const firmaDataUrl = request.requester_signature_id
+        ? await getFirmaDataUrlById(request.requester_signature_id)
+        : null;
+      await generarSolicitudPDF(request, { firmaDataUrl });
+      registrarAuditoria({ data: { accion: "SOLICITUD_PDF", modulo: "cuadro_turno", tabla: "shift_requests", registroId: request.id, resultado: "exito" } }).catch(() => {});
+    } catch (e) {
+      console.error(e);
+      toast.error("No se pudo generar el PDF.");
+    } finally {
+      setPdfBusy(false);
+    }
+  };
 
   const aprobar = async () => {
     setSaving(true);
