@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { CalendarPlus, RefreshCw, XCircle } from "lucide-react";
+import { CalendarPlus, RefreshCw, XCircle, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { SolicitudFormDialog } from "./solicitud-form-dialog";
 import {
