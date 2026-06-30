@@ -50,6 +50,19 @@ export function MiTurnoPanel() {
     qc.invalidateQueries({ queryKey: ["shift-requests"] });
   };
 
+  const descargarPDF = async (r: ShiftRequest) => {
+    try {
+      const firmaDataUrl = r.requester_signature_id
+        ? await getFirmaDataUrlById(r.requester_signature_id)
+        : null;
+      await generarSolicitudPDF(r, { firmaDataUrl });
+    } catch (e) {
+      console.error(e);
+      toast.error("No se pudo generar el PDF.");
+    }
+  };
+
+
   const pendientes = requests.filter((r) => r.status === "PENDIENTE");
   const aprobadas = requests.filter((r) => r.status === "APROBADA" || r.status === "EJECUTADA");
   const rechazadas = requests.filter((r) => ["NEGADA", "RECHAZADA"].includes(r.status));
