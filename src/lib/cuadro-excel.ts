@@ -187,7 +187,7 @@ export async function importarCuadroExcel(params: {
   if (dayRows.length > 0) {
     const { error } = await supabase
       .from("shift_schedule_days")
-      .upsert(dayRows as never, { onConflict: "schedule_id,member_id,day_number" });
+      .upsert(dayRows as never, { onConflict: "member_id,day_number" });
     if (error) throw error;
     res.diasCargados = dayRows.length;
   }
