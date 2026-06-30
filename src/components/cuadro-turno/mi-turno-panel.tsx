@@ -5,12 +5,14 @@ import { useAuth } from "@/lib/auth";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { CalendarPlus, RefreshCw, XCircle } from "lucide-react";
+import { CalendarPlus, RefreshCw, XCircle, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { SolicitudFormDialog } from "./solicitud-form-dialog";
 import {
   estadoBadgeClass, fmtFecha, fmtFechaHora, type ShiftRequest,
 } from "@/lib/cuadro-turno-utils";
+import { generarSolicitudPDF } from "@/lib/solicitud-pdf";
+import { getFirmaDataUrlById } from "@/lib/firmas-utils";
 
 export function MiTurnoPanel() {
   const { user } = useAuth();
@@ -47,6 +49,19 @@ export function MiTurnoPanel() {
     toast.success("Solicitud cancelada.");
     qc.invalidateQueries({ queryKey: ["shift-requests"] });
   };
+
+  const descargarPDF = async (r: ShiftRequest) => {
+    try {
+      const firmaDataUrl = r.requester_signature_id
+        ? await getFirmaDataUrlById(r.requester_signature_id)
+        : null;
+      await generarSolicitudPDF(r, { firmaDataUrl });
+    } catch (e) {
+      console.error(e);
+      toast.error("No se pudo generar el PDF.");
+    }
+  };
+
 
   const pendientes = requests.filter((r) => r.status === "PENDIENTE");
   const aprobadas = requests.filter((r) => r.status === "APROBADA" || r.status === "EJECUTADA");
@@ -97,11 +112,16 @@ export function MiTurnoPanel() {
                     <p className="mt-1 text-xs text-emerald-600">Coordinación: {r.approval_observation}</p>
                   )}
                 </div>
-                {r.status === "PENDIENTE" && (
-                  <Button variant="ghost" size="sm" className="text-rose-600" onClick={() => cancelar(r)}>
-                    <XCircle className="mr-1 h-4 w-4" /> Cancelar
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => descargarPDF(r)}>
+                    <FileDown className="mr-1 h-4 w-4" /> PDF
                   </Button>
-                )}
+                  {r.status === "PENDIENTE" && (
+                    <Button variant="ghost" size="sm" className="text-rose-600" onClick={() => cancelar(r)}>
+                      <XCircle className="mr-1 h-4 w-4" /> Cancelar
+                    </Button>
+                  )}
+                </div>
               </Card>
             ))}
           </div>
