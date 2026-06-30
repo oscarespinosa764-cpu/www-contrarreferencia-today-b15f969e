@@ -141,7 +141,19 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
       ) : (
         <>
           {isAdmin && (
-            <AddMemberInline scheduleId={schedule.id} sortOrder={members.length} onAdded={() => qc.invalidateQueries({ queryKey: ["schedule-members"] })} />
+            <>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="outline" onClick={exportarPlantilla}>
+                  <FileDown className="mr-1.5 h-4 w-4" /> Plantilla TH-FR-10
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={importando}>
+                  {importando ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Upload className="mr-1.5 h-4 w-4" />}
+                  Importar Excel
+                </Button>
+                <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={onImportFile} />
+              </div>
+              <AddMemberInline scheduleId={schedule.id} sortOrder={members.length} onAdded={() => qc.invalidateQueries({ queryKey: ["schedule-members"] })} />
+            </>
           )}
           <Card className="overflow-x-auto">
             <table className="w-full border-collapse text-xs">
