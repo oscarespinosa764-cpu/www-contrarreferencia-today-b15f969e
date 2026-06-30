@@ -111,6 +111,7 @@ export interface ShiftRequest {
   reason_detail: string | null;
   observations: string | null;
   requester_signature_hash: string | null;
+  requester_signature_id: string | null;
   register_absenteeism: boolean;
   approval_observation: string | null;
   rejection_reason: string | null;
