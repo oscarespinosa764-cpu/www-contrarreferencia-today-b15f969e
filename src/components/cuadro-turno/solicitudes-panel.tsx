@@ -222,7 +222,12 @@ function RevisionDialog({
           )}
         </div>
 
-        <DialogFooter><Button variant="outline" onClick={onClose}>Cerrar</Button></DialogFooter>
+        <DialogFooter className="gap-2">
+          <Button variant="secondary" onClick={descargarPDF} disabled={pdfBusy}>
+            <FileDown className="mr-1.5 h-4 w-4" /> {pdfBusy ? "Generando…" : "Descargar PDF (TH-FR-09)"}
+          </Button>
+          <Button variant="outline" onClick={onClose}>Cerrar</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
