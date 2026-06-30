@@ -11,6 +11,8 @@ import { SolicitudFormDialog } from "./solicitud-form-dialog";
 import {
   estadoBadgeClass, fmtFecha, fmtFechaHora, type ShiftRequest,
 } from "@/lib/cuadro-turno-utils";
+import { generarSolicitudPDF } from "@/lib/solicitud-pdf";
+import { getFirmaDataUrlById } from "@/lib/firmas-utils";
 
 export function MiTurnoPanel() {
   const { user } = useAuth();
