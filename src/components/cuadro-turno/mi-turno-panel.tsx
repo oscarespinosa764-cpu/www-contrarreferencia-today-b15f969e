@@ -112,11 +112,16 @@ export function MiTurnoPanel() {
                     <p className="mt-1 text-xs text-emerald-600">Coordinación: {r.approval_observation}</p>
                   )}
                 </div>
-                {r.status === "PENDIENTE" && (
-                  <Button variant="ghost" size="sm" className="text-rose-600" onClick={() => cancelar(r)}>
-                    <XCircle className="mr-1 h-4 w-4" /> Cancelar
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => descargarPDF(r)}>
+                    <FileDown className="mr-1 h-4 w-4" /> PDF
                   </Button>
-                )}
+                  {r.status === "PENDIENTE" && (
+                    <Button variant="ghost" size="sm" className="text-rose-600" onClick={() => cancelar(r)}>
+                      <XCircle className="mr-1 h-4 w-4" /> Cancelar
+                    </Button>
+                  )}
+                </div>
               </Card>
             ))}
           </div>
