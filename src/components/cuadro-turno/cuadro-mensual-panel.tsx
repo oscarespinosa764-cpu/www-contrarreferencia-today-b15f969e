@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, UserPlus } from "lucide-react";
+import { Plus, UserPlus, FileDown, Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   MESES, diasDelMes, letraDiaSemana, fechaISO, totalHorasMiembro, tiempoExtra, tiempoTotal,
