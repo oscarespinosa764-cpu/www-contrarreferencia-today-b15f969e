@@ -1408,8 +1408,63 @@ export function SeguimientoDialog({
                   />
                 </div>
               )}
+
+              {/* Especialidades tratantes (Parte 9) */}
+              <div className="space-y-2 rounded-lg border border-border/60 bg-background/40 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className={labelCls}>Especialidades tratantes</p>
+                  {especialidadesList.length > 0 && (
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${evoEspMeta[evoEspEstado].chip}`}
+                    >
+                      <span className={`h-2 w-2 rounded-full ${evoEspMeta[evoEspEstado].dot}`} />
+                      EVOLUCIÓN {evoEspEstado}
+                    </span>
+                  )}
+                </div>
+                {especialidadesList.length === 0 ? (
+                  <p className="text-xs italic text-muted-foreground">
+                    No hay especialidades tratantes registradas para este caso. Puedes continuar con la observación manual.
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-[11px] text-muted-foreground">
+                      Marca las especialidades que ya fueron evolucionadas en este seguimiento.
+                    </p>
+                    <div className="space-y-1.5">
+                      {especialidadesList.map((esp) => (
+                        <label
+                          key={esp}
+                          className="flex items-center justify-between gap-2 rounded-md border border-border/50 px-2 py-1.5 text-sm"
+                        >
+                          <span className="flex items-center gap-2">
+                            <Checkbox
+                              checked={!!evoEsp[esp]}
+                              onCheckedChange={() => toggleEvoEsp(esp)}
+                            />
+                            {esp}
+                          </span>
+                          <span
+                            className={`text-[10px] font-bold ${
+                              evoEsp[esp] ? "text-status-green" : "text-muted-foreground"
+                            }`}
+                          >
+                            {evoEsp[esp] ? "EVOLUCIONADA" : "PENDIENTE"}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                    {evoEspEstado === "PARCIAL" && (
+                      <p className="text-[11px] text-status-amber">
+                        Pendiente: {evoEspPendientes.join(", ")}.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           )}
+
 
           {/* FÍSICO O PRESENCIAL */}
           {esFisico && (
