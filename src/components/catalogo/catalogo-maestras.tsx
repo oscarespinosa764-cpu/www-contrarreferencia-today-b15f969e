@@ -78,6 +78,12 @@ const TIPO_META: Record<
     extra1Label: "Justificación",
   },
   MOTIVO_NEG: { label: "Motivos de negación", usadoEn: "Remisiones", modulo: "Motivos" },
+  DOC_ENTREGA: {
+    label: "Documentos de entrega",
+    usadoEn: "Remisiones salientes · Entrega documental (firma QR)",
+    modulo: "Remisiones",
+    extra1Label: "Origen (EPS / ARL / SOAT / PARTICULAR / COMÚN)",
+  },
 };
 
 function metaOf(tipo: string) {
@@ -153,6 +159,8 @@ export function CatalogoMaestras() {
   const [modulo, setModulo] = useState("Todos");
   const [tipoSel, setTipoSel] = useState<string | null>(null);
   const [nuevoValor, setNuevoValor] = useState("");
+  // Origen para documentos de entrega (DOC_ENTREGA) al agregar en línea.
+  const [nuevoOrigenDoc, setNuevoOrigenDoc] = useState("COMUN");
   const [editing, setEditing] = useState<CatRow | null>(null);
   const [borrar, setBorrar] = useState<CatRow | null>(null);
   const [simOpen, setSimOpen] = useState(false);
@@ -237,14 +245,19 @@ export function CatalogoMaestras() {
 
   const handleAdd = async () => {
     if (!sel || !nuevoValor.trim()) return;
-    const { error } = await supabase
-      .from("catalogos")
-      .insert({ tipo: sel.tipo, valor: nuevoValor.trim(), activo: true });
+    const payload: { tipo: string; valor: string; activo: boolean; extra1?: string } = {
+      tipo: sel.tipo,
+      valor: nuevoValor.trim(),
+      activo: true,
+    };
+    if (sel.tipo === "DOC_ENTREGA") payload.extra1 = nuevoOrigenDoc;
+    const { error } = await supabase.from("catalogos").insert(payload);
     if (error) return toast.error(error.message);
     toast.success("Valor agregado");
     setNuevoValor("");
     qc.invalidateQueries({ queryKey: ["catalogo-todos"] });
   };
+
 
   const toggle = async (id: string, activo: boolean) => {
     const { error } = await supabase.from("catalogos").update({ activo }).eq("id", id);
@@ -403,6 +416,20 @@ export function CatalogoMaestras() {
 
               {/* Agregar inline */}
               <div className="mt-3 flex gap-2">
+                {sel.tipo === "DOC_ENTREGA" && (
+                  <select
+                    value={nuevoOrigenDoc}
+                    onChange={(e) => setNuevoOrigenDoc(e.target.value)}
+                    className="h-9 shrink-0 rounded-md border border-input bg-background px-2 text-sm shadow-sm"
+                    title="Origen al que aplica el documento"
+                  >
+                    <option value="COMUN">COMÚN (todos)</option>
+                    <option value="EPS">EPS</option>
+                    <option value="ARL">ARL</option>
+                    <option value="SOAT">SOAT</option>
+                    <option value="PARTICULAR">PARTICULAR</option>
+                  </select>
+                )}
                 <Input
                   placeholder={`Nuevo valor en ${selMeta.label}…`}
                   value={nuevoValor}
@@ -414,6 +441,7 @@ export function CatalogoMaestras() {
                     }
                   }}
                 />
+
                 <Button onClick={handleAdd} className="shrink-0 gap-1.5">
                   <Plus className="h-4 w-4" /> Agregar
                 </Button>
@@ -594,6 +622,22 @@ export function CatalogoMaestras() {
                     ))}
                   </div>
                 </>
+              ) : editing.tipo === "DOC_ENTREGA" ? (
+                <div className="space-y-2">
+                  <Label htmlFor="extra1">Origen al que aplica</Label>
+                  <select
+                    id="extra1"
+                    name="extra1"
+                    defaultValue={(editing.extra1 || "COMUN").toUpperCase()}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                  >
+                    <option value="COMUN">COMÚN (todos los orígenes)</option>
+                    <option value="EPS">EPS</option>
+                    <option value="ARL">ARL</option>
+                    <option value="SOAT">SOAT</option>
+                    <option value="PARTICULAR">PARTICULAR</option>
+                  </select>
+                </div>
               ) : (
                 <>
                   <div className="space-y-2">

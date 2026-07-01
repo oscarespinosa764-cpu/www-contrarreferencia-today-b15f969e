@@ -27,6 +27,7 @@ import {
 import {
   ORIGENES_DOC,
   documentosPorOrigen,
+  fetchDocumentosPorOrigen,
   crearSesionFirma,
   anularSesion,
   urlFirma,
@@ -101,6 +102,7 @@ export function EntregaDocumentalDialog({
   const [token, setToken] = useState<string | null>(null);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [generando, setGenerando] = useState(false);
+  const [cargandoDocs, setCargandoDocs] = useState(false);
   const [indigoCorta, setIndigoCorta] = useState("");
 
   // Autollenado con datos previos del caso (Parte 12.1).
@@ -117,11 +119,21 @@ export function EntregaDocumentalDialog({
     setIndigoCorta("");
   }, [open, empresaTraslado, ipsReceptora]);
 
-  // Al elegir origen, cargar checklist base del catálogo por origen (Parte 12.4).
-  const cambiarOrigen = (v: OrigenDoc) => {
+  // Al elegir origen, cargar checklist desde el catálogo administrable (Parte 12.3).
+  // El catálogo es editable sin código en: Catálogo → Documentos de entrega.
+  const cambiarOrigen = async (v: OrigenDoc) => {
     setOrigen(v);
+    // Base inmediata por código (respuesta instantánea) y luego se sincroniza con el catálogo.
     setDocs(documentosPorOrigen(v).map((label) => ({ label, marcado: true })));
+    setCargandoDocs(true);
+    try {
+      const labels = await fetchDocumentosPorOrigen(v);
+      setDocs(labels.map((label) => ({ label, marcado: true })));
+    } finally {
+      setCargandoDocs(false);
+    }
   };
+
 
   const snapshot = useMemo<SnapshotEntrega>(
     () => ({
@@ -398,7 +410,11 @@ export function EntregaDocumentalDialog({
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <Label className="text-xs font-semibold uppercase text-muted-foreground">
                   Lista de chequeo · {origen}
+                  {cargandoDocs && (
+                    <Loader2 className="ml-1.5 inline h-3 w-3 animate-spin align-[-2px]" />
+                  )}
                 </Label>
+
                 {!sesionId && (
                   <div className="flex gap-1.5">
                     <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[11px]" onClick={marcarTodos}>
