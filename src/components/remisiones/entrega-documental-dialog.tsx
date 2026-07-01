@@ -48,6 +48,8 @@ type Props = {
   tipoCaso: string;
   paciente: string;
   documento?: string | null;
+  tipoDocumento?: string | null;
+  cie10?: string | null;
   ipsReceptora?: string | null;
   empresaTraslado?: string | null;
   especialidad?: string | null;
