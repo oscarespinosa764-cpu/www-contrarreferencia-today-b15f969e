@@ -68,6 +68,58 @@ export function documentosPorOrigen(origen?: OrigenDoc | null): string[] {
   return DOCUMENTOS_DEFAULT;
 }
 
+/** Tipo de catálogo administrable (editable sin código) para la lista de chequeo. */
+export const CATALOGO_DOC_ENTREGA = "DOC_ENTREGA";
+
+/**
+ * Lista de chequeo administrable por origen (Parte 12.3).
+ *
+ * Lee la tabla `catalogos` (tipo = DOC_ENTREGA), donde cada fila es un documento:
+ *   valor  = nombre del documento
+ *   extra1 = origen al que aplica: EPS | ARL | SOAT | PARTICULAR | COMUN (o vacío = común)
+ *
+ * Se combinan los documentos COMUNES + los específicos del origen, respetando el
+ * orden del catálogo. Si el catálogo no tiene filas configuradas, se devuelve la
+ * plantilla base por código para no romper el flujo.
+ */
+export async function fetchDocumentosPorOrigen(origen?: OrigenDoc | null): Promise<string[]> {
+  try {
+    const { data, error } = await supabase
+      .from("catalogos")
+      .select("valor, extra1, activo")
+      .eq("tipo", CATALOGO_DOC_ENTREGA)
+      .eq("activo", true)
+      .order("valor");
+    if (error) throw error;
+
+    const rows = (data ?? []) as { valor: string; extra1: string | null }[];
+    if (rows.length === 0) return documentosPorOrigen(origen);
+
+    const norm = (v?: string | null) => (v ?? "").trim().toUpperCase();
+    const org = norm(origen);
+    const seleccion = rows.filter((r) => {
+      const e = norm(r.extra1);
+      return e === "" || e === "COMUN" || e === "COMÚN" || e === org;
+    });
+
+    if (seleccion.length === 0) return documentosPorOrigen(origen);
+    // Deduplica respetando orden.
+    const vistos = new Set<string>();
+    const out: string[] = [];
+    for (const r of seleccion) {
+      const label = r.valor.trim();
+      const key = label.toUpperCase();
+      if (label && !vistos.has(key)) {
+        vistos.add(key);
+        out.push(label);
+      }
+    }
+    return out.length ? out : documentosPorOrigen(origen);
+  } catch {
+    return documentosPorOrigen(origen);
+  }
+}
+
 export type DocItem = { label: string; marcado: boolean };
 
 export type SnapshotEntrega = {
