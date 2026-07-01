@@ -136,6 +136,20 @@ function splitComma(v?: string | null): string[] {
     .filter(Boolean);
 }
 
+/** Normaliza el campo `detalles` (JSON o string) a un objeto. */
+function parseDetalles(d: unknown): Record<string, unknown> | null {
+  if (!d) return null;
+  if (typeof d === "string") {
+    try {
+      return JSON.parse(d) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  }
+  if (typeof d === "object") return d as Record<string, unknown>;
+  return null;
+}
+
 export function SeguimientoDialog({
   open,
   onOpenChange,
