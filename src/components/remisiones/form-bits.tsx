@@ -133,6 +133,7 @@ export function SpecialtyList({
       </Label>
       <Input
         value={val}
+        uppercase
         autoComplete="off"
         onChange={(e) => {
           setVal(e.target.value);
