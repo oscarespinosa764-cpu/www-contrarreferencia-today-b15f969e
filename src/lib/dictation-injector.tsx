@@ -361,7 +361,7 @@ export function DictationInjector() {
           btn.style.display = "none";
           continue;
         }
-        btn.style.display = "block";
+        btn.style.display = "flex";
         btn.style.top = `${rect.top + 6}px`;
         btn.style.left = `${rect.right - 32}px`;
       }
