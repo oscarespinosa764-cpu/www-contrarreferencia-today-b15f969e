@@ -47,6 +47,7 @@ import {
   generarPlantillaCancelacionRemision,
   generarPlantillaCorreoSeg,
   generarPlantillaEvolucionDiaria,
+  generarPlantillaEvolucionEspecialidades,
   generarPlantillaFisico,
   generarPlantillaNegaciones,
   generarPlantillaNuevoRadicado,
