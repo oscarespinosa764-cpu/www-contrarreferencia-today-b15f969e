@@ -1066,6 +1066,8 @@ export function SeguimientoDialog({
         )
       )
         return;
+      if (esCierre && !cierreEgreso)
+        return toast.error("Indica si el paciente ya egresó de la institución");
       if (requiereMotivoLegacy && mostrarEvolucionLegacy && !motivoEvo.trim())
         return toast.error("Indica el motivo de la evolución pendiente");
     }
