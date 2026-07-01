@@ -159,6 +159,8 @@ export function CatalogoMaestras() {
   const [modulo, setModulo] = useState("Todos");
   const [tipoSel, setTipoSel] = useState<string | null>(null);
   const [nuevoValor, setNuevoValor] = useState("");
+  // Origen para documentos de entrega (DOC_ENTREGA) al agregar en línea.
+  const [nuevoOrigenDoc, setNuevoOrigenDoc] = useState("COMUN");
   const [editing, setEditing] = useState<CatRow | null>(null);
   const [borrar, setBorrar] = useState<CatRow | null>(null);
   const [simOpen, setSimOpen] = useState(false);
