@@ -197,6 +197,21 @@ export function NuevoRegistroDialog({
   const toggleList = (arr: string[], v: string, set: (x: string[]) => void) =>
     set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
 
+  // "Marcar todos" para IPS de red local (funciona como marcar/desmarcar).
+  const ipsTodasMarcadas = ipsLocales.length > 0 && ipsLocales.every((i) => ipsSel.includes(i));
+  const marcarTodasIps = () =>
+    setIpsSel(ipsTodasMarcadas ? [] : [...ipsLocales]);
+
+  // "Marcar todos" para departamentos de red nacional (NO marca "Otro").
+  const deptosTodosMarcados =
+    departamentos.length > 0 && departamentos.every((d) => deptosSel.includes(d));
+  const marcarTodosDeptos = () => {
+    const conservaOtro = deptosSel.includes("Otro") ? ["Otro"] : [];
+    setDeptosSel(
+      deptosTodosMarcados ? conservaOtro : [...conservaOtro, ...departamentos],
+    );
+  };
+
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["remisiones"] });
     qc.invalidateQueries({ queryKey: ["domiciliarios"] });
