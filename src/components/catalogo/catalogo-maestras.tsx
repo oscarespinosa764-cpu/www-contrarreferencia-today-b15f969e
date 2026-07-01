@@ -622,6 +622,22 @@ export function CatalogoMaestras() {
                     ))}
                   </div>
                 </>
+              ) : editing.tipo === "DOC_ENTREGA" ? (
+                <div className="space-y-2">
+                  <Label htmlFor="extra1">Origen al que aplica</Label>
+                  <select
+                    id="extra1"
+                    name="extra1"
+                    defaultValue={(editing.extra1 || "COMUN").toUpperCase()}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                  >
+                    <option value="COMUN">COMÚN (todos los orígenes)</option>
+                    <option value="EPS">EPS</option>
+                    <option value="ARL">ARL</option>
+                    <option value="SOAT">SOAT</option>
+                    <option value="PARTICULAR">PARTICULAR</option>
+                  </select>
+                </div>
               ) : (
                 <>
                   <div className="space-y-2">
