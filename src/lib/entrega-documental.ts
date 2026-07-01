@@ -184,3 +184,28 @@ export function generarPlantillaIndigoEntrega(s: SnapshotEntrega, firma?: {
   }
   return base.join("\n");
 }
+
+/**
+ * Plantilla ÍNDIGO CORTA para entrega documental (Parte 14).
+ * Breve por el límite de caracteres de Índigo. En MAYÚSCULAS.
+ */
+export function generarPlantillaIndigoCorta(
+  s: SnapshotEntrega,
+  firma?: { nombre: string; cargo: string },
+): string {
+  const empresa = (s.empresa_traslado || "LA EMPRESA DE AMBULANCIA").toUpperCase();
+  const ips = (s.ips_receptora || "LA IPS RECEPTORA").toUpperCase();
+  const firmante = firma?.nombre ? firma.nombre.toUpperCase() : "EL PERSONAL DE TRASLADO";
+  const cargo = firma?.cargo ? ` - ${firma.cargo.toUpperCase()}` : "";
+  if (s.origen) {
+    return (
+      `SE REALIZA ENTREGA DE DOCUMENTACIÓN TIPO ${s.origen} A ${empresa} PARA TRASLADO A ${ips}. ` +
+      `DOCUMENTACIÓN VERIFICADA Y RECIBIDA POR ${firmante}${cargo}.`
+    );
+  }
+  return (
+    `SE REALIZA ENTREGA DE DOCUMENTACIÓN A ${empresa} PARA TRASLADO DEL PACIENTE A ${ips}. ` +
+    `SE VERIFICA ENTREGA DOCUMENTAL SEGÚN LISTA DE CHEQUEO INSTITUCIONAL, FIRMADA POR ${firmante}${cargo}.`
+  );
+}
+
