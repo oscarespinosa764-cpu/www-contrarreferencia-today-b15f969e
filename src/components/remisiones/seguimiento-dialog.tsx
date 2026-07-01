@@ -404,6 +404,8 @@ export function SeguimientoDialog({
       T.ACEPTACION,
       T.NEGACIONES,
       T.AMBULANCIA,
+      T.ENTREGA_DOC,
+      T.CIERRE,
       T.CANCELACION,
       T.PERTINENCIA,
       T.OTRO,
