@@ -215,7 +215,7 @@ export function SolicitudFormDialog({
                 <div><Label className="text-xs">Turno original (código)</Label><Input value={origTurno} onChange={(e) => setOrigTurno(e.target.value)} placeholder="Ej: N" /></div>
                 <div><Label className="text-xs">Fecha nuevo turno</Label><Input type="date" value={nuevaFecha} onChange={(e) => setNuevaFecha(e.target.value)} /></div>
                 <div><Label className="text-xs">Nuevo turno (código)</Label><Input value={nuevoTurno} onChange={(e) => setNuevoTurno(e.target.value)} placeholder="Ej: M" /></div>
-                <div className="col-span-2"><Label className="text-xs">Persona con quien realiza el cambio</Label><Input value={companero} onChange={(e) => setCompanero(e.target.value)} /></div>
+                <div className="col-span-2"><Label className="text-xs">Persona con quien realiza el cambio</Label><Input uppercase value={companero} onChange={(e) => setCompanero(e.target.value)} /></div>
               </div>
             </fieldset>
           ) : (
