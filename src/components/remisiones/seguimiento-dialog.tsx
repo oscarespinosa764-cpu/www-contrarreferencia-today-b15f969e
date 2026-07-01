@@ -477,6 +477,8 @@ export function SeguimientoDialog({
   const esRadicado = usaIndigo && tipoSeg === T.RADICADO;
   const esFisico = usaIndigo && tipoSeg === T.FISICO;
   const esTelefono = usaIndigo && tipoSeg === T.TELEFONO;
+  const esEntregaDoc = usaIndigo && tipoSeg === T.ENTREGA_DOC;
+  const esCierre = usaIndigo && tipoSeg === T.CIERRE;
 
   // --- Estado de evolución diaria (salientes v2) ---
   const evoEstadoSal: EvolucionEstado = useMemo(() => {
