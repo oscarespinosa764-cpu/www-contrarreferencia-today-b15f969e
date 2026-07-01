@@ -176,14 +176,28 @@ export function DictationInjector() {
       }
     };
 
+    // Iconos SVG (Parte 10): micrófono en reposo, cuadro "detener" al escuchar.
+    const ICON_MIC =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>';
+    const ICON_STOP =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
+
     const setListening = (btn: HTMLButtonElement) => {
       btn.dataset.state = "listening";
-      btn.textContent = "■";
+      btn.innerHTML = ICON_STOP;
+      btn.style.color = "#dc2626";
+      btn.style.borderColor = "rgba(220,38,38,.45)";
+      btn.style.background = "rgba(220,38,38,.12)";
+      btn.style.boxShadow = "0 0 0 3px rgba(220,38,38,.15)";
       btn.title = "Escuchando… toque para detener. Revise el texto antes de guardar.";
     };
     const setIdle = (btn: HTMLButtonElement) => {
       btn.dataset.state = "idle";
-      btn.textContent = "🎤";
+      btn.innerHTML = ICON_MIC;
+      btn.style.color = "var(--muted-foreground,#6b7280)";
+      btn.style.borderColor = "var(--border,#d4d4d8)";
+      btn.style.background = "var(--card,#fff)";
+      btn.style.boxShadow = "0 1px 3px rgba(0,0,0,.15)";
     };
 
     const startFor = (el: Element, spec: InjectSpec, btn: HTMLButtonElement) => {
