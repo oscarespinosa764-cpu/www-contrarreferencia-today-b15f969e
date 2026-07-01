@@ -665,6 +665,12 @@ export function SeguimientoDialog({
           cargo: revCargo,
         });
         break;
+      case T.CIERRE:
+        base = generarPlantillaCierreAdmision(caso?.ips_receptora ?? ipsReceptora);
+        break;
+      case T.ENTREGA_DOC:
+        base = "";
+        break;
       case T.OTRO:
         base = generarPlantillaOtroSeg(otroCual, estadoSolicitud);
         break;
