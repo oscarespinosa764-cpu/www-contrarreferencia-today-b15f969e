@@ -295,6 +295,8 @@ export function NuevoRegistroDialog({
       ...deptosSel.filter((d) => d !== "Otro"),
       ...(deptosSel.includes("Otro") && deptoOtro.trim() ? [deptoOtro.trim()] : []),
     ];
+    if (incluyeNacional && deptosSel.includes("Otro") && !deptoOtro.trim())
+      return toast.error("Indica cuál es el departamento o región en el campo '¿Cuál?'");
     if (incluyeNacional && deptosFinal.length === 0)
       return toast.error("Marca al menos un departamento de red nacional");
 
