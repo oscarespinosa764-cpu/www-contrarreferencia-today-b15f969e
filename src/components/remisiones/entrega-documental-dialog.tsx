@@ -48,6 +48,8 @@ type Props = {
   tipoCaso: string;
   paciente: string;
   documento?: string | null;
+  tipoDocumento?: string | null;
+  cie10?: string | null;
   ipsReceptora?: string | null;
   empresaTraslado?: string | null;
   especialidad?: string | null;
@@ -79,6 +81,8 @@ export function EntregaDocumentalDialog({
   tipoCaso,
   paciente,
   documento,
+  tipoDocumento,
+  cie10,
   ipsReceptora,
   empresaTraslado,
   especialidad,
@@ -156,6 +160,8 @@ export function EntregaDocumentalDialog({
     () => ({
       paciente,
       documento: documento ?? "",
+      tipo_documento: tipoDocumento ?? undefined,
+      cie10: cie10 ?? undefined,
       ips_receptora: ips,
       empresa_traslado: empresa,
       fecha_entrega: fecha,
@@ -172,6 +178,8 @@ export function EntregaDocumentalDialog({
     [
       paciente,
       documento,
+      tipoDocumento,
+      cie10,
       ips,
       empresa,
       fecha,

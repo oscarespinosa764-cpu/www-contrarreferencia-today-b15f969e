@@ -295,7 +295,7 @@ export function SeguimientoDialog({
       const { data } = await supabase
         .from((tabla ?? "remisiones") as "remisiones")
         .select(
-          "eapb, tipo_tramite, eapb_tiene_plataforma, eapb_genera_codigo, plataforma_funcionando, ips_receptora, codigo_radicacion",
+          "eapb, tipo_tramite, eapb_tiene_plataforma, eapb_genera_codigo, plataforma_funcionando, ips_receptora, codigo_radicacion, tipo_documento, cie10, tipo_ambulancia",
         )
         .eq("id", casoId)
         .maybeSingle();
@@ -307,6 +307,9 @@ export function SeguimientoDialog({
         plataforma_funcionando: boolean | null;
         ips_receptora: string | null;
         codigo_radicacion: string | null;
+        tipo_documento: string | null;
+        cie10: string | null;
+        tipo_ambulancia: string | null;
       } | null;
     },
   });
@@ -1769,11 +1772,15 @@ export function SeguimientoDialog({
                 tipoCaso={tipoCaso}
                 paciente={paciente}
                 documento={documento}
+                tipoDocumento={caso?.tipo_documento}
+                cie10={caso?.cie10}
                 ipsReceptora={caso?.ips_receptora ?? ipsReceptora}
                 empresaTraslado={empresaAmb}
                 especialidad={especialidadesList.join(", ")}
                 entidadPago={caso?.eapb}
+                tipoAmbulancia={caso?.tipo_ambulancia}
               />
+
             </div>
           )}
 

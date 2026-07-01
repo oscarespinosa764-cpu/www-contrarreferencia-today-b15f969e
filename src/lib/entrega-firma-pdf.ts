@@ -14,7 +14,8 @@ import ceciAsset from "@/assets/ceci-mascota.png.asset.json";
 
 const INSTITUCION = "CENTRO DE IMAGENES DIAGNOSTICAS CEDIM I.P.S S.A.S";
 const NIT = "NIT: 900559103-5";
-const PIE = "SISTEMA DE REFERENCIA Y CONTRARREFERENCIA";
+// Pie institucional oficial (tomado del formato Word/Excel fuente).
+const PIE = "Servicios de salud con calidad y humanización";
 
 const TEXTO_ACEPTACION =
   "Declaro que recibo la documentación relacionada en la lista de chequeo para el traslado " +
@@ -147,6 +148,34 @@ function descargar(doc: Doc, nombre: string) {
   doc.save(nombre);
 }
 
+/** Línea oficial de tipo de documento con casillas CC/TI/RC/CN + N° y CIE-10. */
+function filaTipoDocumento(doc: Doc, y: number, d: EntregaDatos): number {
+  const tipo = up(d.tipo_documento);
+  const opts: [string, string][] = [
+    ["CC", "CC"],
+    ["TI", "TI"],
+    ["RC", "RC"],
+    ["CN", "CN"],
+  ];
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.text("TIPO DE DOCUMENTO:", 16, y);
+  let x = 16 + doc.getTextWidth("TIPO DE DOCUMENTO: ") + 2;
+  doc.setFont("helvetica", "normal");
+  for (const [lbl, val] of opts) {
+    doc.text(lbl, x, y);
+    x += doc.getTextWidth(lbl) + 1.5;
+    doc.rect(x, y - 3.2, 4, 4);
+    if (tipo === val) doc.text("X", x + 0.9, y - 0.2);
+    x += 8;
+  }
+  doc.setFont("helvetica", "bold");
+  doc.text("No. DOCUMENTO:", x, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(up(d.documento) || "—", x + doc.getTextWidth("No. DOCUMENTO: ") + 1, y);
+  return y + 6.5;
+}
+
 /** Portada — "REFERENCIA Y CONTRARREFERENCIA" (formato oficial). No persiste. */
 export async function descargarPortadaPDF(d: EntregaDatos) {
   const doc = await nuevoDoc("REFERENCIA Y CONTRARREFERENCIA");
@@ -266,12 +295,7 @@ export async function descargarChecklistPDF(d: EntregaDatos) {
   y = filaCampo(doc, y, "FECHA", up(d.fecha_entrega));
   y = filaCampo(doc, y, "EAPB", up(d.entidad_pago));
   y = filaCampo(doc, y, "NOMBRES Y APELLIDOS", up(d.paciente));
-  y = filaCampo(
-    doc,
-    y,
-    "TIPO Y N° DOCUMENTO",
-    up([d.tipo_documento, d.documento].filter(Boolean).join(" ")) || up(d.documento),
-  );
+  y = filaTipoDocumento(doc, y, d);
   y = filaCampo(doc, y, "CIE-10 PRINCIPAL", up(d.cie10));
   if (d.origen) y = filaCampo(doc, y, "ORIGEN / RESPONSABLE DOCUMENTAL", up(d.origen));
 
@@ -310,12 +334,8 @@ export async function descargarFirmadoPDF(d: EntregaDatos, f: FirmaDatos) {
   y = filaCampo(doc, y, "FECHA", up(d.fecha_entrega));
   y = filaCampo(doc, y, "EAPB", up(d.entidad_pago));
   y = filaCampo(doc, y, "NOMBRES Y APELLIDOS", up(d.paciente));
-  y = filaCampo(
-    doc,
-    y,
-    "TIPO Y N° DOCUMENTO",
-    up([d.tipo_documento, d.documento].filter(Boolean).join(" ")) || up(d.documento),
-  );
+  y = filaTipoDocumento(doc, y, d);
+  y = filaCampo(doc, y, "CIE-10 PRINCIPAL", up(d.cie10));
   y = filaCampo(doc, y, "ENTIDAD RECEPTORA", up(d.entidad_receptora) || up(d.ips_receptora));
   y = filaCampo(doc, y, "EMPRESA DE TRASLADO", up(d.empresa_traslado));
 
