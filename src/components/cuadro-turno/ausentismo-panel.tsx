@@ -223,8 +223,8 @@ function NuevoRegistroDialog({ adminId, onClose, onDone }: { adminId: string; on
           <div><Label className="text-xs">Fecha de registro</Label><Input type="date" value={f.registration_date} onChange={set("registration_date")} /></div>
           <div><Label className="text-xs">Fecha inicio *</Label><Input type="date" value={f.start_date || ""} onChange={set("start_date")} /></div>
           <div><Label className="text-xs">Fecha fin</Label><Input type="date" value={f.end_date || ""} onChange={set("end_date")} /></div>
-          <div><Label className="text-xs">Hora inicio</Label><Input type="time" value={f.start_time || ""} onChange={set("start_time")} /></div>
-          <div><Label className="text-xs">Hora fin</Label><Input type="time" value={f.end_time || ""} onChange={set("end_time")} /></div>
+          <div><Label className="text-xs">Hora inicio</Label><TimeField value={f.start_time || ""} onChange={(v) => setF({ ...f, start_time: v })} /></div>
+          <div><Label className="text-xs">Hora fin</Label><TimeField value={f.end_time || ""} onChange={(v) => setF({ ...f, end_time: v })} /></div>
           <div><Label className="text-xs">No. minutos</Label><Input type="number" value={f.minutes_number || ""} onChange={set("minutes_number")} placeholder="auto" /></div>
           <div><Label className="text-xs">No. días</Label><Input type="number" value={f.days_number || ""} onChange={set("days_number")} placeholder="auto" /></div>
           <div><Label className="text-xs">Evento presentado *</Label>
