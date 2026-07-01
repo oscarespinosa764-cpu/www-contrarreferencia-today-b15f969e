@@ -78,6 +78,12 @@ const TIPO_META: Record<
     extra1Label: "Justificación",
   },
   MOTIVO_NEG: { label: "Motivos de negación", usadoEn: "Remisiones", modulo: "Motivos" },
+  DOC_ENTREGA: {
+    label: "Documentos de entrega",
+    usadoEn: "Remisiones salientes · Entrega documental (firma QR)",
+    modulo: "Remisiones",
+    extra1Label: "Origen (EPS / ARL / SOAT / PARTICULAR / COMÚN)",
+  },
 };
 
 function metaOf(tipo: string) {
