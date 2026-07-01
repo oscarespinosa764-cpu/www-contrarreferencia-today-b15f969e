@@ -198,6 +198,7 @@ export function SeguimientoDialog({
   const [busy, setBusy] = useState(false);
   const [busyEvo, setBusyEvo] = useState(false);
   const [entregaOpen, setEntregaOpen] = useState(false);
+  const [cierreEgreso, setCierreEgreso] = useState<"si" | "no" | "">("");
 
 
   // Radicado
