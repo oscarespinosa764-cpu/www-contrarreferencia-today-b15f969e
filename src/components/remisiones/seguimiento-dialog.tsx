@@ -971,6 +971,7 @@ export function SeguimientoDialog({
     setEvoCorreo(false);
     setEvoPlataforma(false);
     setEvoEsp({});
+    setCierreEgreso("");
     setEvoMotivoPend("");
     setFisNombre("");
     setFisParentesco("");
