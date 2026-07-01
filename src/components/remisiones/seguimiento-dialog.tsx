@@ -1024,6 +1024,17 @@ export function SeguimientoDialog({
       }
       if (evoRequiereMotivo && !evoMotivoPend.trim())
         return toast.error("Indica el motivo del pendiente");
+      // 9.8 · Advertir si no se marcó ninguna especialidad ni se dejó observación.
+      if (
+        esEvolucionSal &&
+        especialidadesList.length > 0 &&
+        evoEspEvolucionadas.length === 0 &&
+        !detalle.trim() &&
+        !window.confirm(
+          "No ha marcado especialidades evolucionadas ni ha registrado observación. ¿Desea continuar?",
+        )
+      )
+        return;
       if (requiereMotivoLegacy && mostrarEvolucionLegacy && !motivoEvo.trim())
         return toast.error("Indica el motivo de la evolución pendiente");
     }
