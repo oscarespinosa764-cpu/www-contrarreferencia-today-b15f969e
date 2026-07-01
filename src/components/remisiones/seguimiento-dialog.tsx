@@ -1722,10 +1722,17 @@ export function SeguimientoDialog({
                   />
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* ENTREGA DE DOCUMENTACIÓN AMBULANCIA (fase final) */}
+          {esSaliente && esEntregaDoc && (
+            <div className={sectionCls}>
               <div className="rounded-md border border-dashed p-3">
                 <p className="mb-2 text-xs text-muted-foreground">
-                  Llegada de ambulancia / entrega documental: genere portada, checklist y QR de
-                  firma para el tripulante.
+                  Fase final: la ambulancia llegó por el paciente. Registre origen documental,
+                  genere portada y QR de firma para el tripulante y, tras la firma, la plantilla
+                  Índigo corta y el checklist firmado.
                 </p>
                 <Button
                   type="button"
@@ -1734,7 +1741,7 @@ export function SeguimientoDialog({
                   className="w-full"
                   onClick={() => setEntregaOpen(true)}
                 >
-                  Entrega documental · Firma por QR
+                  Abrir · Entrega documental / Firma por QR
                 </Button>
               </div>
               <EntregaDocumentalDialog
@@ -1744,8 +1751,40 @@ export function SeguimientoDialog({
                 tipoCaso={tipoCaso}
                 paciente={paciente}
                 documento={documento}
+                ipsReceptora={caso?.ips_receptora ?? ipsReceptora}
                 empresaTraslado={empresaAmb}
+                especialidad={especialidadesTratantesTxt}
+                entidadPago={caso?.eapb}
               />
+            </div>
+          )}
+
+          {/* CIERRE POR ADMISIÓN */}
+          {esSaliente && esCierre && (
+            <div className={sectionCls}>
+              <div className="space-y-1.5">
+                <Label className={labelCls}>¿Paciente ya egresó de la institución?</Label>
+                <Select value={cierreEgreso} onValueChange={(v) => setCierreEgreso(v as "si" | "no")}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="si">SÍ</SelectItem>
+                    <SelectItem value="no">NO</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {cierreEgreso === "no" && (
+                <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                  El caso NO se cerrará. Se guardará la observación registrada como seguimiento.
+                </p>
+              )}
+              {cierreEgreso === "si" && (
+                <p className="rounded-md border border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
+                  Al guardar se generará la plantilla de cierre, se cerrará el caso y pasará al
+                  historial.
+                </p>
+              )}
             </div>
           )}
 
