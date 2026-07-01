@@ -940,6 +940,7 @@ export function SeguimientoDialog({
     setRadicado("");
     setEvoCorreo(false);
     setEvoPlataforma(false);
+    setEvoEsp({});
     setEvoMotivoPend("");
     setFisNombre("");
     setFisParentesco("");
