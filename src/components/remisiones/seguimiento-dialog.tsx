@@ -45,6 +45,7 @@ import {
   generarPlantillaAceptacionIps,
   generarPlantillaAmbulancia,
   generarPlantillaCancelacionRemision,
+  generarPlantillaCierreAdmision,
   generarPlantillaCorreoSeg,
   generarPlantillaEvolucionDiaria,
   generarPlantillaEvolucionEspecialidades,
@@ -98,6 +99,8 @@ const T = {
   ACEPTACION: "ACEPTACIÓN DE IPS RECEPTORA",
   NEGACIONES: "TRAZABILIDAD DE NEGACIONES",
   AMBULANCIA: "AMBULANCIA COORDINADA",
+  ENTREGA_DOC: "ENTREGA DE DOCUMENTACIÓN AMBULANCIA",
+  CIERRE: "CIERRE POR ADMISIÓN",
   CANCELACION: "CANCELACIÓN DE TRÁMITE DE REMISIÓN",
   PERTINENCIA: "REVISIÓN AUTORIZACIÓN ESTANCIA (CANCELACIÓN)",
   OTRO: "OTRO",
@@ -196,6 +199,7 @@ export function SeguimientoDialog({
   const [busy, setBusy] = useState(false);
   const [busyEvo, setBusyEvo] = useState(false);
   const [entregaOpen, setEntregaOpen] = useState(false);
+  const [cierreEgreso, setCierreEgreso] = useState<"si" | "no" | "">("");
 
 
   // Radicado
@@ -402,6 +406,8 @@ export function SeguimientoDialog({
       T.ACEPTACION,
       T.NEGACIONES,
       T.AMBULANCIA,
+      T.ENTREGA_DOC,
+      T.CIERRE,
       T.CANCELACION,
       T.PERTINENCIA,
       T.OTRO,
@@ -473,6 +479,8 @@ export function SeguimientoDialog({
   const esRadicado = usaIndigo && tipoSeg === T.RADICADO;
   const esFisico = usaIndigo && tipoSeg === T.FISICO;
   const esTelefono = usaIndigo && tipoSeg === T.TELEFONO;
+  const esEntregaDoc = usaIndigo && tipoSeg === T.ENTREGA_DOC;
+  const esCierre = usaIndigo && tipoSeg === T.CIERRE;
 
   // --- Estado de evolución diaria (salientes v2) ---
   const evoEstadoSal: EvolucionEstado = useMemo(() => {
@@ -657,6 +665,12 @@ export function SeguimientoDialog({
           funcionario: revFuncionario,
           cargo: revCargo,
         });
+        break;
+      case T.CIERRE:
+        base = generarPlantillaCierreAdmision(caso?.ips_receptora ?? ipsReceptora);
+        break;
+      case T.ENTREGA_DOC:
+        base = "";
         break;
       case T.OTRO:
         base = generarPlantillaOtroSeg(otroCual, estadoSolicitud);
@@ -938,6 +952,8 @@ export function SeguimientoDialog({
           funcionario: revFuncionario.trim() || null,
           cargo: revCargo.trim() || null,
         };
+      case T.CIERRE:
+        return { egreso: cierreEgreso || null, ips_receptora: caso?.ips_receptora ?? ipsReceptora ?? null };
       case T.OTRO:
         return { cual: otroCual.trim() };
       default:
@@ -955,6 +971,7 @@ export function SeguimientoDialog({
     setEvoCorreo(false);
     setEvoPlataforma(false);
     setEvoEsp({});
+    setCierreEgreso("");
     setEvoMotivoPend("");
     setFisNombre("");
     setFisParentesco("");
@@ -1049,6 +1066,8 @@ export function SeguimientoDialog({
         )
       )
         return;
+      if (esCierre && !cierreEgreso)
+        return toast.error("Indica si el paciente ya egresó de la institución");
       if (requiereMotivoLegacy && mostrarEvolucionLegacy && !motivoEvo.trim())
         return toast.error("Indica el motivo de la evolución pendiente");
     }
@@ -1142,7 +1161,12 @@ export function SeguimientoDialog({
           update.archivado = true;
         } else {
           update.estado = "ABIERTO";
-        }
+      }
+      // Cierre por admisión (Parte 18): si el paciente egresó, cerrar y archivar.
+      if (esCierre && cierreEgreso === "si") {
+        update.estado = "EGRESADO/CERRADO";
+        update.archivado = true;
+      }
       }
 
       if (Object.keys(update).length > 0) {
@@ -1716,10 +1740,17 @@ export function SeguimientoDialog({
                   />
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* ENTREGA DE DOCUMENTACIÓN AMBULANCIA (fase final) */}
+          {esSaliente && esEntregaDoc && (
+            <div className={sectionCls}>
               <div className="rounded-md border border-dashed p-3">
                 <p className="mb-2 text-xs text-muted-foreground">
-                  Llegada de ambulancia / entrega documental: genere portada, checklist y QR de
-                  firma para el tripulante.
+                  Fase final: la ambulancia llegó por el paciente. Registre origen documental,
+                  genere portada y QR de firma para el tripulante y, tras la firma, la plantilla
+                  Índigo corta y el checklist firmado.
                 </p>
                 <Button
                   type="button"
@@ -1728,7 +1759,7 @@ export function SeguimientoDialog({
                   className="w-full"
                   onClick={() => setEntregaOpen(true)}
                 >
-                  Entrega documental · Firma por QR
+                  Abrir · Entrega documental / Firma por QR
                 </Button>
               </div>
               <EntregaDocumentalDialog
@@ -1738,8 +1769,40 @@ export function SeguimientoDialog({
                 tipoCaso={tipoCaso}
                 paciente={paciente}
                 documento={documento}
+                ipsReceptora={caso?.ips_receptora ?? ipsReceptora}
                 empresaTraslado={empresaAmb}
+                especialidad={especialidadesList.join(", ")}
+                entidadPago={caso?.eapb}
               />
+            </div>
+          )}
+
+          {/* CIERRE POR ADMISIÓN */}
+          {esSaliente && esCierre && (
+            <div className={sectionCls}>
+              <div className="space-y-1.5">
+                <Label className={labelCls}>¿Paciente ya egresó de la institución?</Label>
+                <Select value={cierreEgreso} onValueChange={(v) => setCierreEgreso(v as "si" | "no")}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="si">SÍ</SelectItem>
+                    <SelectItem value="no">NO</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {cierreEgreso === "no" && (
+                <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                  El caso NO se cerrará. Se guardará la observación registrada como seguimiento.
+                </p>
+              )}
+              {cierreEgreso === "si" && (
+                <p className="rounded-md border border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
+                  Al guardar se generará la plantilla de cierre, se cerrará el caso y pasará al
+                  historial.
+                </p>
+              )}
             </div>
           )}
 

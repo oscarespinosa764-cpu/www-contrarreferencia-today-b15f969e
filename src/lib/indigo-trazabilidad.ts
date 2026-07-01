@@ -368,6 +368,12 @@ export function generarPlantillaAmbulancia(
   return `${e} INFORMA QUE EL TRASLADO EN AMBULANCIA TAB YA SE COORDINÓ Y QUEDA PROGRAMADO PARA EL DÍA ${f} A LAS ${h}, POR LO QUE SE INFORMA A FAMILIAR, PACIENTE Y SERVICIO PARA QUE TENGAN TODO LISTO.`;
 }
 
+// Cierre por admisión (Parte 18): confirma egreso y cierra el proceso.
+export function generarPlantillaCierreAdmision(ipsReceptora: string): string {
+  const ips = ph(ipsReceptora, "IPS RECEPTORA");
+  return `SE CONFIRMA EGRESO DEL PACIENTE DE LA INSTITUCIÓN PARA TRASLADO HACIA ${ips}, POSTERIOR A ENTREGA DOCUMENTAL Y COORDINACIÓN DEL TRASLADO. SE CIERRA PROCESO DE REMISIÓN.`;
+}
+
 // ---------------------------------------------------------------------------
 // Cierre de trámite (sección 12).
 // ---------------------------------------------------------------------------

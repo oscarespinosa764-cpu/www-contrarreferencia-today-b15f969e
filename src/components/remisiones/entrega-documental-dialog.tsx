@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
@@ -14,25 +16,27 @@ import {
   X,
   QrCode,
   FileText,
-  ListChecks,
   Ban,
   RefreshCw,
   Download,
   Loader2,
   CheckCircle2,
+  CheckSquare,
+  Eraser,
 } from "lucide-react";
 import {
-  DOCUMENTOS_DEFAULT,
+  ORIGENES_DOC,
+  documentosPorOrigen,
   crearSesionFirma,
   anularSesion,
   urlFirma,
-  generarPlantillaIndigoEntrega,
+  generarPlantillaIndigoCorta,
   type DocItem,
+  type OrigenDoc,
   type SnapshotEntrega,
 } from "@/lib/entrega-documental";
 import {
   descargarPortadaPDF,
-  descargarChecklistPDF,
   descargarFirmadoPDF,
   type EntregaDatos,
 } from "@/lib/entrega-firma-pdf";
@@ -46,6 +50,11 @@ type Props = {
   documento?: string | null;
   ipsReceptora?: string | null;
   empresaTraslado?: string | null;
+  especialidad?: string | null;
+  entidadPago?: string | null;
+  tipoAmbulancia?: string | null;
+  quienAcepta?: string | null;
+  cargoAcepta?: string | null;
 };
 
 type SesionRow = {
@@ -72,7 +81,13 @@ export function EntregaDocumentalDialog({
   documento,
   ipsReceptora,
   empresaTraslado,
+  especialidad,
+  entidadPago,
+  tipoAmbulancia,
+  quienAcepta,
+  cargoAcepta,
 }: Props) {
+  const [origen, setOrigen] = useState<OrigenDoc | "">("");
   const [docs, setDocs] = useState<DocItem[]>([]);
   const [nuevoDoc, setNuevoDoc] = useState("");
   const [empresa, setEmpresa] = useState("");
@@ -82,17 +97,27 @@ export function EntregaDocumentalDialog({
   const [token, setToken] = useState<string | null>(null);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [generando, setGenerando] = useState(false);
+  const [indigoCorta, setIndigoCorta] = useState("");
 
+  // Autollenado con datos previos del caso (Parte 12.1).
   useEffect(() => {
     if (!open) return;
-    setDocs(DOCUMENTOS_DEFAULT.map((label) => ({ label, marcado: true })));
-    setEmpresa(empresaTraslado ?? "");
-    setIps(ipsReceptora ?? "");
+    setOrigen("");
+    setDocs([]);
+    setEmpresa((empresaTraslado ?? "").toUpperCase());
+    setIps((ipsReceptora ?? "").toUpperCase());
     setFecha(new Date().toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" }));
     setSesionId(null);
     setToken(null);
     setQrUrl(null);
+    setIndigoCorta("");
   }, [open, empresaTraslado, ipsReceptora]);
+
+  // Al elegir origen, cargar checklist base del catálogo por origen (Parte 12.4).
+  const cambiarOrigen = (v: OrigenDoc) => {
+    setOrigen(v);
+    setDocs(documentosPorOrigen(v).map((label) => ({ label, marcado: true })));
+  };
 
   const snapshot = useMemo<SnapshotEntrega>(
     () => ({
@@ -103,11 +128,62 @@ export function EntregaDocumentalDialog({
       fecha_entrega: fecha,
       documentos: docs,
       caso_ref: documento ?? casoId,
+      origen: origen || null,
+      especialidad: especialidad ?? undefined,
+      entidad_pago: entidadPago ?? undefined,
+      tipo_ambulancia: tipoAmbulancia ?? undefined,
+      quien_acepta: quienAcepta ?? undefined,
+      cargo_acepta: cargoAcepta ?? undefined,
     }),
-    [paciente, documento, ips, empresa, fecha, docs, casoId],
+    [
+      paciente,
+      documento,
+      ips,
+      empresa,
+      fecha,
+      docs,
+      casoId,
+      origen,
+      especialidad,
+      entidadPago,
+      tipoAmbulancia,
+      quienAcepta,
+      cargoAcepta,
+    ],
   );
 
-  const datosPDF: EntregaDatos = snapshot;
+  const datosPDF: EntregaDatos = useMemo(
+    () => ({
+      paciente,
+      documento: documento ?? "",
+      ips_receptora: ips,
+      empresa_traslado: empresa,
+      fecha_entrega: fecha,
+      documentos: docs,
+      caso_ref: documento ?? casoId,
+      origen: origen || undefined,
+      especialidad: especialidad ?? undefined,
+      entidad_pago: entidadPago ?? undefined,
+      entidad_receptora: ips,
+      tipo_ambulancia: tipoAmbulancia ?? undefined,
+      quien_acepta: quienAcepta ?? undefined,
+      modalidad: "REMISIÓN",
+    }),
+    [
+      paciente,
+      documento,
+      ips,
+      empresa,
+      fecha,
+      docs,
+      casoId,
+      origen,
+      especialidad,
+      entidadPago,
+      tipoAmbulancia,
+      quienAcepta,
+    ],
+  );
 
   // Estado de la sesión en vivo (polling ligero solo mientras hay QR activo).
   const sesion = useQuery({
@@ -132,9 +208,23 @@ export function EntregaDocumentalDialog({
   const estado = sesion.data?.estado;
   const firmada = estado === "FIRMADA";
 
+  // Al confirmarse la firma, generar la plantilla Índigo corta editable (Parte 14).
+  useEffect(() => {
+    if (firmada && sesion.data && !indigoCorta) {
+      setIndigoCorta(
+        generarPlantillaIndigoCorta(snapshot, {
+          nombre: sesion.data.firmante_nombre ?? "",
+          cargo: sesion.data.firmante_cargo ?? "",
+        }),
+      );
+    }
+  }, [firmada, sesion.data, indigoCorta, snapshot]);
+
   const toggleDoc = (i: number) =>
     setDocs((p) => p.map((d, idx) => (idx === i ? { ...d, marcado: !d.marcado } : d)));
   const quitarDoc = (i: number) => setDocs((p) => p.filter((_, idx) => idx !== i));
+  const marcarTodos = () => setDocs((p) => p.map((d) => ({ ...d, marcado: true })));
+  const limpiarMarcas = () => setDocs((p) => p.map((d) => ({ ...d, marcado: false })));
   const agregarDoc = () => {
     const v = nuevoDoc.trim();
     if (!v) return;
@@ -142,23 +232,13 @@ export function EntregaDocumentalDialog({
     setNuevoDoc("");
   };
 
-  const copiarIndigo = (conFirma = false) => {
-    const f =
-      conFirma && sesion.data
-        ? {
-            nombre: sesion.data.firmante_nombre ?? "",
-            cargo: sesion.data.firmante_cargo ?? "",
-            empresa: sesion.data.firmante_empresa ?? "",
-            documento: sesion.data.firmante_documento ?? "",
-            firmado_at: sesion.data.firmado_at ?? "",
-            codigo: sesion.data.codigo_verificacion ?? "",
-          }
-        : undefined;
-    navigator.clipboard.writeText(generarPlantillaIndigoEntrega(snapshot, f));
+  const copiarIndigoCorta = () => {
+    navigator.clipboard.writeText(indigoCorta || generarPlantillaIndigoCorta(snapshot));
     toast.success("Plantilla Índigo copiada");
   };
 
   const generarQR = async () => {
+    if (!origen) return toast.error("Selecciona el tipo de origen / responsable documental");
     setGenerando(true);
     try {
       const { data: u } = await supabase.auth.getUser();
@@ -269,7 +349,7 @@ export function EntregaDocumentalDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Datos base */}
+          {/* Datos base (autollenados, editables) */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label className="text-xs">Empresa de traslado</Label>
@@ -283,93 +363,167 @@ export function EntregaDocumentalDialog({
               <Label className="text-xs">Fecha/hora de entrega</Label>
               <Input value={fecha} onChange={(e) => setFecha(e.target.value)} disabled={!!sesionId} />
             </div>
-          </div>
-
-          {/* Checklist documental */}
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase text-muted-foreground">
-              Lista de chequeo documental
-            </Label>
-            <div className="space-y-1.5 rounded-md border p-2">
-              {docs.map((d, i) => (
-                <div key={i} className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={d.marcado}
-                    onCheckedChange={() => toggleDoc(i)}
-                    disabled={!!sesionId}
-                  />
-                  <span className="flex-1">{d.label}</span>
-                  {!sesionId && (
-                    <button onClick={() => quitarDoc(i)} className="text-muted-foreground hover:text-destructive">
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              ))}
-              {!sesionId && (
-                <div className="flex items-center gap-2 pt-1">
-                  <Input
-                    value={nuevoDoc}
-                    onChange={(e) => setNuevoDoc(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), agregarDoc())}
-                    uppercase placeholder="Agregar documento…"
-                    className="h-8 text-sm"
-                  />
-                  <Button type="button" size="sm" variant="outline" onClick={agregarDoc}>
-                    <Plus className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              )}
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label className="text-xs">Tipo de origen / responsable documental</Label>
+              <Select
+                value={origen}
+                onValueChange={(v) => cambiarOrigen(v as OrigenDoc)}
+                disabled={!!sesionId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona: EPS / ARL / SOAT / Particular" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ORIGENES_DOC.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          {/* Acciones de generación bajo demanda */}
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => copiarIndigo(false)}>
-              <Copy className="mr-1.5 h-3.5 w-3.5" /> Plantilla Índigo
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => descargarPortadaPDF(datosPDF)}>
-              <FileText className="mr-1.5 h-3.5 w-3.5" /> Portada PDF
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => descargarChecklistPDF(datosPDF)}>
-              <ListChecks className="mr-1.5 h-3.5 w-3.5" /> Checklist PDF
-            </Button>
-          </div>
-
-          {/* QR */}
-          {!sesionId ? (
-            <Button type="button" className="w-full" onClick={generarQR} disabled={generando}>
-              {generando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
-              Generar QR de firma
-            </Button>
-          ) : firmada ? (
-            <div className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900 dark:bg-emerald-950/30">
-              <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
-                <CheckCircle2 className="h-5 w-5" />
-                <span className="font-semibold">Entrega firmada</span>
+          {/* Checklist documental (según origen) */}
+          {origen ? (
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Label className="text-xs font-semibold uppercase text-muted-foreground">
+                  Lista de chequeo · {origen}
+                </Label>
+                {!sesionId && (
+                  <div className="flex gap-1.5">
+                    <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[11px]" onClick={marcarTodos}>
+                      <CheckSquare className="mr-1 h-3 w-3" /> Marcar todos
+                    </Button>
+                    <Button type="button" size="sm" variant="ghost" className="h-6 px-2 text-[11px]" onClick={limpiarMarcas}>
+                      <Eraser className="mr-1 h-3 w-3" /> Limpiar
+                    </Button>
+                  </div>
+                )}
               </div>
-              <div className="space-y-0.5 text-sm">
-                <p><b>Firmante:</b> {sesion.data?.firmante_nombre} — {sesion.data?.firmante_cargo}</p>
-                <p><b>Empresa:</b> {sesion.data?.firmante_empresa || "—"}</p>
-                <p><b>Código:</b> {sesion.data?.codigo_verificacion}</p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" size="sm" onClick={descargarFirmado}>
-                  <Download className="mr-1.5 h-3.5 w-3.5" /> PDF firmado
-                </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => copiarIndigo(true)}>
-                  <Copy className="mr-1.5 h-3.5 w-3.5" /> Copiar para Índigo
-                </Button>
+              <div className="space-y-1.5 rounded-md border p-2">
+                {docs.map((d, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={d.marcado}
+                      onCheckedChange={() => toggleDoc(i)}
+                      disabled={!!sesionId}
+                    />
+                    <span className="flex-1">{d.label}</span>
+                    {!sesionId && (
+                      <button onClick={() => quitarDoc(i)} className="text-muted-foreground hover:text-destructive">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {!sesionId && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <Input
+                      value={nuevoDoc}
+                      onChange={(e) => setNuevoDoc(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), agregarDoc())}
+                      uppercase
+                      placeholder="Agregar documento…"
+                      className="h-8 text-sm"
+                    />
+                    <Button type="button" size="sm" variant="outline" onClick={agregarDoc}>
+                      <Plus className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
+            <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+              Selecciona el tipo de origen para cargar la lista de chequeo institucional.
+            </p>
+          )}
+
+          {/* PASO 1 — Antes de la firma: solo Portada PDF + Generar QR (Parte 13.1) */}
+          {!sesionId ? (
+            <div className="space-y-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => descargarPortadaPDF(datosPDF)}
+              >
+                <FileText className="mr-1.5 h-3.5 w-3.5" /> Portada PDF
+              </Button>
+              <Button type="button" className="w-full" onClick={generarQR} disabled={generando || !origen}>
+                {generando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
+                Generar QR de firma
+              </Button>
+            </div>
+          ) : firmada ? (
+            /* PASO 3 — Después de la firma (Parte 13.2) */
+            <div className="space-y-4">
+              {/* Bloque 1 · Datos del firmante */}
+              <div className="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900 dark:bg-emerald-950/30">
+                <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                  <CheckCircle2 className="h-5 w-5" />
+                  <span className="font-semibold">Entrega firmada</span>
+                </div>
+                <div className="space-y-0.5 text-sm">
+                  <p><b>Nombre:</b> {sesion.data?.firmante_nombre || "—"}</p>
+                  <p><b>Cargo:</b> {sesion.data?.firmante_cargo || "—"}</p>
+                  <p><b>Empresa:</b> {sesion.data?.firmante_empresa || "—"}</p>
+                  <p><b>Documento/ID:</b> {sesion.data?.firmante_documento || "—"}</p>
+                  <p>
+                    <b>Fecha/hora de firma:</b>{" "}
+                    {sesion.data?.firmado_at
+                      ? new Date(sesion.data.firmado_at).toLocaleString("es-CO")
+                      : "—"}
+                  </p>
+                  <p><b>Código:</b> {sesion.data?.codigo_verificacion || "—"}</p>
+                </div>
+              </div>
+
+              {/* Bloque 2 · Plantilla Índigo corta (editable + copiar) */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold uppercase text-muted-foreground">
+                  Plantilla Índigo corta
+                </Label>
+                <Textarea
+                  value={indigoCorta}
+                  onChange={(e) => setIndigoCorta(e.target.value)}
+                  rows={3}
+                  className="text-sm"
+                />
+                <Button type="button" size="sm" variant="outline" onClick={copiarIndigoCorta}>
+                  <Copy className="mr-1.5 h-3.5 w-3.5" /> Copiar para Índigo
+                </Button>
+              </div>
+
+              {/* Bloque 3 · Checklist PDF firmado */}
+              <Button type="button" size="sm" className="w-full" onClick={descargarFirmado}>
+                <Download className="mr-1.5 h-3.5 w-3.5" /> Descargar Checklist PDF firmado
+              </Button>
+
+              {/* Bloque 4 · Cerrar */}
+              <Button type="button" size="sm" variant="ghost" className="w-full" onClick={() => onOpenChange(false)}>
+                Cerrar
+              </Button>
+            </div>
+          ) : (
+            /* PASO 2 — QR activo, esperando firma */
             <div className="space-y-3 rounded-lg border p-4 text-center">
               {qrUrl && <img src={qrUrl} alt="QR de firma" className="mx-auto h-48 w-48" />}
               <p className="text-xs text-muted-foreground">
                 Escanee el QR con el celular del tripulante. Vence en 2 horas · uso único.
               </p>
               <div className="flex justify-center gap-2">
-                <Button type="button" size="sm" variant="outline" onClick={() => token && (navigator.clipboard.writeText(urlFirma(token)), toast.success("Enlace copiado"))}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    token && (navigator.clipboard.writeText(urlFirma(token)), toast.success("Enlace copiado"))
+                  }
+                >
                   <Copy className="mr-1.5 h-3.5 w-3.5" /> Copiar enlace
                 </Button>
                 <Button type="button" size="sm" variant="outline" onClick={regenerar}>
