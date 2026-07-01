@@ -126,7 +126,7 @@ export function buildOficioHTML(tipo: string, codigo: string, mensaje: string): 
     // ── Tarjeta / oficio ──────────────────────────────────────────
     `<div style="max-width:680px;margin:0 auto;background:#ffffff;border:1px solid ${LINE};border-radius:16px;overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;color:${TEXT};line-height:1.6">`,
 
-    // ── Encabezado institucional (logo · membrete · cruz) ─────────
+    // ── Encabezado institucional (logo · membrete · mascota CECI) ─────────
     `<div style="padding:22px 28px 16px;border-bottom:3px solid ${TEAL};background:linear-gradient(180deg,#eef9fb,#ffffff)">`,
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse"><tr>`,
     // logo
@@ -138,9 +138,9 @@ export function buildOficioHTML(tipo: string, codigo: string, mensaje: string): 
     `<div style="font-size:19px;font-weight:800;color:${MAIN};margin-top:2px;line-height:1.2">${INSTITUCION.nombreLargo}</div>`,
     `<div style="font-size:12px;font-style:italic;color:${BLUE};margin-top:3px">${INSTITUCION.sede}</div>`,
     `</td>`,
-    // cruz / emblema referencia
+    // mascota institucional CECI (reemplaza la cruz médica)
     `<td style="vertical-align:middle;width:84px;text-align:right;padding-left:10px">`,
-    `<img src="${IMG.cruz}" alt="Referencia y contrarreferencia" width="78" style="display:block;width:78px;height:auto;border:0;border-radius:12px;margin-left:auto" /></td>`,
+    `<img src="${IMG.mascota}" alt="CECI - Mascota institucional CEDIM IPS" width="66" style="display:block;width:66px;height:auto;border:0;margin-left:auto" /></td>`,
     `</tr></table>`,
     `</div>`,
 
