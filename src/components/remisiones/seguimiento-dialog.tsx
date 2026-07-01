@@ -2165,6 +2165,28 @@ export function SeguimientoDialog({
                         <Eye className="h-3.5 w-3.5" /> Ver detalle
                       </Button>
                     </div>
+                    {(() => {
+                      const det = parseDetalles(h.detalles);
+                      const estado = det?.estado_evolucion_especialidades as string | undefined;
+                      if (!estado) return null;
+                      const evol = (det?.especialidades_evolucionadas as string[] | null) ?? [];
+                      const pend = (det?.especialidades_pendientes as string[] | null) ?? [];
+                      const medio = det?.medio_evolucion as string | undefined;
+                      return (
+                        <div className="mt-1.5 space-y-0.5 rounded-md bg-muted/40 px-2 py-1 text-[11px]">
+                          <p className="font-semibold text-foreground">
+                            EVOLUCIÓN {estado}
+                            {medio ? ` · ${medio}` : ""}
+                          </p>
+                          {evol.length > 0 && (
+                            <p className="text-muted-foreground">Evolucionadas: {evol.join(", ")}</p>
+                          )}
+                          {pend.length > 0 && (
+                            <p className="text-status-amber">Pendientes: {pend.join(", ")}</p>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>
@@ -2172,6 +2194,7 @@ export function SeguimientoDialog({
           </div>
         </div>
       </DialogContent>
+
 
       {/* Detalle de un seguimiento */}
       <Dialog open={!!verDetalle} onOpenChange={(v) => !v && setVerDetalle(null)}>
