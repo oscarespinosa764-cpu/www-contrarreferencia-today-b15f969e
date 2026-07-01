@@ -269,14 +269,22 @@ export function DictationInjector() {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.dataset.state = "idle";
-      btn.textContent = "🎤";
+      btn.innerHTML = ICON_MIC;
       btn.title = spec.ayuda
         ? spec.ayuda
         : "Dictar por voz. El dictado depende del navegador. Revise el texto antes de guardar.";
       btn.style.cssText =
-        "pointer-events:auto;position:fixed;display:none;width:26px;height:26px;line-height:1;" +
+        "pointer-events:auto;position:fixed;display:none;align-items:center;justify-content:center;" +
+        "width:28px;height:28px;line-height:0;color:var(--muted-foreground,#6b7280);" +
         "border-radius:9999px;border:1px solid var(--border,#d4d4d8);background:var(--card,#fff);" +
-        "font-size:13px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.15);z-index:61;padding:0;";
+        "cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.15);z-index:61;padding:0;" +
+        "transition:transform .12s ease, box-shadow .12s ease, background .12s ease;";
+      btn.addEventListener("mouseenter", () => {
+        if (btn.dataset.state !== "listening") btn.style.transform = "scale(1.08)";
+      });
+      btn.addEventListener("mouseleave", () => {
+        btn.style.transform = "scale(1)";
+      });
       btn.addEventListener("click", (ev) => {
         ev.preventDefault();
         ev.stopPropagation();
@@ -285,6 +293,7 @@ export function DictationInjector() {
       layer.appendChild(btn);
       return btn;
     };
+
 
     const resolve = (spec: InjectSpec): Element[] => {
       const candidates = [
