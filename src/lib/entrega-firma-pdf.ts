@@ -14,7 +14,8 @@ import ceciAsset from "@/assets/ceci-mascota.png.asset.json";
 
 const INSTITUCION = "CENTRO DE IMAGENES DIAGNOSTICAS CEDIM I.P.S S.A.S";
 const NIT = "NIT: 900559103-5";
-const PIE = "SISTEMA DE REFERENCIA Y CONTRARREFERENCIA";
+// Pie institucional oficial (tomado del formato Word/Excel fuente).
+const PIE = "Servicios de salud con calidad y humanización";
 
 const TEXTO_ACEPTACION =
   "Declaro que recibo la documentación relacionada en la lista de chequeo para el traslado " +
