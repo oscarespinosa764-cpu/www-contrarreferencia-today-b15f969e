@@ -197,6 +197,21 @@ export function NuevoRegistroDialog({
   const toggleList = (arr: string[], v: string, set: (x: string[]) => void) =>
     set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
 
+  // "Marcar todos" para IPS de red local (funciona como marcar/desmarcar).
+  const ipsTodasMarcadas = ipsLocales.length > 0 && ipsLocales.every((i) => ipsSel.includes(i));
+  const marcarTodasIps = () =>
+    setIpsSel(ipsTodasMarcadas ? [] : [...ipsLocales]);
+
+  // "Marcar todos" para departamentos de red nacional (NO marca "Otro").
+  const deptosTodosMarcados =
+    departamentos.length > 0 && departamentos.every((d) => deptosSel.includes(d));
+  const marcarTodosDeptos = () => {
+    const conservaOtro = deptosSel.includes("Otro") ? ["Otro"] : [];
+    setDeptosSel(
+      deptosTodosMarcados ? conservaOtro : [...conservaOtro, ...departamentos],
+    );
+  };
+
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["remisiones"] });
     qc.invalidateQueries({ queryKey: ["domiciliarios"] });
@@ -280,6 +295,8 @@ export function NuevoRegistroDialog({
       ...deptosSel.filter((d) => d !== "Otro"),
       ...(deptosSel.includes("Otro") && deptoOtro.trim() ? [deptoOtro.trim()] : []),
     ];
+    if (incluyeNacional && deptosSel.includes("Otro") && !deptoOtro.trim())
+      return toast.error("Indica cuál es el departamento o región en el campo '¿Cuál?'");
     if (incluyeNacional && deptosFinal.length === 0)
       return toast.error("Marca al menos un departamento de red nacional");
 
@@ -652,15 +669,14 @@ export function NuevoRegistroDialog({
                 />
               </div>
 
-              {/* === Trazabilidad ÍNDIGO === */}
-              <div className="space-y-4 rounded-lg border border-border/60 bg-muted/30 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Trazabilidad Índigo
-                </p>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {/* === EAPB · Régimen · Plataforma · Red (trazabilidad) === */}
+              <div className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      EAPB / ERP <span className="text-status-red">*</span>
+                    </Label>
                     <AutoComplete
-                      label="EAPB / ERP"
                       value={eapbSel}
                       options={eapbOptions}
                       placeholder="Escribe para buscar EAPB / ERP…"
@@ -681,12 +697,21 @@ export function NuevoRegistroDialog({
                     )}
                   </div>
 
-                  <SelectField
-                    name="regimen"
-                    label="Régimen"
-                    required
-                    options={
-                      regimenes.length > 0
+                  <div className="space-y-1.5">
+                    <Label htmlFor="regimen" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Régimen <span className="text-status-red">*</span>
+                    </Label>
+                    <select
+                      id="regimen"
+                      name="regimen"
+                      required
+                      defaultValue=""
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="" disabled>
+                        Seleccione…
+                      </option>
+                      {(regimenes.length > 0
                         ? regimenes
                         : [
                             "CONTRIBUTIVO",
@@ -694,36 +719,22 @@ export function NuevoRegistroDialog({
                             "ESPECIAL",
                             "EXCEPCIÓN",
                             "PARTICULAR",
-                            "SOAT",
-                            "ARL",
-                            "PREPAGADA",
                             "NO APLICA",
                           ]
-                    }
-                  />
+                      ).map((o) => (
+                        <option key={o} value={o}>
+                          {o}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
 
-
-
-                  {mostrarPreguntaPlataforma && (
-                    <div className="space-y-1.5">
-                      <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        ¿La plataforma se encuentra funcionando? *
-                      </Label>
-                      <select
-                        value={plataformaFunc}
-                        onChange={(e) => setPlataformaFunc(e.target.value)}
-                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
-                      >
-                        <option value="">Selecciona…</option>
-                        <option value="SI">Sí</option>
-                        <option value="NO">No</option>
-                      </select>
-                    </div>
-                  )}
-
+                {/* Red a la que se comenta + plataforma (agrupados por sentido operativo) */}
+                <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Red a la que se comenta *
+                      Red a la que se comenta <span className="text-status-red">*</span>
                     </Label>
                     <div className="flex flex-wrap gap-4 pt-1">
                       <label className="flex items-center gap-2 text-sm">
@@ -736,13 +747,41 @@ export function NuevoRegistroDialog({
                       </label>
                     </div>
                   </div>
+
+                  {mostrarPreguntaPlataforma && (
+                    <div className="space-y-1.5">
+                      <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        ¿La plataforma se encuentra funcionando? <span className="text-status-red">*</span>
+                      </Label>
+                      <select
+                        value={plataformaFunc}
+                        onChange={(e) => setPlataformaFunc(e.target.value)}
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      >
+                        <option value="">Selecciona…</option>
+                        <option value="SI">Sí</option>
+                        <option value="NO">No</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
 
                 {redLocal && (
                   <div className="space-y-1.5">
-                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      IPS de red local * (marca al menos una)
-                    </Label>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        IPS de red local <span className="text-status-red">*</span> (marca al menos una)
+                      </Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-[11px]"
+                        onClick={marcarTodasIps}
+                      >
+                        {ipsTodasMarcadas ? "Desmarcar todos" : "Marcar todos"}
+                      </Button>
+                    </div>
                     <div className="grid gap-2 sm:grid-cols-2">
                       {ipsLocales.map((ips) => (
                         <label key={ips} className="flex items-center gap-2 text-sm">
@@ -759,9 +798,20 @@ export function NuevoRegistroDialog({
 
                 {incluyeNacional && (
                   <div className="space-y-1.5">
-                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Departamentos de red nacional * (marca al menos uno)
-                    </Label>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Departamentos de red nacional <span className="text-status-red">*</span> (marca al menos uno)
+                      </Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-[11px]"
+                        onClick={marcarTodosDeptos}
+                      >
+                        {deptosTodosMarcados ? "Desmarcar todos" : "Marcar todos"}
+                      </Button>
+                    </div>
                     <div className="grid gap-2 sm:grid-cols-3">
                       {[...departamentos, "Otro"].map((d) => (
                         <label key={d} className="flex items-center gap-2 text-sm">
@@ -777,7 +827,8 @@ export function NuevoRegistroDialog({
                       <Input
                         value={deptoOtro}
                         onChange={(e) => setDeptoOtro(e.target.value)}
-                        placeholder="Escribe el departamento o región"
+                        uppercase
+                        placeholder="¿Cuál? Escribe el departamento o región"
                         className="mt-2"
                       />
                     )}

@@ -568,6 +568,53 @@ export function generarPlantillaEvolucionDiaria(i: EvolucionDiariaInput): string
   return base;
 }
 
+// --- 5b. EVOLUCIÓN DIARIA POR ESPECIALIDADES TRATANTES (Parte 9) ---
+/** Texto del medio de evolución para las plantillas por especialidad. */
+function medioEvoTexto(correo: boolean, plataforma: boolean): string {
+  if (correo && plataforma) return "CORREO Y PLATAFORMA DE LA EAPB";
+  if (plataforma) return "PLATAFORMA DE LA EAPB";
+  if (correo) return "CORREO DE LA EAPB";
+  return "LA EAPB";
+}
+
+export type EvolucionEspInput = {
+  /** Especialidades marcadas como evolucionadas en este seguimiento. */
+  evolucionadas: string[];
+  /** Especialidades que quedan pendientes. */
+  pendientes: string[];
+  enviadoCorreo: boolean;
+  enviadoPlataforma: boolean;
+  /** Observación manual (para el caso sin especialidades marcadas). */
+  observacion?: string;
+};
+
+/**
+ * Genera la plantilla de evolución diaria dejando trazabilidad de qué
+ * especialidades tratantes ya evolucionaron y cuáles quedan pendientes.
+ */
+export function generarPlantillaEvolucionEspecialidades(i: EvolucionEspInput): string {
+  const medio = medioEvoTexto(i.enviadoCorreo, i.enviadoPlataforma);
+  const evo = joinList(i.evolucionadas, "");
+  const pend = joinList(i.pendientes, "");
+
+  // 9.8 · Ninguna especialidad marcada.
+  if (i.evolucionadas.length === 0) {
+    const obs = (i.observacion || "").trim();
+    if (obs) {
+      return `NO SE REGISTRA EVOLUCIÓN POR ESPECIALIDAD TRATANTE EN ESTE SEGUIMIENTO. SE DEJA OBSERVACIÓN PARA CONTINUIDAD DEL PROCESO: ${obs.toUpperCase()}`;
+    }
+    return "NO SE REGISTRA EVOLUCIÓN POR ESPECIALIDAD TRATANTE EN ESTE SEGUIMIENTO. SE DEJA TRAZABILIDAD PARA CONTINUIDAD DEL PROCESO.";
+  }
+
+  // 9.6 · Evolución completa (no quedan pendientes).
+  if (i.pendientes.length === 0) {
+    return `SE REALIZA EVOLUCIÓN DIARIA DEL PROCESO DE REMISIÓN POR LAS ESPECIALIDADES TRATANTES ${evo}, A TRAVÉS DE ${medio}. SE CONTINÚA A LA ESPERA DE RESPUESTA POR PARTE DE LA RED/EAPB.`;
+  }
+
+  // 9.7 · Evolución parcial.
+  return `SE REALIZA EVOLUCIÓN DIARIA DEL PROCESO DE REMISIÓN POR ${evo}, A TRAVÉS DE ${medio}. QUEDA PENDIENTE EVOLUCIÓN POR ${pend} PARA CONTINUIDAD EN EL SIGUIENTE TURNO.`;
+}
+
 // --- 6/7. CORREO ELECTRÓNICO / PLATAFORMA WEB (con ASUNTO) ---
 export function generarPlantillaCorreoSeg(asunto: string, estadoSolicitud: string): string {
   let t = `SE REALIZA SEGUIMIENTO POR CORREO ELECTRÓNICO RELACIONADO CON EL ASUNTO: ${ph(

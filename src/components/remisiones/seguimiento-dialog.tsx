@@ -47,6 +47,7 @@ import {
   generarPlantillaCancelacionRemision,
   generarPlantillaCorreoSeg,
   generarPlantillaEvolucionDiaria,
+  generarPlantillaEvolucionEspecialidades,
   generarPlantillaFisico,
   generarPlantillaNegaciones,
   generarPlantillaNuevoRadicado,
@@ -135,6 +136,20 @@ function splitComma(v?: string | null): string[] {
     .filter(Boolean);
 }
 
+/** Normaliza el campo `detalles` (JSON o string) a un objeto. */
+function parseDetalles(d: unknown): Record<string, unknown> | null {
+  if (!d) return null;
+  if (typeof d === "string") {
+    try {
+      return JSON.parse(d) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  }
+  if (typeof d === "object") return d as Record<string, unknown>;
+  return null;
+}
+
 export function SeguimientoDialog({
   open,
   onOpenChange,
@@ -196,6 +211,8 @@ export function SeguimientoDialog({
   const [evoPlataforma, setEvoPlataforma] = useState(false);
   const [plataformaFuncSeg, setPlataformaFuncSeg] = useState<"" | "SI" | "NO">("");
   const [evoMotivoPend, setEvoMotivoPend] = useState("");
+  // Evolución diaria por especialidades tratantes (Parte 9): marca cuáles ya evolucionaron.
+  const [evoEsp, setEvoEsp] = useState<Record<string, boolean>>({});
 
   // Físico / presencial
   const [acercamiento, setAcercamiento] = useState<AcercamientoTipo>("FAMILIAR");
@@ -419,6 +436,7 @@ export function SeguimientoDialog({
     setEstadoCaso(estadoActual ?? "");
     setIndigoEditada(false);
     setTipoSeg("");
+    setEvoEsp({});
   }, [open, evolucionDetalle, especialidadesList, estadoActual]);
 
   // Prefill desde el caso.
@@ -466,6 +484,31 @@ export function SeguimientoDialog({
   }, [tienePlataforma, evoCorreo, evoPlataforma]);
   const evoMetaSal = evolucionMeta[evoEstadoSal];
   const evoRequiereMotivo = esEvolucionSal && tienePlataforma && evoEstadoSal === "parcial";
+
+  // --- Evolución por especialidades tratantes (Parte 9) ---
+  const evoEspEvolucionadas = useMemo(
+    () => especialidadesList.filter((e) => evoEsp[e]),
+    [especialidadesList, evoEsp],
+  );
+  const evoEspPendientes = useMemo(
+    () => especialidadesList.filter((e) => !evoEsp[e]),
+    [especialidadesList, evoEsp],
+  );
+  const evoEspEstado: "COMPLETA" | "PARCIAL" | "PENDIENTE" =
+    especialidadesList.length === 0
+      ? "PENDIENTE"
+      : evoEspEvolucionadas.length === especialidadesList.length
+        ? "COMPLETA"
+        : evoEspEvolucionadas.length > 0
+          ? "PARCIAL"
+          : "PENDIENTE";
+  const evoEspMeta: Record<string, { chip: string; dot: string }> = {
+    COMPLETA: { chip: "bg-status-green/15 text-status-green", dot: "bg-status-green" },
+    PARCIAL: { chip: "bg-status-amber/15 text-status-amber", dot: "bg-status-amber" },
+    PENDIENTE: { chip: "bg-muted text-muted-foreground", dot: "bg-muted-foreground" },
+  };
+  const toggleEvoEsp = (esp: string) =>
+    setEvoEsp((prev) => ({ ...prev, [esp]: !prev[esp] }));
 
   // Autollenar/limpiar el motivo automático "PLATAFORMA NO FUNCIONAL".
   // Solo aplica al Caso B: se envió por CORREO, falta plataforma y la plataforma NO funciona.
@@ -540,15 +583,27 @@ export function SeguimientoDialog({
         base = generarPlantillaRadicado(radicado);
         break;
       case T.EVOLUCION:
-        base = generarPlantillaEvolucionDiaria({
-          estadoCaso,
-          esTramiteAdministrativo: esAdminCaso,
-          tienePlataforma,
-          plataformaFunciona: tienePlataforma ? plataformaFuncSeg === "SI" : null,
-          enviadoCorreo: evoCorreo,
-          enviadoPlataforma: evoPlataforma,
-          motivoPendiente: evoMotivoPend,
-        });
+        // Con especialidades tratantes registradas, se deja trazabilidad por
+        // especialidad (evolucionadas / pendientes). Sin ellas, plantilla clásica.
+        if (especialidadesList.length > 0) {
+          base = generarPlantillaEvolucionEspecialidades({
+            evolucionadas: evoEspEvolucionadas,
+            pendientes: evoEspPendientes,
+            enviadoCorreo: evoCorreo,
+            enviadoPlataforma: tienePlataforma ? evoPlataforma : false,
+            observacion: detalle,
+          });
+        } else {
+          base = generarPlantillaEvolucionDiaria({
+            estadoCaso,
+            esTramiteAdministrativo: esAdminCaso,
+            tienePlataforma,
+            plataformaFunciona: tienePlataforma ? plataformaFuncSeg === "SI" : null,
+            enviadoCorreo: evoCorreo,
+            enviadoPlataforma: evoPlataforma,
+            motivoPendiente: evoMotivoPend,
+          });
+        }
         break;
       case T.CORREO:
         base = generarPlantillaCorreoSeg(asunto, estadoSolicitud);
@@ -625,6 +680,9 @@ export function SeguimientoDialog({
     evoCorreo,
     evoPlataforma,
     evoMotivoPend,
+    especialidadesList,
+    evoEspEvolucionadas,
+    evoEspPendientes,
     estadoSolicitud,
     asunto,
     acercamiento,
@@ -818,6 +876,20 @@ export function SeguimientoDialog({
           enviado_plataforma: tienePlataforma ? evoPlataforma : null,
           estado_evolucion: evoEstadoSal,
           motivo_pendiente: evoRequiereMotivo ? evoMotivoPend.trim() : null,
+          // Trazabilidad por especialidades tratantes (Parte 9).
+          especialidades_evolucionadas:
+            especialidadesList.length > 0 ? evoEspEvolucionadas : null,
+          especialidades_pendientes:
+            especialidadesList.length > 0 ? evoEspPendientes : null,
+          estado_evolucion_especialidades:
+            especialidadesList.length > 0 ? evoEspEstado : null,
+          medio_evolucion: evoCorreo && evoPlataforma
+            ? "CORREO Y PLATAFORMA"
+            : evoPlataforma
+              ? "PLATAFORMA"
+              : evoCorreo
+                ? "CORREO"
+                : null,
         };
       case T.CORREO:
       case T.PLATAFORMA:
@@ -882,6 +954,7 @@ export function SeguimientoDialog({
     setRadicado("");
     setEvoCorreo(false);
     setEvoPlataforma(false);
+    setEvoEsp({});
     setEvoMotivoPend("");
     setFisNombre("");
     setFisParentesco("");
@@ -965,6 +1038,17 @@ export function SeguimientoDialog({
       }
       if (evoRequiereMotivo && !evoMotivoPend.trim())
         return toast.error("Indica el motivo del pendiente");
+      // 9.8 · Advertir si no se marcó ninguna especialidad ni se dejó observación.
+      if (
+        esEvolucionSal &&
+        especialidadesList.length > 0 &&
+        evoEspEvolucionadas.length === 0 &&
+        !detalle.trim() &&
+        !window.confirm(
+          "No ha marcado especialidades evolucionadas ni ha registrado observación. ¿Desea continuar?",
+        )
+      )
+        return;
       if (requiereMotivoLegacy && mostrarEvolucionLegacy && !motivoEvo.trim())
         return toast.error("Indica el motivo de la evolución pendiente");
     }
@@ -1338,8 +1422,63 @@ export function SeguimientoDialog({
                   />
                 </div>
               )}
+
+              {/* Especialidades tratantes (Parte 9) */}
+              <div className="space-y-2 rounded-lg border border-border/60 bg-background/40 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className={labelCls}>Especialidades tratantes</p>
+                  {especialidadesList.length > 0 && (
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${evoEspMeta[evoEspEstado].chip}`}
+                    >
+                      <span className={`h-2 w-2 rounded-full ${evoEspMeta[evoEspEstado].dot}`} />
+                      EVOLUCIÓN {evoEspEstado}
+                    </span>
+                  )}
+                </div>
+                {especialidadesList.length === 0 ? (
+                  <p className="text-xs italic text-muted-foreground">
+                    No hay especialidades tratantes registradas para este caso. Puedes continuar con la observación manual.
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-[11px] text-muted-foreground">
+                      Marca las especialidades que ya fueron evolucionadas en este seguimiento.
+                    </p>
+                    <div className="space-y-1.5">
+                      {especialidadesList.map((esp) => (
+                        <label
+                          key={esp}
+                          className="flex items-center justify-between gap-2 rounded-md border border-border/50 px-2 py-1.5 text-sm"
+                        >
+                          <span className="flex items-center gap-2">
+                            <Checkbox
+                              checked={!!evoEsp[esp]}
+                              onCheckedChange={() => toggleEvoEsp(esp)}
+                            />
+                            {esp}
+                          </span>
+                          <span
+                            className={`text-[10px] font-bold ${
+                              evoEsp[esp] ? "text-status-green" : "text-muted-foreground"
+                            }`}
+                          >
+                            {evoEsp[esp] ? "EVOLUCIONADA" : "PENDIENTE"}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                    {evoEspEstado === "PARCIAL" && (
+                      <p className="text-[11px] text-status-amber">
+                        Pendiente: {evoEspPendientes.join(", ")}.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           )}
+
 
           {/* FÍSICO O PRESENCIAL */}
           {esFisico && (
@@ -2026,6 +2165,28 @@ export function SeguimientoDialog({
                         <Eye className="h-3.5 w-3.5" /> Ver detalle
                       </Button>
                     </div>
+                    {(() => {
+                      const det = parseDetalles(h.detalles);
+                      const estado = det?.estado_evolucion_especialidades as string | undefined;
+                      if (!estado) return null;
+                      const evol = (det?.especialidades_evolucionadas as string[] | null) ?? [];
+                      const pend = (det?.especialidades_pendientes as string[] | null) ?? [];
+                      const medio = det?.medio_evolucion as string | undefined;
+                      return (
+                        <div className="mt-1.5 space-y-0.5 rounded-md bg-muted/40 px-2 py-1 text-[11px]">
+                          <p className="font-semibold text-foreground">
+                            EVOLUCIÓN {estado}
+                            {medio ? ` · ${medio}` : ""}
+                          </p>
+                          {evol.length > 0 && (
+                            <p className="text-muted-foreground">Evolucionadas: {evol.join(", ")}</p>
+                          )}
+                          {pend.length > 0 && (
+                            <p className="text-status-amber">Pendientes: {pend.join(", ")}</p>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>
@@ -2033,6 +2194,7 @@ export function SeguimientoDialog({
           </div>
         </div>
       </DialogContent>
+
 
       {/* Detalle de un seguimiento */}
       <Dialog open={!!verDetalle} onOpenChange={(v) => !v && setVerDetalle(null)}>
@@ -2065,6 +2227,27 @@ export function SeguimientoDialog({
                   {(verDetalle.telefono as string) ? ` · ${verDetalle.telefono as string}` : ""}
                 </p>
               )}
+              {(() => {
+                const det = parseDetalles(verDetalle.detalles);
+                const estado = det?.estado_evolucion_especialidades as string | undefined;
+                if (!estado) return null;
+                const evol = (det?.especialidades_evolucionadas as string[] | null) ?? [];
+                const pend = (det?.especialidades_pendientes as string[] | null) ?? [];
+                const medio = det?.medio_evolucion as string | undefined;
+                return (
+                  <div className="space-y-1">
+                    <p className={labelCls}>Evolución por especialidades</p>
+                    <p className="text-foreground">
+                      Estado: <span className="font-semibold">{estado}</span>
+                      {medio ? ` · ${medio}` : ""}
+                    </p>
+                    {evol.length > 0 && <p>Evolucionadas: {evol.join(", ")}</p>}
+                    {pend.length > 0 && (
+                      <p className="text-status-amber">Pendientes: {pend.join(", ")}</p>
+                    )}
+                  </div>
+                );
+              })()}
               {(verDetalle.detalle as string) && (
                 <div>
                   <p className={labelCls}>Observaciones</p>
