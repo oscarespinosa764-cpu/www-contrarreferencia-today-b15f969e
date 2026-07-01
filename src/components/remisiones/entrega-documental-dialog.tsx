@@ -81,6 +81,8 @@ export function EntregaDocumentalDialog({
   tipoCaso,
   paciente,
   documento,
+  tipoDocumento,
+  cie10,
   ipsReceptora,
   empresaTraslado,
   especialidad,
