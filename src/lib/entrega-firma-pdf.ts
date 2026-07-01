@@ -148,6 +148,34 @@ function descargar(doc: Doc, nombre: string) {
   doc.save(nombre);
 }
 
+/** Línea oficial de tipo de documento con casillas CC/TI/RC/CN + N° y CIE-10. */
+function filaTipoDocumento(doc: Doc, y: number, d: EntregaDatos): number {
+  const tipo = up(d.tipo_documento);
+  const opts: [string, string][] = [
+    ["CC", "CC"],
+    ["TI", "TI"],
+    ["RC", "RC"],
+    ["CN", "CN"],
+  ];
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.text("TIPO DE DOCUMENTO:", 16, y);
+  let x = 16 + doc.getTextWidth("TIPO DE DOCUMENTO: ") + 2;
+  doc.setFont("helvetica", "normal");
+  for (const [lbl, val] of opts) {
+    doc.text(lbl, x, y);
+    x += doc.getTextWidth(lbl) + 1.5;
+    doc.rect(x, y - 3.2, 4, 4);
+    if (tipo === val) doc.text("X", x + 0.9, y - 0.2);
+    x += 8;
+  }
+  doc.setFont("helvetica", "bold");
+  doc.text("No. DOCUMENTO:", x, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(up(d.documento) || "—", x + doc.getTextWidth("No. DOCUMENTO: ") + 1, y);
+  return y + 6.5;
+}
+
 /** Portada — "REFERENCIA Y CONTRARREFERENCIA" (formato oficial). No persiste. */
 export async function descargarPortadaPDF(d: EntregaDatos) {
   const doc = await nuevoDoc("REFERENCIA Y CONTRARREFERENCIA");
