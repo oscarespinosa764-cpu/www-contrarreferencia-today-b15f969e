@@ -7,7 +7,7 @@
 // Los layouts respetan los formatos institucionales oficiales:
 //   - Portada  -> "REFERENCIA Y CONTRARREFERENCIA" (Entrega de paciente).
 //   - Checklist -> "GU-FR Lista de Chequeo de Documentacion Referencia".
-// Encabezado institucional: logo CEDIM (izq.) + título (centro) + mascota CECI (der.).
+// Encabezado institucional: logo CEDIM (izq.) + mascota CECI (der.).
 
 import logoAsset from "@/assets/cedim-logo.png.asset.json";
 import ceciAsset from "@/assets/ceci-mascota.png.asset.json";
@@ -17,11 +17,15 @@ const NIT = "NIT: 900559103-5";
 // Pie institucional oficial (tomado del formato Word/Excel fuente).
 const PIE = "Servicios de salud con calidad y humanización";
 
+// Paleta institucional del formato oficial.
+const NAVY: [number, number, number] = [31, 56, 100];
+const LIGHT: [number, number, number] = [221, 235, 247];
+
 const TEXTO_ACEPTACION =
   "Declaro que recibo la documentación relacionada en la lista de chequeo para el traslado " +
   "del paciente y que la información registrada corresponde a la entrega realizada.";
 
-export type DocumentoChecklist = { label: string; marcado: boolean };
+export type DocumentoChecklist = { label: string; marcado: boolean; grupo?: string };
 
 export type EntregaDatos = {
   paciente: string;
@@ -40,6 +44,7 @@ export type EntregaDatos = {
   entidad_receptora?: string;
   quien_acepta?: string;
   tripulante?: string;
+  conductor?: string;
   tipo_ambulancia?: string;
   responsable_checklist?: string;
   cargo_responsable?: string;
@@ -89,42 +94,24 @@ const up = (v?: string | null) => (v ?? "").toString().toUpperCase();
 
 type Doc = import("jspdf").jsPDF;
 
-async function nuevoDoc(titulo: string, subtitulo?: string): Promise<Doc> {
-  const { jsPDF } = await import("jspdf");
-  const doc = new jsPDF({ unit: "mm", format: "letter" });
-  const pageW = doc.internal.pageSize.getWidth();
-
+async function marcaAgua(): Promise<{ logo: string | null; ceci: string | null }> {
   const [logo, ceci] = await Promise.all([
     getImg((logoAsset as { url: string }).url),
     getImg((ceciAsset as { url: string }).url),
   ]);
-  if (logo) doc.addImage(logo, "PNG", 14, 8, 22, 16);
-  if (ceci) doc.addImage(ceci, "PNG", pageW - 30, 6, 16, 20);
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9.5);
-  doc.text(INSTITUCION, pageW / 2, 12, { align: "center" });
-  doc.setFontSize(10.5);
-  doc.text(titulo, pageW / 2, 18, { align: "center" });
-  if (subtitulo) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.text(subtitulo, pageW / 2, 23, { align: "center" });
-  }
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7.5);
-  doc.text(NIT, pageW / 2, subtitulo ? 27.5 : 23.5, { align: "center" });
-  doc.setDrawColor(150);
-  doc.line(14, subtitulo ? 30 : 26, pageW - 14, subtitulo ? 30 : 26);
-  return doc;
+  return { logo, ceci };
 }
 
 function pie(doc: Doc) {
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  doc.setFontSize(7);
-  doc.setTextColor(120);
+  doc.setDrawColor(180);
+  doc.line(14, pageH - 12, pageW - 14, pageH - 12);
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(7.5);
+  doc.setTextColor(90);
   doc.text(PIE, pageW / 2, pageH - 8, { align: "center" });
+  doc.setFont("helvetica", "normal");
   doc.text(`Generado: ${new Date().toLocaleString("es-CO")}`, pageW - 14, pageH - 8, {
     align: "right",
   });
@@ -134,40 +121,36 @@ function pie(doc: Doc) {
 /** Fila etiqueta:valor en negrita, estilo formato oficial. */
 function filaCampo(doc: Doc, y: number, k: string, v: string): number {
   const pageW = doc.internal.pageSize.getWidth();
-  doc.setFontSize(9);
+  doc.setFontSize(9.5);
   doc.setFont("helvetica", "bold");
   doc.text(`${k}:`, 16, y);
   const kw = doc.getTextWidth(`${k}: `);
   doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
   const lines = doc.splitTextToSize(v || "—", pageW - 32 - kw);
   doc.text(lines, 16 + kw, y);
-  return y + 5.6 * lines.length;
+  return y + 6 * lines.length;
 }
 
 function descargar(doc: Doc, nombre: string) {
   doc.save(nombre);
 }
 
-/** Línea oficial de tipo de documento con casillas CC/TI/RC/CN + N° y CIE-10. */
+/** Línea oficial de tipo de documento con casillas CC/TI/RC/CN + N°. */
 function filaTipoDocumento(doc: Doc, y: number, d: EntregaDatos): number {
   const tipo = up(d.tipo_documento);
-  const opts: [string, string][] = [
-    ["CC", "CC"],
-    ["TI", "TI"],
-    ["RC", "RC"],
-    ["CN", "CN"],
-  ];
-  doc.setFontSize(9);
+  const opts = ["CC", "TI", "RC", "CN"];
+  doc.setFontSize(8.5);
   doc.setFont("helvetica", "bold");
   doc.text("TIPO DE DOCUMENTO:", 16, y);
   let x = 16 + doc.getTextWidth("TIPO DE DOCUMENTO: ") + 2;
   doc.setFont("helvetica", "normal");
-  for (const [lbl, val] of opts) {
+  for (const lbl of opts) {
     doc.text(lbl, x, y);
     x += doc.getTextWidth(lbl) + 1.5;
-    doc.rect(x, y - 3.2, 4, 4);
-    if (tipo === val) doc.text("X", x + 0.9, y - 0.2);
-    x += 8;
+    doc.rect(x, y - 3.1, 3.8, 3.8);
+    if (tipo === lbl) doc.text("X", x + 0.8, y - 0.3);
+    x += 7.5;
   }
   doc.setFont("helvetica", "bold");
   doc.text("No. DOCUMENTO:", x, y);
@@ -176,12 +159,33 @@ function filaTipoDocumento(doc: Doc, y: number, d: EntregaDatos): number {
   return y + 6.5;
 }
 
-/** Portada — "REFERENCIA Y CONTRARREFERENCIA" (formato oficial). No persiste. */
+/**
+ * Portada — "REFERENCIA Y CONTRARREFERENCIA" (formato Word oficial). No persiste.
+ * Encabezado: logo CEDIM (izq.) + mascota CECI (der.), título grande azul.
+ */
 export async function descargarPortadaPDF(d: EntregaDatos) {
-  const doc = await nuevoDoc("REFERENCIA Y CONTRARREFERENCIA");
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ unit: "mm", format: "letter" });
   const pageW = doc.internal.pageSize.getWidth();
-  let y = 36;
+  const { logo, ceci } = await marcaAgua();
 
+  if (logo) doc.addImage(logo, "PNG", 14, 8, 26, 18);
+  if (ceci) doc.addImage(ceci, "PNG", pageW - 32, 6, 18, 22);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(110);
+  doc.text(INSTITUCION, pageW / 2, 12, { align: "center" });
+  doc.text(NIT, pageW / 2, 16, { align: "center" });
+  doc.setTextColor(0);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
+  doc.text("REFERENCIA Y CONTRARREFERENCIA", pageW / 2, 34, { align: "center" });
+  doc.setTextColor(0);
+
+  let y = 50;
   const filas: [string, string][] = [
     ["FECHA Y HORA", up(d.fecha_entrega)],
     ["NOMBRE DEL PACIENTE", up(d.paciente)],
@@ -196,54 +200,124 @@ export async function descargarPortadaPDF(d: EntregaDatos) {
     ["ENTIDAD RECEPTORA", up(d.entidad_receptora) || up(d.ips_receptora)],
     ["NOMBRE DE QUIEN ACEPTA", up(d.quien_acepta)],
     ["TRIPULANTE RESPONSABLE DEL TRASLADO", up(d.tripulante)],
+    ["CONDUCTOR", up(d.conductor)],
     ["TIPO DE AMBULANCIA", up(d.tipo_ambulancia)],
     ["EMPRESA QUE TRASLADA", up(d.empresa_traslado)],
   ];
   for (const [k, v] of filas) y = filaCampo(doc, y, k, v);
 
-  y += 4;
+  y += 6;
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
+  doc.setFontSize(10);
   doc.text("TRASLADO INTEGRAL A CARGO DE LA ENTIDAD RESPONSABLE DEL PAGO", pageW / 2, y, {
     align: "center",
   });
-  y += 12;
+  y += 14;
 
   // Casillas AMBULANCIA / IPS
-  doc.setFontSize(9);
+  doc.setFontSize(9.5);
   doc.setFont("helvetica", "bold");
-  doc.text("AMBULANCIA:", 40, y);
-  doc.rect(72, y - 4, 5, 5);
+  doc.text("AMBULANCIA:", 45, y);
+  doc.rect(80, y - 4, 5, 5);
   doc.text("IPS:", 120, y);
-  doc.rect(135, y - 4, 5, 5);
+  doc.rect(133, y - 4, 5, 5);
 
   pie(doc);
   descargar(doc, `Portada-Entrega-${(d.documento || "remision").replace(/\s+/g, "")}.pdf`);
 }
 
-
-/** Construye la tabla oficial GU-FR (N° · DETALLE · REFERENCIA · PERSONAL DE TRASLADO). */
-async function tablaChecklist(doc: Doc, d: EntregaDatos, startY: number): Promise<number> {
+/** Encabezado institucional tipo Excel GU-FR (logo + GESTIÓN DE URGENCIAS + versión). */
+async function bannerHeader(doc: Doc, startY: number): Promise<number> {
   const autoTable = (await import("jspdf-autotable")).default;
-
-  const body = d.documentos.map((it, i) => [
-    String(i + 1),
-    up(it.label),
-    it.marcado ? "X" : "",
-    "",
-    it.marcado ? "" : "X",
-    "",
-    "",
-    "",
-  ]);
+  const { logo } = await marcaAgua();
 
   autoTable(doc, {
     startY,
     theme: "grid",
-    styles: { fontSize: 7.5, cellPadding: 1.4, lineColor: [120, 120, 120], lineWidth: 0.2 },
+    styles: {
+      fontSize: 8,
+      cellPadding: 1.6,
+      lineColor: [120, 120, 120],
+      lineWidth: 0.2,
+      valign: "middle",
+    },
+    body: [
+      [
+        { content: "", rowSpan: 3, styles: { halign: "center", fillColor: [255, 255, 255] } },
+        { content: "GESTIÓN DE URGENCIAS", styles: { halign: "center", fontStyle: "bold" } },
+        { content: "GU-FR-", styles: { halign: "center", fontStyle: "bold" } },
+        { content: "" },
+      ],
+      [
+        { content: "Formato", styles: { halign: "center" } },
+        { content: "Versión:", styles: { fontStyle: "bold" } },
+        { content: "1", styles: { halign: "center" } },
+      ],
+      [
+        {
+          content: "Lista de Chequeo de Documentación Referencia",
+          styles: { halign: "center", fontStyle: "bold" },
+        },
+        { content: "Aprobado:", styles: { fontStyle: "bold" } },
+        { content: "" },
+      ],
+    ],
+    columnStyles: {
+      0: { cellWidth: 30 },
+      1: { cellWidth: 118 },
+      2: { cellWidth: 22 },
+      3: { cellWidth: 18 },
+    },
+    margin: { left: 14, right: 14 },
+  });
+  // @ts-expect-error lastAutoTable lo agrega el plugin
+  const finalY = doc.lastAutoTable?.finalY ?? startY + 20;
+  if (logo) doc.addImage(logo, "PNG", 17, startY + 2, 24, 15);
+  return finalY + 4;
+}
+
+/** Construye la tabla oficial GU-FR con barras de agrupación por categoría. */
+async function tablaChecklist(doc: Doc, d: EntregaDatos, startY: number): Promise<number> {
+  const autoTable = (await import("jspdf-autotable")).default;
+
+  const body: unknown[] = [];
+  let grupoActual: string | null = null;
+  d.documentos.forEach((it, i) => {
+    if (it.grupo && it.grupo !== grupoActual) {
+      grupoActual = it.grupo;
+      body.push([
+        {
+          content: it.grupo,
+          colSpan: 8,
+          styles: {
+            fillColor: NAVY,
+            textColor: [255, 255, 255],
+            fontStyle: "bold",
+            fontSize: 7,
+            halign: "center",
+          },
+        },
+      ]);
+    }
+    body.push([
+      String(i + 1),
+      up(it.label),
+      it.marcado ? "X" : "",
+      "",
+      it.marcado ? "" : "X",
+      "",
+      "",
+      "",
+    ]);
+  });
+
+  autoTable(doc, {
+    startY,
+    theme: "grid",
+    styles: { fontSize: 7.5, cellPadding: 1.3, lineColor: [120, 120, 120], lineWidth: 0.2 },
     headStyles: {
-      fillColor: [225, 232, 240],
-      textColor: [20, 30, 60],
+      fillColor: NAVY,
+      textColor: [255, 255, 255],
       fontStyle: "bold",
       halign: "center",
       valign: "middle",
@@ -276,71 +350,132 @@ async function tablaChecklist(doc: Doc, d: EntregaDatos, startY: number): Promis
         { content: "NA" },
       ],
     ],
-    body,
+    body: body as never,
     margin: { left: 14, right: 14 },
   });
 
   // @ts-expect-error lastAutoTable es agregado por el plugin
-  return (doc.lastAutoTable?.finalY ?? startY) + 6;
+  return (doc.lastAutoTable?.finalY ?? startY) + 5;
 }
 
-/** Lista de chequeo documental (sin firmar) — formato GU-FR. No persiste. */
-export async function descargarChecklistPDF(d: EntregaDatos) {
-  const doc = await nuevoDoc(
-    "LISTA DE CHEQUEO DE DOCUMENTACIÓN — REFERENCIA",
-    "Gestión de Urgencias · GU-FR · Versión 1",
-  );
-  let y = 36;
+/** Bloque responsable + observaciones (formato oficial). */
+async function bloqueResponsable(doc: Doc, d: EntregaDatos, y: number): Promise<number> {
+  const autoTable = (await import("jspdf-autotable")).default;
+  const rows: [string, string][] = [
+    ["NOMBRE / RESPONSABLE", up(d.responsable_checklist)],
+    ["CARGO", up(d.cargo_responsable)],
+    ["HORA DE REALIZACIÓN", up(d.fecha_entrega)],
+  ];
+  autoTable(doc, {
+    startY: y,
+    theme: "grid",
+    styles: { fontSize: 8, cellPadding: 1.4, lineColor: [120, 120, 120], lineWidth: 0.2 },
+    body: rows.map(([k, v]) => [
+      { content: k, styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
+      { content: v || "—" },
+    ]) as never,
+    columnStyles: { 0: { cellWidth: 60 }, 1: { cellWidth: 108 } },
+    margin: { left: 14, right: 14 },
+  });
+  // @ts-expect-error plugin
+  y = (doc.lastAutoTable?.finalY ?? y) + 2;
+  autoTable(doc, {
+    startY: y,
+    theme: "grid",
+    styles: {
+      fontSize: 8,
+      cellPadding: 1.4,
+      lineColor: [120, 120, 120],
+      lineWidth: 0.2,
+      minCellHeight: 6,
+    },
+    head: [
+      [
+        {
+          content: "OBSERVACIONES",
+          styles: { fillColor: LIGHT, textColor: NAVY, halign: "center", fontStyle: "bold" },
+        },
+      ],
+    ],
+    body: [[" "], [" "], [" "]] as never,
+    columnStyles: { 0: { cellWidth: 168 } },
+    margin: { left: 14, right: 14 },
+  });
+  // @ts-expect-error plugin
+  return (doc.lastAutoTable?.finalY ?? y) + 4;
+}
 
-  y = filaCampo(doc, y, "FECHA", up(d.fecha_entrega));
-  y = filaCampo(doc, y, "EAPB", up(d.entidad_pago));
+/** Encabezado de datos del paciente (bloque superior del Excel oficial). */
+function encabezadoDatos(doc: Doc, d: EntregaDatos, y: number): number {
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.text("FECHA:", 16, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(up(d.fecha_entrega) || "—", 16 + doc.getTextWidth("FECHA: ") + 1, y);
+  doc.setFont("helvetica", "bold");
+  doc.text("EAPB:", 118, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(up(d.entidad_pago) || "—", 118 + doc.getTextWidth("EAPB: ") + 1, y);
+  y += 6.5;
   y = filaCampo(doc, y, "NOMBRES Y APELLIDOS", up(d.paciente));
   y = filaTipoDocumento(doc, y, d);
-  y = filaCampo(doc, y, "CIE-10 PRINCIPAL", up(d.cie10));
-  if (d.origen) y = filaCampo(doc, y, "ORIGEN / RESPONSABLE DOCUMENTAL", up(d.origen));
-
-  y += 2;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8.5);
-  doc.text("ANTES DEL TRASLADO DEL PACIENTE, VERIFIQUE LA SIGUIENTE DOCUMENTACIÓN:", 14, y);
-  y += 5;
+  doc.text("CIE-10 PRINCIPAL:", 16, y);
+  doc.setFont("helvetica", "normal");
+  doc.text(up(d.cie10) || "—", 16 + doc.getTextWidth("CIE-10 PRINCIPAL: ") + 1, y);
+  if (d.origen) {
+    doc.setFont("helvetica", "bold");
+    doc.text("ORIGEN:", 118, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(up(d.origen), 118 + doc.getTextWidth("ORIGEN: ") + 1, y);
+  }
+  return y + 6;
+}
 
+/** Banda oscura de sección. */
+function bandaSeccion(doc: Doc, y: number, texto: string): number {
+  const pageW = doc.internal.pageSize.getWidth();
+  doc.setFillColor(NAVY[0], NAVY[1], NAVY[2]);
+  doc.rect(14, y - 4, pageW - 28, 6, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.text(texto, pageW / 2, y, { align: "center" });
+  doc.setTextColor(0);
+  return y + 6;
+}
+
+/** Lista de chequeo documental (sin firmar) — formato GU-FR oficial. No persiste. */
+export async function descargarChecklistPDF(d: EntregaDatos) {
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ unit: "mm", format: "letter" });
+  let y = await bannerHeader(doc, 10);
+  y = encabezadoDatos(doc, d, y);
+  y = bandaSeccion(doc, y, "ANTES DEL TRASLADO DEL PACIENTE, VERIFIQUE LA SIGUIENTE DOCUMENTACIÓN:");
   y = await tablaChecklist(doc, d, y);
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8.5);
-  y = filaCampo(doc, y, "NOMBRE / RESPONSABLE", up(d.responsable_checklist));
-  y = filaCampo(doc, y, "CARGO", up(d.cargo_responsable));
-  y = filaCampo(doc, y, "HORA DE REALIZACIÓN", up(d.fecha_entrega));
-  y += 2;
-  doc.setFont("helvetica", "bold");
-  doc.text("OBSERVACIONES:", 16, y);
-  doc.setDrawColor(160);
-  doc.rect(16, y + 2, doc.internal.pageSize.getWidth() - 32, 16);
-
+  await bloqueResponsable(doc, d, y);
   pie(doc);
   descargar(doc, `Checklist-${(d.documento || "remision").replace(/\s+/g, "")}.pdf`);
 }
 
-/** PDF FINAL firmado por QR — formato GU-FR firmado. No persiste. */
+/** PDF FINAL firmado por QR — formato GU-FR oficial firmado. No persiste. */
 export async function descargarFirmadoPDF(d: EntregaDatos, f: FirmaDatos) {
-  const doc = await nuevoDoc(
-    "LISTA DE CHEQUEO FIRMADA — ENTREGA DOCUMENTAL",
-    "Gestión de Urgencias · GU-FR · Versión 1",
-  );
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ unit: "mm", format: "letter" });
   const pageW = doc.internal.pageSize.getWidth();
-  let y = 36;
+  const pageH = doc.internal.pageSize.getHeight();
 
-  y = filaCampo(doc, y, "FECHA", up(d.fecha_entrega));
-  y = filaCampo(doc, y, "EAPB", up(d.entidad_pago));
-  y = filaCampo(doc, y, "NOMBRES Y APELLIDOS", up(d.paciente));
-  y = filaTipoDocumento(doc, y, d);
-  y = filaCampo(doc, y, "CIE-10 PRINCIPAL", up(d.cie10));
-  y = filaCampo(doc, y, "ENTIDAD RECEPTORA", up(d.entidad_receptora) || up(d.ips_receptora));
-  y = filaCampo(doc, y, "EMPRESA DE TRASLADO", up(d.empresa_traslado));
-
-  y += 2;
+  let y = await bannerHeader(doc, 10);
+  y = encabezadoDatos(doc, d, y);
+  y = bandaSeccion(doc, y, "ANTES DEL TRASLADO DEL PACIENTE, VERIFIQUE LA SIGUIENTE DOCUMENTACIÓN:");
   y = await tablaChecklist(doc, d, y);
+  y = await bloqueResponsable(doc, d, y);
+
+  if (y > pageH - 90) {
+    doc.addPage();
+    y = 20;
+  }
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
@@ -363,6 +498,11 @@ export async function descargarFirmadoPDF(d: EntregaDatos, f: FirmaDatos) {
   const acept = doc.splitTextToSize(`[X] ${TEXTO_ACEPTACION}`, pageW - 32);
   doc.text(acept, 16, y);
   y += 5 * acept.length + 4;
+
+  if (y > pageH - 55) {
+    doc.addPage();
+    y = 20;
+  }
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
