@@ -470,6 +470,31 @@ export function SeguimientoDialog({
   const evoMetaSal = evolucionMeta[evoEstadoSal];
   const evoRequiereMotivo = esEvolucionSal && tienePlataforma && evoEstadoSal === "parcial";
 
+  // --- Evolución por especialidades tratantes (Parte 9) ---
+  const evoEspEvolucionadas = useMemo(
+    () => especialidadesList.filter((e) => evoEsp[e]),
+    [especialidadesList, evoEsp],
+  );
+  const evoEspPendientes = useMemo(
+    () => especialidadesList.filter((e) => !evoEsp[e]),
+    [especialidadesList, evoEsp],
+  );
+  const evoEspEstado: "COMPLETA" | "PARCIAL" | "PENDIENTE" =
+    especialidadesList.length === 0
+      ? "PENDIENTE"
+      : evoEspEvolucionadas.length === especialidadesList.length
+        ? "COMPLETA"
+        : evoEspEvolucionadas.length > 0
+          ? "PARCIAL"
+          : "PENDIENTE";
+  const evoEspMeta: Record<string, { chip: string; dot: string }> = {
+    COMPLETA: { chip: "bg-status-green/15 text-status-green", dot: "bg-status-green" },
+    PARCIAL: { chip: "bg-status-amber/15 text-status-amber", dot: "bg-status-amber" },
+    PENDIENTE: { chip: "bg-muted text-muted-foreground", dot: "bg-muted-foreground" },
+  };
+  const toggleEvoEsp = (esp: string) =>
+    setEvoEsp((prev) => ({ ...prev, [esp]: !prev[esp] }));
+
   // Autollenar/limpiar el motivo automático "PLATAFORMA NO FUNCIONAL".
   // Solo aplica al Caso B: se envió por CORREO, falta plataforma y la plataforma NO funciona.
   useEffect(() => {
