@@ -1769,11 +1769,15 @@ export function SeguimientoDialog({
                 tipoCaso={tipoCaso}
                 paciente={paciente}
                 documento={documento}
+                tipoDocumento={caso?.tipo_documento}
+                cie10={caso?.cie10}
                 ipsReceptora={caso?.ips_receptora ?? ipsReceptora}
                 empresaTraslado={empresaAmb}
                 especialidad={especialidadesList.join(", ")}
                 entidadPago={caso?.eapb}
+                tipoAmbulancia={caso?.tipo_ambulancia}
               />
+
             </div>
           )}
 
