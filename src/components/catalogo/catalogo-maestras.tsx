@@ -245,14 +245,19 @@ export function CatalogoMaestras() {
 
   const handleAdd = async () => {
     if (!sel || !nuevoValor.trim()) return;
-    const { error } = await supabase
-      .from("catalogos")
-      .insert({ tipo: sel.tipo, valor: nuevoValor.trim(), activo: true });
+    const payload: { tipo: string; valor: string; activo: boolean; extra1?: string } = {
+      tipo: sel.tipo,
+      valor: nuevoValor.trim(),
+      activo: true,
+    };
+    if (sel.tipo === "DOC_ENTREGA") payload.extra1 = nuevoOrigenDoc;
+    const { error } = await supabase.from("catalogos").insert(payload);
     if (error) return toast.error(error.message);
     toast.success("Valor agregado");
     setNuevoValor("");
     qc.invalidateQueries({ queryKey: ["catalogo-todos"] });
   };
+
 
   const toggle = async (id: string, activo: boolean) => {
     const { error } = await supabase.from("catalogos").update({ activo }).eq("id", id);
