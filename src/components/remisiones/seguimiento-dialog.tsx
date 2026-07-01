@@ -1754,7 +1754,7 @@ export function SeguimientoDialog({
                 documento={documento}
                 ipsReceptora={caso?.ips_receptora ?? ipsReceptora}
                 empresaTraslado={empresaAmb}
-                especialidad={especialidadesTratantesTxt}
+                especialidad={especialidadesList.join(", ")}
                 entidadPago={caso?.eapb}
               />
             </div>
