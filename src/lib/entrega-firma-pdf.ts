@@ -334,12 +334,8 @@ export async function descargarFirmadoPDF(d: EntregaDatos, f: FirmaDatos) {
   y = filaCampo(doc, y, "FECHA", up(d.fecha_entrega));
   y = filaCampo(doc, y, "EAPB", up(d.entidad_pago));
   y = filaCampo(doc, y, "NOMBRES Y APELLIDOS", up(d.paciente));
-  y = filaCampo(
-    doc,
-    y,
-    "TIPO Y N° DOCUMENTO",
-    up([d.tipo_documento, d.documento].filter(Boolean).join(" ")) || up(d.documento),
-  );
+  y = filaTipoDocumento(doc, y, d);
+  y = filaCampo(doc, y, "CIE-10 PRINCIPAL", up(d.cie10));
   y = filaCampo(doc, y, "ENTIDAD RECEPTORA", up(d.entidad_receptora) || up(d.ips_receptora));
   y = filaCampo(doc, y, "EMPRESA DE TRASLADO", up(d.empresa_traslado));
 
