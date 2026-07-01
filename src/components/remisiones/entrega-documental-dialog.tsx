@@ -160,6 +160,8 @@ export function EntregaDocumentalDialog({
     () => ({
       paciente,
       documento: documento ?? "",
+      tipo_documento: tipoDocumento ?? undefined,
+      cie10: cie10 ?? undefined,
       ips_receptora: ips,
       empresa_traslado: empresa,
       fecha_entrega: fecha,
@@ -176,6 +178,8 @@ export function EntregaDocumentalDialog({
     [
       paciente,
       documento,
+      tipoDocumento,
+      cie10,
       ips,
       empresa,
       fecha,
