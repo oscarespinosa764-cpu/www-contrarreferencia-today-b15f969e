@@ -197,6 +197,8 @@ export function SeguimientoDialog({
   const [evoPlataforma, setEvoPlataforma] = useState(false);
   const [plataformaFuncSeg, setPlataformaFuncSeg] = useState<"" | "SI" | "NO">("");
   const [evoMotivoPend, setEvoMotivoPend] = useState("");
+  // Evolución diaria por especialidades tratantes (Parte 9): marca cuáles ya evolucionaron.
+  const [evoEsp, setEvoEsp] = useState<Record<string, boolean>>({});
 
   // Físico / presencial
   const [acercamiento, setAcercamiento] = useState<AcercamientoTipo>("FAMILIAR");
