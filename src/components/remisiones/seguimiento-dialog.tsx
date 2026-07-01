@@ -422,6 +422,7 @@ export function SeguimientoDialog({
     setEstadoCaso(estadoActual ?? "");
     setIndigoEditada(false);
     setTipoSeg("");
+    setEvoEsp({});
   }, [open, evolucionDetalle, especialidadesList, estadoActual]);
 
   // Prefill desde el caso.
