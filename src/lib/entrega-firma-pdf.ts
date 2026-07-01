@@ -42,6 +42,7 @@ export type EntregaDatos = {
   tipo_ambulancia?: string;
   responsable_checklist?: string;
   cargo_responsable?: string;
+  origen?: string; // EPS / ARL / SOAT / PARTICULAR
 };
 
 export type FirmaDatos = {
