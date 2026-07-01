@@ -108,8 +108,8 @@ export function ConfiguracionPanel() {
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div><Label className="text-xs">Código</Label><Input value={edit.code ?? ""} onChange={(e) => setEdit({ ...edit, code: e.target.value })} /></div>
               <div><Label className="text-xs">Nombre</Label><Input value={edit.name ?? ""} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></div>
-              <div><Label className="text-xs">Hora inicio</Label><Input type="time" value={edit.start_time ?? ""} onChange={(e) => setEdit({ ...edit, start_time: e.target.value })} /></div>
-              <div><Label className="text-xs">Hora fin</Label><Input type="time" value={edit.end_time ?? ""} onChange={(e) => setEdit({ ...edit, end_time: e.target.value })} /></div>
+              <div><Label className="text-xs">Hora inicio</Label><TimeField value={edit.start_time ?? ""} onChange={(v) => setEdit({ ...edit, start_time: v })} /></div>
+              <div><Label className="text-xs">Hora fin</Label><TimeField value={edit.end_time ?? ""} onChange={(v) => setEdit({ ...edit, end_time: v })} /></div>
               <div><Label className="text-xs">Horas (si no hay horario)</Label><Input type="number" value={edit.hours ?? 0} onChange={(e) => setEdit({ ...edit, hours: Number(e.target.value) })} /></div>
               <div><Label className="text-xs">Color</Label><Input type="color" value={edit.color ?? "#64748b"} onChange={(e) => setEdit({ ...edit, color: e.target.value })} /></div>
               <div className="col-span-2"><Label className="text-xs">Observación</Label><Input value={edit.observation ?? ""} onChange={(e) => setEdit({ ...edit, observation: e.target.value })} /></div>
