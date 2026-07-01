@@ -295,12 +295,7 @@ export async function descargarChecklistPDF(d: EntregaDatos) {
   y = filaCampo(doc, y, "FECHA", up(d.fecha_entrega));
   y = filaCampo(doc, y, "EAPB", up(d.entidad_pago));
   y = filaCampo(doc, y, "NOMBRES Y APELLIDOS", up(d.paciente));
-  y = filaCampo(
-    doc,
-    y,
-    "TIPO Y N° DOCUMENTO",
-    up([d.tipo_documento, d.documento].filter(Boolean).join(" ")) || up(d.documento),
-  );
+  y = filaTipoDocumento(doc, y, d);
   y = filaCampo(doc, y, "CIE-10 PRINCIPAL", up(d.cie10));
   if (d.origen) y = filaCampo(doc, y, "ORIGEN / RESPONSABLE DOCUMENTAL", up(d.origen));
 
