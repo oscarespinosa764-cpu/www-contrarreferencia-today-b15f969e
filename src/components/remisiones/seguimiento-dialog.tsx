@@ -861,6 +861,20 @@ export function SeguimientoDialog({
           enviado_plataforma: tienePlataforma ? evoPlataforma : null,
           estado_evolucion: evoEstadoSal,
           motivo_pendiente: evoRequiereMotivo ? evoMotivoPend.trim() : null,
+          // Trazabilidad por especialidades tratantes (Parte 9).
+          especialidades_evolucionadas:
+            especialidadesList.length > 0 ? evoEspEvolucionadas : null,
+          especialidades_pendientes:
+            especialidadesList.length > 0 ? evoEspPendientes : null,
+          estado_evolucion_especialidades:
+            especialidadesList.length > 0 ? evoEspEstado : null,
+          medio_evolucion: evoCorreo && evoPlataforma
+            ? "CORREO Y PLATAFORMA"
+            : evoPlataforma
+              ? "PLATAFORMA"
+              : evoCorreo
+                ? "CORREO"
+                : null,
         };
       case T.CORREO:
       case T.PLATAFORMA:
