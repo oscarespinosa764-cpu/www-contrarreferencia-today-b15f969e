@@ -952,6 +952,8 @@ export function SeguimientoDialog({
           funcionario: revFuncionario.trim() || null,
           cargo: revCargo.trim() || null,
         };
+      case T.CIERRE:
+        return { egreso: cierreEgreso || null, ips_receptora: caso?.ips_receptora ?? ipsReceptora ?? null };
       case T.OTRO:
         return { cual: otroCual.trim() };
       default:
