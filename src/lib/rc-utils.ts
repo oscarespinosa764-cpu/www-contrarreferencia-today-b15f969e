@@ -121,25 +121,56 @@ export function calcHrsReserva(unidad: string, tipo: string, unidades: UnidadCat
 }
 
 // ─── Generación de código TIPO-AAAAMM-NNN ────────────────────────
+// Prefijo compacto por tipo de caso (código de gestión, ej. A2607001).
+//  A = Aceptación · N = Negación · M = Ampliación · C = Cancelación · I = Ingreso
+//  AD = CRUE Aceptación direcc. · ND = CRUE No aceptación · NR = CRUE No requerimiento
+export const PREFIJO_CODIGO: Record<string, string> = {
+  ACEP: "A",
+  NEG: "N",
+  AMP: "M",
+  CAN: "C",
+  ING: "I",
+  CRUE_ACEP: "AD",
+  CRUE_NEG: "ND",
+  CRUE_NR: "NR",
+};
+
 export function nextCodigo(todos: Caso[], tipo: string, ahora: Date): string {
-  const yy = ahora.getFullYear();
+  const yyyy = ahora.getFullYear();
+  const yy = String(yyyy).slice(-2);
   const mm = String(ahora.getMonth() + 1).padStart(2, "0");
-  const mes = `${yy}${mm}`;
+  const yyyymm = `${yyyy}${mm}`; // formato antiguo
+  const aamm = `${yy}${mm}`; // formato compacto
+  const prefijo = PREFIJO_CODIGO[tipo] ?? tipo;
+
   let maxSeq = 0;
   for (const c of todos) {
-    const code = String(c.codigo || "");
+    const code = String(c.codigo || "").trim().toUpperCase();
     if (!code) continue;
-    const parts = code.split("-");
-    if (parts.length !== 3) continue;
-    if (parts[0] !== tipo) continue;
-    if (parts[1].indexOf(mes) !== 0) continue;
-    if (parts[1].length !== 6 && parts[1].length !== 8) continue;
-    const n = parseInt(parts[2], 10);
-    if (!isNaN(n) && n > maxSeq) maxSeq = n;
+
+    // ── Formato antiguo: TIPO-YYYYMM-SEQ ──
+    if (code.includes("-")) {
+      const parts = code.split("-");
+      if (parts.length === 3 && parts[0] === tipo && parts[1].indexOf(yyyymm) === 0) {
+        const n = parseInt(parts[2], 10);
+        if (!isNaN(n) && n > maxSeq) maxSeq = n;
+      }
+      continue;
+    }
+
+    // ── Formato compacto: PREFIJO + AAMM + SEQ ──
+    if (code.startsWith(prefijo)) {
+      const rest = code.slice(prefijo.length);
+      // El caracter tras el prefijo debe ser dígito para no confundir A vs AD, N vs ND/NR.
+      if (!/^\d/.test(rest)) continue;
+      if (rest.indexOf(aamm) !== 0) continue;
+      const n = parseInt(rest.slice(aamm.length), 10);
+      if (!isNaN(n) && n > maxSeq) maxSeq = n;
+    }
   }
-  const n = maxSeq + 1;
-  const seq = n < 10 ? `00${n}` : n < 100 ? `0${n}` : `${n}`;
-  return `${tipo}-${mes}-${seq}`;
+
+  const seq = String(maxSeq + 1).padStart(3, "0");
+  return `${prefijo}${aamm}${seq}`;
 }
 
 // ─── Caso ACEP activo del documento ──────────────────────────────
