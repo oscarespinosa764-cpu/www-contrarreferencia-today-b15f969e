@@ -273,6 +273,7 @@ export async function descargarChecklistPDF(d: EntregaDatos) {
     up([d.tipo_documento, d.documento].filter(Boolean).join(" ")) || up(d.documento),
   );
   y = filaCampo(doc, y, "CIE-10 PRINCIPAL", up(d.cie10));
+  if (d.origen) y = filaCampo(doc, y, "ORIGEN / RESPONSABLE DOCUMENTAL", up(d.origen));
 
   y += 2;
   doc.setFont("helvetica", "bold");
