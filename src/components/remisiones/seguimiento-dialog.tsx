@@ -1161,7 +1161,12 @@ export function SeguimientoDialog({
           update.archivado = true;
         } else {
           update.estado = "ABIERTO";
-        }
+      }
+      // Cierre por admisión (Parte 18): si el paciente egresó, cerrar y archivar.
+      if (esCierre && cierreEgreso === "si") {
+        update.estado = "EGRESADO/CERRADO";
+        update.archivado = true;
+      }
       }
 
       if (Object.keys(update).length > 0) {
