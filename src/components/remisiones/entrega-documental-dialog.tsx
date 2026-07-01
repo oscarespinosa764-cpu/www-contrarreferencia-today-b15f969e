@@ -273,11 +273,11 @@ export function EntregaDocumentalDialog({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label className="text-xs">Empresa de traslado</Label>
-              <Input value={empresa} onChange={(e) => setEmpresa(e.target.value)} disabled={!!sesionId} />
+              <Input uppercase value={empresa} onChange={(e) => setEmpresa(e.target.value)} disabled={!!sesionId} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">IPS receptora</Label>
-              <Input value={ips} onChange={(e) => setIps(e.target.value)} disabled={!!sesionId} />
+              <Input uppercase value={ips} onChange={(e) => setIps(e.target.value)} disabled={!!sesionId} />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label className="text-xs">Fecha/hora de entrega</Label>
@@ -312,7 +312,7 @@ export function EntregaDocumentalDialog({
                     value={nuevoDoc}
                     onChange={(e) => setNuevoDoc(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), agregarDoc())}
-                    placeholder="Agregar documento…"
+                    uppercase placeholder="Agregar documento…"
                     className="h-8 text-sm"
                   />
                   <Button type="button" size="sm" variant="outline" onClick={agregarDoc}>
