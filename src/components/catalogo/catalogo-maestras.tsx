@@ -416,6 +416,20 @@ export function CatalogoMaestras() {
 
               {/* Agregar inline */}
               <div className="mt-3 flex gap-2">
+                {sel.tipo === "DOC_ENTREGA" && (
+                  <select
+                    value={nuevoOrigenDoc}
+                    onChange={(e) => setNuevoOrigenDoc(e.target.value)}
+                    className="h-9 shrink-0 rounded-md border border-input bg-background px-2 text-sm shadow-sm"
+                    title="Origen al que aplica el documento"
+                  >
+                    <option value="COMUN">COMÚN (todos)</option>
+                    <option value="EPS">EPS</option>
+                    <option value="ARL">ARL</option>
+                    <option value="SOAT">SOAT</option>
+                    <option value="PARTICULAR">PARTICULAR</option>
+                  </select>
+                )}
                 <Input
                   placeholder={`Nuevo valor en ${selMeta.label}…`}
                   value={nuevoValor}
@@ -427,6 +441,7 @@ export function CatalogoMaestras() {
                     }
                   }}
                 />
+
                 <Button onClick={handleAdd} className="shrink-0 gap-1.5">
                   <Plus className="h-4 w-4" /> Agregar
                 </Button>
