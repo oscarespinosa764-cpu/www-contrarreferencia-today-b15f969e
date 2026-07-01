@@ -191,10 +191,6 @@ export async function descargarPortadaPDF(d: EntregaDatos) {
   descargar(doc, `Portada-Entrega-${(d.documento || "remision").replace(/\s+/g, "")}.pdf`);
 }
 
-/** Encabezado tipo formato con datos del paciente para la lista de chequeo. */
-function bloqueEncabezadoChecklist(doc: Doc, startY: number): number {
-  return startY;
-}
 
 /** Construye la tabla oficial GU-FR (N° · DETALLE · REFERENCIA · PERSONAL DE TRASLADO). */
 async function tablaChecklist(doc: Doc, d: EntregaDatos, startY: number): Promise<number> {
