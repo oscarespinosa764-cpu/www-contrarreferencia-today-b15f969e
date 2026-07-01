@@ -568,15 +568,27 @@ export function SeguimientoDialog({
         base = generarPlantillaRadicado(radicado);
         break;
       case T.EVOLUCION:
-        base = generarPlantillaEvolucionDiaria({
-          estadoCaso,
-          esTramiteAdministrativo: esAdminCaso,
-          tienePlataforma,
-          plataformaFunciona: tienePlataforma ? plataformaFuncSeg === "SI" : null,
-          enviadoCorreo: evoCorreo,
-          enviadoPlataforma: evoPlataforma,
-          motivoPendiente: evoMotivoPend,
-        });
+        // Con especialidades tratantes registradas, se deja trazabilidad por
+        // especialidad (evolucionadas / pendientes). Sin ellas, plantilla clásica.
+        if (especialidadesList.length > 0) {
+          base = generarPlantillaEvolucionEspecialidades({
+            evolucionadas: evoEspEvolucionadas,
+            pendientes: evoEspPendientes,
+            enviadoCorreo: evoCorreo,
+            enviadoPlataforma: tienePlataforma ? evoPlataforma : false,
+            observacion: detalle,
+          });
+        } else {
+          base = generarPlantillaEvolucionDiaria({
+            estadoCaso,
+            esTramiteAdministrativo: esAdminCaso,
+            tienePlataforma,
+            plataformaFunciona: tienePlataforma ? plataformaFuncSeg === "SI" : null,
+            enviadoCorreo: evoCorreo,
+            enviadoPlataforma: evoPlataforma,
+            motivoPendiente: evoMotivoPend,
+          });
+        }
         break;
       case T.CORREO:
         base = generarPlantillaCorreoSeg(asunto, estadoSolicitud);
