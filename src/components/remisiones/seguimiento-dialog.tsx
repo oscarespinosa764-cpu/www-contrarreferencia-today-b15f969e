@@ -2227,6 +2227,27 @@ export function SeguimientoDialog({
                   {(verDetalle.telefono as string) ? ` · ${verDetalle.telefono as string}` : ""}
                 </p>
               )}
+              {(() => {
+                const det = parseDetalles(verDetalle.detalles);
+                const estado = det?.estado_evolucion_especialidades as string | undefined;
+                if (!estado) return null;
+                const evol = (det?.especialidades_evolucionadas as string[] | null) ?? [];
+                const pend = (det?.especialidades_pendientes as string[] | null) ?? [];
+                const medio = det?.medio_evolucion as string | undefined;
+                return (
+                  <div className="space-y-1">
+                    <p className={labelCls}>Evolución por especialidades</p>
+                    <p className="text-foreground">
+                      Estado: <span className="font-semibold">{estado}</span>
+                      {medio ? ` · ${medio}` : ""}
+                    </p>
+                    {evol.length > 0 && <p>Evolucionadas: {evol.join(", ")}</p>}
+                    {pend.length > 0 && (
+                      <p className="text-status-amber">Pendientes: {pend.join(", ")}</p>
+                    )}
+                  </div>
+                );
+              })()}
               {(verDetalle.detalle as string) && (
                 <div>
                   <p className={labelCls}>Observaciones</p>
