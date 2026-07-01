@@ -1,3 +1,4 @@
+import { TimeField } from "@/components/ui/time-field";
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
@@ -214,7 +215,7 @@ export function SolicitudFormDialog({
                 <div><Label className="text-xs">Turno original (código)</Label><Input value={origTurno} onChange={(e) => setOrigTurno(e.target.value)} placeholder="Ej: N" /></div>
                 <div><Label className="text-xs">Fecha nuevo turno</Label><Input type="date" value={nuevaFecha} onChange={(e) => setNuevaFecha(e.target.value)} /></div>
                 <div><Label className="text-xs">Nuevo turno (código)</Label><Input value={nuevoTurno} onChange={(e) => setNuevoTurno(e.target.value)} placeholder="Ej: M" /></div>
-                <div className="col-span-2"><Label className="text-xs">Persona con quien realiza el cambio</Label><Input value={companero} onChange={(e) => setCompanero(e.target.value)} /></div>
+                <div className="col-span-2"><Label className="text-xs">Persona con quien realiza el cambio</Label><Input uppercase value={companero} onChange={(e) => setCompanero(e.target.value)} /></div>
               </div>
             </fieldset>
           ) : (
@@ -223,8 +224,8 @@ export function SolicitudFormDialog({
               <div className="grid grid-cols-2 gap-3">
                 <div><Label className="text-xs">Fecha inicial</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
                 <div><Label className="text-xs">Fecha final</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></div>
-                <div><Label className="text-xs">Hora inicial</Label><Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} /></div>
-                <div><Label className="text-xs">Hora final</Label><Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} /></div>
+                <div><Label className="text-xs">Hora inicial</Label><TimeField value={startTime} onChange={setStartTime} /></div>
+                <div><Label className="text-xs">Hora final</Label><TimeField value={endTime} onChange={setEndTime} /></div>
               </div>
             </fieldset>
           )}

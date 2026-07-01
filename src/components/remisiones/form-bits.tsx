@@ -12,6 +12,7 @@ export function Field({
   type = "text",
   placeholder,
   readOnly,
+  uppercase,
 }: {
   name: string;
   label: string;
@@ -20,7 +21,10 @@ export function Field({
   type?: string;
   placeholder?: string;
   readOnly?: boolean;
+  uppercase?: boolean;
 }) {
+  // Mayúscula automática en campos de texto operativos (no email/número/fecha/etc.).
+  const autoUpper = uppercase ?? type === "text";
   return (
     <div className="space-y-1.5">
       <Label htmlFor={name} className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -35,6 +39,7 @@ export function Field({
         defaultValue={defaultValue}
         placeholder={placeholder}
         readOnly={readOnly}
+        uppercase={autoUpper}
         className={readOnly ? "cursor-not-allowed bg-muted text-muted-foreground" : undefined}
       />
     </div>
@@ -128,6 +133,7 @@ export function SpecialtyList({
       </Label>
       <Input
         value={val}
+        uppercase
         autoComplete="off"
         onChange={(e) => {
           setVal(e.target.value);
