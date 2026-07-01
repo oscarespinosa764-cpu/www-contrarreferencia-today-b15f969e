@@ -224,8 +224,8 @@ export function SolicitudFormDialog({
               <div className="grid grid-cols-2 gap-3">
                 <div><Label className="text-xs">Fecha inicial</Label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
                 <div><Label className="text-xs">Fecha final</Label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></div>
-                <div><Label className="text-xs">Hora inicial</Label><Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} /></div>
-                <div><Label className="text-xs">Hora final</Label><Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} /></div>
+                <div><Label className="text-xs">Hora inicial</Label><TimeField value={startTime} onChange={setStartTime} /></div>
+                <div><Label className="text-xs">Hora final</Label><TimeField value={endTime} onChange={setEndTime} /></div>
               </div>
             </fieldset>
           )}
