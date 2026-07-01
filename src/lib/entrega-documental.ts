@@ -23,6 +23,51 @@ export const DOCUMENTOS_DEFAULT: string[] = [
   "Hoja de administración de medicamentos",
 ];
 
+/** Origen / responsable documental (define qué documentos aparecen). */
+export type OrigenDoc = "EPS" | "ARL" | "SOAT" | "PARTICULAR";
+
+export const ORIGENES_DOC: { value: OrigenDoc; label: string }[] = [
+  { value: "EPS", label: "EPS" },
+  { value: "ARL", label: "ARL" },
+  { value: "SOAT", label: "SOAT" },
+  { value: "PARTICULAR", label: "Particular" },
+];
+
+/** Documentos comunes a todos los orígenes. */
+const DOCS_COMUNES = [
+  "Historia clínica / epicrisis",
+  "Orden de remisión",
+  "Resultados de laboratorio",
+  "Imágenes diagnósticas",
+  "Consentimiento informado",
+  "Documento de identidad del paciente",
+  "Notas de enfermería",
+  "Hoja de administración de medicamentos",
+];
+
+/**
+ * Lista de chequeo por defecto según el origen documental.
+ * NOTA: mientras no exista un catálogo administrable en BD, estos valores actúan
+ * como plantilla base; el usuario puede agregar/quitar documentos en el modal.
+ */
+export const DOCUMENTOS_POR_ORIGEN: Record<OrigenDoc, string[]> = {
+  EPS: [...DOCS_COMUNES, "Autorización de la EAPB", "Carné / certificado de afiliación EPS"],
+  ARL: [...DOCS_COMUNES, "Reporte de accidente laboral (FURAT)", "Autorización de la ARL"],
+  SOAT: [
+    ...DOCS_COMUNES,
+    "FURIPS",
+    "Copia del SOAT / póliza",
+    "Informe de accidente de tránsito",
+  ],
+  PARTICULAR: [...DOCS_COMUNES, "Soporte / compromiso de pago"],
+};
+
+/** Devuelve los documentos base para un origen (o la lista genérica si no hay). */
+export function documentosPorOrigen(origen?: OrigenDoc | null): string[] {
+  if (origen && DOCUMENTOS_POR_ORIGEN[origen]) return DOCUMENTOS_POR_ORIGEN[origen];
+  return DOCUMENTOS_DEFAULT;
+}
+
 export type DocItem = { label: string; marcado: boolean };
 
 export type SnapshotEntrega = {
@@ -33,7 +78,14 @@ export type SnapshotEntrega = {
   fecha_entrega: string;
   documentos: DocItem[];
   caso_ref?: string;
+  origen?: OrigenDoc | null;
+  especialidad?: string;
+  entidad_pago?: string;
+  tipo_ambulancia?: string;
+  quien_acepta?: string;
+  cargo_acepta?: string;
 };
+
 
 /** Token aleatorio (48 hex). Nunca se persiste en texto plano. */
 function generarToken(): string {
