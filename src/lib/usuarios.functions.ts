@@ -31,6 +31,7 @@ const crearSchema = z.object({
   password: passwordSchema,
   nombre: z.string().trim().min(1, "Ingresa el nombre.").max(120),
   cargo: z.string().trim().max(120).optional().default(""),
+  telefono: z.string().trim().max(40).optional().default(""),
   rol: z.enum(ROLES),
   activo: z.boolean().default(true),
 });
@@ -66,7 +67,12 @@ export const crearUsuario = createServerFn({ method: "POST" })
     // El trigger handle_new_user ya creó el perfil. Ajustamos datos y estado.
     await (supabaseAdmin as any)
       .from("profiles")
-      .update({ nombre: data.nombre, cargo: data.cargo || null, activo: data.activo })
+      .update({
+        nombre: data.nombre,
+        cargo: data.cargo || null,
+        telefono: data.telefono || null,
+        activo: data.activo,
+      })
       .eq("user_id", newId);
 
     // Asignar rol (un solo rol por usuario en esta app).
@@ -147,14 +153,26 @@ export const cambiarEstadoUsuario = createServerFn({ method: "POST" })
       .from("profiles")
       .update({ activo: data.activo })
       .eq("user_id", data.userId);
-    if (error) return { ok: false, error: "No se pudo actualizar el estado." as string | null };
+    if (error) {
+      return {
+        ok: false,
+        error: (error.message
+          ? `No se pudo actualizar el estado: ${error.message}`
+          : "No se pudo actualizar el estado.") as string | null,
+      };
+    }
 
     // Defensa en profundidad: al desactivar, se banea la cuenta en Auth para
     // que su JWT deje de aceptarse de inmediato (no espera a que expire el token).
-    // Al reactivar, se levanta el baneo.
-    await (supabaseAdmin as any).auth.admin.updateUser(data.userId, {
-      ban_duration: data.activo ? "none" : "876000h",
-    });
+    // Al reactivar, se levanta el baneo. Si el baneo falla, NO revertimos el
+    // cambio de estado del perfil (que es la fuente de verdad de la app).
+    try {
+      await (supabaseAdmin as any).auth.admin.updateUserById(data.userId, {
+        ban_duration: data.activo ? "none" : "876000h",
+      });
+    } catch {
+      /* el baneo es defensa en profundidad; el estado del perfil ya cambió */
+    }
 
     await (supabaseAdmin as any).from("audit_logs").insert({
       user_id: userId,
@@ -163,6 +181,73 @@ export const cambiarEstadoUsuario = createServerFn({ method: "POST" })
       tabla: "profiles",
       registro_id: data.userId,
       resultado: "exito",
+    });
+
+    return { ok: true, error: null as string | null };
+  });
+
+// --- Editar datos de perfil --------------------------------------------------
+const editarSchema = z.object({
+  userId: z.string().uuid(),
+  nombre: z.string().trim().min(1, "Ingresa el nombre.").max(120),
+  cargo: z.string().trim().max(120).optional().default(""),
+  tipo_documento: z.string().trim().max(40).optional().default(""),
+  numero_documento: z.string().trim().max(40).optional().default(""),
+  telefono: z.string().trim().max(40).optional().default(""),
+  sede: z.string().trim().max(120).optional().default(""),
+  observaciones: z.string().trim().max(500).optional().default(""),
+  rol: z.enum(ROLES).optional(),
+  activo: z.boolean().optional(),
+});
+
+export const editarUsuario = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => editarSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    if (!(await assertAdmin(supabase, userId))) {
+      return { ok: false, error: "Acción reservada al administrador." as string | null };
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // El correo de autenticación NO se modifica desde aquí (solo lectura en UI).
+    const { error } = await (supabaseAdmin as any)
+      .from("profiles")
+      .update({
+        nombre: data.nombre,
+        cargo: data.cargo || null,
+        tipo_documento: data.tipo_documento || null,
+        numero_documento: data.numero_documento || null,
+        telefono: data.telefono || null,
+        sede: data.sede || null,
+        observaciones: data.observaciones || null,
+        ...(data.activo !== undefined && data.userId !== userId ? { activo: data.activo } : {}),
+      })
+      .eq("user_id", data.userId);
+    if (error) {
+      return {
+        ok: false,
+        error: (error.message
+          ? `No se pudo actualizar el usuario: ${error.message}`
+          : "No se pudo actualizar el usuario.") as string | null,
+      };
+    }
+
+    // Cambio de rol opcional (no permitido sobre uno mismo).
+    if (data.rol && data.userId !== userId) {
+      await (supabaseAdmin as any).from("user_roles").delete().eq("user_id", data.userId);
+      await (supabaseAdmin as any).from("user_roles").insert({ user_id: data.userId, role: data.rol });
+    }
+
+    await (supabaseAdmin as any).from("audit_logs").insert({
+      user_id: userId,
+      accion: "editar_usuario",
+      modulo: "usuarios",
+      tabla: "profiles",
+      registro_id: data.userId,
+      resultado: "exito",
+      detalles: { rol: data.rol ?? null },
     });
 
     return { ok: true, error: null as string | null };

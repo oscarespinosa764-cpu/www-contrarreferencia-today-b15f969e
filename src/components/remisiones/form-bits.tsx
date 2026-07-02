@@ -25,6 +25,23 @@ export function Field({
 }) {
   // Mayúscula automática en campos de texto operativos (no email/número/fecha/etc.).
   const autoUpper = uppercase ?? type === "text";
+  // Limita el año a 4 dígitos en campos de fecha/hora (evita "12/12/122222").
+  const dateMax =
+    type === "datetime-local"
+      ? "9999-12-31T23:59"
+      : type === "date"
+        ? "9999-12-31"
+        : type === "month"
+          ? "9999-12"
+          : undefined;
+  const dateMin =
+    type === "datetime-local"
+      ? "1900-01-01T00:00"
+      : type === "date"
+        ? "1900-01-01"
+        : type === "month"
+          ? "1900-01"
+          : undefined;
   return (
     <div className="space-y-1.5">
       <Label htmlFor={name} className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -39,9 +56,12 @@ export function Field({
         defaultValue={defaultValue}
         placeholder={placeholder}
         readOnly={readOnly}
+        max={dateMax}
+        min={dateMin}
         uppercase={autoUpper}
         className={readOnly ? "cursor-not-allowed bg-muted text-muted-foreground" : undefined}
       />
+
     </div>
   );
 }

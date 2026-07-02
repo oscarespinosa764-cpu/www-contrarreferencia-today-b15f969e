@@ -942,6 +942,9 @@ export type Database = {
           id: string
           nombre: string | null
           numero_documento: string | null
+          observaciones: string | null
+          sede: string | null
+          telefono: string | null
           tipo_documento: string | null
           updated_at: string
           user_id: string
@@ -953,6 +956,9 @@ export type Database = {
           id?: string
           nombre?: string | null
           numero_documento?: string | null
+          observaciones?: string | null
+          sede?: string | null
+          telefono?: string | null
           tipo_documento?: string | null
           updated_at?: string
           user_id: string
@@ -964,6 +970,9 @@ export type Database = {
           id?: string
           nombre?: string | null
           numero_documento?: string | null
+          observaciones?: string | null
+          sede?: string | null
+          telefono?: string | null
           tipo_documento?: string | null
           updated_at?: string
           user_id?: string

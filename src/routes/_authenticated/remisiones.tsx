@@ -12,13 +12,19 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Search, RotateCw, FileSpreadsheet, FileText, FileDown } from "lucide-react";
+import { Plus, Search, RotateCw, FileSpreadsheet, FileText, FileDown, Loader2 } from "lucide-react";
 import { getTurno } from "@/lib/turno";
 import { CasoRemisionCard, type Remision } from "@/components/remisiones/caso-remision-card";
 import { CasoGenericoCard, type GenericoTipo } from "@/components/remisiones/caso-generico-card";
 import { NuevoRegistroDialog } from "@/components/remisiones/nuevo-registro-dialog";
 import { useAvisosOperativos } from "@/lib/use-avisos-operativos";
 import { NIVEL_BADGE } from "@/lib/avisos-reglas";
+import {
+  descargarExcelCRUE,
+  descargarReporteGeneralPDF,
+  descargarEntregaTurnoPDF,
+} from "@/lib/salientes-export";
+import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/remisiones")({
@@ -37,6 +43,9 @@ function RemisionesPage() {
   const [turnoEntrega, setTurnoEntrega] = useState<string>(getTurno().nombre);
   const [recibe, setRecibe] = useState("");
   const [confirmEntrega, setConfirmEntrega] = useState(false);
+  const [busyCrue, setBusyCrue] = useState(false);
+  const [busyReporte, setBusyReporte] = useState(false);
+  const [busyPdfTurno, setBusyPdfTurno] = useState(false);
 
   const { data: remisiones, isLoading } = useQuery({
     queryKey: ["remisiones"],
@@ -111,7 +120,19 @@ function RemisionesPage() {
     },
   });
 
-  // Recibe el turno: excluir al usuario activo.
+  // Última entrega de turno registrada (para la trazabilidad del estado).
+  const { data: ultimaEntrega } = useQuery({
+    queryKey: ["ultima-entrega-turno"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("entregas_turno")
+        .select("turno, entrega_nombre, recibe_nombre, created_at")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data ?? null;
+    },
+  });
   const recibeOpciones = (auxiliares ?? []).filter((a) => a.user_id !== user?.id);
 
   const aseguradores = useMemo(() => {
@@ -228,13 +249,93 @@ function RemisionesPage() {
     qc.invalidateQueries({ queryKey: ["referencia-interna"] });
     qc.invalidateQueries({ queryKey: ["pendientes-rem"] });
     qc.invalidateQueries({ queryKey: ["coordinacion-alertas"] });
+    qc.invalidateQueries({ queryKey: ["ultima-entrega-turno"] });
   };
+
+  // Auditoría de exportación (no bloquea la descarga, sin datos sensibles).
+  const auditarExport = async (accion: string, detalles: Record<string, unknown>) => {
+    try {
+      await registrarAuditoria({ data: { accion, modulo: "salientes", tabla: "remisiones", detalles } });
+    } catch {
+      /* la auditoría no debe bloquear la exportación */
+    }
+  };
+
+  const miNombreExport = () =>
+    auxiliares?.find((a) => a.user_id === user?.id)?.nombre || user?.email || "USUARIO";
+
+  const handleExcelCRUE = async () => {
+    setBusyCrue(true);
+    try {
+      descargarExcelCRUE(remisiones ?? []);
+      auditarExport("exportar_excel_crue", { registros: remisiones?.length ?? 0 });
+      toast.success("Excel CRUE generado");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo generar el Excel. Intente nuevamente.");
+    } finally {
+      setBusyCrue(false);
+    }
+  };
+
+  const handleReporteGeneral = async () => {
+    setBusyReporte(true);
+    try {
+      await descargarReporteGeneralPDF({
+        remisiones: remisiones ?? [],
+        especiales: stats.especiales,
+        internas: stats.internas,
+        pendientes: stats.generales,
+        usuario: miNombreExport(),
+        turno: turnoEntrega,
+      });
+      auditarExport("exportar_reporte_general", { registros: remisiones?.length ?? 0, turno: turnoEntrega });
+      toast.success("Reporte general generado");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo generar el reporte. Intente nuevamente.");
+    } finally {
+      setBusyReporte(false);
+    }
+  };
+
+  const handlePdfTurno = async () => {
+    setBusyPdfTurno(true);
+    try {
+      await descargarEntregaTurnoPDF({
+        turno: turnoEntrega,
+        entrega: miNombreExport(),
+        recibe: nombreRecibe,
+        fecha: new Date().toLocaleString("es-CO"),
+        activas: stats.activas,
+        especiales: stats.especiales,
+        internas: stats.internas,
+        pendientes: stats.generales,
+        reinicioNoche: turnoEntrega === "NOCHE",
+      });
+      auditarExport("exportar_pdf_entrega_turno", { turno: turnoEntrega });
+      toast.success("PDF de entrega de turno generado");
+      setConfirmEntrega(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo generar el PDF. Intente nuevamente.");
+    } finally {
+      setBusyPdfTurno(false);
+    }
+  };
+
+  // Texto de trazabilidad del estado de entrega.
+  const entregaEstadoTexto = ultimaEntrega
+    ? `Última entrega: ${new Date(ultimaEntrega.created_at as string).toLocaleString("es-CO", {
+        dateStyle: "short",
+        timeStyle: "short",
+      })} · Turno ${ultimaEntrega.turno} · Entregó: ${ultimaEntrega.entrega_nombre || "—"} · Recibió: ${
+        ultimaEntrega.recibe_nombre || "—"
+      }.`
+    : "Aún no se ha registrado un turno hoy.";
 
   return (
     <div>
       <AppHeader title="DASHBOARD OPERATIVO SALIENTES" subtitle="Casos activos" />
 
-      {/* Entrega de turno + Exportaciones */}
+      {/* Superior: Entrega de turno (con exportaciones) + Avisos operativos */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel title="Entrega de turno">
           <div className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
@@ -280,28 +381,30 @@ function RemisionesPage() {
               Guardar entrega
             </Button>
           </div>
-          <p className="mt-3 text-center text-[12px] italic text-muted-foreground">
-            Aún no se ha registrado un turno hoy.
-          </p>
-        </Panel>
 
-        <Panel title="Exportaciones">
-          <div className="flex flex-wrap justify-center gap-2">
-            <Button className="rounded-full" onClick={() => toast.info("Exportación Excel CRUE en preparación.")}>
-              <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Excel CRUE
+          <p className="mt-3 text-center text-[12px] italic text-muted-foreground">{entregaEstadoTexto}</p>
+
+          <div className="mt-3 flex flex-wrap justify-center gap-2 border-t border-border pt-3">
+            <Button className="rounded-full" onClick={handleExcelCRUE} disabled={busyCrue}>
+              {busyCrue ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="mr-1.5 h-4 w-4" />
+              )}
+              {busyCrue ? "Generando…" : "Excel CRUE"}
             </Button>
-            <Button variant="outline" className="rounded-full" onClick={() => toast.info("Reporte general en preparación.")}>
-              <FileText className="mr-1.5 h-4 w-4" /> Reporte general
+            <Button variant="outline" className="rounded-full" onClick={handleReporteGeneral} disabled={busyReporte}>
+              {busyReporte ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              ) : (
+                <FileText className="mr-1.5 h-4 w-4" />
+              )}
+              {busyReporte ? "Generando…" : "Reporte general"}
             </Button>
           </div>
-          <p className="mt-3 text-center text-[12px] italic text-muted-foreground">
-            Formato CRUE y reporte operativo activo. La impresión PDF se genera al guardar la entrega de turno.
-          </p>
         </Panel>
-      </div>
 
-      {/* Avisos operativos */}
-      <div className="mt-4">
+        {/* Avisos operativos (reubicado al espacio del antiguo cuadro Exportaciones) */}
         <Panel
           title="Avisos operativos"
           action={
@@ -496,15 +599,14 @@ function RemisionesPage() {
               que quedaron pendientes se enviaron como alertas a Coordinación.
             </p>
           )}
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" className="rounded-full" onClick={() => setConfirmEntrega(false)}>
-              Cerrar
-            </Button>
-            <Button
-              className="rounded-full"
-              onClick={() => toast.info("Generación de PDF de resumen de turno en preparación.")}
-            >
-              <FileDown className="mr-1.5 h-4 w-4" /> Generar PDF
+          <div className="flex justify-end pt-2">
+            <Button className="rounded-full" onClick={handlePdfTurno} disabled={busyPdfTurno}>
+              {busyPdfTurno ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              ) : (
+                <FileDown className="mr-1.5 h-4 w-4" />
+              )}
+              {busyPdfTurno ? "Generando…" : "Generar PDF"}
             </Button>
           </div>
         </DialogContent>

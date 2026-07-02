@@ -18,19 +18,16 @@ export function VoiceDictationButton({ status, supported, onToggle, className }:
   const processing = status === "processing";
   const denied = status === "denied";
 
-  let label = "Dictar";
   let tooltip = TOOLTIP_BASE;
   let Icon = Mic;
 
   if (listening) {
-    label = "Detener";
-    tooltip = "Escuchando… toque para detener.";
+    tooltip = "Escuchando… toque para detener. Revise el texto antes de guardar.";
     Icon = Square;
   } else if (processing) {
-    label = "Procesando";
+    tooltip = "Procesando dictado…";
     Icon = Loader2;
   } else if (denied) {
-    label = "Micrófono";
     tooltip = "No se pudo acceder al micrófono. Verifique permisos del navegador.";
     Icon = MicOff;
   }
@@ -42,7 +39,8 @@ export function VoiceDictationButton({ status, supported, onToggle, className }:
       title={tooltip}
       aria-label={tooltip}
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium shadow-sm transition-colors",
+        // Solo ícono de micrófono, discreto, sin texto "Dictar".
+        "inline-flex h-7 w-7 items-center justify-center rounded-full border shadow-sm transition-colors",
         listening
           ? "border-status-red/40 bg-status-red/10 text-status-red animate-pulse"
           : denied
@@ -52,7 +50,6 @@ export function VoiceDictationButton({ status, supported, onToggle, className }:
       )}
     >
       <Icon className={cn("h-3.5 w-3.5", processing && "animate-spin")} />
-      <span>{label}</span>
     </button>
   );
 }
