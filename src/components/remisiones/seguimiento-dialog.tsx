@@ -1217,7 +1217,23 @@ export function SeguimientoDialog({
         update.codigo_radicacion = [...radicadosLista, nuevoRadicado.trim()].join(" · ");
       if (esSaliente && tipoSeg === T.CANCELACION && cancelNuevoRadicado.trim())
         update.codigo_radicacion = cancelNuevoRadicado.trim();
-      if (estadoOpciones && estadoCaso) update.estado = estadoCaso;
+      // Salientes: estado automático según la cadena secuencial.
+      if (esSaliente) {
+        if (estadoDestino && estadoDestino !== (estadoActual ?? "")) update.estado = estadoDestino;
+        // Cierre por egresos (remisión exitosa) o desistimiento general → cierra y archiva.
+        if (
+          (esCierre && cierreEgreso === "si") ||
+          estadoDestino === EST.CERRADO_EXITOSO ||
+          estadoDestino === EST.DESIST_GENERAL
+        ) {
+          update.estado =
+            estadoDestino === EST.DESIST_GENERAL ? EST.DESIST_GENERAL : EST.CERRADO_EXITOSO;
+          update.archivado = true;
+        }
+      } else if (estadoOpciones && estadoCaso) {
+        // PHD y otros módulos con opciones de estado: mantiene selección manual.
+        update.estado = estadoCaso;
+      }
       if (usaIndigo && indigoTexto.trim()) update.trazabilidad_indigo = indigoTexto.trim();
       // Referencia interna: refleja estado según el seguimiento y cierra al culminar.
       if (esInterna) {
@@ -1235,12 +1251,7 @@ export function SeguimientoDialog({
           update.archivado = true;
         } else {
           update.estado = "ABIERTO";
-      }
-      // Cierre por admisión (Parte 18): si el paciente egresó, cerrar y archivar.
-      if (esCierre && cierreEgreso === "si") {
-        update.estado = "EGRESADO/CERRADO";
-        update.archivado = true;
-      }
+        }
       }
 
       if (Object.keys(update).length > 0) {
