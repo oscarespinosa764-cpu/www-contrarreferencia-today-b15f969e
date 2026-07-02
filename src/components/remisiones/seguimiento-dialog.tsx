@@ -532,6 +532,9 @@ export function SeguimientoDialog({
   const esTelefono = usaIndigo && tipoSeg === T.TELEFONO;
   const esEntregaDoc = usaIndigo && tipoSeg === T.ENTREGA_DOC;
   const esCierre = usaIndigo && tipoSeg === T.CIERRE;
+  const esNovedades = usaIndigo && tipoSeg === T.NOVEDADES;
+  // Casilla "Ambulancia" solo disponible tras coordinar ambulancia (o pendiente egreso).
+  const novAmbDisponible = faseAceptadoCon || facePendienteEgreso;
 
   // --- Estado de evolución diaria (salientes v2) ---
   const evoEstadoSal: EvolucionEstado = useMemo(() => {
