@@ -1907,6 +1907,92 @@ export function SeguimientoDialog({
             </div>
           )}
 
+          {/* NOVEDADES (Parte 12) */}
+          {esSaliente && esNovedades && (
+            <div className={sectionCls}>
+              <p className={labelCls}>Tipo de novedad</p>
+              <div className="flex flex-col gap-2">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={novPaciente}
+                    onChange={(e) => setNovPaciente(e.target.checked)}
+                  />
+                  Paciente/Familiar
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={novIps}
+                    onChange={(e) => setNovIps(e.target.checked)}
+                  />
+                  IPS Receptora
+                </label>
+                {novAmbDisponible && (
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={novAmbulancia}
+                      onChange={(e) => setNovAmbulancia(e.target.checked)}
+                    />
+                    Ambulancia
+                  </label>
+                )}
+              </div>
+
+              {novPaciente && (
+                <div className="space-y-2 rounded-md border border-dashed p-3">
+                  <Label className={labelCls}>¿El paciente/familiar firmó desistimiento?</Label>
+                  <Select
+                    value={novDesistTipo}
+                    onValueChange={(v) => setNovDesistTipo(v as "IPS_AMB" | "GENERAL")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="IPS_AMB">DESISTIMIENTO IPS / AMBULANCIA</SelectItem>
+                      <SelectItem value="GENERAL">DESISTIMIENTO GENERAL</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {novDesistTipo === "IPS_AMB" && (
+                    <div className="flex flex-col gap-2 pt-1">
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={novDesistIps}
+                          onChange={(e) => setNovDesistIps(e.target.checked)}
+                        />
+                        IPS
+                      </label>
+                      {novAmbDisponible && (
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={novDesistAmb}
+                            onChange={(e) => setNovDesistAmb(e.target.checked)}
+                          />
+                          AMBULANCIA
+                        </label>
+                      )}
+                    </div>
+                  )}
+                  {novDesistTipo === "GENERAL" && (
+                    <p className="rounded-md border border-amber-200 bg-amber-50/60 p-2 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
+                      Al guardar, el caso se cerrará como DESISTIMIENTO GENERAL y pasará al historial.
+                    </p>
+                  )}
+                </div>
+              )}
+              <p className="text-[10px] text-muted-foreground">
+                Registra la novedad en observaciones. El estado del caso solo cambia si se marca un
+                desistimiento.
+              </p>
+            </div>
+          )}
+
+
+
 
           {/* CANCELACIÓN DE TRÁMITE DE REMISIÓN */}
           {esSaliente && tipoSeg === T.CANCELACION && (
