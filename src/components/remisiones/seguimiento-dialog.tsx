@@ -481,7 +481,7 @@ export function SeguimientoDialog({
           ? TIPOS_PENDIENTE
           : [];
 
-  void estadoOpciones;
+
 
   // Inicializar al abrir.
   useEffect(() => {
