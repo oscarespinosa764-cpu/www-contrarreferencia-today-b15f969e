@@ -320,11 +320,10 @@ function RemisionesPage() {
           acepConAmb: stats.acepCoordinada,
           desistimientos: stats.desistIps + stats.desistGeneral,
           altaPrioridad: count((r) => /ALTA|VITAL|URGENTE/i.test(r.prioridad || "")),
-          sinSeguimiento: count(
-            (r) =>
-              !r.evolucion_actualizada_at ||
-              Date.now() - new Date(r.evolucion_actualizada_at as string).getTime() > 24 * 3600 * 1000,
-          ),
+          sinSeguimiento: count((r) => {
+            const upd = (r as unknown as Record<string, unknown>).evolucion_actualizada_at as string | undefined;
+            return !upd || Date.now() - new Date(upd).getTime() > 24 * 3600 * 1000;
+          }),
         },
       });
       auditarExport("exportar_pdf_entrega_turno", { turno: turnoEntrega });
