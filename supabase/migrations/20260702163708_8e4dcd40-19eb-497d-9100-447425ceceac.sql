@@ -1,0 +1,4 @@
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS telefono TEXT,
+  ADD COLUMN IF NOT EXISTS sede TEXT,
+  ADD COLUMN IF NOT EXISTS observaciones TEXT;

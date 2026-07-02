@@ -22,9 +22,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, UserPlus, Loader2, Activity } from "lucide-react";
+import { Search, UserPlus, Loader2, Activity, Pencil } from "lucide-react";
 import { toast } from "sonner";
-import { crearUsuario, cambiarRolUsuario, cambiarEstadoUsuario } from "@/lib/usuarios.functions";
+import {
+  crearUsuario,
+  cambiarRolUsuario,
+  cambiarEstadoUsuario,
+  editarUsuario,
+} from "@/lib/usuarios.functions";
 import { UsuarioActividadDialog } from "@/components/coordinacion/usuario-actividad-dialog";
 
 type Rol = "admin" | "operativa" | "temporal";
@@ -45,9 +50,25 @@ const emptyForm = {
   nombre: "",
   email: "",
   cargo: "",
+  telefono: "",
   password: "",
   rol: "operativa" as Rol,
   activo: true,
+};
+
+type EditForm = {
+  userId: string;
+  nombre: string;
+  email: string;
+  cargo: string;
+  tipo_documento: string;
+  numero_documento: string;
+  telefono: string;
+  sede: string;
+  observaciones: string;
+  rol: Rol;
+  activo: boolean;
+  esYo: boolean;
 };
 
 export function UsuariosPanel() {
@@ -58,6 +79,13 @@ export function UsuariosPanel() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [guardando, setGuardando] = useState(false);
+  const [editForm, setEditForm] = useState<EditForm | null>(null);
+  const [editando, setEditando] = useState(false);
+  const [confirmDesactivar, setConfirmDesactivar] = useState<{
+    userId: string;
+    nombre: string;
+    activo: boolean;
+  } | null>(null);
   const [actividadDe, setActividadDe] = useState<{
     userId: string;
     nombre: string;
@@ -67,6 +95,8 @@ export function UsuariosPanel() {
   const crear = useServerFn(crearUsuario);
   const cambiarRolFn = useServerFn(cambiarRolUsuario);
   const cambiarEstadoFn = useServerFn(cambiarEstadoUsuario);
+  const editarFn = useServerFn(editarUsuario);
+
 
   const { data: usuarios, isLoading } = useQuery({
     queryKey: ["usuarios"],
@@ -94,8 +124,76 @@ export function UsuariosPanel() {
   const toggleActivo = async (userId: string, activo: boolean) => {
     const res = await cambiarEstadoFn({ data: { userId, activo } });
     if (!res.ok) return toast.error(res.error ?? "No se pudo actualizar el estado.");
-    toast.success(activo ? "Usuario activado" : "Usuario desactivado");
+    toast.success(activo ? "Usuario activado correctamente." : "Usuario desactivado correctamente.");
     qc.invalidateQueries({ queryKey: ["usuarios"] });
+  };
+
+  const confirmarDesactivacion = async () => {
+    if (!confirmDesactivar) return;
+    const { userId, activo } = confirmDesactivar;
+    setConfirmDesactivar(null);
+    await toggleActivo(userId, activo);
+  };
+
+  const abrirEditar = (u: {
+    user_id: string;
+    nombre: string | null;
+    cargo: string | null;
+    tipo_documento: string | null;
+    numero_documento: string | null;
+    telefono: string | null;
+    sede: string | null;
+    observaciones: string | null;
+    activo: boolean;
+    roles: Rol[];
+  }) => {
+    setEditForm({
+      userId: u.user_id,
+      nombre: u.nombre || "",
+      email: "",
+      cargo: u.cargo || "",
+      tipo_documento: u.tipo_documento || "",
+      numero_documento: u.numero_documento || "",
+      telefono: u.telefono || "",
+      sede: u.sede || "",
+      observaciones: u.observaciones || "",
+      rol: (u.roles[0] ?? "operativa") as Rol,
+      activo: u.activo,
+      esYo: u.user_id === user?.id,
+    });
+  };
+
+  const guardarEdicion = async () => {
+    if (!editForm) return;
+    if (!editForm.nombre.trim()) return toast.error("Ingresa el nombre.");
+    setEditando(true);
+    try {
+      const res = await editarFn({
+        data: {
+          userId: editForm.userId,
+          nombre: editForm.nombre.trim(),
+          cargo: editForm.cargo.trim(),
+          tipo_documento: editForm.tipo_documento.trim(),
+          numero_documento: editForm.numero_documento.trim(),
+          telefono: editForm.telefono.trim(),
+          sede: editForm.sede.trim(),
+          observaciones: editForm.observaciones.trim(),
+          rol: editForm.esYo ? undefined : editForm.rol,
+          activo: editForm.esYo ? undefined : editForm.activo,
+        },
+      });
+      if (!res.ok) {
+        toast.error(res.error ?? "No se pudo actualizar el usuario.");
+        return;
+      }
+      toast.success("Usuario actualizado correctamente.");
+      setEditForm(null);
+      qc.invalidateQueries({ queryKey: ["usuarios"] });
+    } catch {
+      toast.error("Error al actualizar el usuario. Intenta de nuevo.");
+    } finally {
+      setEditando(false);
+    }
   };
 
   const guardarNuevo = async () => {
@@ -110,6 +208,7 @@ export function UsuariosPanel() {
           nombre: form.nombre.trim(),
           email: form.email.trim(),
           cargo: form.cargo.trim(),
+          telefono: form.telefono.trim(),
           password: form.password,
           rol: form.rol,
           activo: form.activo,
@@ -266,6 +365,14 @@ export function UsuariosPanel() {
                           variant="outline"
                           size="sm"
                           className="h-8 rounded-full"
+                          onClick={() => abrirEditar(u)}
+                        >
+                          <Pencil className="mr-1 h-4 w-4" /> Editar
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 rounded-full"
                           onClick={() =>
                             setActividadDe({
                               userId: u.user_id,
@@ -281,7 +388,15 @@ export function UsuariosPanel() {
                           size="sm"
                           className="h-8 rounded-full"
                           disabled={esYo}
-                          onClick={() => toggleActivo(u.user_id, !u.activo)}
+                          onClick={() =>
+                            esYo
+                              ? toast.error("No puedes desactivar tu propio usuario.")
+                              : setConfirmDesactivar({
+                                  userId: u.user_id,
+                                  nombre: u.nombre || "Sin nombre",
+                                  activo: !u.activo,
+                                })
+                          }
                         >
                           {u.activo ? "Desactivar" : "Activar"}
                         </Button>
@@ -332,6 +447,17 @@ export function UsuariosPanel() {
                 value={form.cargo}
                 onChange={(e) => setForm((f) => ({ ...f, cargo: e.target.value }))}
                 placeholder="Cargo o área"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="n-tel">Número telefónico (opcional)</Label>
+              <Input
+                id="n-tel"
+                type="tel"
+                inputMode="tel"
+                value={form.telefono}
+                onChange={(e) => setForm((f) => ({ ...f, telefono: e.target.value }))}
+                placeholder="+57 300 000 0000"
               />
             </div>
             <div className="space-y-1.5">
@@ -397,6 +523,182 @@ export function UsuariosPanel() {
                 "Crear usuario"
               )}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Editar usuario */}
+      <Dialog open={Boolean(editForm)} onOpenChange={(v) => !editando && !v && setEditForm(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar usuario</DialogTitle>
+            <DialogDescription>
+              Actualiza los datos de perfil del usuario. El correo de autenticación no se puede
+              modificar desde aquí.
+            </DialogDescription>
+          </DialogHeader>
+
+          {editForm && (
+            <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
+              <div className="space-y-1.5">
+                <Label htmlFor="e-nombre">Nombre completo</Label>
+                <Input
+                  id="e-nombre"
+                  value={editForm.nombre}
+                  onChange={(e) => setEditForm((f) => (f ? { ...f, nombre: e.target.value } : f))}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="e-tdoc">Tipo de documento</Label>
+                  <Input
+                    id="e-tdoc"
+                    value={editForm.tipo_documento}
+                    onChange={(e) =>
+                      setEditForm((f) => (f ? { ...f, tipo_documento: e.target.value } : f))
+                    }
+                    placeholder="CC, CE…"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="e-ndoc">Número de documento</Label>
+                  <Input
+                    id="e-ndoc"
+                    value={editForm.numero_documento}
+                    onChange={(e) =>
+                      setEditForm((f) => (f ? { ...f, numero_documento: e.target.value } : f))
+                    }
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="e-cargo">Cargo</Label>
+                <Input
+                  id="e-cargo"
+                  value={editForm.cargo}
+                  onChange={(e) => setEditForm((f) => (f ? { ...f, cargo: e.target.value } : f))}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="e-tel">Teléfono</Label>
+                  <Input
+                    id="e-tel"
+                    type="tel"
+                    inputMode="tel"
+                    value={editForm.telefono}
+                    onChange={(e) => setEditForm((f) => (f ? { ...f, telefono: e.target.value } : f))}
+                    placeholder="+57 300 000 0000"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="e-sede">Sede</Label>
+                  <Input
+                    id="e-sede"
+                    value={editForm.sede}
+                    onChange={(e) => setEditForm((f) => (f ? { ...f, sede: e.target.value } : f))}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="e-obs">Observaciones</Label>
+                <Input
+                  id="e-obs"
+                  value={editForm.observaciones}
+                  onChange={(e) =>
+                    setEditForm((f) => (f ? { ...f, observaciones: e.target.value } : f))
+                  }
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Rol</Label>
+                  <Select
+                    value={editForm.rol}
+                    onValueChange={(v) => setEditForm((f) => (f ? { ...f, rol: v as Rol } : f))}
+                    disabled={editForm.esYo}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(rolLabels) as Rol[]).map((r) => (
+                        <SelectItem key={r} value={r}>
+                          {rolLabels[r]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Estado</Label>
+                  <Select
+                    value={editForm.activo ? "activo" : "inactivo"}
+                    onValueChange={(v) =>
+                      setEditForm((f) => (f ? { ...f, activo: v === "activo" } : f))
+                    }
+                    disabled={editForm.esYo}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="activo">Activo</SelectItem>
+                      <SelectItem value="inactivo">Inactivo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Correo de autenticación</Label>
+                <Input value="No se puede modificar desde aquí" readOnly disabled />
+                <p className="text-[11px] text-muted-foreground">
+                  El correo de autenticación no se puede modificar desde aquí.
+                </p>
+              </div>
+              {editForm.esYo && (
+                <p className="rounded-md bg-status-amber/10 px-3 py-2 text-[11px] font-medium text-status-amber">
+                  No puedes cambiar tu propio rol ni tu propio estado.
+                </p>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditForm(null)} disabled={editando}>
+              Cancelar
+            </Button>
+            <Button onClick={guardarEdicion} disabled={editando}>
+              {editando ? (
+                <>
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Guardando…
+                </>
+              ) : (
+                "Guardar cambios"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmación activar / desactivar */}
+      <Dialog open={Boolean(confirmDesactivar)} onOpenChange={(v) => !v && setConfirmDesactivar(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {confirmDesactivar?.activo ? "Activar usuario" : "Desactivar usuario"}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmDesactivar?.activo
+                ? `¿Confirmas activar a ${confirmDesactivar?.nombre}?`
+                : `¿Confirmas desactivar a ${confirmDesactivar?.nombre}? El usuario no se elimina y puede reactivarse después.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmDesactivar(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={confirmarDesactivacion}>Confirmar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

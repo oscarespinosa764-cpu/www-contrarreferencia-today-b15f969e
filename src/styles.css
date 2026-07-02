@@ -230,3 +230,20 @@
     animation-delay: 2s;
   }
 }
+
+/* Íconos de calendario/reloj visibles en inputs date/time/datetime-local */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator {
+  opacity: 1;
+  cursor: pointer;
+  color: hsl(var(--foreground));
+  filter: invert(0.45);
+}
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="month"] {
+  position: relative;
+}

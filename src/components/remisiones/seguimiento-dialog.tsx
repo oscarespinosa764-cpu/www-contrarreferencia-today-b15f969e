@@ -100,10 +100,22 @@ const T = {
   NEGACIONES: "TRAZABILIDAD DE NEGACIONES",
   AMBULANCIA: "AMBULANCIA COORDINADA",
   ENTREGA_DOC: "ENTREGA DE DOCUMENTACIÓN AMBULANCIA",
-  CIERRE: "CIERRE POR ADMISIÓN",
+  CIERRE: "CIERRE POR EGRESOS (REMISIÓN)",
   CANCELACION: "CANCELACIÓN DE TRÁMITE DE REMISIÓN",
   PERTINENCIA: "REVISIÓN AUTORIZACIÓN ESTANCIA (CANCELACIÓN)",
+  NOVEDADES: "NOVEDADES",
   OTRO: "OTRO",
+} as const;
+
+// Estados secuenciales del caso saliente (sin acentos, compatibles con la BD existente).
+const EST = {
+  PENDIENTE_ACEPT: "PENDIENTE ACEPTACION",
+  ACEPTADO_SIN: "ACEPTADO SIN PROGRAMACION DE AMBULANCIA",
+  ACEPTADO_CON: "ACEPTADO CON AMBULANCIA COORDINADA",
+  PENDIENTE_EGRESO: "PENDIENTE EGRESO REMISION",
+  CERRADO_EXITOSO: "CERRADO POR REMISION EXITOSA",
+  DESIST_IPS: "DESISTIMIENTO IPS",
+  DESIST_GENERAL: "DESISTIMIENTO GENERAL",
 } as const;
 
 // --- Tipos de seguimiento PHD/PAD/O2/Especiales (reutiliza lógica saliente) ---
@@ -255,6 +267,14 @@ export function SeguimientoDialog({
   // Otro
   const [otroCual, setOtroCual] = useState("");
 
+  // Novedades (Parte 12)
+  const [novPaciente, setNovPaciente] = useState(false);
+  const [novIps, setNovIps] = useState(false);
+  const [novAmbulancia, setNovAmbulancia] = useState(false);
+  const [novDesistTipo, setNovDesistTipo] = useState<"" | "IPS_AMB" | "GENERAL">("");
+  const [novDesistIps, setNovDesistIps] = useState(false);
+  const [novDesistAmb, setNovDesistAmb] = useState(false);
+
   // Referencia interna
   const [riFuncionario, setRiFuncionario] = useState("");
   const [riCargo, setRiCargo] = useState("");
@@ -398,6 +418,27 @@ export function SeguimientoDialog({
   // ¿Mostrar la opción "RADICADO DE CASO"? Solo si la EAPB genera código y aún no existe radicado real.
   const mostrarOpcionRadicado = usaIndigo && generaCodigo && !radicadoReal;
 
+  // --- Fase de la cadena secuencial del caso (según el estado guardado) ---
+  const estadoUpper = (estadoActual ?? "").toUpperCase();
+  const casoCerrado =
+    estadoUpper.includes("CERRAD") ||
+    estadoUpper.includes("EGRESAD") ||
+    estadoUpper.includes("DESISTIMIENTO GENERAL");
+  // Antes de aceptación: estado inicial o tras un desistimiento de IPS (se puede volver a buscar IPS).
+  const faseAntesAceptacion =
+    !casoCerrado &&
+    (estadoUpper === "" ||
+      estadoUpper.includes("PENDIENTE ACEPTAC") ||
+      estadoUpper.includes("DESISTIMIENTO IPS"));
+  const faseAceptadoSin = !casoCerrado && estadoUpper.includes("ACEPTADO SIN");
+  const faseAceptadoCon = !casoCerrado && estadoUpper.includes("ACEPTADO CON AMBULANCIA");
+  const facePendienteEgreso = !casoCerrado && estadoUpper.includes("PENDIENTE EGRESO");
+
+  const mostrarAceptacion = faseAntesAceptacion;
+  const mostrarAmbulancia = faseAceptadoSin;
+  const mostrarEntregaDocOpt = faseAceptadoCon;
+  const mostrarCierreOpt = facePendienteEgreso;
+
   const TIPOS_SALIENTES = useMemo(() => {
     const arr = [
       ...(mostrarOpcionRadicado ? [T.RADICADO] : []),
@@ -406,17 +447,24 @@ export function SeguimientoDialog({
       T.PLATAFORMA,
       T.FISICO,
       T.TELEFONO,
-      T.ACEPTACION,
+      ...(mostrarAceptacion ? [T.ACEPTACION] : []),
       T.NEGACIONES,
-      T.AMBULANCIA,
-      T.ENTREGA_DOC,
-      T.CIERRE,
+      ...(mostrarAmbulancia ? [T.AMBULANCIA] : []),
+      ...(mostrarEntregaDocOpt ? [T.ENTREGA_DOC] : []),
+      ...(mostrarCierreOpt ? [T.CIERRE] : []),
       T.CANCELACION,
       T.PERTINENCIA,
+      T.NOVEDADES,
       T.OTRO,
     ];
     return arr;
-  }, [mostrarOpcionRadicado]);
+  }, [
+    mostrarOpcionRadicado,
+    mostrarAceptacion,
+    mostrarAmbulancia,
+    mostrarEntregaDocOpt,
+    mostrarCierreOpt,
+  ]);
 
   // Tipos para PHD/PAD/O2/Especiales (subconjunto saliente).
   const TIPOS_PHD = useMemo(() => {
@@ -433,7 +481,7 @@ export function SeguimientoDialog({
           ? TIPOS_PENDIENTE
           : [];
 
-  const findEstado = (re: RegExp) => (estadoOpciones ?? []).find((o) => re.test(o)) ?? "";
+
 
   // Inicializar al abrir.
   useEffect(() => {
@@ -458,25 +506,45 @@ export function SeguimientoDialog({
     }
   }, [open, caso]);
 
-  // Al cambiar el tipo de seguimiento: defaults de estado y reactivar auto-generación.
+  // Al cambiar el tipo de seguimiento: defaults de estado de la solicitud y reactivar auto-generación.
   useEffect(() => {
     setIndigoEditada(false);
+    // Reset de novedades al cambiar de tipo.
+    if (tipoSeg !== T.NOVEDADES) {
+      setNovPaciente(false);
+      setNovIps(false);
+      setNovAmbulancia(false);
+      setNovDesistTipo("");
+      setNovDesistIps(false);
+      setNovDesistAmb(false);
+    }
     if (!usaIndigo || !tipoSeg) return;
     // Estado de la solicitud automático según el tipo.
     if (tipoSeg === T.RADICADO || tipoSeg === T.CANCELACION) setEstadoSolicitud("No aplica");
     else if (tipoSeg === T.ACEPTACION || tipoSeg === T.AMBULANCIA) setEstadoSolicitud("Sí acepta");
     else if (tipoSeg === T.NEGACIONES) setEstadoSolicitud("No acepta");
     else setEstadoSolicitud("");
-    // Estado del caso automático según el tipo.
-    if (tipoSeg === T.RADICADO) {
-      const e = findEstado(/PENDIENTE/i);
-      if (e) setEstadoCaso(e);
-    } else if (tipoSeg === T.AMBULANCIA) {
-      const e = findEstado(/ACEPTAD.*CON.*AMBULANC/i);
-      if (e) setEstadoCaso(e);
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipoSeg]);
+
+  // Estado destino automático de la cadena secuencial (salientes).
+  const estadoDestino = useMemo(() => {
+    if (!esSaliente) return estadoCaso;
+    let e = estadoActual ?? EST.PENDIENTE_ACEPT;
+    if (tipoSeg === T.ACEPTACION) e = EST.ACEPTADO_SIN;
+    else if (tipoSeg === T.AMBULANCIA) e = EST.ACEPTADO_CON;
+    else if (tipoSeg === T.ENTREGA_DOC) e = EST.PENDIENTE_EGRESO;
+    else if (tipoSeg === T.CIERRE) e = cierreEgreso === "si" ? EST.CERRADO_EXITOSO : (estadoActual ?? EST.PENDIENTE_ACEPT);
+    else if (tipoSeg === T.NOVEDADES && novPaciente) {
+      if (novDesistTipo === "GENERAL") e = EST.DESIST_GENERAL;
+      else if (novDesistTipo === "IPS_AMB") {
+        if (novDesistIps) e = EST.DESIST_IPS;
+        else if (novDesistAmb) e = EST.ACEPTADO_SIN;
+      }
+    }
+    return e;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [esSaliente, estadoActual, estadoCaso, tipoSeg, cierreEgreso, novPaciente, novDesistTipo, novDesistIps, novDesistAmb]);
 
   const esEvolucionSal = usaIndigo && tipoSeg === T.EVOLUCION;
   const esRadicado = usaIndigo && tipoSeg === T.RADICADO;
@@ -484,6 +552,9 @@ export function SeguimientoDialog({
   const esTelefono = usaIndigo && tipoSeg === T.TELEFONO;
   const esEntregaDoc = usaIndigo && tipoSeg === T.ENTREGA_DOC;
   const esCierre = usaIndigo && tipoSeg === T.CIERRE;
+  const esNovedades = usaIndigo && tipoSeg === T.NOVEDADES;
+  // Casilla "Ambulancia" solo disponible tras coordinar ambulancia (o pendiente egreso).
+  const novAmbDisponible = faseAceptadoCon || facePendienteEgreso;
 
   // --- Estado de evolución diaria (salientes v2) ---
   const evoEstadoSal: EvolucionEstado = useMemo(() => {
@@ -678,6 +749,28 @@ export function SeguimientoDialog({
       case T.OTRO:
         base = generarPlantillaOtroSeg(otroCual, estadoSolicitud);
         break;
+      case T.NOVEDADES: {
+        if (novPaciente && novDesistTipo === "GENERAL") {
+          base =
+            "SE REGISTRA DESISTIMIENTO GENERAL DE LA REMISIÓN POR PARTE DE PACIENTE/FAMILIAR. SE CIERRA PROCESO SEGÚN TRAZABILIDAD REGISTRADA.";
+        } else if (novPaciente && novDesistTipo === "IPS_AMB" && novDesistIps) {
+          base =
+            "SE REGISTRA DESISTIMIENTO DE IPS POR PARTE DE PACIENTE/FAMILIAR. SE DEJA TRAZABILIDAD Y SE CONTINÚA GESTIÓN PARA NUEVA ACEPTACIÓN SEGÚN CORRESPONDA.";
+        } else if (novPaciente && novDesistTipo === "IPS_AMB" && novDesistAmb) {
+          base =
+            "SE REGISTRA DESISTIMIENTO DE AMBULANCIA POR PARTE DE PACIENTE/FAMILIAR. SE DEJA TRAZABILIDAD Y QUEDA PENDIENTE NUEVA COORDINACIÓN DE TRASLADO.";
+        } else {
+          const tipos = [
+            novPaciente ? "PACIENTE/FAMILIAR" : "",
+            novIps ? "IPS RECEPTORA" : "",
+            novAmbulancia ? "AMBULANCIA" : "",
+          ]
+            .filter(Boolean)
+            .join(", ");
+          base = `SE REGISTRA NOVEDAD EN EL PROCESO DE REMISIÓN RELACIONADA CON ${tipos || "EL PROCESO"}.`;
+        }
+        break;
+      }
       default:
         base = "";
     }
@@ -731,6 +824,12 @@ export function SeguimientoDialog({
     revFuncionario,
     revCargo,
     otroCual,
+    novPaciente,
+    novIps,
+    novAmbulancia,
+    novDesistTipo,
+    novDesistIps,
+    novDesistAmb,
     detalle,
   ]);
 
@@ -997,6 +1096,12 @@ export function SeguimientoDialog({
     setCancelCargo("");
     setCancelNuevoRadicado("");
     setOtroCual("");
+    setNovPaciente(false);
+    setNovIps(false);
+    setNovAmbulancia(false);
+    setNovDesistTipo("");
+    setNovDesistIps(false);
+    setNovDesistAmb(false);
     setAsunto("");
     setContactoDestino("");
     setContactoIps("");
@@ -1071,6 +1176,13 @@ export function SeguimientoDialog({
         return;
       if (esCierre && !cierreEgreso)
         return toast.error("Indica si el paciente ya egresó de la institución");
+      if (esNovedades) {
+        if (!novPaciente && !novIps && !novAmbulancia)
+          return toast.error("Selecciona al menos un tipo de novedad");
+        if (novPaciente && novDesistTipo === "IPS_AMB" && !novDesistIps && !novDesistAmb)
+          return toast.error("Marca al menos IPS o AMBULANCIA en el desistimiento");
+        if (!detalle.trim()) return toast.error("Registra la observación de la novedad");
+      }
       if (requiereMotivoLegacy && mostrarEvolucionLegacy && !motivoEvo.trim())
         return toast.error("Indica el motivo de la evolución pendiente");
     }
@@ -1146,7 +1258,23 @@ export function SeguimientoDialog({
         update.codigo_radicacion = [...radicadosLista, nuevoRadicado.trim()].join(" · ");
       if (esSaliente && tipoSeg === T.CANCELACION && cancelNuevoRadicado.trim())
         update.codigo_radicacion = cancelNuevoRadicado.trim();
-      if (estadoOpciones && estadoCaso) update.estado = estadoCaso;
+      // Salientes: estado automático según la cadena secuencial.
+      if (esSaliente) {
+        if (estadoDestino && estadoDestino !== (estadoActual ?? "")) update.estado = estadoDestino;
+        // Cierre por egresos (remisión exitosa) o desistimiento general → cierra y archiva.
+        if (
+          (esCierre && cierreEgreso === "si") ||
+          estadoDestino === EST.CERRADO_EXITOSO ||
+          estadoDestino === EST.DESIST_GENERAL
+        ) {
+          update.estado =
+            estadoDestino === EST.DESIST_GENERAL ? EST.DESIST_GENERAL : EST.CERRADO_EXITOSO;
+          update.archivado = true;
+        }
+      } else if (estadoOpciones && estadoCaso) {
+        // PHD y otros módulos con opciones de estado: mantiene selección manual.
+        update.estado = estadoCaso;
+      }
       if (usaIndigo && indigoTexto.trim()) update.trazabilidad_indigo = indigoTexto.trim();
       // Referencia interna: refleja estado según el seguimiento y cierra al culminar.
       if (esInterna) {
@@ -1164,12 +1292,7 @@ export function SeguimientoDialog({
           update.archivado = true;
         } else {
           update.estado = "ABIERTO";
-      }
-      // Cierre por admisión (Parte 18): si el paciente egresó, cerrar y archivar.
-      if (esCierre && cierreEgreso === "si") {
-        update.estado = "EGRESADO/CERRADO";
-        update.archivado = true;
-      }
+        }
       }
 
       if (Object.keys(update).length > 0) {
@@ -1326,27 +1449,39 @@ export function SeguimientoDialog({
           {!nuevoRadicadoMode && (
           <>
           {/* Estado del caso */}
-          {estadoOpciones && estadoOpciones.length > 0 && (
+          {esSaliente ? (
             <div className="space-y-1.5">
-              <Label className={labelCls}>Estado del caso</Label>
-              <Select value={estadoCaso} onValueChange={setEstadoCaso} disabled={!estadoCasoEditable}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar estado…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {estadoOpciones.map((e) => (
-                    <SelectItem key={e} value={e} className="whitespace-normal">
-                      {e}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {!estadoCasoEditable && (
-                <p className="text-[10px] text-muted-foreground">
-                  Este tipo de seguimiento no modifica el estado del caso.
-                </p>
-              )}
+              <Label className={labelCls}>Estado del caso (automático)</Label>
+              <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-semibold text-foreground">
+                {estadoDestino || EST.PENDIENTE_ACEPT}
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                El estado se actualiza automáticamente según la cadena de seguimiento.
+              </p>
             </div>
+          ) : (
+            estadoOpciones && estadoOpciones.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className={labelCls}>Estado del caso</Label>
+                <Select value={estadoCaso} onValueChange={setEstadoCaso} disabled={!estadoCasoEditable}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar estado…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {estadoOpciones.map((e) => (
+                      <SelectItem key={e} value={e} className="whitespace-normal">
+                        {e}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!estadoCasoEditable && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Este tipo de seguimiento no modifica el estado del caso.
+                  </p>
+                )}
+              </div>
+            )
           )}
 
           {/* Tipo de seguimiento */}
@@ -1784,7 +1919,7 @@ export function SeguimientoDialog({
             </div>
           )}
 
-          {/* CIERRE POR ADMISIÓN */}
+          {/* CIERRE POR EGRESOS (REMISIÓN) */}
           {esSaliente && esCierre && (
             <div className={sectionCls}>
               <div className="space-y-1.5">
@@ -1812,6 +1947,92 @@ export function SeguimientoDialog({
               )}
             </div>
           )}
+
+          {/* NOVEDADES (Parte 12) */}
+          {esSaliente && esNovedades && (
+            <div className={sectionCls}>
+              <p className={labelCls}>Tipo de novedad</p>
+              <div className="flex flex-col gap-2">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={novPaciente}
+                    onChange={(e) => setNovPaciente(e.target.checked)}
+                  />
+                  Paciente/Familiar
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={novIps}
+                    onChange={(e) => setNovIps(e.target.checked)}
+                  />
+                  IPS Receptora
+                </label>
+                {novAmbDisponible && (
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={novAmbulancia}
+                      onChange={(e) => setNovAmbulancia(e.target.checked)}
+                    />
+                    Ambulancia
+                  </label>
+                )}
+              </div>
+
+              {novPaciente && (
+                <div className="space-y-2 rounded-md border border-dashed p-3">
+                  <Label className={labelCls}>¿El paciente/familiar firmó desistimiento?</Label>
+                  <Select
+                    value={novDesistTipo}
+                    onValueChange={(v) => setNovDesistTipo(v as "IPS_AMB" | "GENERAL")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="IPS_AMB">DESISTIMIENTO IPS / AMBULANCIA</SelectItem>
+                      <SelectItem value="GENERAL">DESISTIMIENTO GENERAL</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {novDesistTipo === "IPS_AMB" && (
+                    <div className="flex flex-col gap-2 pt-1">
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={novDesistIps}
+                          onChange={(e) => setNovDesistIps(e.target.checked)}
+                        />
+                        IPS
+                      </label>
+                      {novAmbDisponible && (
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={novDesistAmb}
+                            onChange={(e) => setNovDesistAmb(e.target.checked)}
+                          />
+                          AMBULANCIA
+                        </label>
+                      )}
+                    </div>
+                  )}
+                  {novDesistTipo === "GENERAL" && (
+                    <p className="rounded-md border border-amber-200 bg-amber-50/60 p-2 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
+                      Al guardar, el caso se cerrará como DESISTIMIENTO GENERAL y pasará al historial.
+                    </p>
+                  )}
+                </div>
+              )}
+              <p className="text-[10px] text-muted-foreground">
+                Registra la novedad en observaciones. El estado del caso solo cambia si se marca un
+                desistimiento.
+              </p>
+            </div>
+          )}
+
+
 
 
           {/* CANCELACIÓN DE TRÁMITE DE REMISIÓN */}
