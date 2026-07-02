@@ -506,25 +506,45 @@ export function SeguimientoDialog({
     }
   }, [open, caso]);
 
-  // Al cambiar el tipo de seguimiento: defaults de estado y reactivar auto-generación.
+  // Al cambiar el tipo de seguimiento: defaults de estado de la solicitud y reactivar auto-generación.
   useEffect(() => {
     setIndigoEditada(false);
+    // Reset de novedades al cambiar de tipo.
+    if (tipoSeg !== T.NOVEDADES) {
+      setNovPaciente(false);
+      setNovIps(false);
+      setNovAmbulancia(false);
+      setNovDesistTipo("");
+      setNovDesistIps(false);
+      setNovDesistAmb(false);
+    }
     if (!usaIndigo || !tipoSeg) return;
     // Estado de la solicitud automático según el tipo.
     if (tipoSeg === T.RADICADO || tipoSeg === T.CANCELACION) setEstadoSolicitud("No aplica");
     else if (tipoSeg === T.ACEPTACION || tipoSeg === T.AMBULANCIA) setEstadoSolicitud("Sí acepta");
     else if (tipoSeg === T.NEGACIONES) setEstadoSolicitud("No acepta");
     else setEstadoSolicitud("");
-    // Estado del caso automático según el tipo.
-    if (tipoSeg === T.RADICADO) {
-      const e = findEstado(/PENDIENTE/i);
-      if (e) setEstadoCaso(e);
-    } else if (tipoSeg === T.AMBULANCIA) {
-      const e = findEstado(/ACEPTAD.*CON.*AMBULANC/i);
-      if (e) setEstadoCaso(e);
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipoSeg]);
+
+  // Estado destino automático de la cadena secuencial (salientes).
+  const estadoDestino = useMemo(() => {
+    if (!esSaliente) return estadoCaso;
+    let e = estadoActual ?? EST.PENDIENTE_ACEPT;
+    if (tipoSeg === T.ACEPTACION) e = EST.ACEPTADO_SIN;
+    else if (tipoSeg === T.AMBULANCIA) e = EST.ACEPTADO_CON;
+    else if (tipoSeg === T.ENTREGA_DOC) e = EST.PENDIENTE_EGRESO;
+    else if (tipoSeg === T.CIERRE) e = cierreEgreso === "si" ? EST.CERRADO_EXITOSO : (estadoActual ?? EST.PENDIENTE_ACEPT);
+    else if (tipoSeg === T.NOVEDADES && novPaciente) {
+      if (novDesistTipo === "GENERAL") e = EST.DESIST_GENERAL;
+      else if (novDesistTipo === "IPS_AMB") {
+        if (novDesistIps) e = EST.DESIST_IPS;
+        else if (novDesistAmb) e = EST.ACEPTADO_SIN;
+      }
+    }
+    return e;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [esSaliente, estadoActual, estadoCaso, tipoSeg, cierreEgreso, novPaciente, novDesistTipo, novDesistIps, novDesistAmb]);
 
   const esEvolucionSal = usaIndigo && tipoSeg === T.EVOLUCION;
   const esRadicado = usaIndigo && tipoSeg === T.RADICADO;
