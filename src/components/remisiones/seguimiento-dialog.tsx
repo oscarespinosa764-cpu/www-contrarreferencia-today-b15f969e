@@ -1408,27 +1408,39 @@ export function SeguimientoDialog({
           {!nuevoRadicadoMode && (
           <>
           {/* Estado del caso */}
-          {estadoOpciones && estadoOpciones.length > 0 && (
+          {esSaliente ? (
             <div className="space-y-1.5">
-              <Label className={labelCls}>Estado del caso</Label>
-              <Select value={estadoCaso} onValueChange={setEstadoCaso} disabled={!estadoCasoEditable}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar estado…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {estadoOpciones.map((e) => (
-                    <SelectItem key={e} value={e} className="whitespace-normal">
-                      {e}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {!estadoCasoEditable && (
-                <p className="text-[10px] text-muted-foreground">
-                  Este tipo de seguimiento no modifica el estado del caso.
-                </p>
-              )}
+              <Label className={labelCls}>Estado del caso (automático)</Label>
+              <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-semibold text-foreground">
+                {estadoDestino || EST.PENDIENTE_ACEPT}
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                El estado se actualiza automáticamente según la cadena de seguimiento.
+              </p>
             </div>
+          ) : (
+            estadoOpciones && estadoOpciones.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className={labelCls}>Estado del caso</Label>
+                <Select value={estadoCaso} onValueChange={setEstadoCaso} disabled={!estadoCasoEditable}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar estado…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {estadoOpciones.map((e) => (
+                      <SelectItem key={e} value={e} className="whitespace-normal">
+                        {e}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!estadoCasoEditable && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Este tipo de seguimiento no modifica el estado del caso.
+                  </p>
+                )}
+              </div>
+            )
           )}
 
           {/* Tipo de seguimiento */}
