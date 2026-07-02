@@ -10,7 +10,7 @@
 
 import * as XLSX from "xlsx";
 import logoAsset from "@/assets/cedim-logo.png.asset.json";
-import { fmtFechaHora, fmtEdad } from "./remisiones-utils";
+import { fmtFechaHora, fmtEdad, fmtTranscurrido } from "./remisiones-utils";
 import type { Remision } from "@/components/remisiones/caso-remision-card";
 
 const INSTITUCION = "CENTRO DE IMAGENES DIAGNOSTICAS CEDIM I.P.S S.A.S";

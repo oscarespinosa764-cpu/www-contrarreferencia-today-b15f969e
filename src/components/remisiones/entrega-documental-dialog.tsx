@@ -98,6 +98,11 @@ export function EntregaDocumentalDialog({
   const [empresa, setEmpresa] = useState("");
   const [ips, setIps] = useState("");
   const [fecha, setFecha] = useState("");
+  // Datos operativos autollenados desde el flujo (editables si faltan) — Parte 1.3/1.4.
+  const [quienAceptaS, setQuienAceptaS] = useState("");
+  const [cargoAceptaS, setCargoAceptaS] = useState("");
+  const [tripulanteS, setTripulanteS] = useState("");
+  const [cargoTripulanteS, setCargoTripulanteS] = useState("");
   const [sesionId, setSesionId] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
@@ -105,19 +110,23 @@ export function EntregaDocumentalDialog({
   const [cargandoDocs, setCargandoDocs] = useState(false);
   const [indigoCorta, setIndigoCorta] = useState("");
 
-  // Autollenado con datos previos del caso (Parte 12.1).
+  // Autollenado con datos previos del caso (Parte 1.3/1.4).
   useEffect(() => {
     if (!open) return;
     setOrigen("");
     setDocs([]);
     setEmpresa((empresaTraslado ?? "").toUpperCase());
     setIps((ipsReceptora ?? "").toUpperCase());
+    setQuienAceptaS((quienAcepta ?? "").toUpperCase());
+    setCargoAceptaS((cargoAcepta ?? "").toUpperCase());
+    setTripulanteS("");
+    setCargoTripulanteS("");
     setFecha(new Date().toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" }));
     setSesionId(null);
     setToken(null);
     setQrUrl(null);
     setIndigoCorta("");
-  }, [open, empresaTraslado, ipsReceptora]);
+  }, [open, empresaTraslado, ipsReceptora, quienAcepta, cargoAcepta]);
 
   // Al elegir origen, cargar checklist desde el catálogo administrable (Parte 12.3).
   // El catálogo es editable sin código en: Catálogo → Documentos de entrega.
@@ -148,8 +157,8 @@ export function EntregaDocumentalDialog({
       especialidad: especialidad ?? undefined,
       entidad_pago: entidadPago ?? undefined,
       tipo_ambulancia: tipoAmbulancia ?? undefined,
-      quien_acepta: quienAcepta ?? undefined,
-      cargo_acepta: cargoAcepta ?? undefined,
+      quien_acepta: quienAceptaS || undefined,
+      cargo_acepta: cargoAceptaS || undefined,
     }),
     [
       paciente,
@@ -163,8 +172,8 @@ export function EntregaDocumentalDialog({
       especialidad,
       entidadPago,
       tipoAmbulancia,
-      quienAcepta,
-      cargoAcepta,
+      quienAceptaS,
+      cargoAceptaS,
     ],
   );
 
@@ -184,7 +193,10 @@ export function EntregaDocumentalDialog({
       entidad_pago: entidadPago ?? undefined,
       entidad_receptora: ips,
       tipo_ambulancia: tipoAmbulancia ?? undefined,
-      quien_acepta: quienAcepta ?? undefined,
+      quien_acepta: quienAceptaS || undefined,
+      cargo_acepta: cargoAceptaS || undefined,
+      tripulante: tripulanteS || undefined,
+      cargo_tripulante: cargoTripulanteS || undefined,
       modalidad: "REMISIÓN",
     }),
     [
@@ -201,9 +213,27 @@ export function EntregaDocumentalDialog({
       especialidad,
       entidadPago,
       tipoAmbulancia,
-      quienAcepta,
+      quienAceptaS,
+      cargoAceptaS,
+      tripulanteS,
+      cargoTripulanteS,
     ],
   );
+
+  // Validación previa: no generar la portada si faltan datos obligatorios (Parte 1.3).
+  const generarPortada = () => {
+    const faltantes: string[] = [];
+    if (!empresa.trim()) faltantes.push("Empresa que traslada");
+    if (!ips.trim()) faltantes.push("IPS receptora / Entidad receptora");
+    if (!paciente?.trim()) faltantes.push("Nombre del paciente");
+    if (!(documento ?? "").trim()) faltantes.push("Documento");
+    if (!(entidadPago ?? "").trim()) faltantes.push("Entidad responsable del pago");
+    if (faltantes.length > 0) {
+      toast.error(`Faltan datos para generar la portada: ${faltantes.join(", ")}.`);
+      return;
+    }
+    descargarPortadaPDF(datosPDF);
+  };
 
   // Estado de la sesión en vivo (polling ligero solo mientras hay QR activo).
   const sesion = useQuery({
@@ -379,6 +409,22 @@ export function EntregaDocumentalDialog({
               <Label className="text-xs">IPS receptora</Label>
               <Input uppercase value={ips} onChange={(e) => setIps(e.target.value)} disabled={!!sesionId} />
             </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Nombre de quien acepta</Label>
+              <Input uppercase value={quienAceptaS} onChange={(e) => setQuienAceptaS(e.target.value)} disabled={!!sesionId} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Cargo de quien acepta</Label>
+              <Input uppercase value={cargoAceptaS} onChange={(e) => setCargoAceptaS(e.target.value)} disabled={!!sesionId} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Tripulante responsable del traslado</Label>
+              <Input uppercase value={tripulanteS} onChange={(e) => setTripulanteS(e.target.value)} disabled={!!sesionId} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Cargo del tripulante</Label>
+              <Input uppercase value={cargoTripulanteS} onChange={(e) => setCargoTripulanteS(e.target.value)} disabled={!!sesionId} />
+            </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label className="text-xs">Fecha/hora de entrega</Label>
               <Input value={fecha} onChange={(e) => setFecha(e.target.value)} disabled={!!sesionId} />
@@ -473,7 +519,7 @@ export function EntregaDocumentalDialog({
                 variant="outline"
                 size="sm"
                 className="w-full"
-                onClick={() => descargarPortadaPDF(datosPDF)}
+                onClick={generarPortada}
               >
                 <FileText className="mr-1.5 h-3.5 w-3.5" /> Portada PDF
               </Button>
@@ -524,7 +570,7 @@ export function EntregaDocumentalDialog({
 
               {/* Bloque 3 · Checklist PDF firmado */}
               <Button type="button" size="sm" className="w-full" onClick={descargarFirmado}>
-                <Download className="mr-1.5 h-3.5 w-3.5" /> Descargar Checklist PDF firmado
+                <Download className="mr-1.5 h-3.5 w-3.5" /> Lista de chequeo confirmada PDF
               </Button>
 
               {/* Bloque 4 · Cerrar */}

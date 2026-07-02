@@ -43,7 +43,9 @@ export type EntregaDatos = {
   modalidad?: string;
   entidad_receptora?: string;
   quien_acepta?: string;
+  cargo_acepta?: string;
   tripulante?: string;
+  cargo_tripulante?: string;
   conductor?: string;
   tipo_ambulancia?: string;
   responsable_checklist?: string;
@@ -119,17 +121,19 @@ function pie(doc: Doc) {
 }
 
 /** Fila etiqueta:valor en negrita, estilo formato oficial. */
-function filaCampo(doc: Doc, y: number, k: string, v: string): number {
+function filaCampo(doc: Doc, y: number, k: string, v: string, opts?: { italic?: boolean; size?: number; gap?: number }): number {
   const pageW = doc.internal.pageSize.getWidth();
-  doc.setFontSize(9.5);
-  doc.setFont("helvetica", "bold");
+  const size = opts?.size ?? 9.5;
+  const gap = opts?.gap ?? 6;
+  doc.setFontSize(size);
+  doc.setFont("helvetica", opts?.italic ? "bolditalic" : "bold");
   doc.text(`${k}:`, 16, y);
   const kw = doc.getTextWidth(`${k}: `);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9.5);
+  doc.setFontSize(size);
   const lines = doc.splitTextToSize(v || "—", pageW - 32 - kw);
   doc.text(lines, 16 + kw, y);
-  return y + 6 * lines.length;
+  return y + gap * lines.length;
 }
 
 function descargar(doc: Doc, nombre: string) {
@@ -160,8 +164,9 @@ function filaTipoDocumento(doc: Doc, y: number, d: EntregaDatos): number {
 }
 
 /**
- * Portada — "REFERENCIA Y CONTRARREFERENCIA" (formato Word oficial). No persiste.
- * Encabezado: logo CEDIM (izq.) + mascota CECI (der.), título grande azul.
+ * Portada — "REFERENCIA Y CONTRARREFERENCIA" (formato Word oficial PORTADA.docx).
+ * No persiste. Encabezado: logo CEDIM (izq.) + mascota CECI (der.), título grande azul.
+ * Diseño: una sola página, tamaño carta, etiquetas en negrita/cursiva, valores al lado.
  */
 export async function descargarPortadaPDF(d: EntregaDatos) {
   const { jsPDF } = await import("jspdf");
@@ -169,23 +174,32 @@ export async function descargarPortadaPDF(d: EntregaDatos) {
   const pageW = doc.internal.pageSize.getWidth();
   const { logo, ceci } = await marcaAgua();
 
-  if (logo) doc.addImage(logo, "PNG", 14, 8, 26, 18);
-  if (ceci) doc.addImage(ceci, "PNG", pageW - 32, 6, 18, 22);
+  if (logo) doc.addImage(logo, "PNG", 14, 8, 30, 20);
+  if (ceci) doc.addImage(ceci, "PNG", pageW - 34, 6, 20, 24);
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
+  doc.setFontSize(7.5);
   doc.setTextColor(110);
-  doc.text(INSTITUCION, pageW / 2, 12, { align: "center" });
-  doc.text(NIT, pageW / 2, 16, { align: "center" });
+  doc.text(INSTITUCION, pageW / 2, 13, { align: "center" });
+  doc.text(NIT, pageW / 2, 17, { align: "center" });
   doc.setTextColor(0);
 
+  // Título grande centrado (como el formato Word).
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(20);
+  doc.setFontSize(19);
   doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
-  doc.text("REFERENCIA Y CONTRARREFERENCIA", pageW / 2, 34, { align: "center" });
+  doc.text("REFERENCIA Y CONTRARREFERENCIA", pageW / 2, 38, { align: "center" });
+  doc.setDrawColor(NAVY[0], NAVY[1], NAVY[2]);
+  doc.setLineWidth(0.6);
+  doc.line(30, 42, pageW - 30, 42);
+  doc.setLineWidth(0.2);
   doc.setTextColor(0);
 
-  let y = 50;
+  // Nombre de quien acepta + cargo (formato: "NOMBRE - CARGO").
+  const acepta = [up(d.quien_acepta), up(d.cargo_acepta)].filter(Boolean).join(" - ");
+  const tripulante = [up(d.tripulante), up(d.cargo_tripulante)].filter(Boolean).join(" - ");
+
+  let y = 56;
   const filas: [string, string][] = [
     ["FECHA Y HORA", up(d.fecha_entrega)],
     ["NOMBRE DEL PACIENTE", up(d.paciente)],
@@ -198,29 +212,30 @@ export async function descargarPortadaPDF(d: EntregaDatos) {
     ["ESPECIALIDAD", up(d.especialidad)],
     ["MODALIDAD", up(d.modalidad) || "REMISIÓN"],
     ["ENTIDAD RECEPTORA", up(d.entidad_receptora) || up(d.ips_receptora)],
-    ["NOMBRE DE QUIEN ACEPTA", up(d.quien_acepta)],
-    ["TRIPULANTE RESPONSABLE DEL TRASLADO", up(d.tripulante)],
-    ["CONDUCTOR", up(d.conductor)],
+    ["NOMBRE DE QUIEN ACEPTA", acepta],
+    ["TRIPULANTE RESPONSABLE DEL TRASLADO", tripulante],
     ["TIPO DE AMBULANCIA", up(d.tipo_ambulancia)],
     ["EMPRESA QUE TRASLADA", up(d.empresa_traslado)],
   ];
-  for (const [k, v] of filas) y = filaCampo(doc, y, k, v);
+  for (const [k, v] of filas) y = filaCampo(doc, y, k, v, { italic: true, size: 11, gap: 11 });
 
-  y += 6;
+  y += 8;
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
+  doc.setFontSize(11);
+  doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
   doc.text("TRASLADO INTEGRAL A CARGO DE LA ENTIDAD RESPONSABLE DEL PAGO", pageW / 2, y, {
     align: "center",
   });
-  y += 14;
+  doc.setTextColor(0);
+  y += 18;
 
   // Casillas AMBULANCIA / IPS
-  doc.setFontSize(9.5);
+  doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
   doc.text("AMBULANCIA:", 45, y);
-  doc.rect(80, y - 4, 5, 5);
-  doc.text("IPS:", 120, y);
-  doc.rect(133, y - 4, 5, 5);
+  doc.rect(82, y - 4.2, 6, 6);
+  doc.text("IPS:", 125, y);
+  doc.rect(140, y - 4.2, 6, 6);
 
   pie(doc);
   descargar(doc, `Portada-Entrega-${(d.documento || "remision").replace(/\s+/g, "")}.pdf`);
@@ -459,12 +474,16 @@ export async function descargarChecklistPDF(d: EntregaDatos) {
   descargar(doc, `Checklist-${(d.documento || "remision").replace(/\s+/g, "")}.pdf`);
 }
 
-/** PDF FINAL firmado por QR — formato GU-FR oficial firmado. No persiste. */
+/**
+ * PDF FINAL "LISTA DE CHEQUEO CONFIRMADA" firmado por QR — formato GU-FR oficial.
+ * No persiste. Compactado para caber en UNA sola página tamaño carta: el bloque de
+ * firmante, aceptación, firma y código de verificación quedan siempre en la misma hoja.
+ */
 export async function descargarFirmadoPDF(d: EntregaDatos, f: FirmaDatos) {
   const { jsPDF } = await import("jspdf");
+  const autoTable = (await import("jspdf-autotable")).default;
   const doc = new jsPDF({ unit: "mm", format: "letter" });
   const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
 
   let y = await bannerHeader(doc, 10);
   y = encabezadoDatos(doc, d, y);
@@ -472,61 +491,88 @@ export async function descargarFirmadoPDF(d: EntregaDatos, f: FirmaDatos) {
   y = await tablaChecklist(doc, d, y);
   y = await bloqueResponsable(doc, d, y);
 
-  if (y > pageH - 90) {
-    doc.addPage();
-    y = 20;
-  }
+  // ── DATOS DEL FIRMANTE (grid compacto de 2 columnas) ──────────────────────
+  y += 1;
+  autoTable(doc, {
+    startY: y,
+    theme: "grid",
+    styles: { fontSize: 7.5, cellPadding: 1.2, lineColor: [120, 120, 120], lineWidth: 0.2, valign: "middle" },
+    head: [[{
+      content: "DATOS DEL FIRMANTE (PERSONAL DE TRASLADO)",
+      colSpan: 4,
+      styles: { fillColor: NAVY, textColor: [255, 255, 255], halign: "center", fontStyle: "bold" },
+    }]],
+    body: [
+      [
+        { content: "NOMBRE", styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
+        { content: up(f.nombre) || "—" },
+        { content: "CARGO", styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
+        { content: up(f.cargo) || "—" },
+      ],
+      [
+        { content: "DOCUMENTO / ID", styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
+        { content: up(f.documento) || "—" },
+        { content: "TELÉFONO", styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
+        { content: f.telefono || "—" },
+      ],
+      [
+        { content: "EMPRESA DE AMBULANCIA", styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
+        { content: up(f.empresa) || "—" },
+        { content: "FECHA/HORA DE FIRMA", styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
+        { content: fmtFecha(f.firmado_at) || "—" },
+      ],
+    ] as never,
+    columnStyles: { 0: { cellWidth: 40 }, 1: { cellWidth: 44 }, 2: { cellWidth: 40 }, 3: { cellWidth: 44 } },
+    margin: { left: 14, right: 14 },
+  });
+  // @ts-expect-error plugin
+  y = (doc.lastAutoTable?.finalY ?? y) + 3;
 
+  // ── ACEPTACIÓN DE RECIBIDO (compacto) ─────────────────────────────────────
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.text("DATOS DEL FIRMANTE (PERSONAL DE TRASLADO)", 16, y);
-  y += 6;
-  y = filaCampo(doc, y, "NOMBRE", up(f.nombre));
-  y = filaCampo(doc, y, "CARGO", up(f.cargo));
-  y = filaCampo(doc, y, "EMPRESA DE AMBULANCIA", up(f.empresa));
-  y = filaCampo(doc, y, "DOCUMENTO / IDENTIFICACIÓN", up(f.documento));
-  y = filaCampo(doc, y, "TELÉFONO", f.telefono || "—");
-  y = filaCampo(doc, y, "FECHA/HORA DE FIRMA", fmtFecha(f.firmado_at));
-
-  y += 3;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
+  doc.setFontSize(8);
   doc.text("ACEPTACIÓN DE RECIBIDO", 16, y);
-  y += 5;
+  y += 4;
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
+  doc.setFontSize(7.5);
   const acept = doc.splitTextToSize(`[X] ${TEXTO_ACEPTACION}`, pageW - 32);
   doc.text(acept, 16, y);
-  y += 5 * acept.length + 4;
+  y += 4 * acept.length + 3;
 
-  if (y > pageH - 55) {
-    doc.addPage();
-    y = 20;
-  }
-
+  // ── FIRMA (recuadro pequeño) + CÓDIGO DE VERIFICACIÓN ─────────────────────
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
+  doc.setFontSize(8);
   doc.text("FIRMA", 16, y);
-  y += 3;
+  const boxY = y + 1;
+  doc.setDrawColor(120);
+  doc.rect(16, boxY, 58, 22);
   if (f.firma_data) {
     try {
-      doc.addImage(f.firma_data, "PNG", 16, y, 70, 28);
+      doc.addImage(f.firma_data, "PNG", 17, boxY + 1, 56, 20);
     } catch {
       /* firma no renderizable */
     }
   }
-  doc.setDrawColor(120);
-  doc.line(16, y + 30, 90, y + 30);
-  y += 38;
-
-  doc.setFont("helvetica", "normal");
+  // Código de verificación a la derecha de la firma.
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
-  doc.text(`Código de verificación: ${f.codigo_verificacion}`, 16, y);
-  y += 5;
+  doc.text("CÓDIGO DE VERIFICACIÓN", 82, boxY + 5);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  doc.text(f.codigo_verificacion || "—", 82, boxY + 12);
   if (f.pdf_hash) {
-    const h = doc.splitTextToSize(`Hash de evidencia: ${f.pdf_hash}`, pageW - 32);
-    doc.text(h, 16, y);
+    // Solo se muestra el código visible; el hash completo se conserva en los datos
+    // estructurados (entrega_firmas.pdf_hash). Aquí se imprime abreviado si cabe.
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.5);
+    doc.setTextColor(120);
+    const hashCorto = f.pdf_hash.length > 40 ? `${f.pdf_hash.slice(0, 40)}…` : f.pdf_hash;
+    doc.text(`Hash de evidencia: ${hashCorto}`, 82, boxY + 18);
+    doc.setTextColor(0);
   }
+
   pie(doc);
-  descargar(doc, `Entrega-Firmada-${f.codigo_verificacion}.pdf`);
+  const docNum = (d.documento || "remision").replace(/\s+/g, "");
+  const fechaArch = new Date().toISOString().slice(0, 10);
+  descargar(doc, `Lista_Chequeo_Confirmada_${docNum}_${fechaArch}.pdf`);
 }
