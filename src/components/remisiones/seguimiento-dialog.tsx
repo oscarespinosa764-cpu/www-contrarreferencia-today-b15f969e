@@ -1878,7 +1878,7 @@ export function SeguimientoDialog({
             </div>
           )}
 
-          {/* CIERRE POR ADMISIÓN */}
+          {/* CIERRE POR EGRESOS (REMISIÓN) */}
           {esSaliente && esCierre && (
             <div className={sectionCls}>
               <div className="space-y-1.5">
