@@ -824,6 +824,12 @@ export function SeguimientoDialog({
     revFuncionario,
     revCargo,
     otroCual,
+    novPaciente,
+    novIps,
+    novAmbulancia,
+    novDesistTipo,
+    novDesistIps,
+    novDesistAmb,
     detalle,
   ]);
 
