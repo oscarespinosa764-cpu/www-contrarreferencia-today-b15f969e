@@ -1096,6 +1096,12 @@ export function SeguimientoDialog({
     setCancelCargo("");
     setCancelNuevoRadicado("");
     setOtroCual("");
+    setNovPaciente(false);
+    setNovIps(false);
+    setNovAmbulancia(false);
+    setNovDesistTipo("");
+    setNovDesistIps(false);
+    setNovDesistAmb(false);
     setAsunto("");
     setContactoDestino("");
     setContactoIps("");
