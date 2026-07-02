@@ -1142,6 +1142,13 @@ export function SeguimientoDialog({
         return;
       if (esCierre && !cierreEgreso)
         return toast.error("Indica si el paciente ya egresó de la institución");
+      if (esNovedades) {
+        if (!novPaciente && !novIps && !novAmbulancia)
+          return toast.error("Selecciona al menos un tipo de novedad");
+        if (novPaciente && novDesistTipo === "IPS_AMB" && !novDesistIps && !novDesistAmb)
+          return toast.error("Marca al menos IPS o AMBULANCIA en el desistimiento");
+        if (!detalle.trim()) return toast.error("Registra la observación de la novedad");
+      }
       if (requiereMotivoLegacy && mostrarEvolucionLegacy && !motivoEvo.trim())
         return toast.error("Indica el motivo de la evolución pendiente");
     }
