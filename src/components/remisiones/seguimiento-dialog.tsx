@@ -410,6 +410,27 @@ export function SeguimientoDialog({
   // ¿Mostrar la opción "RADICADO DE CASO"? Solo si la EAPB genera código y aún no existe radicado real.
   const mostrarOpcionRadicado = usaIndigo && generaCodigo && !radicadoReal;
 
+  // --- Fase de la cadena secuencial del caso (según el estado guardado) ---
+  const estadoUpper = (estadoActual ?? "").toUpperCase();
+  const casoCerrado =
+    estadoUpper.includes("CERRAD") ||
+    estadoUpper.includes("EGRESAD") ||
+    estadoUpper.includes("DESISTIMIENTO GENERAL");
+  // Antes de aceptación: estado inicial o tras un desistimiento de IPS (se puede volver a buscar IPS).
+  const faseAntesAceptacion =
+    !casoCerrado &&
+    (estadoUpper === "" ||
+      estadoUpper.includes("PENDIENTE ACEPTAC") ||
+      estadoUpper.includes("DESISTIMIENTO IPS"));
+  const faseAceptadoSin = !casoCerrado && estadoUpper.includes("ACEPTADO SIN");
+  const faseAceptadoCon = !casoCerrado && estadoUpper.includes("ACEPTADO CON AMBULANCIA");
+  const facePendienteEgreso = !casoCerrado && estadoUpper.includes("PENDIENTE EGRESO");
+
+  const mostrarAceptacion = faseAntesAceptacion;
+  const mostrarAmbulancia = faseAceptadoSin;
+  const mostrarEntregaDocOpt = faseAceptadoCon;
+  const mostrarCierreOpt = facePendienteEgreso;
+
   const TIPOS_SALIENTES = useMemo(() => {
     const arr = [
       ...(mostrarOpcionRadicado ? [T.RADICADO] : []),
@@ -418,17 +439,24 @@ export function SeguimientoDialog({
       T.PLATAFORMA,
       T.FISICO,
       T.TELEFONO,
-      T.ACEPTACION,
+      ...(mostrarAceptacion ? [T.ACEPTACION] : []),
       T.NEGACIONES,
-      T.AMBULANCIA,
-      T.ENTREGA_DOC,
-      T.CIERRE,
+      ...(mostrarAmbulancia ? [T.AMBULANCIA] : []),
+      ...(mostrarEntregaDocOpt ? [T.ENTREGA_DOC] : []),
+      ...(mostrarCierreOpt ? [T.CIERRE] : []),
       T.CANCELACION,
       T.PERTINENCIA,
+      T.NOVEDADES,
       T.OTRO,
     ];
     return arr;
-  }, [mostrarOpcionRadicado]);
+  }, [
+    mostrarOpcionRadicado,
+    mostrarAceptacion,
+    mostrarAmbulancia,
+    mostrarEntregaDocOpt,
+    mostrarCierreOpt,
+  ]);
 
   // Tipos para PHD/PAD/O2/Especiales (subconjunto saliente).
   const TIPOS_PHD = useMemo(() => {
