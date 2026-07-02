@@ -10,7 +10,7 @@
 
 import * as XLSX from "xlsx";
 import logoAsset from "@/assets/cedim-logo.png.asset.json";
-import { fmtFechaHora, fmtEdad } from "./remisiones-utils";
+import { fmtFechaHora, fmtEdad, fmtTranscurrido } from "./remisiones-utils";
 import type { Remision } from "@/components/remisiones/caso-remision-card";
 
 const INSTITUCION = "CENTRO DE IMAGENES DIAGNOSTICAS CEDIM I.P.S S.A.S";
@@ -180,8 +180,15 @@ export async function descargarReporteGeneralPDF(params: {
 }
 
 // ===========================================================================
-// ENTREGA DE TURNO — PDF de trazabilidad de la entrega
+// ENTREGA DE TURNO — REPORTE OPERATIVO (matriz tipo "TURNO MAÑANA")
+// ---------------------------------------------------------------------------
+// Referencia visual: TURNO_MAÑANA.pdf → orientación horizontal (legal landscape),
+// encabezado institucional, bloque de entrega, contadores en tarjetas, matriz de
+// remisiones activas con columnas agrupadas y secciones operativas de texto.
+// Se genera BAJO DEMANDA y se descarga. NO se guarda archivo permanente.
 // ===========================================================================
+const LIGHT_BLUE: [number, number, number] = [221, 235, 247];
+
 export async function descargarEntregaTurnoPDF(params: {
   turno: string;
   entrega: string;
@@ -192,76 +199,220 @@ export async function descargarEntregaTurnoPDF(params: {
   internas: number;
   pendientes: number;
   reinicioNoche?: boolean;
+  remisiones?: Remision[];
+  domiciliarios?: Record<string, unknown>[];
+  refsInternas?: Record<string, unknown>[];
+  pendientesGenerales?: Record<string, unknown>[];
+  observaciones?: string;
+  contadores?: Record<string, number>;
 }): Promise<void> {
   const { jsPDF } = await import("jspdf");
-  const doc = new jsPDF({ unit: "mm", format: "letter" });
+  const autoTable = (await import("jspdf-autotable")).default;
+  const doc = new jsPDF({ unit: "mm", format: "legal", orientation: "landscape" });
   const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
   const logo = await getImg((logoAsset as { url: string }).url);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const finalY = (): number => (doc as any).lastAutoTable?.finalY ?? 0;
 
-  if (logo) doc.addImage(logo, "PNG", 14, 8, 26, 18);
+  // Banda de sección (ancho completo).
+  const banda = (yy: number, texto: string): number => {
+    if (yy > pageH - 24) {
+      doc.addPage();
+      yy = 16;
+    }
+    doc.setFillColor(NAVY[0], NAVY[1], NAVY[2]);
+    doc.rect(8, yy - 4, pageW - 16, 6, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    doc.text(texto, pageW / 2, yy, { align: "center" });
+    doc.setTextColor(0);
+    return yy + 5;
+  };
+
+  // Sección de texto libre con placeholder cuando está vacía.
+  const seccionTexto = (yy: number, titulo: string, contenido: string): number => {
+    if (yy > pageH - 20) {
+      doc.addPage();
+      yy = 16;
+    }
+    if (titulo) yy = banda(yy, titulo);
+    const txt = (contenido || "").trim() || "Sin registros para esta sección.";
+    doc.setFont("helvetica", contenido ? "normal" : "italic");
+    doc.setFontSize(7.5);
+    doc.setTextColor(contenido ? 0 : 130);
+    const lines = doc.splitTextToSize(txt, pageW - 20);
+    doc.text(lines, 10, yy + 1);
+    doc.setTextColor(0);
+    return yy + 4 * lines.length + 3;
+  };
+
+  // Tabla genérica (PHD, internas, pendientes).
+  const tablaGenerica = (yy: number, titulo: string, items: Record<string, unknown>[]): number => {
+    yy = banda(yy, titulo);
+    if (!items || items.length === 0) return seccionTexto(yy - 5, "", "Sin registros para esta sección.");
+    const body = items.map((it) => [
+      fmtFechaHora((it.fecha_inicio as string) ?? (it.created_at as string)),
+      v(it.paciente ?? it.paciente_asunto),
+      v(it.documento),
+      v(it.servicio ?? it.tipo ?? it.asunto),
+      v(it.estado ?? it.prioridad),
+      v(it.observaciones ?? it.observacion_entrega ?? it.detalle),
+    ]);
+    autoTable(doc, {
+      startY: yy,
+      head: [["FECHA", "PACIENTE / ASUNTO", "DOCUMENTO", "SERVICIO / TIPO", "ESTADO", "OBSERVACIONES"]] as never,
+      body: body as never,
+      theme: "grid",
+      styles: { fontSize: 6.5, cellPadding: 1, overflow: "linebreak", lineColor: [140, 140, 140], lineWidth: 0.15 },
+      headStyles: { fillColor: NAVY, textColor: [255, 255, 255], fontStyle: "bold", fontSize: 6.5 },
+      margin: { left: 8, right: 8 },
+    });
+    return finalY() + 4;
+  };
+
+  // ── Encabezado institucional ───────────────────────────────────────────
+  if (logo) doc.addImage(logo, "PNG", 12, 7, 24, 16);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
   doc.setTextColor(110);
-  doc.text(INSTITUCION, pageW / 2, 12, { align: "center" });
-  doc.text(NIT, pageW / 2, 16, { align: "center" });
-  doc.setTextColor(0);
-
+  doc.text(INSTITUCION, pageW / 2, 11, { align: "center" });
+  doc.text(NIT, pageW / 2, 15, { align: "center" });
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(17);
+  doc.setFontSize(14);
   doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
-  doc.text("ENTREGA DE TURNO", pageW / 2, 32, { align: "center" });
+  doc.text("ENTREGA DE TURNO · REFERENCIA Y CONTRARREFERENCIA", pageW / 2, 22, { align: "center" });
   doc.setTextColor(0);
 
-  let y = 48;
-  const fila = (k: string, val: string) => {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.text(`${k}:`, 16, y);
-    const kw = doc.getTextWidth(`${k}: `);
-    doc.setFont("helvetica", "normal");
-    const lines = doc.splitTextToSize(val || "—", pageW - 32 - kw);
-    doc.text(lines, 16 + kw, y);
-    y += 7 * lines.length;
-  };
-  fila("TURNO QUE ENTREGA", params.turno);
-  fila("ENTREGA", params.entrega);
-  fila("RECIBE", params.recibe);
-  fila("FECHA Y HORA", params.fecha);
+  // ── Bloque de datos de entrega ─────────────────────────────────────────
+  const lbl = (t: string) => ({ content: t, styles: { fillColor: NAVY, textColor: [255, 255, 255] as [number, number, number], fontStyle: "bold" as const } });
+  autoTable(doc, {
+    startY: 26,
+    theme: "grid",
+    styles: { fontSize: 8, cellPadding: 1.4, lineColor: [120, 120, 120], lineWidth: 0.2 },
+    body: [[
+      lbl("FECHA"), { content: params.fecha || "—" },
+      lbl("TURNO"), { content: params.turno || "—" },
+      lbl("ENTREGA TURNO"), { content: params.entrega || "—" },
+      lbl("RECIBE TURNO"), { content: params.recibe || "—" },
+    ]] as never,
+    margin: { left: 12, right: 12 },
+  });
+  let y = finalY() + 3;
 
-  y += 4;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text("RESUMEN DE CASOS ACTIVOS", 16, y);
-  y += 7;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  fila("REMISIONES ACTIVAS", String(params.activas));
-  fila("PHD / PAD / O2 / ESPECIALES", String(params.especiales));
-  fila("REFERENCIAS INTERNAS", String(params.internas));
-  fila("PENDIENTES GENERALES", String(params.pendientes));
+  // ── Contadores (tarjetas compactas) ────────────────────────────────────
+  const c = params.contadores ?? {};
+  const cont: [string, string][] = [
+    ["REMISIONES ACTIVAS", String(params.activas)],
+    ["PENDIENTES ACEPTACIÓN", String(c.acepPendiente ?? 0)],
+    ["ACEPTADO SIN AMB.", String(c.acepSinAmb ?? 0)],
+    ["ACEPTADO CON AMB.", String(c.acepConAmb ?? 0)],
+    ["PHD/PAD/O2/ESP.", String(params.especiales)],
+    ["REFERENCIAS INTERNAS", String(params.internas)],
+    ["PENDIENTES GENERALES", String(params.pendientes)],
+    ["DESISTIMIENTOS", String(c.desistimientos ?? 0)],
+    ["ALTA PRIORIDAD", String(c.altaPrioridad ?? 0)],
+    ["SIN SEG. RECIENTE", String(c.sinSeguimiento ?? 0)],
+  ];
+  autoTable(doc, {
+    startY: y,
+    theme: "grid",
+    styles: { fontSize: 7, cellPadding: 1.2, halign: "center", lineColor: [120, 120, 120], lineWidth: 0.2 },
+    body: [
+      cont.map(([k]) => ({ content: k, styles: { fillColor: LIGHT_BLUE, textColor: NAVY, fontStyle: "bold" as const } })),
+      cont.map(([, val]) => ({ content: val, styles: { fontStyle: "bold" as const, fontSize: 10 } })),
+    ] as never,
+    margin: { left: 12, right: 12 },
+  });
+  y = finalY() + 4;
 
-  if (params.reinicioNoche) {
-    y += 4;
+  // ── Matriz REMISIONES ACTIVAS ──────────────────────────────────────────
+  y = banda(y, "REMISIONES ACTIVAS");
+  const rem = params.remisiones ?? [];
+  const head = [[
+    "CANT\nEVOL", "F. INICIO", "F. RADICADO", "T. TRÁMITE", "CAMA", "SERVICIO",
+    "PACIENTE", "IDENT.", "EDAD", "CIE-10", "ESP. TRAT.", "ESP. RECEP.", "PRIORIDAD",
+    "REMISIÓN POR", "MOTIVO", "TIPO TRÁMITE", "RÉGIMEN", "RADICACIÓN", "ESTADO",
+    "IPS RECEPTORA", "TIPO AMB", "SOPORTES", "CONTACTO", "OBSERVACIONES",
+  ]];
+  const bodyRem = rem.map((r) => {
+    const rr = r as unknown as Record<string, unknown>;
+    const contacto = [v(r.contacto_nombre), v(r.contacto_parentesco), v(r.contacto_telefono)]
+      .filter(Boolean).join(" / ");
+    return [
+      v(rr.evolucion),
+      fmtFechaHora(r.fecha_inicio),
+      fmtFechaHora(rr.fecha_radicado as string),
+      fmtTranscurrido(r.fecha_inicio),
+      v(rr.cama),
+      v(r.servicio),
+      v(r.paciente),
+      v(r.documento),
+      fmtEdad(r.edad),
+      v(r.cie10),
+      v(r.especialidades_tratantes),
+      v(r.especialidades_receptoras),
+      v(r.prioridad),
+      v(rr.remision_por),
+      v(rr.especificacion),
+      v(rr.tipo_tramite),
+      v(r.regimen),
+      v(r.codigo_radicacion),
+      v(r.estado),
+      v(rr.ips_receptora),
+      v(r.tipo_ambulancia),
+      v(rr.soportes),
+      contacto,
+      v(r.observaciones),
+    ];
+  });
+  autoTable(doc, {
+    startY: y,
+    head: head as never,
+    body: (bodyRem.length ? bodyRem : [["", "Sin remisiones activas", ...Array(22).fill("")]]) as never,
+    theme: "grid",
+    styles: { fontSize: 5.3, cellPadding: 0.8, overflow: "linebreak", valign: "top", lineColor: [140, 140, 140], lineWidth: 0.15 },
+    headStyles: { fillColor: NAVY, textColor: [255, 255, 255], fontStyle: "bold", fontSize: 5.3, halign: "center" },
+    margin: { left: 8, right: 8 },
+    tableWidth: "auto",
+  });
+  y = finalY() + 4;
+
+  // ── Módulos secundarios ────────────────────────────────────────────────
+  y = tablaGenerica(y, "PHD / PAD / O2 / ESPECIALES", params.domiciliarios ?? []);
+  y = tablaGenerica(y, "REFERENCIAS INTERNAS", params.refsInternas ?? []);
+  y = tablaGenerica(y, "PENDIENTES GENERALES DEL TURNO", params.pendientesGenerales ?? []);
+
+  // ── Secciones operativas de texto ──────────────────────────────────────
+  const noche = params.reinicioNoche
+    ? "Cierre de turno NOCHE: la evolución de todos los casos se reinició a «Sin evolucionar». " +
+      "Las evoluciones pendientes se enviaron como alertas a Coordinación."
+    : "";
+  y = seccionTexto(y, "NOVEDADES", noche);
+  y = seccionTexto(y, "JORNADAS OTRAS IPS", "");
+  y = seccionTexto(y, "INFORMACIÓN GENERAL", "");
+  y = seccionTexto(y, "NOVEDADES CEDIM IPS", "");
+  y = seccionTexto(y, "LÍNEAS DE CONTACTO", "Referencia y Contrarreferencia · (608) 4366810 EXT: 2007");
+  y = seccionTexto(y, "DATOS DE AMBULANCIAS / CUPS", "");
+  seccionTexto(y, "OBSERVACIONES DE ENTREGA", params.observaciones ?? "");
+
+  // ── Pie en todas las páginas ───────────────────────────────────────────
+  const total = doc.getNumberOfPages();
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i);
+    doc.setDrawColor(180);
+    doc.line(12, pageH - 10, pageW - 12, pageH - 10);
     doc.setFont("helvetica", "italic");
-    doc.setFontSize(9);
-    doc.setTextColor(150, 90, 0);
-    const t = doc.splitTextToSize(
-      "Cierre de turno NOCHE: la evolución de todos los casos se reinició a «Sin evolucionar». Las evoluciones pendientes se enviaron como alertas a Coordinación.",
-      pageW - 32,
-    );
-    doc.text(t, 16, y);
+    doc.setFontSize(7);
+    doc.setTextColor(90);
+    doc.text(PIE, pageW / 2, pageH - 6, { align: "center" });
+    doc.setFont("helvetica", "normal");
+    doc.text(`Página ${i} de ${total} · Generado: ${new Date().toLocaleString("es-CO")}`, pageW - 12, pageH - 6, {
+      align: "right",
+    });
     doc.setTextColor(0);
   }
-
-  const pageH = doc.internal.pageSize.getHeight();
-  doc.setDrawColor(180);
-  doc.line(14, pageH - 12, pageW - 14, pageH - 12);
-  doc.setFont("helvetica", "italic");
-  doc.setFontSize(7.5);
-  doc.setTextColor(90);
-  doc.text(PIE, pageW / 2, pageH - 8, { align: "center" });
-  doc.text(`Generado: ${new Date().toLocaleString("es-CO")}`, pageW - 14, pageH - 8, { align: "right" });
-  doc.setTextColor(0);
 
   doc.save(`Entrega_Turno_${params.turno}_${hoy()}.pdf`);
 }

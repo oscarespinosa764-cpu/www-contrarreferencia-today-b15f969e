@@ -310,6 +310,21 @@ function RemisionesPage() {
         internas: stats.internas,
         pendientes: stats.generales,
         reinicioNoche: turnoEntrega === "NOCHE",
+        remisiones: remisiones ?? [],
+        domiciliarios: (domiciliarios ?? []) as unknown as Record<string, unknown>[],
+        refsInternas: (internas ?? []) as unknown as Record<string, unknown>[],
+        pendientesGenerales: (pendientes ?? []) as unknown as Record<string, unknown>[],
+        contadores: {
+          acepPendiente: stats.acepPendiente,
+          acepSinAmb: stats.acepPendiente,
+          acepConAmb: stats.acepCoordinada,
+          desistimientos: stats.desistIps + stats.desistGeneral,
+          altaPrioridad: count((r) => /ALTA|VITAL|URGENTE/i.test(r.prioridad || "")),
+          sinSeguimiento: count((r) => {
+            const upd = (r as unknown as Record<string, unknown>).evolucion_actualizada_at as string | undefined;
+            return !upd || Date.now() - new Date(upd).getTime() > 24 * 3600 * 1000;
+          }),
+        },
       });
       auditarExport("exportar_pdf_entrega_turno", { turno: turnoEntrega });
       toast.success("PDF de entrega de turno generado");
