@@ -481,7 +481,7 @@ export function SeguimientoDialog({
           ? TIPOS_PENDIENTE
           : [];
 
-  const findEstado = (re: RegExp) => (estadoOpciones ?? []).find((o) => re.test(o)) ?? "";
+  void estadoOpciones;
 
   // Inicializar al abrir.
   useEffect(() => {
