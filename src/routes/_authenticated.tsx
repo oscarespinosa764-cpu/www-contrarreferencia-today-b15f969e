@@ -168,8 +168,8 @@ function SidebarContent({
                       to={item.to}
                       onClick={onNavigate}
                       title={collapsed ? item.label : undefined}
-                      className={`relative flex items-center rounded-md text-sm transition-colors ${
-                        collapsed ? "justify-center px-2 py-2" : "gap-3 px-3 py-2"
+                      className={`relative flex w-full min-h-[42px] items-center rounded-md text-sm transition-colors ${
+                        collapsed ? "justify-center px-2 py-2" : "gap-2.5 px-3 py-2"
                       } ${
                         active
                           ? "bg-sidebar-primary text-sidebar-primary-foreground"
@@ -177,9 +177,13 @@ function SidebarContent({
                       }`}
                     >
                       <item.icon className="h-4 w-4 shrink-0" />
-                      {!collapsed && <span className="flex-1">{item.label}</span>}
+                      {!collapsed && (
+                        <span className="min-w-0 flex-1 whitespace-normal break-words leading-tight">
+                          {item.label}
+                        </span>
+                      )}
                       {!collapsed && item.badge === "seguimientos" && (pendientes ?? 0) > 0 && (
-                        <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                        <span className="shrink-0 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
                           {pendientes}
                         </span>
                       )}
