@@ -267,6 +267,14 @@ export function SeguimientoDialog({
   // Otro
   const [otroCual, setOtroCual] = useState("");
 
+  // Novedades (Parte 12)
+  const [novPaciente, setNovPaciente] = useState(false);
+  const [novIps, setNovIps] = useState(false);
+  const [novAmbulancia, setNovAmbulancia] = useState(false);
+  const [novDesistTipo, setNovDesistTipo] = useState<"" | "IPS_AMB" | "GENERAL">("");
+  const [novDesistIps, setNovDesistIps] = useState(false);
+  const [novDesistAmb, setNovDesistAmb] = useState(false);
+
   // Referencia interna
   const [riFuncionario, setRiFuncionario] = useState("");
   const [riCargo, setRiCargo] = useState("");
