@@ -200,9 +200,9 @@ function SidebarContent({
             {inicial}
           </div>
           {!collapsed && (
-            <div className="min-w-0">
-              <p className="truncate text-xs font-semibold">{nombre}</p>
-              <p className="truncate text-[10px] uppercase tracking-wide text-sidebar-foreground/60">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-semibold leading-tight">{nombre}</p>
+              <p className="truncate text-[10px] uppercase tracking-wide text-sidebar-foreground/60 leading-tight">
                 {rolLabel}
                 {cargo ? ` · ${cargo}` : ""}
               </p>
