@@ -749,6 +749,28 @@ export function SeguimientoDialog({
       case T.OTRO:
         base = generarPlantillaOtroSeg(otroCual, estadoSolicitud);
         break;
+      case T.NOVEDADES: {
+        if (novPaciente && novDesistTipo === "GENERAL") {
+          base =
+            "SE REGISTRA DESISTIMIENTO GENERAL DE LA REMISIÓN POR PARTE DE PACIENTE/FAMILIAR. SE CIERRA PROCESO SEGÚN TRAZABILIDAD REGISTRADA.";
+        } else if (novPaciente && novDesistTipo === "IPS_AMB" && novDesistIps) {
+          base =
+            "SE REGISTRA DESISTIMIENTO DE IPS POR PARTE DE PACIENTE/FAMILIAR. SE DEJA TRAZABILIDAD Y SE CONTINÚA GESTIÓN PARA NUEVA ACEPTACIÓN SEGÚN CORRESPONDA.";
+        } else if (novPaciente && novDesistTipo === "IPS_AMB" && novDesistAmb) {
+          base =
+            "SE REGISTRA DESISTIMIENTO DE AMBULANCIA POR PARTE DE PACIENTE/FAMILIAR. SE DEJA TRAZABILIDAD Y QUEDA PENDIENTE NUEVA COORDINACIÓN DE TRASLADO.";
+        } else {
+          const tipos = [
+            novPaciente ? "PACIENTE/FAMILIAR" : "",
+            novIps ? "IPS RECEPTORA" : "",
+            novAmbulancia ? "AMBULANCIA" : "",
+          ]
+            .filter(Boolean)
+            .join(", ");
+          base = `SE REGISTRA NOVEDAD EN EL PROCESO DE REMISIÓN RELACIONADA CON ${tipos || "EL PROCESO"}.`;
+        }
+        break;
+      }
       default:
         base = "";
     }
