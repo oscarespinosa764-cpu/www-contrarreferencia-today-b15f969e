@@ -199,14 +199,14 @@ function SidebarContent({
       </nav>
 
       <div className="border-t border-sidebar-border p-3">
-        <div className={`flex items-center ${collapsed ? "justify-center" : "gap-3 px-1"}`}>
+        <div className={`flex items-center ${collapsed ? "justify-center" : "gap-2.5 px-1"}`}>
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground text-sm font-bold">
             {inicial}
           </div>
           {!collapsed && (
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-semibold leading-tight">{nombre}</p>
-              <p className="truncate text-[10px] uppercase tracking-wide text-sidebar-foreground/60 leading-tight">
+              <p className="whitespace-normal break-words text-xs font-semibold leading-tight">{nombre}</p>
+              <p className="mt-0.5 whitespace-normal break-words text-[10px] uppercase tracking-wide text-sidebar-foreground/60 leading-tight">
                 {rolLabel}
                 {cargo ? ` · ${cargo}` : ""}
               </p>
@@ -214,6 +214,7 @@ function SidebarContent({
           )}
         </div>
       </div>
+
     </div>
   );
 }
