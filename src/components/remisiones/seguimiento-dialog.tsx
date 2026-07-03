@@ -912,7 +912,7 @@ export function SeguimientoDialog({
   // Estado de solicitud automático (no editable) en ciertos tipos.
   const estadoSolicAuto =
     usaIndigo &&
-    [T.RADICADO, T.CANCELACION, T.ACEPTACION, T.AMBULANCIA, T.NEGACIONES, T.EVOLUCION].includes(
+    [T.RADICADO, T.CANCELACION, T.CAMBIO_EAPB, T.ACEPTACION, T.AMBULANCIA, T.NEGACIONES, T.EVOLUCION].includes(
       tipoSeg as never,
     );
   const mostrarIndigo = !!tipoSeg || nuevoRadicadoMode;
