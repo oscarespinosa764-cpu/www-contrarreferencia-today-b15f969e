@@ -370,10 +370,9 @@ export function SolicitudFormDialog({
           )}
 
           <div className="flex flex-wrap gap-4">
-            {!esCambio && (
+            {!esCambio && motivoRecuperable && (
               <label className="flex items-center gap-2">
                 <Checkbox checked={recupera} onCheckedChange={(v) => setRecupera(!!v)} /> Será recuperado el tiempo
-                {motivoRecuperable && <span className="text-[11px] text-emerald-600">(motivo recuperable)</span>}
               </label>
             )}
             <label className="flex items-center gap-2"><Checkbox checked={reqReemplazo} onCheckedChange={(v) => setReqReemplazo(!!v)} /> Requiere reemplazo</label>
