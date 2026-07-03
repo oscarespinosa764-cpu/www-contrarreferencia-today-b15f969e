@@ -258,6 +258,13 @@ function AuthenticatedLayout() {
     },
   });
 
+  // Monitor GLOBAL de vencimientos: genera las notificaciones del sistema
+  // (visuales + sonido) de casos entrantes en cualquier ventana/módulo.
+  const { data: casos } = useCasos();
+  useNotifVencimientosMonitor(casos);
+
+
+
   if (loading || !user || !rolesLoaded) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
