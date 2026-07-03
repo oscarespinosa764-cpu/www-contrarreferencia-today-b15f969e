@@ -158,6 +158,9 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
                 <Button size="sm" onClick={exportarCuadro}>
                   <FileDown className="mr-1.5 h-4 w-4" /> Exportar cuadro TH-FR-10
                 </Button>
+                <Button size="sm" variant="outline" onClick={() => setPlantillaOpen(true)}>
+                  <CalendarRange className="mr-1.5 h-4 w-4" /> Asignar plantilla de turno
+                </Button>
                 <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={importando}>
                   {importando ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Upload className="mr-1.5 h-4 w-4" />}
                   Importar Excel
