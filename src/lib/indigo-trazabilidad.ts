@@ -371,7 +371,35 @@ export function generarPlantillaAmbulancia(
 // Cierre por admisión (Parte 18): confirma egreso y cierra el proceso.
 export function generarPlantillaCierreAdmision(ipsReceptora: string): string {
   const ips = ph(ipsReceptora, "IPS RECEPTORA");
-  return `SE CONFIRMA EGRESO DEL PACIENTE DE LA INSTITUCIÓN PARA TRASLADO HACIA ${ips}, POSTERIOR A ENTREGA DOCUMENTAL Y COORDINACIÓN DEL TRASLADO. SE CIERRA PROCESO DE REMISIÓN.`;
+  return `SE CONFIRMA EGRESO DEL PACIENTE DE LA INSTITUCIÓN PARA TRASLADO HACIA ${ips}, POSTERIOR A ENTREGA DOCUMENTAL Y COORDINACIÓN DEL TRASLADO. SE CIERRA PROCESO DE REMISIÓN POR REMISIÓN EXITOSA.`;
+}
+
+// ---------------------------------------------------------------------------
+// Cambio de asegurador a EAPB (se cierra por la aseguradora anterior y se
+// continúa el trámite por la nueva EAPB, con sus datos de plataforma/radicado).
+// ---------------------------------------------------------------------------
+export function generarPlantillaCambioAsegurador(i: {
+  nuevaEapb: string;
+  tienePlataforma: boolean;
+  plataformaFunciona: boolean | null;
+  generaCodigo: boolean;
+  nuevoRadicado: string;
+}): string {
+  const eapb = ph(i.nuevaEapb, "NUEVA EAPB");
+  let out = `SE REALIZA CAMBIO DE ASEGURADOR DEL CASO HACIA LA EAPB ${eapb}. SE CIERRA EL TRÁMITE POR LA ASEGURADORA ANTERIOR Y SE CONTINÚA LA GESTIÓN DE LA REMISIÓN POR LA NUEVA EAPB.`;
+  if (i.generaCodigo) {
+    out += ` LA NUEVA EAPB GENERA CÓDIGO DE RADICADO: ${ph(i.nuevoRadicado, "NÚMERO DE RADICADO")}.`;
+  } else {
+    out += ` LA NUEVA EAPB NO GENERA CÓDIGO DE RADICADO.`;
+  }
+  if (i.tienePlataforma) {
+    out += ` LA EAPB CUENTA CON PLATAFORMA, LA CUAL SE ENCUENTRA ${
+      i.plataformaFunciona ? "FUNCIONANDO" : "FUERA DE SERVICIO"
+    } AL MOMENTO DE LA GESTIÓN.`;
+  } else {
+    out += ` LA EAPB NO CUENTA CON PLATAFORMA; LA GESTIÓN SE REALIZA POR OTROS CANALES.`;
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------

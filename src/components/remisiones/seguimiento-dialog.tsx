@@ -44,6 +44,7 @@ import {
   esTramiteSoat,
   generarPlantillaAceptacionIps,
   generarPlantillaAmbulancia,
+  generarPlantillaCambioAsegurador,
   generarPlantillaCancelacionRemision,
   generarPlantillaCierreAdmision,
   generarPlantillaCorreoSeg,
@@ -100,7 +101,8 @@ const T = {
   NEGACIONES: "TRAZABILIDAD DE NEGACIONES",
   AMBULANCIA: "AMBULANCIA COORDINADA",
   ENTREGA_DOC: "ENTREGA DE DOCUMENTACIÓN AMBULANCIA",
-  CIERRE: "CIERRE POR EGRESOS (REMISIÓN)",
+  CIERRE: "CIERRE DE CASO POR EGRESO",
+  CAMBIO_EAPB: "CAMBIO DE ASEGURADOR A EAPB",
   CANCELACION: "CANCELACIÓN DE TRÁMITE DE REMISIÓN",
   PERTINENCIA: "REVISIÓN AUTORIZACIÓN ESTANCIA (CANCELACIÓN)",
   NOVEDADES: "NOVEDADES",
@@ -264,6 +266,11 @@ export function SeguimientoDialog({
   const [cancelCargo, setCancelCargo] = useState("");
   const [cancelNuevoRadicado, setCancelNuevoRadicado] = useState("");
 
+  // Cambio de asegurador a EAPB
+  const [cambioEapb, setCambioEapb] = useState("");
+  const [cambioPlataformaFunc, setCambioPlataformaFunc] = useState<"" | "SI" | "NO">("");
+  const [cambioRadicado, setCambioRadicado] = useState("");
+
   // Otro
   const [otroCual, setOtroCual] = useState("");
 
@@ -364,6 +371,26 @@ export function SeguimientoDialog({
     },
   });
 
+  // Catálogo EAPB con sus flags (para el cambio de asegurador).
+  const { data: eapbCat = [] } = useQuery({
+    queryKey: ["cat-eapb-flags-seg"],
+    enabled: open && usaIndigo,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor, extra1, extra2, extra3")
+        .eq("tipo", "EAPB")
+        .eq("activo", true)
+        .order("valor");
+      return (data ?? []) as {
+        valor: string;
+        extra1: string | null;
+        extra2: string | null;
+        extra3: string | null;
+      }[];
+    },
+  });
+
   // Opciones de IPS expandidas por sede para el autocompletado.
   const ipsOptions = useMemo(() => {
     const out: { label: string; ips: string; sede: string }[] = [];
@@ -437,7 +464,8 @@ export function SeguimientoDialog({
   const mostrarAceptacion = faseAntesAceptacion;
   const mostrarAmbulancia = faseAceptadoSin;
   const mostrarEntregaDocOpt = faseAceptadoCon;
-  const mostrarCierreOpt = facePendienteEgreso;
+  // Cierre por egreso: disponible una vez el caso está aceptado (con ambulancia) o pendiente de egreso.
+  const mostrarCierreOpt = faseAceptadoCon || facePendienteEgreso;
 
   const TIPOS_SALIENTES = useMemo(() => {
     const arr = [
@@ -452,6 +480,7 @@ export function SeguimientoDialog({
       ...(mostrarAmbulancia ? [T.AMBULANCIA] : []),
       ...(mostrarEntregaDocOpt ? [T.ENTREGA_DOC] : []),
       ...(mostrarCierreOpt ? [T.CIERRE] : []),
+      T.CAMBIO_EAPB,
       T.CANCELACION,
       T.PERTINENCIA,
       T.NOVEDADES,
@@ -520,7 +549,7 @@ export function SeguimientoDialog({
     }
     if (!usaIndigo || !tipoSeg) return;
     // Estado de la solicitud automático según el tipo.
-    if (tipoSeg === T.RADICADO || tipoSeg === T.CANCELACION) setEstadoSolicitud("No aplica");
+    if (tipoSeg === T.RADICADO || tipoSeg === T.CANCELACION || tipoSeg === T.CAMBIO_EAPB) setEstadoSolicitud("No aplica");
     else if (tipoSeg === T.ACEPTACION || tipoSeg === T.AMBULANCIA) setEstadoSolicitud("Sí acepta");
     else if (tipoSeg === T.NEGACIONES) setEstadoSolicitud("No acepta");
     else setEstadoSolicitud("");
@@ -552,7 +581,18 @@ export function SeguimientoDialog({
   const esTelefono = usaIndigo && tipoSeg === T.TELEFONO;
   const esEntregaDoc = usaIndigo && tipoSeg === T.ENTREGA_DOC;
   const esCierre = usaIndigo && tipoSeg === T.CIERRE;
+  const esCambioEapb = usaIndigo && tipoSeg === T.CAMBIO_EAPB;
   const esNovedades = usaIndigo && tipoSeg === T.NOVEDADES;
+
+  // --- Cambio de asegurador: EAPB seleccionada y sus flags (extra1=plataforma, extra2=código, extra3=tipo). ---
+  const eapbOptions = useMemo(() => eapbCat.map((e) => e.valor), [eapbCat]);
+  const cambioEapbActual = useMemo(
+    () => eapbCat.find((e) => e.valor === cambioEapb) ?? null,
+    [eapbCat, cambioEapb],
+  );
+  const cambioTienePlataforma = (cambioEapbActual?.extra1 ?? "").toUpperCase() === "SI";
+  const cambioGeneraCodigo = (cambioEapbActual?.extra2 ?? "").toUpperCase() === "SI";
+  const cambioTipoEntidad = (cambioEapbActual?.extra3 ?? "").toUpperCase();
   // Casilla "Ambulancia" solo disponible tras coordinar ambulancia (o pendiente egreso).
   const novAmbDisponible = faseAceptadoCon || facePendienteEgreso;
 
@@ -743,6 +783,15 @@ export function SeguimientoDialog({
       case T.CIERRE:
         base = generarPlantillaCierreAdmision(caso?.ips_receptora ?? ipsReceptora);
         break;
+      case T.CAMBIO_EAPB:
+        base = generarPlantillaCambioAsegurador({
+          nuevaEapb: cambioEapb,
+          tienePlataforma: cambioTienePlataforma,
+          plataformaFunciona: cambioTienePlataforma ? cambioPlataformaFunc === "SI" : null,
+          generaCodigo: cambioGeneraCodigo,
+          nuevoRadicado: cambioRadicado,
+        });
+        break;
       case T.ENTREGA_DOC:
         base = "";
         break;
@@ -819,6 +868,11 @@ export function SeguimientoDialog({
     cancelFuncionario,
     cancelCargo,
     cancelNuevoRadicado,
+    cambioEapb,
+    cambioTienePlataforma,
+    cambioGeneraCodigo,
+    cambioPlataformaFunc,
+    cambioRadicado,
     revAutoriza,
     revNota,
     revFuncionario,
@@ -872,7 +926,7 @@ export function SeguimientoDialog({
   // Estado de solicitud automático (no editable) en ciertos tipos.
   const estadoSolicAuto =
     usaIndigo &&
-    [T.RADICADO, T.CANCELACION, T.ACEPTACION, T.AMBULANCIA, T.NEGACIONES, T.EVOLUCION].includes(
+    [T.RADICADO, T.CANCELACION, T.CAMBIO_EAPB, T.ACEPTACION, T.AMBULANCIA, T.NEGACIONES, T.EVOLUCION].includes(
       tipoSeg as never,
     );
   const mostrarIndigo = !!tipoSeg || nuevoRadicadoMode;
@@ -1056,6 +1110,14 @@ export function SeguimientoDialog({
         };
       case T.CIERRE:
         return { egreso: cierreEgreso || null, ips_receptora: caso?.ips_receptora ?? ipsReceptora ?? null };
+      case T.CAMBIO_EAPB:
+        return {
+          nueva_eapb: cambioEapb.trim() || null,
+          tiene_plataforma: cambioTienePlataforma,
+          plataforma_funcionando: cambioTienePlataforma ? cambioPlataformaFunc || null : null,
+          genera_codigo: cambioGeneraCodigo,
+          nuevo_radicado: cambioRadicado.trim() || null,
+        };
       case T.OTRO:
         return { cual: otroCual.trim() };
       default:
@@ -1095,6 +1157,9 @@ export function SeguimientoDialog({
     setCancelFuncionario("");
     setCancelCargo("");
     setCancelNuevoRadicado("");
+    setCambioEapb("");
+    setCambioPlataformaFunc("");
+    setCambioRadicado("");
     setOtroCual("");
     setNovPaciente(false);
     setNovIps(false);
@@ -1176,6 +1241,13 @@ export function SeguimientoDialog({
         return;
       if (esCierre && !cierreEgreso)
         return toast.error("Indica si el paciente ya egresó de la institución");
+      if (esCambioEapb) {
+        if (!cambioEapb.trim()) return toast.error("Selecciona la nueva EAPB");
+        if (cambioTienePlataforma && !cambioPlataformaFunc)
+          return toast.error("Indica si la plataforma de la EAPB está funcionando");
+        if (cambioGeneraCodigo && !cambioRadicado.trim())
+          return toast.error("Ingresa el número de radicado de la nueva EAPB");
+      }
       if (esNovedades) {
         if (!novPaciente && !novIps && !novAmbulancia)
           return toast.error("Selecciona al menos un tipo de novedad");
@@ -1235,6 +1307,11 @@ export function SeguimientoDialog({
         estado?: string;
         archivado?: boolean;
         trazabilidad_indigo?: string;
+        eapb?: string;
+        asegurador?: string;
+        eapb_tiene_plataforma?: boolean;
+        eapb_genera_codigo?: boolean;
+        plataforma_funcionando?: boolean | null;
       } = {};
       // Evolución diaria salientes v2: refleja estado en la tarjeta.
       if (esEvolucionSal) {
@@ -1258,6 +1335,15 @@ export function SeguimientoDialog({
         update.codigo_radicacion = [...radicadosLista, nuevoRadicado.trim()].join(" · ");
       if (esSaliente && tipoSeg === T.CANCELACION && cancelNuevoRadicado.trim())
         update.codigo_radicacion = cancelNuevoRadicado.trim();
+      // Cambio de asegurador a EAPB: actualiza la aseguradora del caso y sus flags.
+      if (esSaliente && esCambioEapb && cambioEapb.trim()) {
+        update.eapb = cambioEapb.trim();
+        update.asegurador = cambioEapb.trim();
+        update.eapb_tiene_plataforma = cambioTienePlataforma;
+        update.eapb_genera_codigo = cambioGeneraCodigo;
+        update.plataforma_funcionando = cambioTienePlataforma ? cambioPlataformaFunc === "SI" : null;
+        if (cambioGeneraCodigo && cambioRadicado.trim()) update.codigo_radicacion = cambioRadicado.trim();
+      }
       // Salientes: estado automático según la cadena secuencial.
       if (esSaliente) {
         if (estadoDestino && estadoDestino !== (estadoActual ?? "")) update.estado = estadoDestino;
@@ -2116,6 +2202,72 @@ export function SeguimientoDialog({
               <p className="text-[10px] text-muted-foreground">Estado de solicitud → NO APLICA.</p>
             </div>
           )}
+
+          {/* CAMBIO DE ASEGURADOR A EAPB */}
+          {esSaliente && esCambioEapb && (
+            <div className={sectionCls}>
+              <div className="space-y-1.5">
+                <Label className={labelCls}>EAPB *</Label>
+                <AutoComplete
+                  value={cambioEapb}
+                  options={eapbOptions}
+                  placeholder="Escribe para buscar la nueva EAPB…"
+                  onChange={(v) => {
+                    setCambioEapb(v);
+                    setCambioPlataformaFunc("");
+                    setCambioRadicado("");
+                  }}
+                  onPick={(v) => {
+                    setCambioEapb(v);
+                    setCambioPlataformaFunc("");
+                    setCambioRadicado("");
+                  }}
+                />
+                {cambioEapbActual && (
+                  <p className="text-[10px] text-muted-foreground">
+                    {cambioTipoEntidad || "SIN TIPO"} ·{" "}
+                    {cambioTienePlataforma ? "Tiene plataforma" : "Sin plataforma"} ·{" "}
+                    {cambioGeneraCodigo ? "Genera código" : "No genera código"}
+                  </p>
+                )}
+              </div>
+
+              {cambioTienePlataforma && (
+                <div className="space-y-1.5">
+                  <Label className={labelCls}>¿La plataforma se encuentra funcionando? *</Label>
+                  <Select
+                    value={cambioPlataformaFunc}
+                    onValueChange={(v) => setCambioPlataformaFunc(v as "SI" | "NO")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SI">SÍ</SelectItem>
+                      <SelectItem value="NO">NO</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {cambioGeneraCodigo && (
+                <div className="space-y-1.5">
+                  <Label className={labelCls}>Número de radicado de la nueva EAPB *</Label>
+                  <Input
+                    value={cambioRadicado}
+                    onChange={(e) => setCambioRadicado(e.target.value)}
+                    placeholder="Número de radicado"
+                  />
+                </div>
+              )}
+
+              <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                Al guardar se actualizará la aseguradora del caso con la nueva EAPB y sus datos de
+                plataforma/radicado. Estado de solicitud → NO APLICA.
+              </p>
+            </div>
+          )}
+
 
           {/* OTRO */}
           {esSaliente && tipoSeg === T.OTRO && (
