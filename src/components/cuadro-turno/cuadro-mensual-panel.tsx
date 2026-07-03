@@ -13,10 +13,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, UserPlus, FileDown, Upload, Loader2 } from "lucide-react";
+import { Plus, UserPlus, FileDown, Upload, Loader2, CalendarRange } from "lucide-react";
 import { toast } from "sonner";
 import {
   MESES, diasDelMes, letraDiaSemana, fechaISO, totalHorasMiembro, tiempoExtra, tiempoTotal,
+  diasSegunFrecuencia,
   type ShiftType, type ShiftSchedule, type ShiftMember, type ShiftDay,
 } from "@/lib/cuadro-turno-utils";
 import { exportarPlantillaCuadro, exportarCuadroMensual, importarCuadroExcel } from "@/lib/cuadro-excel";
