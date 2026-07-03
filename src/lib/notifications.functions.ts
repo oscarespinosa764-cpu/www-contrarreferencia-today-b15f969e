@@ -125,6 +125,7 @@ async function enviarPorTelegram(supabaseAdmin: any, text: string): Promise<{ ok
     .maybeSingle();
   if (!cfg?.bot_token || !cfg?.destination_id)
     return { ok: false, error: "Telegram no tiene token o chat destino configurado." };
+  const { enviarTelegram } = await import("./notifications.server");
   const res = await enviarTelegram(cfg.bot_token, cfg.destination_id, text);
   return { ...res, chatId: cfg.destination_id };
 }
