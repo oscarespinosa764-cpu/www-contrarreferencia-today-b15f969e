@@ -134,7 +134,23 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
             <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
             <SelectContent>{MESES.map((m, i) => <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>)}</SelectContent>
           </Select></div>
-        <div className="ml-auto flex items-center gap-2 text-xs">
+        <div className="ml-auto flex flex-wrap items-center gap-2 text-xs">
+          <div className="flex overflow-hidden rounded-md border">
+            <button
+              type="button"
+              onClick={() => setVista("matriz")}
+              className={`px-2.5 py-1 font-medium transition-colors ${vista === "matriz" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-accent"}`}
+            >
+              Matriz
+            </button>
+            <button
+              type="button"
+              onClick={() => setVista("calendario")}
+              className={`px-2.5 py-1 font-medium transition-colors ${vista === "calendario" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-accent"}`}
+            >
+              Calendario
+            </button>
+          </div>
           {tipos.filter((t) => t.active).map((t) => (
             <span key={t.id} className="inline-flex items-center gap-1 rounded border px-1.5 py-0.5">
               <span className="inline-block h-3 w-3 rounded" style={{ background: t.color }} /> {t.code}
