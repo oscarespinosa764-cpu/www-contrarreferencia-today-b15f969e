@@ -5,12 +5,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { History, CheckCircle2, Users } from "lucide-react";
+import { History, CheckCircle2, Users, CalendarPlus, RefreshCw } from "lucide-react";
 import { fmtFechaHora } from "@/lib/cuadro-turno-utils";
 import { SolicitudesPanel } from "./solicitudes-panel";
 import { AusentismoPanel } from "./ausentismo-panel";
 import { HistorialCambiosPanel } from "./historial-cambios-panel";
 import { MiTurnoPanel } from "./mi-turno-panel";
+import { SolicitudFormDialog } from "./solicitud-form-dialog";
 
 interface AuditRow {
   id: string;
