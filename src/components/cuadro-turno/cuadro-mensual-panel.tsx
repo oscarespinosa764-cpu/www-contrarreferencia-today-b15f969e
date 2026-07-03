@@ -294,6 +294,79 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
   );
 }
 
+const DOW_HEADERS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
+function CalendarView({
+  anio, mes, ndias, members, dayMap, tipoMap, isAdmin, onCellClick,
+}: {
+  anio: number; mes: number; ndias: number;
+  members: ShiftMember[];
+  dayMap: Map<string, ShiftDay>;
+  tipoMap: Map<string, ShiftType>;
+  isAdmin: boolean;
+  onCellClick: (m: ShiftMember, d: number) => void;
+}) {
+  const firstDow = new Date(anio, mes - 1, 1).getDay(); // 0=Dom
+  const totalCells = Math.ceil((firstDow + ndias) / 7) * 7;
+
+  return (
+    <Card className="p-2 sm:p-3">
+      <div className="grid grid-cols-7 gap-1">
+        {DOW_HEADERS.map((h) => (
+          <div key={h} className="py-1 text-center text-[11px] font-semibold uppercase text-muted-foreground">
+            {h}
+          </div>
+        ))}
+        {Array.from({ length: totalCells }, (_, i) => {
+          const dayNum = i - firstDow + 1;
+          const valido = dayNum >= 1 && dayNum <= ndias;
+          if (!valido) return <div key={i} className="min-h-[92px] rounded-lg bg-muted/20" />;
+
+          const asignados = members
+            .map((m) => ({ m, cd: dayMap.get(`${m.id}:${dayNum}`) }))
+            .filter((x) => x.cd?.shift_code);
+
+          return (
+            <div
+              key={i}
+              className="min-h-[92px] rounded-lg border bg-background p-1.5 transition-colors hover:border-primary/40"
+            >
+              <div className="mb-1 text-right text-[11px] font-bold text-muted-foreground">{dayNum}</div>
+              <div className="space-y-0.5">
+                {asignados.length === 0 ? (
+                  <p className="text-[10px] italic text-muted-foreground/50">—</p>
+                ) : (
+                  asignados.map(({ m, cd }) => {
+                    const tipo = cd!.shift_code ? tipoMap.get(cd!.shift_code) : undefined;
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        disabled={!isAdmin}
+                        onClick={() => isAdmin && onCellClick(m, dayNum)}
+                        className={`flex w-full items-center gap-1 truncate rounded px-1 py-0.5 text-left text-[10px] ${isAdmin ? "hover:ring-1 hover:ring-primary" : ""}`}
+                        style={tipo ? { background: tipo.color + "33" } : undefined}
+                        title={`${m.full_name} · ${cd!.shift_code}${cd!.notes ? ` · ${cd!.notes}` : ""}`}
+                      >
+                        <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: tipo?.color ?? "#999" }} />
+                        <span className="truncate font-medium">{m.full_name.split(" ")[0]}</span>
+                        <span className="ml-auto shrink-0 font-bold">{cd!.shift_code}</span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        {isAdmin ? "Haz clic en un turno para editarlo." : "Vista de solo lectura."}
+      </p>
+    </Card>
+  );
+}
+
 function AddMemberInline({ scheduleId, sortOrder, onAdded }: { scheduleId: string; sortOrder: number; onAdded: () => void }) {
   const [nombre, setNombre] = useState("");
   const [cargo, setCargo] = useState("");
