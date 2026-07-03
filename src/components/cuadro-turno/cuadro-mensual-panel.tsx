@@ -187,64 +187,79 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
               <AddMemberInline scheduleId={schedule.id} sortOrder={members.length} onAdded={() => qc.invalidateQueries({ queryKey: ["schedule-members"] })} />
             </>
           )}
-          <Card className="overflow-x-auto">
-            <table className="w-full border-collapse text-xs">
-              <thead>
-                <tr className="bg-muted/60">
-                  <th className="sticky left-0 z-10 bg-muted/60 px-2 py-1 text-left">Colaborador</th>
-                  <th className="px-2 py-1 text-left">Cargo</th>
-                  {Array.from({ length: ndias }, (_, i) => i + 1).map((d) => (
-                    <th key={d} className="px-1 py-1 text-center">
-                      <div>{d}</div>
-                      <div className="text-[9px] text-muted-foreground">{letraDiaSemana(anio, mes, d)}</div>
-                    </th>
-                  ))}
-                  <th className="px-2 py-1 text-center">Tot</th>
-                  <th className="px-2 py-1 text-center">Extra</th>
-                  <th className="px-2 py-1 text-center">Pend</th>
-                  <th className="px-2 py-1 text-center">T.Tot</th>
-                  <th className="px-2 py-1 text-left">Novedades</th>
-                </tr>
-              </thead>
-              <tbody>
-                {members.length === 0 ? (
-                  <tr><td colSpan={ndias + 7} className="py-6 text-center text-muted-foreground">Sin colaboradores en el cuadro.</td></tr>
-                ) : members.map((m) => {
-                  const mdays = days.filter((d) => d.member_id === m.id);
-                  const total = totalHorasMiembro(mdays);
-                  const base = m.base_hours ?? schedule.base_hours;
-                  const extra = tiempoExtra(total, base);
-                  const ttot = tiempoTotal(extra, m.pending_hours);
-                  return (
-                    <tr key={m.id} className="border-t">
-                      <td className="sticky left-0 z-10 bg-background px-2 py-1 font-medium">{m.full_name}</td>
-                      <td className="px-2 py-1">{m.role_name ?? "—"}</td>
-                      {Array.from({ length: ndias }, (_, i) => i + 1).map((d) => {
-                        const cd = dayMap.get(`${m.id}:${d}`);
-                        const tipo = cd?.shift_code ? tipoMap.get(cd.shift_code) : undefined;
-                        return (
-                          <td
-                            key={d}
-                            className={`px-1 py-1 text-center ${isAdmin ? "cursor-pointer hover:ring-1 hover:ring-primary" : ""}`}
-                            style={tipo ? { background: tipo.color + "33" } : undefined}
-                            onClick={() => isAdmin && setCell({ member: m, day: d })}
-                          >
-                            {cd?.shift_code ?? ""}
-                          </td>
-                        );
-                      })}
-                      <td className="px-2 py-1 text-center font-semibold">{total}</td>
-                      <td className="px-2 py-1 text-center">{extra}</td>
-                      <td className="px-2 py-1 text-center">{m.pending_hours}</td>
-                      <td className="px-2 py-1 text-center">{ttot}</td>
-                      <td className="px-2 py-1">{m.notes ?? ""}</td>
+          {vista === "matriz" ? (
+            <>
+              <Card className="overflow-x-auto">
+                <table className="w-full border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-muted/60">
+                      <th className="sticky left-0 z-10 bg-muted/60 px-2 py-1 text-left">Colaborador</th>
+                      <th className="px-2 py-1 text-left">Cargo</th>
+                      {Array.from({ length: ndias }, (_, i) => i + 1).map((d) => (
+                        <th key={d} className="px-1 py-1 text-center">
+                          <div>{d}</div>
+                          <div className="text-[9px] text-muted-foreground">{letraDiaSemana(anio, mes, d)}</div>
+                        </th>
+                      ))}
+                      <th className="px-2 py-1 text-center">Tot</th>
+                      <th className="px-2 py-1 text-center">Extra</th>
+                      <th className="px-2 py-1 text-center">Pend</th>
+                      <th className="px-2 py-1 text-center">T.Tot</th>
+                      <th className="px-2 py-1 text-left">Novedades</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </Card>
-          <p className="text-xs text-muted-foreground">Horas base del mes: {schedule.base_hours}. {isAdmin ? "Haz clic en una celda para asignar turno." : "Vista de solo lectura."}</p>
+                  </thead>
+                  <tbody>
+                    {members.length === 0 ? (
+                      <tr><td colSpan={ndias + 7} className="py-6 text-center text-muted-foreground">Sin colaboradores en el cuadro.</td></tr>
+                    ) : members.map((m) => {
+                      const mdays = days.filter((d) => d.member_id === m.id);
+                      const total = totalHorasMiembro(mdays);
+                      const base = m.base_hours ?? schedule.base_hours;
+                      const extra = tiempoExtra(total, base);
+                      const ttot = tiempoTotal(extra, m.pending_hours);
+                      return (
+                        <tr key={m.id} className="border-t">
+                          <td className="sticky left-0 z-10 bg-background px-2 py-1 font-medium">{m.full_name}</td>
+                          <td className="px-2 py-1">{m.role_name ?? "—"}</td>
+                          {Array.from({ length: ndias }, (_, i) => i + 1).map((d) => {
+                            const cd = dayMap.get(`${m.id}:${d}`);
+                            const tipo = cd?.shift_code ? tipoMap.get(cd.shift_code) : undefined;
+                            return (
+                              <td
+                                key={d}
+                                className={`px-1 py-1 text-center ${isAdmin ? "cursor-pointer hover:ring-1 hover:ring-primary" : ""}`}
+                                style={tipo ? { background: tipo.color + "33" } : undefined}
+                                onClick={() => isAdmin && setCell({ member: m, day: d })}
+                              >
+                                {cd?.shift_code ?? ""}
+                              </td>
+                            );
+                          })}
+                          <td className="px-2 py-1 text-center font-semibold">{total}</td>
+                          <td className="px-2 py-1 text-center">{extra}</td>
+                          <td className="px-2 py-1 text-center">{m.pending_hours}</td>
+                          <td className="px-2 py-1 text-center">{ttot}</td>
+                          <td className="px-2 py-1">{m.notes ?? ""}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </Card>
+              <p className="text-xs text-muted-foreground">Horas base del mes: {schedule.base_hours}. {isAdmin ? "Haz clic en una celda para asignar turno." : "Vista de solo lectura."}</p>
+            </>
+          ) : (
+            <CalendarView
+              anio={anio}
+              mes={mes}
+              ndias={ndias}
+              members={members}
+              dayMap={dayMap}
+              tipoMap={tipoMap}
+              isAdmin={isAdmin}
+              onCellClick={(m, d) => setCell({ member: m, day: d })}
+            />
+          )}
         </>
       )}
 
