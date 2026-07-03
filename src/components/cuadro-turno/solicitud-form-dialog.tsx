@@ -1,6 +1,6 @@
 import { TimeField } from "@/components/ui/time-field";
 import { useEffect, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
@@ -17,8 +17,21 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { MOTIVOS_SOLICITUD } from "@/lib/cuadro-turno-utils";
 import { SignaturePad, type SignaturePadHandle } from "./signature-pad";
+
+const SEDE_FIJA = "CLINICA GLORIA PATRICIA PINZON";
+const CAMBIO_TURNO = "Cambio de turno";
+
+interface MotivoOpt {
+  valor: string;
+  recuperable: boolean;
+}
+
+interface Funcionario {
+  nombre: string;
+  cargo: string | null;
+  userId: string | null;
+}
 
 export function SolicitudFormDialog({
   open, onOpenChange, defaultCambio,
@@ -36,9 +49,8 @@ export function SolicitudFormDialog({
   const [loadingFirma, setLoadingFirma] = useState(true);
 
   const [esCambio, setEsCambio] = useState(!!defaultCambio);
-  const [motivo, setMotivo] = useState<string>(defaultCambio ? "Cambio de turno" : "");
+  const [motivo, setMotivo] = useState<string>(defaultCambio ? CAMBIO_TURNO : "");
   const [otro, setOtro] = useState("");
-  const [sede, setSede] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [startTime, setStartTime] = useState("");
@@ -50,6 +62,12 @@ export function SolicitudFormDialog({
   const [reempCargo, setReempCargo] = useState("");
   const [detalle, setDetalle] = useState("");
   const [observaciones, setObservaciones] = useState("");
+  // Retorno de tiempo recuperable
+  const [retornoNombre, setRetornoNombre] = useState("");
+  const [retornoCargo, setRetornoCargo] = useState("");
+  const [retornoFecha, setRetornoFecha] = useState("");
+  const [retornoTurno, setRetornoTurno] = useState("");
+  const [retornoTurnoBuscando, setRetornoTurnoBuscando] = useState(false);
   // Cambio de turno
   const [origFecha, setOrigFecha] = useState("");
   const [origTurno, setOrigTurno] = useState("");
@@ -60,10 +78,46 @@ export function SolicitudFormDialog({
   const [confirmo, setConfirmo] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // ---- Catálogo de motivos (recuperable / no recuperable) ----
+  const { data: motivos = [] } = useQuery({
+    queryKey: ["motivos-permiso"],
+    queryFn: async (): Promise<MotivoOpt[]> => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor, extra1")
+        .eq("tipo", "MOTIVO_PERMISO")
+        .eq("activo", true)
+        .order("valor");
+      return (data ?? []).map((r) => ({
+        valor: r.valor,
+        recuperable: (r.extra1 || "").toUpperCase() === "RECUPERABLE",
+      }));
+    },
+  });
+
+  // ---- Funcionarios (nombres + cargo) desde el cuadro de turno ----
+  const { data: funcionarios = [] } = useQuery({
+    queryKey: ["funcionarios-turno"],
+    queryFn: async (): Promise<Funcionario[]> => {
+      const { data } = await supabase
+        .from("shift_schedule_members")
+        .select("full_name, role_name, user_id")
+        .eq("active", true)
+        .order("full_name");
+      const map = new Map<string, Funcionario>();
+      (data ?? []).forEach((m) => {
+        const nombre = (m.full_name || "").trim();
+        if (!nombre) return;
+        if (!map.has(nombre)) map.set(nombre, { nombre, cargo: m.role_name, userId: m.user_id });
+      });
+      return Array.from(map.values());
+    },
+  });
+
   useEffect(() => {
     if (!open || !user) return;
     setEsCambio(!!defaultCambio);
-    setMotivo(defaultCambio ? "Cambio de turno" : "");
+    setMotivo(defaultCambio ? CAMBIO_TURNO : "");
     setLoadingFirma(true);
     (async () => {
       const { data } = await supabase
@@ -78,10 +132,46 @@ export function SolicitudFormDialog({
     })();
   }, [open, user, defaultCambio]);
 
+  // Buscar el turno asignado del funcionario en la fecha de devolución.
+  useEffect(() => {
+    if (!recupera || esCambio || !retornoNombre || !retornoFecha) {
+      setRetornoTurno("");
+      return;
+    }
+    let cancel = false;
+    (async () => {
+      setRetornoTurnoBuscando(true);
+      const { data } = await supabase
+        .from("shift_schedule_days")
+        .select("shift_code, shift_schedule_members!inner(full_name)")
+        .eq("shift_date", retornoFecha)
+        .eq("shift_schedule_members.full_name", retornoNombre)
+        .limit(1)
+        .maybeSingle();
+      if (cancel) return;
+      setRetornoTurno((data as { shift_code?: string | null } | null)?.shift_code || "");
+      setRetornoTurnoBuscando(false);
+    })();
+    return () => { cancel = true; };
+  }, [recupera, esCambio, retornoNombre, retornoFecha]);
+
   const handleMotivo = (v: string) => {
     setMotivo(v);
-    setEsCambio(v === "Cambio de turno");
+    const cambio = v === CAMBIO_TURNO;
+    setEsCambio(cambio);
+    if (!cambio) {
+      const opt = motivos.find((m) => m.valor === v);
+      setRecupera(!!opt?.recuperable);
+    }
   };
+
+  const handleRetornoNombre = (nombre: string) => {
+    setRetornoNombre(nombre);
+    const f = funcionarios.find((x) => x.nombre === nombre);
+    setRetornoCargo(f?.cargo || "");
+  };
+
+  const motivoRecuperable = motivos.find((m) => m.valor === motivo)?.recuperable ?? false;
 
   const submit = async () => {
     if (!user) return;
@@ -92,6 +182,8 @@ export function SolicitudFormDialog({
     if (esCambio && (!origFecha || !origTurno || !nuevaFecha || !nuevoTurno))
       return toast.error("Completa los datos del cambio de turno.");
     if (!esCambio && !startDate) return toast.error("Indica la fecha inicial.");
+    if (!esCambio && recupera && (!retornoNombre || !retornoFecha))
+      return toast.error("Indica el funcionario y la fecha de devolución del tiempo.");
     if (!confirmo) return toast.error("Debes confirmar y autorizar el uso de tu firma.");
 
     setSaving(true);
@@ -107,6 +199,8 @@ export function SolicitudFormDialog({
         signatureHash = saved.hash;
       }
 
+      const usaRetorno = !esCambio && recupera;
+
       const { data: req, error } = await supabase
         .from("shift_requests")
         .insert({
@@ -115,10 +209,11 @@ export function SolicitudFormDialog({
           requester_name: perfil?.nombre || null,
           requester_identification: perfil?.doc || null,
           requester_role: perfil?.cargo || null,
-          requester_sede: sede || null,
+          requester_sede: SEDE_FIJA,
           status: "PENDIENTE",
           reason_type: motivo,
           other_reason: motivo === "Otro" ? otro : null,
+          reason_recoverable: !esCambio && motivoRecuperable,
           start_date: !esCambio ? startDate || null : null,
           end_date: !esCambio ? endDate || null : null,
           start_time: !esCambio ? startTime || null : null,
@@ -128,6 +223,11 @@ export function SolicitudFormDialog({
           replacement_name: reqReemplazo ? reempNombre : null,
           replacement_role: reqReemplazo ? reempCargo : null,
           paid: remunerado,
+          return_person_id: usaRetorno ? funcionarios.find((f) => f.nombre === retornoNombre)?.userId ?? null : null,
+          return_person_name: usaRetorno ? retornoNombre || null : null,
+          return_person_role: usaRetorno ? retornoCargo || null : null,
+          return_date: usaRetorno ? retornoFecha || null : null,
+          return_shift_code: usaRetorno ? retornoTurno || null : null,
           original_shift_date: esCambio ? origFecha || null : null,
           original_shift_code: esCambio ? origTurno || null : null,
           requested_shift_date: esCambio ? nuevaFecha || null : null,
@@ -161,18 +261,19 @@ export function SolicitudFormDialog({
   };
 
   const resetForm = () => {
-    setMotivo(""); setOtro(""); setSede(""); setStartDate(""); setEndDate("");
+    setMotivo(""); setOtro(""); setStartDate(""); setEndDate("");
     setStartTime(""); setEndTime(""); setRecupera(false); setReqReemplazo(false);
     setRemunerado(false); setReempNombre(""); setReempCargo(""); setDetalle("");
     setObservaciones(""); setOrigFecha(""); setOrigTurno(""); setNuevaFecha("");
     setNuevoTurno(""); setCompanero(""); setConfirmo(false); setEsCambio(false);
+    setRetornoNombre(""); setRetornoCargo(""); setRetornoFecha(""); setRetornoTurno("");
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Nueva solicitud de permiso, ausencia, salida o cambio de turno</DialogTitle>
+          <DialogTitle>Solicitud de permiso / cambio de turno (TH-FR-09)</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 text-sm">
@@ -183,7 +284,7 @@ export function SolicitudFormDialog({
               <div><Label className="text-xs">Colaborador</Label><Input value={perfil?.nombre ?? ""} readOnly /></div>
               <div><Label className="text-xs">Identificación</Label><Input value={perfil?.doc ?? ""} readOnly /></div>
               <div><Label className="text-xs">Cargo</Label><Input value={perfil?.cargo ?? ""} readOnly /></div>
-              <div><Label className="text-xs">Sede</Label><Input value={sede} onChange={(e) => setSede(e.target.value)} placeholder="Sede / dependencia" /></div>
+              <div><Label className="text-xs">Sede</Label><Input value={SEDE_FIJA} readOnly className="bg-muted/40" /></div>
             </div>
             {(!perfil?.doc || !perfil?.cargo) && (
               <p className="mt-2 text-xs text-amber-600">Faltan datos en tu perfil (documento/cargo). Repórtalo a coordinación.</p>
@@ -197,7 +298,12 @@ export function SolicitudFormDialog({
               <Select value={motivo} onValueChange={handleMotivo}>
                 <SelectTrigger><SelectValue placeholder="Selecciona motivo" /></SelectTrigger>
                 <SelectContent>
-                  {MOTIVOS_SOLICITUD.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                  {motivos.map((m) => (
+                    <SelectItem key={m.valor} value={m.valor}>
+                      {m.valor}{m.recuperable ? " · recuperable" : ""}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value={CAMBIO_TURNO}>{CAMBIO_TURNO}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -215,7 +321,7 @@ export function SolicitudFormDialog({
                 <div><Label className="text-xs">Turno original (código)</Label><Input value={origTurno} onChange={(e) => setOrigTurno(e.target.value)} placeholder="Ej: N" /></div>
                 <div><Label className="text-xs">Fecha nuevo turno</Label><Input type="date" value={nuevaFecha} onChange={(e) => setNuevaFecha(e.target.value)} /></div>
                 <div><Label className="text-xs">Nuevo turno (código)</Label><Input value={nuevoTurno} onChange={(e) => setNuevoTurno(e.target.value)} placeholder="Ej: M" /></div>
-                <div className="col-span-2"><Label className="text-xs">Persona con quien realiza el cambio</Label><Input uppercase value={companero} onChange={(e) => setCompanero(e.target.value)} /></div>
+                <div className="col-span-2"><Label className="text-xs">Persona con quien realiza el cambio</Label><Input value={companero} onChange={(e) => setCompanero(e.target.value)} /></div>
               </div>
             </fieldset>
           ) : (
@@ -231,10 +337,49 @@ export function SolicitudFormDialog({
           )}
 
           <div className="flex flex-wrap gap-4">
-            <label className="flex items-center gap-2"><Checkbox checked={recupera} onCheckedChange={(v) => setRecupera(!!v)} /> Será recuperado el tiempo</label>
+            {!esCambio && (
+              <label className="flex items-center gap-2">
+                <Checkbox checked={recupera} onCheckedChange={(v) => setRecupera(!!v)} /> Será recuperado el tiempo
+                {motivoRecuperable && <span className="text-[11px] text-emerald-600">(motivo recuperable)</span>}
+              </label>
+            )}
             <label className="flex items-center gap-2"><Checkbox checked={reqReemplazo} onCheckedChange={(v) => setReqReemplazo(!!v)} /> Requiere reemplazo</label>
             <label className="flex items-center gap-2"><Checkbox checked={remunerado} onCheckedChange={(v) => setRemunerado(!!v)} /> Remunerado</label>
           </div>
+
+          {/* Retorno de tiempo recuperable */}
+          {!esCambio && recupera && (
+            <fieldset className="rounded-md border border-emerald-300 bg-emerald-50/40 p-3 dark:bg-emerald-950/10">
+              <legend className="px-1 text-xs font-semibold uppercase text-emerald-700">Devolución del tiempo</legend>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Funcionario que recibe el retorno</Label>
+                  <Select value={retornoNombre} onValueChange={handleRetornoNombre}>
+                    <SelectTrigger><SelectValue placeholder="Selecciona funcionario" /></SelectTrigger>
+                    <SelectContent>
+                      {funcionarios.length === 0 ? (
+                        <SelectItem value="__none" disabled>Sin funcionarios en el cuadro</SelectItem>
+                      ) : (
+                        funcionarios.map((f) => <SelectItem key={f.nombre} value={f.nombre}>{f.nombre}</SelectItem>)
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div><Label className="text-xs">Cargo</Label><Input value={retornoCargo} readOnly className="bg-muted/40" placeholder="Automático" /></div>
+                <div><Label className="text-xs">Fecha de devolución</Label><Input type="date" value={retornoFecha} onChange={(e) => setRetornoFecha(e.target.value)} /></div>
+                <div>
+                  <Label className="text-xs">Turno</Label>
+                  <Input
+                    value={retornoTurnoBuscando ? "Buscando…" : (retornoTurno || "")}
+                    readOnly
+                    className="bg-muted/40"
+                    placeholder={retornoNombre && retornoFecha ? "Sin turno ese día" : "Automático"}
+                  />
+                </div>
+              </div>
+              <p className="mt-2 text-[11px] text-muted-foreground">El turno se toma automáticamente del cuadro de turno del funcionario en la fecha indicada.</p>
+            </fieldset>
+          )}
 
           {reqReemplazo && (
             <div className="grid grid-cols-2 gap-3">
@@ -243,7 +388,7 @@ export function SolicitudFormDialog({
             </div>
           )}
 
-          <div><Label className="text-xs">Motivo detallado</Label><Textarea value={detalle} onChange={(e) => setDetalle(e.target.value)} rows={2} /></div>
+          <div><Label className="text-xs">Especifique motivo del permiso</Label><Textarea value={detalle} onChange={(e) => setDetalle(e.target.value)} rows={2} /></div>
           <div><Label className="text-xs">Observaciones adicionales</Label><Textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)} rows={2} /></div>
 
           {/* Firma */}
@@ -256,7 +401,7 @@ export function SolicitudFormDialog({
                 {firmaActiva.signedUrl
                   ? <img src={firmaActiva.signedUrl} alt="Firma registrada" className="h-16 rounded border bg-white object-contain" />
                   : <span className="text-xs text-muted-foreground">Firma registrada</span>}
-                <p className="text-xs text-emerald-600">Se usará tu firma registrada.</p>
+                <p className="text-xs text-emerald-600">Se usará tu firma registrada en Administración.</p>
               </div>
             ) : (
               <div>

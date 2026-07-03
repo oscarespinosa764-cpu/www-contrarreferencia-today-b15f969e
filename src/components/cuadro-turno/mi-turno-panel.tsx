@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { CalendarPlus, RefreshCw, XCircle, FileDown } from "lucide-react";
+import { CalendarPlus, XCircle, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { SolicitudFormDialog } from "./solicitud-form-dialog";
 import {
@@ -18,7 +18,7 @@ export function MiTurnoPanel() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [openSolicitud, setOpenSolicitud] = useState(false);
-  const [openCambio, setOpenCambio] = useState(false);
+  
 
   const { data: requests = [] } = useQuery({
     queryKey: ["shift-requests", "mias", user?.id],
@@ -71,10 +71,7 @@ export function MiTurnoPanel() {
     <div className="space-y-5">
       <div className="flex flex-wrap gap-2">
         <Button onClick={() => setOpenSolicitud(true)}>
-          <CalendarPlus className="mr-1.5 h-4 w-4" /> Solicitar permiso / ausencia / salida
-        </Button>
-        <Button variant="outline" onClick={() => setOpenCambio(true)}>
-          <RefreshCw className="mr-1.5 h-4 w-4" /> Solicitar cambio de turno
+          <CalendarPlus className="mr-1.5 h-4 w-4" /> Solicitar permiso / cambio de turno
         </Button>
       </div>
 
@@ -129,7 +126,6 @@ export function MiTurnoPanel() {
       </div>
 
       <SolicitudFormDialog open={openSolicitud} onOpenChange={setOpenSolicitud} />
-      <SolicitudFormDialog open={openCambio} onOpenChange={setOpenCambio} defaultCambio />
     </div>
   );
 }

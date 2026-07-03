@@ -22,7 +22,7 @@ import {
   minutosEntreHoras, diasEntreFechas, ESTADOS_SOLICITUD, type ShiftRequest,
 } from "@/lib/cuadro-turno-utils";
 import { generarSolicitudPDF } from "@/lib/solicitud-pdf";
-import { getFirmaDataUrlById } from "@/lib/firmas-utils";
+import { getFirmaDataUrlById, getFirmaDataUrlByUser } from "@/lib/firmas-utils";
 import { FileDown } from "lucide-react";
 
 export function SolicitudesPanel() {
@@ -123,7 +123,16 @@ function RevisionDialog({
       const firmaDataUrl = request.requester_signature_id
         ? await getFirmaDataUrlById(request.requester_signature_id)
         : null;
-      await generarSolicitudPDF(request, { firmaDataUrl });
+      // Firma del jefe inmediato (aprobador) cuando la solicitud está aprobada.
+      let jefeFirmaDataUrl: string | null = null;
+      let jefeNombre = "";
+      if (request.status === "APROBADA" && request.approved_by) {
+        jefeFirmaDataUrl = await getFirmaDataUrlByUser(request.approved_by);
+        const { data: perf } = await supabase
+          .from("profiles").select("nombre").eq("user_id", request.approved_by).maybeSingle();
+        jefeNombre = perf?.nombre || "";
+      }
+      await generarSolicitudPDF(request, { firmaDataUrl, jefeFirmaDataUrl, usuario: jefeNombre });
       registrarAuditoria({ data: { accion: "SOLICITUD_PDF", modulo: "cuadro_turno", tabla: "shift_requests", registroId: request.id, resultado: "exito" } }).catch(() => {});
     } catch (e) {
       console.error(e);
