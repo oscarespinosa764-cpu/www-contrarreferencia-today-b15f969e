@@ -1307,6 +1307,11 @@ export function SeguimientoDialog({
         estado?: string;
         archivado?: boolean;
         trazabilidad_indigo?: string;
+        eapb?: string;
+        asegurador?: string;
+        eapb_tiene_plataforma?: boolean;
+        eapb_genera_codigo?: boolean;
+        plataforma_funcionando?: boolean | null;
       } = {};
       // Evolución diaria salientes v2: refleja estado en la tarjeta.
       if (esEvolucionSal) {
