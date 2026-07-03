@@ -75,9 +75,9 @@ export function RedAdminDialog({
   const term = norm(q.trim());
   const lista = useMemo(() => {
     return (registros ?? [])
-      .filter((r) => (r.tipo_red || "ips_departamental") === tab)
+      .filter((r) => grupoDeTipo(r.tipo_red) === grupo)
       .filter((r) => (term ? textoBusqueda(r).includes(term) : true));
-  }, [registros, tab, term]);
+  }, [registros, grupo, term]);
 
   const auditar = (accion: string, registroId: string, detalles: Record<string, unknown>) =>
     registrarAuditoria({
