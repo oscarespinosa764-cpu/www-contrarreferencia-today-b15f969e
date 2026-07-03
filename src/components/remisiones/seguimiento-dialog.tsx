@@ -783,6 +783,15 @@ export function SeguimientoDialog({
       case T.CIERRE:
         base = generarPlantillaCierreAdmision(caso?.ips_receptora ?? ipsReceptora);
         break;
+      case T.CAMBIO_EAPB:
+        base = generarPlantillaCambioAsegurador({
+          nuevaEapb: cambioEapb,
+          tienePlataforma: cambioTienePlataforma,
+          plataformaFunciona: cambioTienePlataforma ? cambioPlataformaFunc === "SI" : null,
+          generaCodigo: cambioGeneraCodigo,
+          nuevoRadicado: cambioRadicado,
+        });
+        break;
       case T.ENTREGA_DOC:
         base = "";
         break;
