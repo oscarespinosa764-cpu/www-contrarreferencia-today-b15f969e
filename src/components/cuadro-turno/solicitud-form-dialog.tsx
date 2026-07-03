@@ -333,7 +333,7 @@ export function SolicitudFormDialog({
                 <SelectContent>
                   {motivos.map((m) => (
                     <SelectItem key={m.valor} value={m.valor}>
-                      {m.valor}{m.recuperable ? " · recuperable" : ""}
+                      {m.valor}
                     </SelectItem>
                   ))}
                   <SelectItem value={CAMBIO_TURNO}>{CAMBIO_TURNO}</SelectItem>
