@@ -264,6 +264,7 @@ export const dispatchEventNotification = createServerFn({ method: "POST" })
     };
     const text = renderPlantilla(cfg.message_template || PLANTILLA_TELEGRAM_DEFAULT, vars);
 
+    const { enviarTelegram } = await import("./notifications.server");
     const res = await enviarTelegram(cfg.bot_token, cfg.destination_id, text);
     await marcarResultado(supabaseAdmin, res.ok, res.error);
 
