@@ -1,9 +1,12 @@
 import { TimeField } from "@/components/ui/time-field";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
+import { dispatchEventNotification } from "@/lib/notifications.functions";
+import { maskNombre } from "@/lib/notifications-utils";
 import { getFirmaActiva, guardarFirma } from "@/lib/firmas-utils";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -43,6 +46,7 @@ export function SolicitudFormDialog({
   const { user } = useAuth();
   const qc = useQueryClient();
   const padRef = useRef<SignaturePadHandle>(null);
+  const dispatchNotif = useServerFn(dispatchEventNotification);
 
   const [perfil, setPerfil] = useState<{ nombre: string; doc: string; cargo: string } | null>(null);
   const [firmaActiva, setFirmaActiva] = useState<{ id: string; hash: string | null; signedUrl: string | null } | null>(null);
@@ -95,22 +99,30 @@ export function SolicitudFormDialog({
     },
   });
 
-  // ---- Funcionarios (nombres + cargo) desde el cuadro de turno ----
+  // ---- Funcionarios (todo el personal activo) ----
   const { data: funcionarios = [] } = useQuery({
-    queryKey: ["funcionarios-turno"],
+    queryKey: ["funcionarios-personal"],
     queryFn: async (): Promise<Funcionario[]> => {
-      const { data } = await supabase
-        .from("shift_schedule_members")
-        .select("full_name, role_name, user_id")
-        .eq("active", true)
-        .order("full_name");
+      // Se combina el personal del cuadro de turno con todos los perfiles activos
+      // para no dejar a nadie por fuera (p. ej. quienes aún no están en el cuadro).
+      const [{ data: members }, { data: profs }] = await Promise.all([
+        supabase.from("shift_schedule_members").select("full_name, role_name, user_id").eq("active", true),
+        supabase.from("profiles").select("nombre, cargo, user_id").eq("activo", true),
+      ]);
       const map = new Map<string, Funcionario>();
-      (data ?? []).forEach((m) => {
+      (profs ?? []).forEach((p) => {
+        const nombre = (p.nombre || "").trim();
+        if (!nombre) return;
+        if (!map.has(nombre)) map.set(nombre, { nombre, cargo: p.cargo, userId: p.user_id });
+      });
+      (members ?? []).forEach((m) => {
         const nombre = (m.full_name || "").trim();
         if (!nombre) return;
-        if (!map.has(nombre)) map.set(nombre, { nombre, cargo: m.role_name, userId: m.user_id });
+        const prev = map.get(nombre);
+        if (!prev) map.set(nombre, { nombre, cargo: m.role_name, userId: m.user_id });
+        else if (!prev.cargo && m.role_name) prev.cargo = m.role_name;
       });
-      return Array.from(map.values());
+      return Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
     },
   });
 
@@ -161,14 +173,39 @@ export function SolicitudFormDialog({
     setEsCambio(cambio);
     if (!cambio) {
       const opt = motivos.find((m) => m.valor === v);
-      setRecupera(!!opt?.recuperable);
+      const rec = !!opt?.recuperable;
+      setRecupera(rec);
+      // Si el motivo NO es recuperable, no aplica devolución de tiempo.
+      if (!rec) {
+        setReqReemplazo(false);
+        setRemunerado(false);
+        setReempNombre("");
+        setReempCargo("");
+        setRetornoNombre("");
+        setRetornoCargo("");
+        setRetornoFecha("");
+        setRetornoTurno("");
+      }
     }
   };
+
+  // Al marcar "Será recuperado el tiempo" se activan automáticamente
+  // "Requiere reemplazo" y "Remunerado".
+  useEffect(() => {
+    if (recupera && !esCambio) {
+      setReqReemplazo(true);
+      setRemunerado(true);
+    }
+  }, [recupera, esCambio]);
 
   const handleRetornoNombre = (nombre: string) => {
     setRetornoNombre(nombre);
     const f = funcionarios.find((x) => x.nombre === nombre);
-    setRetornoCargo(f?.cargo || "");
+    const cargo = f?.cargo || "";
+    setRetornoCargo(cargo);
+    // El reemplazo se llena con la funcionaria que recibe el retorno.
+    setReempNombre(nombre);
+    setReempCargo(cargo);
   };
 
   const motivoRecuperable = motivos.find((m) => m.valor === motivo)?.recuperable ?? false;
@@ -248,6 +285,19 @@ export function SolicitudFormDialog({
       });
       registrarAuditoria({ data: { accion: "SOLICITUD_CREADA", modulo: "cuadro_turno", tabla: "shift_requests", registroId: req.id, resultado: "exito" } }).catch(() => {});
 
+      // Notificación externa (Telegram) por evento — best-effort, no bloquea.
+      dispatchNotif({ data: {
+        alert_type: "SOLICITUD_CAMBIO_TURNO",
+        module: "Cuadro de turno",
+        reference_id: req.id,
+        vars: {
+          funcionario: maskNombre(perfil?.nombre),
+          estado: "Pendiente de revisión",
+          accion: "Revisar en Cuadro de Turno.",
+          modulo: "Cuadro de turno",
+        },
+      } }).catch(() => {});
+
       toast.success("Solicitud enviada a coordinación.");
       qc.invalidateQueries({ queryKey: ["shift-requests"] });
       onOpenChange(false);
@@ -300,7 +350,7 @@ export function SolicitudFormDialog({
                 <SelectContent>
                   {motivos.map((m) => (
                     <SelectItem key={m.valor} value={m.valor}>
-                      {m.valor}{m.recuperable ? " · recuperable" : ""}
+                      {m.valor}
                     </SelectItem>
                   ))}
                   <SelectItem value={CAMBIO_TURNO}>{CAMBIO_TURNO}</SelectItem>
@@ -337,10 +387,9 @@ export function SolicitudFormDialog({
           )}
 
           <div className="flex flex-wrap gap-4">
-            {!esCambio && (
+            {!esCambio && motivoRecuperable && (
               <label className="flex items-center gap-2">
                 <Checkbox checked={recupera} onCheckedChange={(v) => setRecupera(!!v)} /> Será recuperado el tiempo
-                {motivoRecuperable && <span className="text-[11px] text-emerald-600">(motivo recuperable)</span>}
               </label>
             )}
             <label className="flex items-center gap-2"><Checkbox checked={reqReemplazo} onCheckedChange={(v) => setReqReemplazo(!!v)} /> Requiere reemplazo</label>

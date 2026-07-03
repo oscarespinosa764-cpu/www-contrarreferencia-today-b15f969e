@@ -1,6 +1,7 @@
 import { useEffect, useRef, useImperativeHandle, forwardRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Eraser } from "lucide-react";
+import { Eraser, Upload } from "lucide-react";
+import { toast } from "sonner";
 
 export interface SignaturePadHandle {
   isEmpty: () => boolean;
@@ -8,10 +9,11 @@ export interface SignaturePadHandle {
   clear: () => void;
 }
 
-/** Lienzo simple para dibujar una firma (mouse / touch). */
+/** Lienzo para dibujar una firma (mouse / touch) o subir una imagen de firma. */
 export const SignaturePad = forwardRef<SignaturePadHandle, { height?: number }>(
   function SignaturePad({ height = 160 }, ref) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const fileRef = useRef<HTMLInputElement>(null);
     const drawing = useRef(false);
     const empty = useRef(true);
 
@@ -64,6 +66,35 @@ export const SignaturePad = forwardRef<SignaturePadHandle, { height?: number }>(
       empty.current = true;
     };
 
+    const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = ""; // permite re-subir el mismo archivo
+      if (!file) return;
+      if (!file.type.startsWith("image/")) return toast.error("Selecciona un archivo de imagen.");
+      if (file.size > 3 * 1024 * 1024) return toast.error("La imagen no debe superar 3 MB.");
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = canvasRef.current;
+          const ctx = canvas?.getContext("2d");
+          if (!canvas || !ctx) return;
+          const rect = canvas.getBoundingClientRect();
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          // Ajusta la imagen manteniendo proporción dentro del lienzo.
+          const cw = rect.width, ch = height;
+          const scale = Math.min(cw / img.width, ch / img.height);
+          const w = img.width * scale, h = img.height * scale;
+          ctx.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h);
+          empty.current = false;
+        };
+        img.onerror = () => toast.error("No se pudo cargar la imagen.");
+        img.src = reader.result as string;
+      };
+      reader.onerror = () => toast.error("No se pudo leer el archivo.");
+      reader.readAsDataURL(file);
+    };
+
     useImperativeHandle(ref, () => ({
       isEmpty: () => empty.current,
       toDataURL: () => canvasRef.current?.toDataURL("image/png") ?? "",
@@ -81,9 +112,16 @@ export const SignaturePad = forwardRef<SignaturePadHandle, { height?: number }>(
           onPointerUp={end}
           onPointerLeave={end}
         />
-        <Button type="button" variant="outline" size="sm" onClick={clear}>
-          <Eraser className="mr-1.5 h-3.5 w-3.5" /> Limpiar
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={clear}>
+            <Eraser className="mr-1.5 h-3.5 w-3.5" /> Limpiar
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+            <Upload className="mr-1.5 h-3.5 w-3.5" /> Subir imagen
+          </Button>
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
+        </div>
+        <p className="text-[11px] text-muted-foreground">Dibuja la firma o sube una imagen (PNG/JPG, máx. 3 MB).</p>
       </div>
     );
   },

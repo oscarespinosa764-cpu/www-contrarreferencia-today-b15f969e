@@ -826,6 +826,123 @@ export type Database = {
           },
         ]
       }
+      notification_channels: {
+        Row: {
+          allowed_alert_types: Json
+          bot_token: string | null
+          channel_type: string
+          config_status: string
+          created_at: string
+          created_by: string | null
+          destination_id: string | null
+          destination_label: string | null
+          display_name: string | null
+          enabled: boolean
+          id: string
+          last_error_at: string | null
+          last_error_message: string | null
+          last_success_at: string | null
+          last_test_at: string | null
+          message_template: string | null
+          settings: Json
+          token_configured: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          allowed_alert_types?: Json
+          bot_token?: string | null
+          channel_type: string
+          config_status?: string
+          created_at?: string
+          created_by?: string | null
+          destination_id?: string | null
+          destination_label?: string | null
+          display_name?: string | null
+          enabled?: boolean
+          id?: string
+          last_error_at?: string | null
+          last_error_message?: string | null
+          last_success_at?: string | null
+          last_test_at?: string | null
+          message_template?: string | null
+          settings?: Json
+          token_configured?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          allowed_alert_types?: Json
+          bot_token?: string | null
+          channel_type?: string
+          config_status?: string
+          created_at?: string
+          created_by?: string | null
+          destination_id?: string | null
+          destination_label?: string | null
+          display_name?: string | null
+          enabled?: boolean
+          id?: string
+          last_error_at?: string | null
+          last_error_message?: string | null
+          last_success_at?: string | null
+          last_test_at?: string | null
+          message_template?: string | null
+          settings?: Json
+          token_configured?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      notification_logs: {
+        Row: {
+          alert_type: string | null
+          attempts: number
+          channel_type: string
+          created_at: string
+          created_by: string | null
+          error_message: string | null
+          id: string
+          message_preview: string | null
+          module: string | null
+          recipient: string | null
+          reference_id: string | null
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          alert_type?: string | null
+          attempts?: number
+          channel_type: string
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          message_preview?: string | null
+          module?: string | null
+          recipient?: string | null
+          reference_id?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          alert_type?: string | null
+          attempts?: number
+          channel_type?: string
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          message_preview?: string | null
+          module?: string | null
+          recipient?: string | null
+          reference_id?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       pendientes: {
         Row: {
           archivado: boolean
