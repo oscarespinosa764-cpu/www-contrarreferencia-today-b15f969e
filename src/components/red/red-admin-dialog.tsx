@@ -202,7 +202,7 @@ export function RedAdminDialog({
             <p className="py-8 text-center text-sm text-muted-foreground">Cargando…</p>
           ) : lista.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              No hay registros en «{TIPO_RED_LABEL[tab]}».
+              No hay registros en «{getGrupo(grupo).label}».
             </p>
           ) : (
             <div className="space-y-2">
