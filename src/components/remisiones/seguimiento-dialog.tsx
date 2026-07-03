@@ -44,6 +44,7 @@ import {
   esTramiteSoat,
   generarPlantillaAceptacionIps,
   generarPlantillaAmbulancia,
+  generarPlantillaCambioAsegurador,
   generarPlantillaCancelacionRemision,
   generarPlantillaCierreAdmision,
   generarPlantillaCorreoSeg,
