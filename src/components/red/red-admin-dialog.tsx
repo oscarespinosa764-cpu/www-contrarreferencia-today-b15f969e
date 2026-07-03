@@ -148,12 +148,11 @@ export function RedAdminDialog({
 
   const abrirNuevo = () => {
     setEditing(null);
-    setFormTipo(tab);
     setFormOpen(true);
   };
   const abrirEditar = (r: RedRegistro) => {
     setEditing(r);
-    setFormTipo((r.tipo_red as TipoRed) || "ips_departamental");
+    setGrupo(grupoDeTipo(r.tipo_red));
     setFormOpen(true);
   };
 
@@ -165,23 +164,24 @@ export function RedAdminDialog({
             <DialogTitle>Gestión de red y disponibilidad</DialogTitle>
           </DialogHeader>
 
-          {/* Pestañas por tipo de red */}
+          {/* Pestañas por grupo */}
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {RED_TABS.map((t) => (
+            {RED_GRUPOS.map((g) => (
               <button
-                key={t.key}
+                key={g.key}
                 type="button"
-                onClick={() => setTab(t.key)}
+                onClick={() => setGrupo(g.key)}
                 className={`shrink-0 rounded-lg border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide ${
-                  t.key === tab
+                  g.key === grupo
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-secondary text-muted-foreground hover:bg-accent"
                 }`}
               >
-                {t.label}
+                {g.label}
               </button>
             ))}
           </div>
+
 
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative min-w-[200px] flex-1">
