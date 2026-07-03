@@ -266,6 +266,11 @@ export function SeguimientoDialog({
   const [cancelCargo, setCancelCargo] = useState("");
   const [cancelNuevoRadicado, setCancelNuevoRadicado] = useState("");
 
+  // Cambio de asegurador a EAPB
+  const [cambioEapb, setCambioEapb] = useState("");
+  const [cambioPlataformaFunc, setCambioPlataformaFunc] = useState<"" | "SI" | "NO">("");
+  const [cambioRadicado, setCambioRadicado] = useState("");
+
   // Otro
   const [otroCual, setOtroCual] = useState("");
 
