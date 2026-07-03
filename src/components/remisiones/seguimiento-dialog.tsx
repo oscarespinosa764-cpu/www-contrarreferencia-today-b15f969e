@@ -1157,6 +1157,9 @@ export function SeguimientoDialog({
     setCancelFuncionario("");
     setCancelCargo("");
     setCancelNuevoRadicado("");
+    setCambioEapb("");
+    setCambioPlataformaFunc("");
+    setCambioRadicado("");
     setOtroCual("");
     setNovPaciente(false);
     setNovIps(false);
