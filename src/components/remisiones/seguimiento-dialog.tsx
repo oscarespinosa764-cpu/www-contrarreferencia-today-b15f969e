@@ -581,7 +581,18 @@ export function SeguimientoDialog({
   const esTelefono = usaIndigo && tipoSeg === T.TELEFONO;
   const esEntregaDoc = usaIndigo && tipoSeg === T.ENTREGA_DOC;
   const esCierre = usaIndigo && tipoSeg === T.CIERRE;
+  const esCambioEapb = usaIndigo && tipoSeg === T.CAMBIO_EAPB;
   const esNovedades = usaIndigo && tipoSeg === T.NOVEDADES;
+
+  // --- Cambio de asegurador: EAPB seleccionada y sus flags (extra1=plataforma, extra2=código, extra3=tipo). ---
+  const eapbOptions = useMemo(() => eapbCat.map((e) => e.valor), [eapbCat]);
+  const cambioEapbActual = useMemo(
+    () => eapbCat.find((e) => e.valor === cambioEapb) ?? null,
+    [eapbCat, cambioEapb],
+  );
+  const cambioTienePlataforma = (cambioEapbActual?.extra1 ?? "").toUpperCase() === "SI";
+  const cambioGeneraCodigo = (cambioEapbActual?.extra2 ?? "").toUpperCase() === "SI";
+  const cambioTipoEntidad = (cambioEapbActual?.extra3 ?? "").toUpperCase();
   // Casilla "Ambulancia" solo disponible tras coordinar ambulancia (o pendiente egreso).
   const novAmbDisponible = faseAceptadoCon || facePendienteEgreso;
 
