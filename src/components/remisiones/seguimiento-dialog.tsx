@@ -1335,6 +1335,15 @@ export function SeguimientoDialog({
         update.codigo_radicacion = [...radicadosLista, nuevoRadicado.trim()].join(" · ");
       if (esSaliente && tipoSeg === T.CANCELACION && cancelNuevoRadicado.trim())
         update.codigo_radicacion = cancelNuevoRadicado.trim();
+      // Cambio de asegurador a EAPB: actualiza la aseguradora del caso y sus flags.
+      if (esSaliente && esCambioEapb && cambioEapb.trim()) {
+        update.eapb = cambioEapb.trim();
+        update.asegurador = cambioEapb.trim();
+        update.eapb_tiene_plataforma = cambioTienePlataforma;
+        update.eapb_genera_codigo = cambioGeneraCodigo;
+        update.plataforma_funcionando = cambioTienePlataforma ? cambioPlataformaFunc === "SI" : null;
+        if (cambioGeneraCodigo && cambioRadicado.trim()) update.codigo_radicacion = cambioRadicado.trim();
+      }
       // Salientes: estado automático según la cadena secuencial.
       if (esSaliente) {
         if (estadoDestino && estadoDestino !== (estadoActual ?? "")) update.estado = estadoDestino;
