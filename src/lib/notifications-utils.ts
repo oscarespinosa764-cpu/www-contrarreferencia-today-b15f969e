@@ -3,8 +3,8 @@
 
 export const CANALES = [
   { type: "telegram", label: "Telegram", activo: true },
+  { type: "slack", label: "Slack", activo: true },
   { type: "whatsapp", label: "WhatsApp", activo: false },
-  { type: "slack", label: "Slack", activo: false },
   { type: "email", label: "Correo electrónico", activo: false },
 ] as const;
 
@@ -12,7 +12,6 @@ export type CanalTipo = (typeof CANALES)[number]["type"];
 
 export const MENSAJES_CANAL_INACTIVO: Record<string, string> = {
   whatsapp: "WhatsApp requiere proveedor externo o API oficial. No está activo para evitar costos.",
-  slack: "Slack queda preparado para futura integración por webhook. No activo en esta versión.",
   email: "Correo queda preparado para futura integración SMTP/proveedor. No activo en esta versión.",
 };
 
@@ -38,6 +37,14 @@ export function labelAlerta(value: string): string {
 
 export const PLANTILLA_TELEGRAM_DEFAULT =
   "🔔 CEDIM IPS\nTipo: {{tipo_alerta}}\nMódulo: {{modulo}}\nEstado: {{estado}}\nAcción: {{accion}}\nFecha/hora: {{fecha_hora}}";
+
+export const PLANTILLA_SLACK_DEFAULT =
+  "*🔔 CEDIM IPS*\n*Tipo:* {{tipo_alerta}}\n*Módulo:* {{modulo}}\n*Estado:* {{estado}}\n*Acción:* {{accion}}\n*Fecha/hora:* {{fecha_hora}}";
+
+/** Plantilla por defecto según el canal. */
+export function plantillaPorCanal(channelType: string): string {
+  return channelType === "slack" ? PLANTILLA_SLACK_DEFAULT : PLANTILLA_TELEGRAM_DEFAULT;
+}
 
 /** Enmascara un documento dejando solo los últimos 4 dígitos: 1117545825 → ****5825 */
 export function maskDocumento(doc?: string | null): string {
