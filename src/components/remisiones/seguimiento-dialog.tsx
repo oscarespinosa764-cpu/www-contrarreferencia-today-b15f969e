@@ -549,7 +549,7 @@ export function SeguimientoDialog({
     }
     if (!usaIndigo || !tipoSeg) return;
     // Estado de la solicitud automático según el tipo.
-    if (tipoSeg === T.RADICADO || tipoSeg === T.CANCELACION) setEstadoSolicitud("No aplica");
+    if (tipoSeg === T.RADICADO || tipoSeg === T.CANCELACION || tipoSeg === T.CAMBIO_EAPB) setEstadoSolicitud("No aplica");
     else if (tipoSeg === T.ACEPTACION || tipoSeg === T.AMBULANCIA) setEstadoSolicitud("Sí acepta");
     else if (tipoSeg === T.NEGACIONES) setEstadoSolicitud("No acepta");
     else setEstadoSolicitud("");
