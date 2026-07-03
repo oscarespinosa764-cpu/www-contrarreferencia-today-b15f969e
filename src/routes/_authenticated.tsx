@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
+import { useCasos } from "@/lib/use-rc-data";
+import { useNotifVencimientosMonitor } from "@/lib/use-notif-vencimientos";
 import { SessionTimeout } from "@/components/session-timeout";
 import { ConsentimientoGate } from "@/components/consentimiento-gate";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -255,6 +257,13 @@ function AuthenticatedLayout() {
       return count ?? 0;
     },
   });
+
+  // Monitor GLOBAL de vencimientos: genera las notificaciones del sistema
+  // (visuales + sonido) de casos entrantes en cualquier ventana/módulo.
+  const { data: casos } = useCasos();
+  useNotifVencimientosMonitor(casos);
+
+
 
   if (loading || !user || !rolesLoaded) {
     return (
