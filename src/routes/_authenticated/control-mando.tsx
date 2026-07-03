@@ -35,10 +35,11 @@ function ControlMandoPage() {
       />
 
       <Tabs defaultValue="usuarios" className="w-full">
-        <TabsList className="mb-4 grid h-auto w-full grid-cols-3">
+        <TabsList className="mb-4 grid h-auto w-full grid-cols-2 sm:grid-cols-4">
           <TabsTrigger className="whitespace-normal" value="usuarios">Usuarios</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="historicos">Históricos</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="dictado">Dictado por voz</TabsTrigger>
+          <TabsTrigger className="whitespace-normal" value="notificaciones">Notificaciones externas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="usuarios">
