@@ -57,6 +57,9 @@ function ControlMandoPage() {
         <TabsContent value="dictado">
           <DictadoPanel />
         </TabsContent>
+        <TabsContent value="notificaciones">
+          <NotificacionesExternasPanel />
+        </TabsContent>
       </Tabs>
     </div>
   );
