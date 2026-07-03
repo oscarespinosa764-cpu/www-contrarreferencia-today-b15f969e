@@ -338,3 +338,170 @@ function EditCellDialog({
     </Dialog>
   );
 }
+
+const DOW_OPCIONES = [
+  { dow: 1, label: "L" },
+  { dow: 2, label: "M" },
+  { dow: 3, label: "X" },
+  { dow: 4, label: "J" },
+  { dow: 5, label: "V" },
+  { dow: 6, label: "S" },
+  { dow: 0, label: "D" },
+];
+
+function AsignarPlantillaDialog({
+  scheduleId, anio, mes, ndias, members, tipos, userId, onClose, onSaved,
+}: {
+  scheduleId: string; anio: number; mes: number; ndias: number;
+  members: ShiftMember[]; tipos: ShiftType[]; userId: string;
+  onClose: () => void; onSaved: () => void;
+}) {
+  const [memberId, setMemberId] = useState<string>("__all");
+  const [code, setCode] = useState<string>("");
+  const [desde, setDesde] = useState(1);
+  const [hasta, setHasta] = useState(ndias);
+  const [frecuencia, setFrecuencia] = useState<"todos" | "dias">("todos");
+  const [weekdays, setWeekdays] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [sobrescribir, setSobrescribir] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const toggleDow = (dow: number) =>
+    setWeekdays((prev) => (prev.includes(dow) ? prev.filter((d) => d !== dow) : [...prev, dow]));
+
+  const diasObjetivo = useMemo(
+    () => diasSegunFrecuencia(anio, mes, { desde, hasta, todos: frecuencia === "todos", weekdays }),
+    [anio, mes, desde, hasta, frecuencia, weekdays],
+  );
+
+  const targets = memberId === "__all" ? members : members.filter((m) => m.id === memberId);
+
+  const aplicar = async () => {
+    if (!code) return toast.error("Selecciona un turno.");
+    if (targets.length === 0) return toast.error("No hay colaboradores.");
+    if (diasObjetivo.length === 0) return toast.error("No hay días que coincidan con la frecuencia.");
+    setSaving(true);
+    try {
+      const tipo = tipos.find((t) => t.code === code);
+      const hours = tipo?.hours ?? 0;
+      const now = new Date().toISOString();
+      const rows: any[] = [];
+      for (const m of targets) {
+        for (const d of diasObjetivo) {
+          rows.push({
+            schedule_id: scheduleId, member_id: m.id, day_number: d,
+            shift_date: fechaISO(anio, mes, d), shift_code: code, hours,
+            origin: "plantilla", changed_by: userId, changed_at: now,
+          });
+        }
+      }
+      // Si no se sobrescribe, no tocar días ya asignados.
+      let filas = rows;
+      if (!sobrescribir) {
+        const { data: existentes } = await supabase.from("shift_schedule_days")
+          .select("member_id, day_number, shift_code")
+          .eq("schedule_id", scheduleId);
+        const ocupados = new Set(
+          (existentes ?? [])
+            .filter((e: any) => e.shift_code)
+            .map((e: any) => `${e.member_id}:${e.day_number}`),
+        );
+        filas = rows.filter((r) => !ocupados.has(`${r.member_id}:${r.day_number}`));
+      }
+      if (filas.length === 0) {
+        toast.error("Todos los días seleccionados ya tienen turno. Activa «Sobrescribir» para reemplazarlos.");
+        setSaving(false);
+        return;
+      }
+      const { error } = await supabase.from("shift_schedule_days")
+        .upsert(filas, { onConflict: "member_id,day_number" });
+      if (error) throw error;
+      registrarAuditoria({ data: { accion: "PLANTILLA_TURNO_APLICADA", modulo: "cuadro_turno", tabla: "shift_schedule_days", registroId: scheduleId, resultado: "exito", detalles: { turno: code, colaboradores: targets.length, dias: diasObjetivo.length, filas: filas.length, frecuencia } } }).catch(() => {});
+      toast.success(`Plantilla aplicada: ${filas.length} asignación(es).`);
+      onSaved();
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "No se pudo aplicar la plantilla.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Asignar plantilla de turno</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 text-sm">
+          <div>
+            <Label className="text-xs">Colaborador</Label>
+            <Select value={memberId} onValueChange={setMemberId}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">Todos los colaboradores</SelectItem>
+                {members.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Turno</Label>
+            <Select value={code} onValueChange={setCode}>
+              <SelectTrigger><SelectValue placeholder="Selecciona un turno" /></SelectTrigger>
+              <SelectContent>
+                {tipos.filter((t) => t.active).map((t) => (
+                  <SelectItem key={t.id} value={t.code}>{t.code} — {t.name} ({t.hours}h)</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label className="text-xs">Desde (día)</Label><Input type="number" min={1} max={ndias} value={desde} onChange={(e) => setDesde(Number(e.target.value))} /></div>
+            <div><Label className="text-xs">Hasta (día)</Label><Input type="number" min={1} max={ndias} value={hasta} onChange={(e) => setHasta(Number(e.target.value))} /></div>
+          </div>
+          <div>
+            <Label className="text-xs">Frecuencia</Label>
+            <Select value={frecuencia} onValueChange={(v) => setFrecuencia(v as "todos" | "dias")}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos los días del rango</SelectItem>
+                <SelectItem value="dias">Días específicos de la semana</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {frecuencia === "dias" && (
+            <div className="flex flex-wrap gap-1.5">
+              {DOW_OPCIONES.map((o) => (
+                <button
+                  key={o.dow}
+                  type="button"
+                  onClick={() => toggleDow(o.dow)}
+                  className={`h-8 w-8 rounded-md border text-xs font-semibold transition-colors ${
+                    weekdays.includes(o.dow)
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-input bg-background text-muted-foreground hover:bg-accent"
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <label className="flex items-center gap-2 text-xs">
+            <input type="checkbox" checked={sobrescribir} onChange={(e) => setSobrescribir(e.target.checked)} />
+            Sobrescribir días que ya tienen turno
+          </label>
+          <p className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+            Se aplicará a <strong>{targets.length}</strong> colaborador(es) en{" "}
+            <strong>{diasObjetivo.length}</strong> día(s) del mes.
+          </p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button onClick={aplicar} disabled={saving}>{saving ? "Aplicando…" : "Aplicar plantilla"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
