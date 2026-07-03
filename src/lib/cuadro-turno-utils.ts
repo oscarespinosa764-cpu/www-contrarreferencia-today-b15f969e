@@ -28,6 +28,32 @@ export function fechaISO(year: number, month: number, day: number): string {
   return `${year}-${mm}-${dd}`;
 }
 
+/**
+ * Devuelve los números de día del mes que coinciden con la frecuencia dada.
+ * `weekdays` usa el índice de getDay() (0=Dom … 6=Sáb). Si está vacío o `todos`
+ * es true, incluye todos los días dentro del rango [desde, hasta].
+ */
+export function diasSegunFrecuencia(
+  year: number,
+  month: number,
+  opts: { desde: number; hasta: number; todos: boolean; weekdays: number[] },
+): number[] {
+  const total = diasDelMes(year, month);
+  const desde = Math.max(1, Math.min(opts.desde || 1, total));
+  const hasta = Math.min(total, Math.max(opts.hasta || total, desde));
+  const set = new Set(opts.weekdays);
+  const out: number[] = [];
+  for (let d = desde; d <= hasta; d++) {
+    if (opts.todos || set.size === 0) {
+      out.push(d);
+      continue;
+    }
+    const dow = new Date(year, month - 1, d).getDay();
+    if (set.has(dow)) out.push(d);
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // Tipos
 // ---------------------------------------------------------------------------
