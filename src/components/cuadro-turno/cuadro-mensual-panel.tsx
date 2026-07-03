@@ -77,6 +77,7 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
   const tipoMap = useMemo(() => new Map(tipos.map((t) => [t.code, t])), [tipos]);
   const [cell, setCell] = useState<{ member: ShiftMember; day: number } | null>(null);
   const [plantillaOpen, setPlantillaOpen] = useState(false);
+  const [vista, setVista] = useState<"matriz" | "calendario">("matriz");
   const fileRef = useRef<HTMLInputElement>(null);
   const [importando, setImportando] = useState(false);
 
@@ -133,7 +134,23 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
             <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
             <SelectContent>{MESES.map((m, i) => <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>)}</SelectContent>
           </Select></div>
-        <div className="ml-auto flex items-center gap-2 text-xs">
+        <div className="ml-auto flex flex-wrap items-center gap-2 text-xs">
+          <div className="flex overflow-hidden rounded-md border">
+            <button
+              type="button"
+              onClick={() => setVista("matriz")}
+              className={`px-2.5 py-1 font-medium transition-colors ${vista === "matriz" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-accent"}`}
+            >
+              Matriz
+            </button>
+            <button
+              type="button"
+              onClick={() => setVista("calendario")}
+              className={`px-2.5 py-1 font-medium transition-colors ${vista === "calendario" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-accent"}`}
+            >
+              Calendario
+            </button>
+          </div>
           {tipos.filter((t) => t.active).map((t) => (
             <span key={t.id} className="inline-flex items-center gap-1 rounded border px-1.5 py-0.5">
               <span className="inline-block h-3 w-3 rounded" style={{ background: t.color }} /> {t.code}
@@ -170,64 +187,79 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
               <AddMemberInline scheduleId={schedule.id} sortOrder={members.length} onAdded={() => qc.invalidateQueries({ queryKey: ["schedule-members"] })} />
             </>
           )}
-          <Card className="overflow-x-auto">
-            <table className="w-full border-collapse text-xs">
-              <thead>
-                <tr className="bg-muted/60">
-                  <th className="sticky left-0 z-10 bg-muted/60 px-2 py-1 text-left">Colaborador</th>
-                  <th className="px-2 py-1 text-left">Cargo</th>
-                  {Array.from({ length: ndias }, (_, i) => i + 1).map((d) => (
-                    <th key={d} className="px-1 py-1 text-center">
-                      <div>{d}</div>
-                      <div className="text-[9px] text-muted-foreground">{letraDiaSemana(anio, mes, d)}</div>
-                    </th>
-                  ))}
-                  <th className="px-2 py-1 text-center">Tot</th>
-                  <th className="px-2 py-1 text-center">Extra</th>
-                  <th className="px-2 py-1 text-center">Pend</th>
-                  <th className="px-2 py-1 text-center">T.Tot</th>
-                  <th className="px-2 py-1 text-left">Novedades</th>
-                </tr>
-              </thead>
-              <tbody>
-                {members.length === 0 ? (
-                  <tr><td colSpan={ndias + 7} className="py-6 text-center text-muted-foreground">Sin colaboradores en el cuadro.</td></tr>
-                ) : members.map((m) => {
-                  const mdays = days.filter((d) => d.member_id === m.id);
-                  const total = totalHorasMiembro(mdays);
-                  const base = m.base_hours ?? schedule.base_hours;
-                  const extra = tiempoExtra(total, base);
-                  const ttot = tiempoTotal(extra, m.pending_hours);
-                  return (
-                    <tr key={m.id} className="border-t">
-                      <td className="sticky left-0 z-10 bg-background px-2 py-1 font-medium">{m.full_name}</td>
-                      <td className="px-2 py-1">{m.role_name ?? "—"}</td>
-                      {Array.from({ length: ndias }, (_, i) => i + 1).map((d) => {
-                        const cd = dayMap.get(`${m.id}:${d}`);
-                        const tipo = cd?.shift_code ? tipoMap.get(cd.shift_code) : undefined;
-                        return (
-                          <td
-                            key={d}
-                            className={`px-1 py-1 text-center ${isAdmin ? "cursor-pointer hover:ring-1 hover:ring-primary" : ""}`}
-                            style={tipo ? { background: tipo.color + "33" } : undefined}
-                            onClick={() => isAdmin && setCell({ member: m, day: d })}
-                          >
-                            {cd?.shift_code ?? ""}
-                          </td>
-                        );
-                      })}
-                      <td className="px-2 py-1 text-center font-semibold">{total}</td>
-                      <td className="px-2 py-1 text-center">{extra}</td>
-                      <td className="px-2 py-1 text-center">{m.pending_hours}</td>
-                      <td className="px-2 py-1 text-center">{ttot}</td>
-                      <td className="px-2 py-1">{m.notes ?? ""}</td>
+          {vista === "matriz" ? (
+            <>
+              <Card className="overflow-x-auto">
+                <table className="w-full border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-muted/60">
+                      <th className="sticky left-0 z-10 bg-muted/60 px-2 py-1 text-left">Colaborador</th>
+                      <th className="px-2 py-1 text-left">Cargo</th>
+                      {Array.from({ length: ndias }, (_, i) => i + 1).map((d) => (
+                        <th key={d} className="px-1 py-1 text-center">
+                          <div>{d}</div>
+                          <div className="text-[9px] text-muted-foreground">{letraDiaSemana(anio, mes, d)}</div>
+                        </th>
+                      ))}
+                      <th className="px-2 py-1 text-center">Tot</th>
+                      <th className="px-2 py-1 text-center">Extra</th>
+                      <th className="px-2 py-1 text-center">Pend</th>
+                      <th className="px-2 py-1 text-center">T.Tot</th>
+                      <th className="px-2 py-1 text-left">Novedades</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </Card>
-          <p className="text-xs text-muted-foreground">Horas base del mes: {schedule.base_hours}. {isAdmin ? "Haz clic en una celda para asignar turno." : "Vista de solo lectura."}</p>
+                  </thead>
+                  <tbody>
+                    {members.length === 0 ? (
+                      <tr><td colSpan={ndias + 7} className="py-6 text-center text-muted-foreground">Sin colaboradores en el cuadro.</td></tr>
+                    ) : members.map((m) => {
+                      const mdays = days.filter((d) => d.member_id === m.id);
+                      const total = totalHorasMiembro(mdays);
+                      const base = m.base_hours ?? schedule.base_hours;
+                      const extra = tiempoExtra(total, base);
+                      const ttot = tiempoTotal(extra, m.pending_hours);
+                      return (
+                        <tr key={m.id} className="border-t">
+                          <td className="sticky left-0 z-10 bg-background px-2 py-1 font-medium">{m.full_name}</td>
+                          <td className="px-2 py-1">{m.role_name ?? "—"}</td>
+                          {Array.from({ length: ndias }, (_, i) => i + 1).map((d) => {
+                            const cd = dayMap.get(`${m.id}:${d}`);
+                            const tipo = cd?.shift_code ? tipoMap.get(cd.shift_code) : undefined;
+                            return (
+                              <td
+                                key={d}
+                                className={`px-1 py-1 text-center ${isAdmin ? "cursor-pointer hover:ring-1 hover:ring-primary" : ""}`}
+                                style={tipo ? { background: tipo.color + "33" } : undefined}
+                                onClick={() => isAdmin && setCell({ member: m, day: d })}
+                              >
+                                {cd?.shift_code ?? ""}
+                              </td>
+                            );
+                          })}
+                          <td className="px-2 py-1 text-center font-semibold">{total}</td>
+                          <td className="px-2 py-1 text-center">{extra}</td>
+                          <td className="px-2 py-1 text-center">{m.pending_hours}</td>
+                          <td className="px-2 py-1 text-center">{ttot}</td>
+                          <td className="px-2 py-1">{m.notes ?? ""}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </Card>
+              <p className="text-xs text-muted-foreground">Horas base del mes: {schedule.base_hours}. {isAdmin ? "Haz clic en una celda para asignar turno." : "Vista de solo lectura."}</p>
+            </>
+          ) : (
+            <CalendarView
+              anio={anio}
+              mes={mes}
+              ndias={ndias}
+              members={members}
+              dayMap={dayMap}
+              tipoMap={tipoMap}
+              isAdmin={isAdmin}
+              onCellClick={(m, d) => setCell({ member: m, day: d })}
+            />
+          )}
         </>
       )}
 
@@ -259,6 +291,79 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
         />
       )}
     </div>
+  );
+}
+
+const DOW_HEADERS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
+function CalendarView({
+  anio, mes, ndias, members, dayMap, tipoMap, isAdmin, onCellClick,
+}: {
+  anio: number; mes: number; ndias: number;
+  members: ShiftMember[];
+  dayMap: Map<string, ShiftDay>;
+  tipoMap: Map<string, ShiftType>;
+  isAdmin: boolean;
+  onCellClick: (m: ShiftMember, d: number) => void;
+}) {
+  const firstDow = new Date(anio, mes - 1, 1).getDay(); // 0=Dom
+  const totalCells = Math.ceil((firstDow + ndias) / 7) * 7;
+
+  return (
+    <Card className="p-2 sm:p-3">
+      <div className="grid grid-cols-7 gap-1">
+        {DOW_HEADERS.map((h) => (
+          <div key={h} className="py-1 text-center text-[11px] font-semibold uppercase text-muted-foreground">
+            {h}
+          </div>
+        ))}
+        {Array.from({ length: totalCells }, (_, i) => {
+          const dayNum = i - firstDow + 1;
+          const valido = dayNum >= 1 && dayNum <= ndias;
+          if (!valido) return <div key={i} className="min-h-[92px] rounded-lg bg-muted/20" />;
+
+          const asignados = members
+            .map((m) => ({ m, cd: dayMap.get(`${m.id}:${dayNum}`) }))
+            .filter((x) => x.cd?.shift_code);
+
+          return (
+            <div
+              key={i}
+              className="min-h-[92px] rounded-lg border bg-background p-1.5 transition-colors hover:border-primary/40"
+            >
+              <div className="mb-1 text-right text-[11px] font-bold text-muted-foreground">{dayNum}</div>
+              <div className="space-y-0.5">
+                {asignados.length === 0 ? (
+                  <p className="text-[10px] italic text-muted-foreground/50">—</p>
+                ) : (
+                  asignados.map(({ m, cd }) => {
+                    const tipo = cd!.shift_code ? tipoMap.get(cd!.shift_code) : undefined;
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        disabled={!isAdmin}
+                        onClick={() => isAdmin && onCellClick(m, dayNum)}
+                        className={`flex w-full items-center gap-1 truncate rounded px-1 py-0.5 text-left text-[10px] ${isAdmin ? "hover:ring-1 hover:ring-primary" : ""}`}
+                        style={tipo ? { background: tipo.color + "33" } : undefined}
+                        title={`${m.full_name} · ${cd!.shift_code}${cd!.notes ? ` · ${cd!.notes}` : ""}`}
+                      >
+                        <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: tipo?.color ?? "#999" }} />
+                        <span className="truncate font-medium">{m.full_name.split(" ")[0]}</span>
+                        <span className="ml-auto shrink-0 font-bold">{cd!.shift_code}</span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        {isAdmin ? "Haz clic en un turno para editarlo." : "Vista de solo lectura."}
+      </p>
+    </Card>
   );
 }
 
