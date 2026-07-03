@@ -981,7 +981,9 @@ export type Database = {
       }
       red_operativa: {
         Row: {
+          ambito: string | null
           archivado: boolean
+          cargo_contacto: string | null
           categoria: string | null
           ciudad: string | null
           codigo_alterno: string | null
@@ -993,9 +995,12 @@ export type Database = {
           created_at: string
           created_by: string | null
           cups: string | null
+          cups_descripcion: string | null
           departamento: string | null
           direccion: string | null
           disponible_para_remisiones: boolean
+          eapb_aseguradoras: string | null
+          empresa_tep: string | null
           entidad: string | null
           eps: string | null
           estado: string | null
@@ -1008,8 +1013,10 @@ export type Database = {
           jornada: string | null
           link: string | null
           medico: string | null
+          nit: string | null
           novedad_disponibilidad: string | null
           observaciones: string | null
+          recorrido: string | null
           relaciones_red: Json
           rondas: string | null
           sede: string | null
@@ -1022,9 +1029,13 @@ export type Database = {
           tipo_red: string | null
           updated_at: string
           usuario_actualizacion: string | null
+          vigencia_desde: string | null
+          vigencia_hasta: string | null
         }
         Insert: {
+          ambito?: string | null
           archivado?: boolean
+          cargo_contacto?: string | null
           categoria?: string | null
           ciudad?: string | null
           codigo_alterno?: string | null
@@ -1036,9 +1047,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           cups?: string | null
+          cups_descripcion?: string | null
           departamento?: string | null
           direccion?: string | null
           disponible_para_remisiones?: boolean
+          eapb_aseguradoras?: string | null
+          empresa_tep?: string | null
           entidad?: string | null
           eps?: string | null
           estado?: string | null
@@ -1051,8 +1065,10 @@ export type Database = {
           jornada?: string | null
           link?: string | null
           medico?: string | null
+          nit?: string | null
           novedad_disponibilidad?: string | null
           observaciones?: string | null
+          recorrido?: string | null
           relaciones_red?: Json
           rondas?: string | null
           sede?: string | null
@@ -1065,9 +1081,13 @@ export type Database = {
           tipo_red?: string | null
           updated_at?: string
           usuario_actualizacion?: string | null
+          vigencia_desde?: string | null
+          vigencia_hasta?: string | null
         }
         Update: {
+          ambito?: string | null
           archivado?: boolean
+          cargo_contacto?: string | null
           categoria?: string | null
           ciudad?: string | null
           codigo_alterno?: string | null
@@ -1079,9 +1099,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           cups?: string | null
+          cups_descripcion?: string | null
           departamento?: string | null
           direccion?: string | null
           disponible_para_remisiones?: boolean
+          eapb_aseguradoras?: string | null
+          empresa_tep?: string | null
           entidad?: string | null
           eps?: string | null
           estado?: string | null
@@ -1094,8 +1117,10 @@ export type Database = {
           jornada?: string | null
           link?: string | null
           medico?: string | null
+          nit?: string | null
           novedad_disponibilidad?: string | null
           observaciones?: string | null
+          recorrido?: string | null
           relaciones_red?: Json
           rondas?: string | null
           sede?: string | null
@@ -1108,6 +1133,8 @@ export type Database = {
           tipo_red?: string | null
           updated_at?: string
           usuario_actualizacion?: string | null
+          vigencia_desde?: string | null
+          vigencia_hasta?: string | null
         }
         Relationships: []
       }
@@ -1778,6 +1805,7 @@ export type Database = {
           schedule_id: string
           shift_code: string | null
           shift_date: string | null
+          unidad_funcional: string | null
         }
         Insert: {
           changed_at?: string
@@ -1791,6 +1819,7 @@ export type Database = {
           schedule_id: string
           shift_code?: string | null
           shift_date?: string | null
+          unidad_funcional?: string | null
         }
         Update: {
           changed_at?: string
@@ -1804,6 +1833,7 @@ export type Database = {
           schedule_id?: string
           shift_code?: string | null
           shift_date?: string | null
+          unidad_funcional?: string | null
         }
         Relationships: [
           {
@@ -1836,6 +1866,7 @@ export type Database = {
           schedule_id: string
           sede: string | null
           sort_order: number
+          unidad_funcional: string | null
           updated_at: string
           user_id: string | null
         }
@@ -1852,6 +1883,7 @@ export type Database = {
           schedule_id: string
           sede?: string | null
           sort_order?: number
+          unidad_funcional?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -1868,6 +1900,7 @@ export type Database = {
           schedule_id?: string
           sede?: string | null
           sort_order?: number
+          unidad_funcional?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -1931,6 +1964,7 @@ export type Database = {
       }
       shift_types: {
         Row: {
+          abbr: string | null
           active: boolean
           code: string
           color: string
@@ -1938,13 +1972,18 @@ export type Database = {
           created_by: string | null
           end_time: string | null
           hours: number
+          icon: string | null
           id: string
+          kind: string
           name: string
           observation: string | null
+          sort_order: number
           start_time: string | null
+          sums_hours: boolean
           updated_at: string
         }
         Insert: {
+          abbr?: string | null
           active?: boolean
           code: string
           color?: string
@@ -1952,13 +1991,18 @@ export type Database = {
           created_by?: string | null
           end_time?: string | null
           hours?: number
+          icon?: string | null
           id?: string
+          kind?: string
           name?: string
           observation?: string | null
+          sort_order?: number
           start_time?: string | null
+          sums_hours?: boolean
           updated_at?: string
         }
         Update: {
+          abbr?: string | null
           active?: boolean
           code?: string
           color?: string
@@ -1966,10 +2010,14 @@ export type Database = {
           created_by?: string | null
           end_time?: string | null
           hours?: number
+          icon?: string | null
           id?: string
+          kind?: string
           name?: string
           observation?: string | null
+          sort_order?: number
           start_time?: string | null
+          sums_hours?: boolean
           updated_at?: string
         }
         Relationships: []
