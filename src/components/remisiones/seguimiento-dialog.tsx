@@ -464,7 +464,8 @@ export function SeguimientoDialog({
   const mostrarAceptacion = faseAntesAceptacion;
   const mostrarAmbulancia = faseAceptadoSin;
   const mostrarEntregaDocOpt = faseAceptadoCon;
-  const mostrarCierreOpt = facePendienteEgreso;
+  // Cierre por egreso: disponible una vez el caso está aceptado (con ambulancia) o pendiente de egreso.
+  const mostrarCierreOpt = faseAceptadoCon || facePendienteEgreso;
 
   const TIPOS_SALIENTES = useMemo(() => {
     const arr = [
