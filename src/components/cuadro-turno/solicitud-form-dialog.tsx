@@ -169,14 +169,39 @@ export function SolicitudFormDialog({
     setEsCambio(cambio);
     if (!cambio) {
       const opt = motivos.find((m) => m.valor === v);
-      setRecupera(!!opt?.recuperable);
+      const rec = !!opt?.recuperable;
+      setRecupera(rec);
+      // Si el motivo NO es recuperable, no aplica devolución de tiempo.
+      if (!rec) {
+        setReqReemplazo(false);
+        setRemunerado(false);
+        setReempNombre("");
+        setReempCargo("");
+        setRetornoNombre("");
+        setRetornoCargo("");
+        setRetornoFecha("");
+        setRetornoTurno("");
+      }
     }
   };
+
+  // Al marcar "Será recuperado el tiempo" se activan automáticamente
+  // "Requiere reemplazo" y "Remunerado".
+  useEffect(() => {
+    if (recupera && !esCambio) {
+      setReqReemplazo(true);
+      setRemunerado(true);
+    }
+  }, [recupera, esCambio]);
 
   const handleRetornoNombre = (nombre: string) => {
     setRetornoNombre(nombre);
     const f = funcionarios.find((x) => x.nombre === nombre);
-    setRetornoCargo(f?.cargo || "");
+    const cargo = f?.cargo || "";
+    setRetornoCargo(cargo);
+    // El reemplazo se llena con la funcionaria que recibe el retorno.
+    setReempNombre(nombre);
+    setReempCargo(cargo);
   };
 
   const motivoRecuperable = motivos.find((m) => m.valor === motivo)?.recuperable ?? false;
