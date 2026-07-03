@@ -1241,6 +1241,13 @@ export function SeguimientoDialog({
         return;
       if (esCierre && !cierreEgreso)
         return toast.error("Indica si el paciente ya egresó de la institución");
+      if (esCambioEapb) {
+        if (!cambioEapb.trim()) return toast.error("Selecciona la nueva EAPB");
+        if (cambioTienePlataforma && !cambioPlataformaFunc)
+          return toast.error("Indica si la plataforma de la EAPB está funcionando");
+        if (cambioGeneraCodigo && !cambioRadicado.trim())
+          return toast.error("Ingresa el número de radicado de la nueva EAPB");
+      }
       if (esNovedades) {
         if (!novPaciente && !novIps && !novAmbulancia)
           return toast.error("Selecciona al menos un tipo de novedad");
