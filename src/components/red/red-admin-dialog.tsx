@@ -47,10 +47,9 @@ export function RedAdminDialog({
   const qc = useQueryClient();
   const catalogos = useCatalogos();
 
-  const [tab, setTab] = useState<TipoRed>("ips_nacional");
+  const [grupo, setGrupo] = useState<RedGrupo>("jornadas_tep");
   const [q, setQ] = useState("");
   const [formOpen, setFormOpen] = useState(false);
-  const [formTipo, setFormTipo] = useState<TipoRed>("ips_nacional");
   const [editing, setEditing] = useState<RedRegistro | null>(null);
   const [delTarget, setDelTarget] = useState<RedRegistro | null>(null);
 
