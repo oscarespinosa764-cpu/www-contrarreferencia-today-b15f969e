@@ -114,6 +114,8 @@ function HistorialResumen() {
 
 export function SolicitudesAusentismoPanel({ isAdmin }: { isAdmin: boolean }) {
   const [sub, setSub] = useState("solicitudes");
+  const [openSolicitud, setOpenSolicitud] = useState(false);
+  const [openCambio, setOpenCambio] = useState(false);
 
   if (!isAdmin) {
     // El equipo operativo gestiona sus propias solicitudes.
@@ -127,12 +129,22 @@ export function SolicitudesAusentismoPanel({ isAdmin }: { isAdmin: boolean }) {
         <TabsTrigger value="ausentismo">Control de ausentismo</TabsTrigger>
       </TabsList>
       <TabsContent value="solicitudes" className="space-y-4">
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => setOpenSolicitud(true)}>
+            <CalendarPlus className="mr-1.5 h-4 w-4" /> Solicitar permiso / ausencia / salida
+          </Button>
+          <Button variant="outline" onClick={() => setOpenCambio(true)}>
+            <RefreshCw className="mr-1.5 h-4 w-4" /> Solicitar cambio de turno
+          </Button>
+        </div>
         <HistorialResumen />
         <SolicitudesPanel />
       </TabsContent>
       <TabsContent value="ausentismo">
         <AusentismoPanel />
       </TabsContent>
+      <SolicitudFormDialog open={openSolicitud} onOpenChange={setOpenSolicitud} />
+      <SolicitudFormDialog open={openCambio} onOpenChange={setOpenCambio} defaultCambio />
     </Tabs>
   );
 }
