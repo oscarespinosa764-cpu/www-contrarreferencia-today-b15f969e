@@ -118,7 +118,7 @@ function construirLibroOficial(p: OfficialParams): XLSX.WorkBook {
 
   const lista = members.length > 0 ? members : [{ id: "", full_name: "", role_name: "", pending_hours: 0 } as ShiftMember];
 
-  const cellRefs: { turno: string[]; horas: string[] } = { turno: [], horas: [] };
+  
 
   for (const m of lista) {
     const turnoRow = blank();
