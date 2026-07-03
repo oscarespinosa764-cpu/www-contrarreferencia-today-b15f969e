@@ -78,8 +78,15 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [importando, setImportando] = useState(false);
 
-  const exportarPlantilla = () =>
-    exportarPlantillaCuadro({ anio, mes, members, days, tipos });
+  const exportarPlantilla = () => {
+    exportarPlantillaCuadro({ anio, mes, members, days, tipos, baseHoras: schedule?.base_hours });
+    registrarAuditoria({ data: { accion: "PLANTILLA_TH-FR-10_DESCARGADA", modulo: "cuadro_turno", tabla: "shift_schedules", registroId: schedule?.id ?? "", resultado: "exito", detalles: { anio, mes } } }).catch(() => {});
+  };
+
+  const exportarCuadro = () => {
+    exportarCuadroMensual({ anio, mes, members, days, tipos, baseHoras: schedule?.base_hours });
+    registrarAuditoria({ data: { accion: "CUADRO_TH-FR-10_EXPORTADO", modulo: "cuadro_turno", tabla: "shift_schedules", registroId: schedule?.id ?? "", resultado: "exito", detalles: { anio, mes } } }).catch(() => {});
+  };
 
   const onImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
