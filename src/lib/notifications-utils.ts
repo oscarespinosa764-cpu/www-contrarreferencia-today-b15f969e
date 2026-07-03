@@ -3,8 +3,8 @@
 
 export const CANALES = [
   { type: "telegram", label: "Telegram", activo: true },
+  { type: "slack", label: "Slack", activo: true },
   { type: "whatsapp", label: "WhatsApp", activo: false },
-  { type: "slack", label: "Slack", activo: false },
   { type: "email", label: "Correo electrónico", activo: false },
 ] as const;
 
@@ -12,7 +12,6 @@ export type CanalTipo = (typeof CANALES)[number]["type"];
 
 export const MENSAJES_CANAL_INACTIVO: Record<string, string> = {
   whatsapp: "WhatsApp requiere proveedor externo o API oficial. No está activo para evitar costos.",
-  slack: "Slack queda preparado para futura integración por webhook. No activo en esta versión.",
   email: "Correo queda preparado para futura integración SMTP/proveedor. No activo en esta versión.",
 };
 
