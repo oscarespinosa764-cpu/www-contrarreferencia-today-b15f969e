@@ -371,6 +371,26 @@ export function SeguimientoDialog({
     },
   });
 
+  // Catálogo EAPB con sus flags (para el cambio de asegurador).
+  const { data: eapbCat = [] } = useQuery({
+    queryKey: ["cat-eapb-flags-seg"],
+    enabled: open && usaIndigo,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor, extra1, extra2, extra3")
+        .eq("tipo", "EAPB")
+        .eq("activo", true)
+        .order("valor");
+      return (data ?? []) as {
+        valor: string;
+        extra1: string | null;
+        extra2: string | null;
+        extra3: string | null;
+      }[];
+    },
+  });
+
   // Opciones de IPS expandidas por sede para el autocompletado.
   const ipsOptions = useMemo(() => {
     const out: { label: string; ips: string; sede: string }[] = [];
