@@ -1,3 +1,9 @@
+import fs from "fs";
+import { jsPDF as _jsPDF } from "jspdf";
+const logoAsset = { url: "about:blank" };
+globalThis.fetch = async () => { throw new Error("no logo"); };
+const fmtFecha = (iso) => iso ? new Date(iso.length<=10?iso+"T00:00:00":iso).toLocaleDateString("es-CO",{day:"2-digit",month:"short",year:"numeric"}) : "—";
+const fmtFechaHora = (iso) => iso ? new Date(iso).toLocaleString("es-CO",{dateStyle:"short",timeStyle:"short"}) : "—";
 // Generación BAJO DEMANDA del PDF oficial TH-FR-09 (Versión 02)
 // (Solicitud de permiso, ausencia o salida del colaborador / cambio de turno).
 //
@@ -9,8 +15,8 @@
 // código, cuadro de identificación, grilla de MOTIVO DE PERMISO (recuperable /
 // no recuperable), descripción, bitácora de recuperación y bloque de firmas.
 
-import logoAsset from "@/assets/cedim-logo.png.asset.json";
-import { fmtFecha, fmtFechaHora, type ShiftRequest } from "@/lib/cuadro-turno-utils";
+
+
 
 const TITULO = "Solicitud de permiso, ausencia o salida del colaborador";
 const CODIGO = "TH-FR-09";
@@ -52,14 +58,14 @@ async function getLogo(): Promise<string | null> {
   return logoCache;
 }
 
-type Doc = import("jspdf").jsPDF;
 
-export async function generarSolicitudPDF(
+
+async function generarSolicitudPDF(
   r: ShiftRequest,
   opts?: { firmaDataUrl?: string | null; jefeFirmaDataUrl?: string | null; usuario?: string },
 ): Promise<void> {
-  const { jsPDF } = await import("jspdf");
-  const doc: Doc = new jsPDF({ unit: "mm", format: "letter" });
+  const jsPDF = _jsPDF;
+  const doc = new jsPDF({ unit: "mm", format: "letter" });
   const pageW = doc.internal.pageSize.getWidth();
   const mX = 10;
   const right = pageW - mX;
@@ -336,3 +342,7 @@ export async function generarSolicitudPDF(
   const slug = (r.requester_name || "solicitud").replace(/[^a-z0-9]+/gi, "_").slice(0, 40);
   doc.save(`TH-FR-09_${slug}_${r.id.slice(0, 8)}.pdf`);
 }
+
+const r = { id:"abcdef12-0000", request_type:"permiso", requester_name:"OSCAR JAVIER ESPINOSA OLARTE", requester_identification:"1117545825", requester_role:"COORDINADOR", requester_sede:"CLINICA GLORIA PATRICIA PINZON", status:"APROBADA", reason_type:"Estudio", reason_recoverable:true, start_date:"2026-07-03", end_date:"2026-07-03", start_time:"17:00", end_time:"18:00", will_recover_time:true, requires_replacement:false, paid:false, return_person_name:"ANA MARIA GOMEZ", return_person_role:"AUXILIAR", return_date:"2026-07-10", return_shift_code:"N", reason_detail:"MOTIVOS DE ESTUDIO", requester_signature_hash:"d5978ea306c9b45eafe8b2a5aaaa", requester_signature_id:"s1", created_at:new Date().toISOString(), approved_by:"y" };
+await generarSolicitudPDF(r, { usuario:"MARIA JEFE" });
+console.log("done");

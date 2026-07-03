@@ -555,7 +555,7 @@ function AccionDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[92vh] overflow-auto sm:max-w-lg">
+      <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] overflow-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>{titulos[accion]}</DialogTitle>
           <p className="text-xs text-muted-foreground">

@@ -85,6 +85,18 @@ export async function getFirmaActiva(userId: string): Promise<{
  * Sirve para incrustar la firma en PDF generados bajo demanda (admin puede leer
  * cualquier firma; el usuario solo la propia, según RLS).
  */
+/** Devuelve la firma activa (data URL PNG) de un usuario por su user_id. */
+export async function getFirmaDataUrlByUser(userId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from("user_signatures")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("active", true)
+    .maybeSingle();
+  if (!data?.id) return null;
+  return getFirmaDataUrlById(data.id);
+}
+
 export async function getFirmaDataUrlById(signatureId: string): Promise<string | null> {
   const { data } = await supabase
     .from("user_signatures")

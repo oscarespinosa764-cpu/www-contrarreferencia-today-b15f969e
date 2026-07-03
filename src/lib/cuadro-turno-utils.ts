@@ -139,6 +139,13 @@ export interface ShiftRequest {
   requester_signature_hash: string | null;
   requester_signature_id: string | null;
   register_absenteeism: boolean;
+  reason_recoverable?: boolean | null;
+  return_person_id?: string | null;
+  return_person_name?: string | null;
+  return_person_role?: string | null;
+  return_date?: string | null;
+  return_shift_code?: string | null;
+  approved_by?: string | null;
   approval_observation: string | null;
   rejection_reason: string | null;
   response_observation: string | null;

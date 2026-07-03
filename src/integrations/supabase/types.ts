@@ -1679,6 +1679,7 @@ export type Database = {
           out_of_rule_justification: string | null
           paid: boolean | null
           reason_detail: string | null
+          reason_recoverable: boolean
           reason_type: string | null
           register_absenteeism: boolean
           rejected_at: string | null
@@ -1698,6 +1699,11 @@ export type Database = {
           requester_signature_id: string | null
           requires_replacement: boolean
           response_observation: string | null
+          return_date: string | null
+          return_person_id: string | null
+          return_person_name: string | null
+          return_person_role: string | null
+          return_shift_code: string | null
           start_date: string | null
           start_time: string | null
           status: string
@@ -1721,6 +1727,7 @@ export type Database = {
           out_of_rule_justification?: string | null
           paid?: boolean | null
           reason_detail?: string | null
+          reason_recoverable?: boolean
           reason_type?: string | null
           register_absenteeism?: boolean
           rejected_at?: string | null
@@ -1740,6 +1747,11 @@ export type Database = {
           requester_signature_id?: string | null
           requires_replacement?: boolean
           response_observation?: string | null
+          return_date?: string | null
+          return_person_id?: string | null
+          return_person_name?: string | null
+          return_person_role?: string | null
+          return_shift_code?: string | null
           start_date?: string | null
           start_time?: string | null
           status?: string
@@ -1763,6 +1775,7 @@ export type Database = {
           out_of_rule_justification?: string | null
           paid?: boolean | null
           reason_detail?: string | null
+          reason_recoverable?: boolean
           reason_type?: string | null
           register_absenteeism?: boolean
           rejected_at?: string | null
@@ -1782,6 +1795,11 @@ export type Database = {
           requester_signature_id?: string | null
           requires_replacement?: boolean
           response_observation?: string | null
+          return_date?: string | null
+          return_person_id?: string | null
+          return_person_name?: string | null
+          return_person_role?: string | null
+          return_shift_code?: string | null
           start_date?: string | null
           start_time?: string | null
           status?: string

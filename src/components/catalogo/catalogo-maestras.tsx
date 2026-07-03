@@ -84,13 +84,19 @@ const TIPO_META: Record<
     modulo: "Remisiones",
     extra1Label: "Origen (EPS / ARL / SOAT / PARTICULAR / COMÚN)",
   },
+  MOTIVO_PERMISO: {
+    label: "Motivos de permiso",
+    usadoEn: "Cuadro de turno · Solicitud de permiso (TH-FR-09)",
+    modulo: "Talento Humano",
+    extra1Label: "Recuperable (RECUPERABLE / NO_RECUPERABLE)",
+  },
 };
 
 function metaOf(tipo: string) {
   return TIPO_META[tipo] ?? { label: tipo, usadoEn: "Catálogo operativo", modulo: "Otros" };
 }
 
-const MODULOS = ["Todos", "Remisiones", "Ambulancias", "Motivos", "Otros"];
+const MODULOS = ["Todos", "Remisiones", "Ambulancias", "Motivos", "Talento Humano", "Otros"];
 
 // ---------- Detección de similares ----------
 function normalize(s: string) {
@@ -161,6 +167,7 @@ export function CatalogoMaestras() {
   const [nuevoValor, setNuevoValor] = useState("");
   // Origen para documentos de entrega (DOC_ENTREGA) al agregar en línea.
   const [nuevoOrigenDoc, setNuevoOrigenDoc] = useState("COMUN");
+  const [nuevoRecuperable, setNuevoRecuperable] = useState("NO_RECUPERABLE");
   const [editing, setEditing] = useState<CatRow | null>(null);
   const [borrar, setBorrar] = useState<CatRow | null>(null);
   const [simOpen, setSimOpen] = useState(false);
@@ -251,6 +258,7 @@ export function CatalogoMaestras() {
       activo: true,
     };
     if (sel.tipo === "DOC_ENTREGA") payload.extra1 = nuevoOrigenDoc;
+    if (sel.tipo === "MOTIVO_PERMISO") payload.extra1 = nuevoRecuperable;
     const { error } = await supabase.from("catalogos").insert(payload);
     if (error) return toast.error(error.message);
     toast.success("Valor agregado");
@@ -428,6 +436,17 @@ export function CatalogoMaestras() {
                     <option value="ARL">ARL</option>
                     <option value="SOAT">SOAT</option>
                     <option value="PARTICULAR">PARTICULAR</option>
+                  </select>
+                )}
+                {sel.tipo === "MOTIVO_PERMISO" && (
+                  <select
+                    value={nuevoRecuperable}
+                    onChange={(e) => setNuevoRecuperable(e.target.value)}
+                    className="h-9 shrink-0 rounded-md border border-input bg-background px-2 text-sm shadow-sm"
+                    title="¿El tiempo del permiso es recuperable?"
+                  >
+                    <option value="NO_RECUPERABLE">No recuperable</option>
+                    <option value="RECUPERABLE">Recuperable</option>
                   </select>
                 )}
                 <Input
