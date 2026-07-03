@@ -285,6 +285,19 @@ export function SolicitudFormDialog({
       });
       registrarAuditoria({ data: { accion: "SOLICITUD_CREADA", modulo: "cuadro_turno", tabla: "shift_requests", registroId: req.id, resultado: "exito" } }).catch(() => {});
 
+      // Notificación externa (Telegram) por evento — best-effort, no bloquea.
+      dispatchNotif({ data: {
+        alert_type: "SOLICITUD_CAMBIO_TURNO",
+        module: "Cuadro de turno",
+        reference_id: req.id,
+        vars: {
+          funcionario: maskNombre(perfil?.nombre),
+          estado: "Pendiente de revisión",
+          accion: "Revisar en Cuadro de Turno.",
+          modulo: "Cuadro de turno",
+        },
+      } }).catch(() => {});
+
       toast.success("Solicitud enviada a coordinación.");
       qc.invalidateQueries({ queryKey: ["shift-requests"] });
       onOpenChange(false);
