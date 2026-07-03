@@ -3,9 +3,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   getNotificationChannels,
-  saveTelegramConfig,
-  clearTelegramToken,
-  testTelegramConnection,
+  saveChannelConfig,
+  clearChannelToken,
+  testChannelConnection,
   sendManualNotification,
   getNotificationLogs,
 } from "@/lib/notifications.functions";
@@ -13,7 +13,7 @@ import {
   CANALES,
   MENSAJES_CANAL_INACTIVO,
   TIPOS_ALERTA,
-  PLANTILLA_TELEGRAM_DEFAULT,
+  plantillaPorCanal,
   labelAlerta,
 } from "@/lib/notifications-utils";
 import { Panel } from "@/components/stat-card";
@@ -60,174 +60,68 @@ const estadoBadge: Record<string, { label: string; cls: string }> = {
   sin_configurar: { label: "Sin configurar", cls: "bg-muted text-muted-foreground" },
 };
 
+// Metadatos específicos por canal para reutilizar el mismo panel.
+const CANAL_META: Record<string, {
+  label: string;
+  nombreDefecto: string;
+  usaDestino: boolean;
+  tokenLabel: string;
+  tokenPlaceholder: string;
+  tokenConfigLabel: string;
+  ayuda: string;
+}> = {
+  telegram: {
+    label: "Telegram",
+    nombreDefecto: "Telegram CEDIM",
+    usaDestino: true,
+    tokenLabel: "Bot token",
+    tokenPlaceholder: "Pega el token del bot",
+    tokenConfigLabel: "Token configurado",
+    ayuda: "Envío real de alertas operativas (sin costo adicional).",
+  },
+  slack: {
+    label: "Slack",
+    nombreDefecto: "Slack CEDIM",
+    usaDestino: false,
+    tokenLabel: "URL del Incoming Webhook",
+    tokenPlaceholder: "https://hooks.slack.com/services/…",
+    tokenConfigLabel: "Webhook configurado",
+    ayuda: "Envío real por Incoming Webhook de Slack (gratis, sin OAuth). El canal lo define el webhook.",
+  },
+};
+
 export function NotificacionesExternasPanel() {
   const qc = useQueryClient();
   const getChannels = useServerFn(getNotificationChannels);
-  const saveTg = useServerFn(saveTelegramConfig);
-  const clearTg = useServerFn(clearTelegramToken);
-  const testTg = useServerFn(testTelegramConnection);
-  const sendManual = useServerFn(sendManualNotification);
   const getLogs = useServerFn(getNotificationLogs);
+  const sendManual = useServerFn(sendManualNotification);
 
   const { data: chData } = useQuery({ queryKey: ["notif-channels"], queryFn: () => getChannels() });
   const { data: logData } = useQuery({ queryKey: ["notif-logs"], queryFn: () => getLogs() });
   const channels: Channel[] = (chData?.channels ?? []) as Channel[];
-  const tg = channels.find((c) => c.channel_type === "telegram");
 
-  // ---- Estado del formulario Telegram ----
-  const [enabled, setEnabled] = useState<boolean | null>(null);
-  const [displayName, setDisplayName] = useState<string | null>(null);
-  const [destLabel, setDestLabel] = useState<string | null>(null);
-  const [destId, setDestId] = useState<string | null>(null);
-  const [alertTypes, setAlertTypes] = useState<string[] | null>(null);
-  const [template, setTemplate] = useState<string | null>(null);
-  const [newToken, setNewToken] = useState("");
-  const [busy, setBusy] = useState<string | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
-
-  // Valores efectivos (estado local o el guardado).
-  const vEnabled = enabled ?? tg?.enabled ?? false;
-  const vDisplay = displayName ?? tg?.display_name ?? "Telegram CEDIM";
-  const vDestLabel = destLabel ?? tg?.destination_label ?? "";
-  const vDestId = destId ?? tg?.destination_id ?? "";
-  const vAlerts = alertTypes ?? tg?.allowed_alert_types ?? [];
-  const vTemplate = template ?? tg?.message_template ?? PLANTILLA_TELEGRAM_DEFAULT;
-
-  const toggleAlert = (value: string) => {
-    const cur = [...vAlerts];
-    const i = cur.indexOf(value);
-    if (i >= 0) cur.splice(i, 1); else cur.push(value);
-    setAlertTypes(cur);
-  };
 
   const refetch = () => {
     qc.invalidateQueries({ queryKey: ["notif-channels"] });
     qc.invalidateQueries({ queryKey: ["notif-logs"] });
   };
 
-  const guardar = async () => {
-    setBusy("save");
-    try {
-      const res = await saveTg({ data: {
-        enabled: vEnabled,
-        display_name: vDisplay,
-        destination_label: vDestLabel,
-        destination_id: vDestId,
-        allowed_alert_types: vAlerts,
-        message_template: vTemplate,
-        new_token: newToken || undefined,
-      } });
-      if (res.ok) { toast.success("Configuración guardada."); setNewToken(""); refetch(); }
-      else toast.error(res.error || "No se pudo guardar.");
-    } finally { setBusy(null); }
-  };
-
-  const probar = async () => {
-    setBusy("test");
-    try {
-      const res = await testTg();
-      if (res.ok) toast.success("Mensaje de prueba enviado a Telegram.");
-      else toast.error(`No se pudo enviar: ${res.error}`);
-      refetch();
-    } finally { setBusy(null); }
-  };
-
-  const limpiar = async (full: boolean) => {
-    setBusy("clear");
-    try {
-      const res = await clearTg({ data: { full } });
-      if (res.ok) { toast.success(full ? "Configuración limpiada." : "Token eliminado."); refetch(); }
-      else toast.error(res.error || "No se pudo limpiar.");
-    } finally { setBusy(null); }
-  };
-
-  const estado = estadoBadge[tg?.config_status ?? "sin_configurar"] ?? estadoBadge.sin_configurar;
-
   return (
     <div className="space-y-4">
-      {/* ---- Telegram (canal real) ---- */}
-      <Panel
-        title="Telegram"
-        action={<span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${estado.cls}`}>{estado.label}</span>}
-      >
-        <div className="space-y-4">
-          <div className="flex items-center justify-between rounded-lg border border-border bg-card p-3">
-            <div>
-              <p className="text-sm font-semibold">Activar canal Telegram</p>
-              <p className="text-xs text-muted-foreground">Envío real de alertas operativas (sin costo adicional).</p>
-            </div>
-            <Switch checked={vEnabled} onCheckedChange={(v) => setEnabled(v)} />
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div><Label className="text-xs">Nombre visible</Label><Input value={vDisplay} onChange={(e) => setDisplayName(e.target.value)} /></div>
-            <div><Label className="text-xs">Nombre del destino (grupo/chat)</Label><Input value={vDestLabel} onChange={(e) => setDestLabel(e.target.value)} placeholder="Ej: Grupo Coordinación" /></div>
-            <div><Label className="text-xs">Chat ID / Grupo destino</Label><Input value={vDestId} onChange={(e) => setDestId(e.target.value)} placeholder="Ej: -1001234567890" /></div>
-            <div>
-              <Label className="text-xs">Bot token</Label>
-              <Input
-                type="password"
-                value={newToken}
-                onChange={(e) => setNewToken(e.target.value)}
-                placeholder={tg?.token_configured ? "•••• Token configurado (escribe para reemplazar)" : "Pega el token del bot"}
-                autoComplete="off"
-              />
-              <div className="mt-1 flex items-center gap-2 text-[11px]">
-                {tg?.token_configured
-                  ? <span className="inline-flex items-center gap-1 text-status-green"><KeyRound className="h-3 w-3" /> Token configurado</span>
-                  : <span className="text-muted-foreground">Sin token</span>}
-                {tg?.token_configured && (
-                  <button type="button" className="text-status-red hover:underline" onClick={() => limpiar(false)}>Limpiar token</button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <Label className="text-xs">Tipos de alerta que se envían por Telegram</Label>
-            <div className="mt-1.5 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-              {TIPOS_ALERTA.map((t) => (
-                <label key={t.value} className="flex items-center gap-2 text-xs">
-                  <Checkbox checked={vAlerts.includes(t.value)} onCheckedChange={() => toggleAlert(t.value)} />
-                  {t.label}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <Label className="text-xs">Plantilla de mensaje</Label>
-            <Textarea value={vTemplate} onChange={(e) => setTemplate(e.target.value)} rows={5} className="font-mono text-xs" />
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              Placeholders permitidos: {"{{tipo_alerta}} {{modulo}} {{paciente_iniciales}} {{documento_enmascarado}} {{codigo}} {{estado}} {{accion}} {{fecha_hora}} {{usuario}} {{funcionario}}"}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
-            {tg?.last_test_at && <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /> Última prueba: {fmtFechaHora(tg.last_test_at)}</span>}
-            {tg?.last_success_at && <span className="inline-flex items-center gap-1 text-status-green"><CheckCircle2 className="h-3 w-3" /> Último envío: {fmtFechaHora(tg.last_success_at)}</span>}
-            {tg?.last_error_at && <span className="inline-flex items-center gap-1 text-status-red"><XCircle className="h-3 w-3" /> Último error: {tg.last_error_message}</span>}
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={guardar} disabled={busy !== null}>
-              {busy === "save" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null} Guardar configuración
-            </Button>
-            <Button variant="outline" onClick={probar} disabled={busy !== null}>
-              {busy === "test" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1.5 h-4 w-4" />} Probar conexión
-            </Button>
-            <Button variant="outline" onClick={() => setManualOpen(true)} disabled={busy !== null}>
-              <Send className="mr-1.5 h-4 w-4" /> Enviar aviso manual
-            </Button>
-            <Button variant="ghost" className="text-status-red" onClick={() => limpiar(true)} disabled={busy !== null}>
-              <Trash2 className="mr-1.5 h-4 w-4" /> Limpiar configuración
-            </Button>
-          </div>
-        </div>
-      </Panel>
+      {/* ---- Canales reales (Telegram + Slack) ---- */}
+      {(["telegram", "slack"] as const).map((tipo) => (
+        <CanalPanel
+          key={tipo}
+          channelType={tipo}
+          channel={channels.find((c) => c.channel_type === tipo)}
+          onRefetch={refetch}
+          onManual={() => setManualOpen(true)}
+        />
+      ))}
 
       {/* ---- Canales preparados (inactivos) ---- */}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         {CANALES.filter((c) => !c.activo).map((c) => (
           <Card key={c.type} className="p-4">
             <div className="mb-1.5 flex items-center justify-between">
@@ -282,6 +176,173 @@ export function NotificacionesExternasPanel() {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Panel reutilizable de un canal (Telegram o Slack).                  */
+/* ------------------------------------------------------------------ */
+function CanalPanel({
+  channelType, channel, onRefetch, onManual,
+}: {
+  channelType: "telegram" | "slack";
+  channel?: Channel;
+  onRefetch: () => void;
+  onManual: () => void;
+}) {
+  const meta = CANAL_META[channelType];
+  const saveCh = useServerFn(saveChannelConfig);
+  const clearCh = useServerFn(clearChannelToken);
+  const testCh = useServerFn(testChannelConnection);
+
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [destLabel, setDestLabel] = useState<string | null>(null);
+  const [destId, setDestId] = useState<string | null>(null);
+  const [alertTypes, setAlertTypes] = useState<string[] | null>(null);
+  const [template, setTemplate] = useState<string | null>(null);
+  const [newToken, setNewToken] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const defaultTpl = plantillaPorCanal(channelType);
+  const vEnabled = enabled ?? channel?.enabled ?? false;
+  const vDisplay = displayName ?? channel?.display_name ?? meta.nombreDefecto;
+  const vDestLabel = destLabel ?? channel?.destination_label ?? "";
+  const vDestId = destId ?? channel?.destination_id ?? "";
+  const vAlerts = alertTypes ?? channel?.allowed_alert_types ?? [];
+  const vTemplate = template ?? channel?.message_template ?? defaultTpl;
+
+  const toggleAlert = (value: string) => {
+    const cur = [...vAlerts];
+    const i = cur.indexOf(value);
+    if (i >= 0) cur.splice(i, 1); else cur.push(value);
+    setAlertTypes(cur);
+  };
+
+  const guardar = async () => {
+    setBusy("save");
+    try {
+      const res = await saveCh({ data: {
+        channel_type: channelType,
+        enabled: vEnabled,
+        display_name: vDisplay,
+        destination_label: vDestLabel,
+        destination_id: vDestId,
+        allowed_alert_types: vAlerts,
+        message_template: vTemplate,
+        new_token: newToken || undefined,
+      } });
+      if (res.ok) { toast.success("Configuración guardada."); setNewToken(""); onRefetch(); }
+      else toast.error(res.error || "No se pudo guardar.");
+    } finally { setBusy(null); }
+  };
+
+  const probar = async () => {
+    setBusy("test");
+    try {
+      const res = await testCh({ data: { channel_type: channelType } });
+      if (res.ok) toast.success(`Mensaje de prueba enviado a ${meta.label}.`);
+      else toast.error(`No se pudo enviar: ${res.error}`);
+      onRefetch();
+    } finally { setBusy(null); }
+  };
+
+  const limpiar = async (full: boolean) => {
+    setBusy("clear");
+    try {
+      const res = await clearCh({ data: { channel_type: channelType, full } });
+      if (res.ok) { toast.success(full ? "Configuración limpiada." : "Credencial eliminada."); onRefetch(); }
+      else toast.error(res.error || "No se pudo limpiar.");
+    } finally { setBusy(null); }
+  };
+
+  const estado = estadoBadge[channel?.config_status ?? "sin_configurar"] ?? estadoBadge.sin_configurar;
+
+  return (
+    <Panel
+      title={meta.label}
+      action={<span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${estado.cls}`}>{estado.label}</span>}
+    >
+      <div className="space-y-4">
+        <div className="flex items-center justify-between rounded-lg border border-border bg-card p-3">
+          <div>
+            <p className="text-sm font-semibold">Activar canal {meta.label}</p>
+            <p className="text-xs text-muted-foreground">{meta.ayuda}</p>
+          </div>
+          <Switch checked={vEnabled} onCheckedChange={(v) => setEnabled(v)} />
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div><Label className="text-xs">Nombre visible</Label><Input value={vDisplay} onChange={(e) => setDisplayName(e.target.value)} /></div>
+          <div>
+            <Label className="text-xs">{meta.usaDestino ? "Nombre del destino (grupo/chat)" : "Nombre del canal de Slack"}</Label>
+            <Input value={vDestLabel} onChange={(e) => setDestLabel(e.target.value)} placeholder={meta.usaDestino ? "Ej: Grupo Coordinación" : "Ej: #alertas-cedim"} />
+          </div>
+          {meta.usaDestino && (
+            <div><Label className="text-xs">Chat ID / Grupo destino</Label><Input value={vDestId} onChange={(e) => setDestId(e.target.value)} placeholder="Ej: -1001234567890" /></div>
+          )}
+          <div className={meta.usaDestino ? "" : "sm:col-span-1"}>
+            <Label className="text-xs">{meta.tokenLabel}</Label>
+            <Input
+              type="password"
+              value={newToken}
+              onChange={(e) => setNewToken(e.target.value)}
+              placeholder={channel?.token_configured ? "•••• Configurado (escribe para reemplazar)" : meta.tokenPlaceholder}
+              autoComplete="off"
+            />
+            <div className="mt-1 flex items-center gap-2 text-[11px]">
+              {channel?.token_configured
+                ? <span className="inline-flex items-center gap-1 text-status-green"><KeyRound className="h-3 w-3" /> {meta.tokenConfigLabel}</span>
+                : <span className="text-muted-foreground">Sin configurar</span>}
+              {channel?.token_configured && (
+                <button type="button" className="text-status-red hover:underline" onClick={() => limpiar(false)}>Limpiar</button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <Label className="text-xs">Tipos de alerta que se envían por {meta.label}</Label>
+          <div className="mt-1.5 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+            {TIPOS_ALERTA.map((t) => (
+              <label key={t.value} className="flex items-center gap-2 text-xs">
+                <Checkbox checked={vAlerts.includes(t.value)} onCheckedChange={() => toggleAlert(t.value)} />
+                {t.label}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <Label className="text-xs">Plantilla de mensaje</Label>
+          <Textarea value={vTemplate} onChange={(e) => setTemplate(e.target.value)} rows={5} className="font-mono text-xs" />
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Placeholders permitidos: {"{{tipo_alerta}} {{modulo}} {{paciente_iniciales}} {{documento_enmascarado}} {{codigo}} {{estado}} {{accion}} {{fecha_hora}} {{usuario}} {{funcionario}}"}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+          {channel?.last_test_at && <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /> Última prueba: {fmtFechaHora(channel.last_test_at)}</span>}
+          {channel?.last_success_at && <span className="inline-flex items-center gap-1 text-status-green"><CheckCircle2 className="h-3 w-3" /> Último envío: {fmtFechaHora(channel.last_success_at)}</span>}
+          {channel?.last_error_at && <span className="inline-flex items-center gap-1 text-status-red"><XCircle className="h-3 w-3" /> Último error: {channel.last_error_message}</span>}
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={guardar} disabled={busy !== null}>
+            {busy === "save" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null} Guardar configuración
+          </Button>
+          <Button variant="outline" onClick={probar} disabled={busy !== null}>
+            {busy === "test" ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1.5 h-4 w-4" />} Probar conexión
+          </Button>
+          <Button variant="outline" onClick={onManual} disabled={busy !== null}>
+            <Send className="mr-1.5 h-4 w-4" /> Enviar aviso manual
+          </Button>
+          <Button variant="ghost" className="text-status-red" onClick={() => limpiar(true)} disabled={busy !== null}>
+            <Trash2 className="mr-1.5 h-4 w-4" /> Limpiar configuración
+          </Button>
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
 function ManualDialog({
   open, onOpenChange, onSend, onDone,
 }: {
@@ -310,7 +371,7 @@ function ManualDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>Enviar aviso manual por Telegram</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Enviar aviso manual (a todos los canales activos)</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
