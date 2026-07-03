@@ -244,6 +244,20 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
           onSaved={() => { setCell(null); qc.invalidateQueries({ queryKey: ["schedule-days"] }); }}
         />
       )}
+
+      {plantillaOpen && schedule && (
+        <AsignarPlantillaDialog
+          scheduleId={schedule.id}
+          anio={anio}
+          mes={mes}
+          ndias={ndias}
+          members={members}
+          tipos={tipos}
+          userId={user!.id}
+          onClose={() => setPlantillaOpen(false)}
+          onSaved={() => { setPlantillaOpen(false); qc.invalidateQueries({ queryKey: ["schedule-days"] }); }}
+        />
+      )}
     </div>
   );
 }
