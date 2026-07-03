@@ -95,22 +95,30 @@ export function SolicitudFormDialog({
     },
   });
 
-  // ---- Funcionarios (nombres + cargo) desde el cuadro de turno ----
+  // ---- Funcionarios (todo el personal activo) ----
   const { data: funcionarios = [] } = useQuery({
-    queryKey: ["funcionarios-turno"],
+    queryKey: ["funcionarios-personal"],
     queryFn: async (): Promise<Funcionario[]> => {
-      const { data } = await supabase
-        .from("shift_schedule_members")
-        .select("full_name, role_name, user_id")
-        .eq("active", true)
-        .order("full_name");
+      // Se combina el personal del cuadro de turno con todos los perfiles activos
+      // para no dejar a nadie por fuera (p. ej. quienes aún no están en el cuadro).
+      const [{ data: members }, { data: profs }] = await Promise.all([
+        supabase.from("shift_schedule_members").select("full_name, role_name, user_id").eq("active", true),
+        supabase.from("profiles").select("nombre, cargo, user_id").eq("activo", true),
+      ]);
       const map = new Map<string, Funcionario>();
-      (data ?? []).forEach((m) => {
+      (profs ?? []).forEach((p) => {
+        const nombre = (p.nombre || "").trim();
+        if (!nombre) return;
+        if (!map.has(nombre)) map.set(nombre, { nombre, cargo: p.cargo, userId: p.user_id });
+      });
+      (members ?? []).forEach((m) => {
         const nombre = (m.full_name || "").trim();
         if (!nombre) return;
-        if (!map.has(nombre)) map.set(nombre, { nombre, cargo: m.role_name, userId: m.user_id });
+        const prev = map.get(nombre);
+        if (!prev) map.set(nombre, { nombre, cargo: m.role_name, userId: m.user_id });
+        else if (!prev.cargo && m.role_name) prev.cargo = m.role_name;
       });
-      return Array.from(map.values());
+      return Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
     },
   });
 
