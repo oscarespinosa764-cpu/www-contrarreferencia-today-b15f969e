@@ -1,93 +1,76 @@
-# Plantillas de trazabilidad ÍNDIGO — Dashboard operativo salientes
+## Contexto verificado
 
-Objetivo: generar plantillas de TEXTO PLANO (para copiar/pegar en ÍNDIGO) al crear un caso saliente y al hacer seguimientos de radicación. No se toca remisiones entrantes, ni login/roles/RLS/seguridad. Sin HTML, sin formato oficio, sin negrillas/colores, sin botón WhatsApp. Solo botón “Copiar para Índigo”.
+- **Red/IPS**: la reorganización de subventanas (pestaña 1 = JORNADAS/CÓDIGOS TEP, IPS unificada con ámbito Caquetá/Nacional, AMBULANCIAS unificada, ESPECIALIDADES CEDIM) **ya existe** en `red-ips-utils.ts`. Solo falta limpieza de UI y campos.
+- **Cuadro de turno**: 7 pestañas separadas hoy → se consolidan en 3.
+- **Formatos reales confirmados** desde los Excel adjuntos:
+  - TH-FR-10: 1 fila por colaborador `Colaborador | Cargo | Sede | 1..N` + hoja `Convenciones`. Códigos reales: ADM, D, M, M/T, N, T.
+  - TH-FR-09: motivos recuperable/no recuperable.
 
-## Alcance (qué se toca)
-- Catálogos EAPB/ERP: 2 atributos nuevos.
-- Catálogos: nuevas listas administrables (IPS local, departamentos, tipos de trámite).
-- Formulario "Nuevo registro → Remisión" (saliente).
-- Diálogo de seguimiento (tipo "Radicación en plataforma").
-- Nuevo módulo de generación de plantillas en texto plano.
-- 1 migración aditiva (no destructiva).
+---
 
-## 1. Migración de base de datos (aditiva, sin borrar nada)
-Nuevas columnas en `remisiones` (todas nullable, compatibles con datos existentes):
-- `eapb` text — EAPB/ERP seleccionada (hoy el form no la captura).
-- `alcance_red` text — "LOCAL" | "LOCAL_NACIONAL".
-- `ips_red_local` text — IPS marcadas, separadas por coma.
-- `departamentos_red_nacional` text — departamentos marcados, separados por coma.
-- `eapb_tiene_plataforma` boolean.
-- `eapb_genera_codigo` boolean.
-- `plataforma_funcionando` boolean (null si no aplica).
-- `trazabilidad_indigo` text — plantilla inicial generada (editada).
+## 1) RED / DISPONIBILIDAD IPS (ajustes menores, estructura ya existe)
 
-`codigo_radicacion` (ya existe) se usa para "PENDIENTE DE RADICACIÓN" / "NO APLICA" / código real.
+Archivo: `src/routes/_authenticated/red-ips.tsx` + `src/components/red/red-card.tsx`
+- Quitar el bloque "Novedades del turno" y los toggles "Disponible / Marcar disponibilidad" (estados `dispTarget`, `pedirCambio`, `aplicarDisponibilidad`, columna de indicadores de disponibilidad y el `AlertDialog` de disponibilidad).
+- La tarjeta pasa a solo mostrar/ver detalle (sin switch).
+- Verificar que el formulario (`red-form-dialog.tsx`) capture, por tipo:
+  - IPS: nombre, ciudad/departamento, correo, teléfonos, especialidades, servicios, EAPB.
+  - Ambulancias: empresa, ciudad/depto, correo, teléfonos, tipos (TAB/TAM/TAM-N/AÉREA), servicios, EAPB.
+  - Jornadas: especialidad, fecha inicio, fecha fin, IPS.
+  - Códigos TEP: empresa TEP, CUPS, tipo ambulancia, tipo recorrido, descripción CUPS.
 
-Atributos EAPB en catálogo: se reutilizan las columnas existentes `extra1`/`extra2` de `catalogos` para tipo `EAPB`:
-- `extra1` = "Tiene plataforma" ("SI"/"NO")
-- `extra2` = "Genera código de radicación" ("SI"/"NO")
+## 2) CUADRO DE TURNO — consolidación a 3 pestañas
 
-Seed de catálogos nuevos (vía INSERT, no destructivo, con ON CONFLICT/condicional):
-- tipo `TIPO_TRAMITE`: Remisión asistencial normal; Remisión por trámite administrativo cancelable; Remisión asistencial por SOAT; Remisión asistencial normal con falla de plataforma.
-- tipo `IPS_LOCAL`: Clínica Medilaser Florencia; Hospital María Inmaculada Florencia.
-- tipo `DEPARTAMENTO`: Huila; Tolima; Cundinamarca; Nariño; Cauca; Valle del Cauca; Atlántico; Antioquia.
+Archivo ruta: `src/routes/_authenticated/cuadro-turno.tsx`
+- **Pestaña A — "Cuadro de turno"**: integra Cuadro mensual + Mi turno, con toggle interno **Calendario (default)** / Matriz.
+- **Pestaña B — "Solicitudes y ausentismo"**: integra Solicitudes + Historial de cambios + Control de ausentismo (subsecciones internas).
+- **Pestaña C — "Administración"** (solo admin): integra Firmas + Configuración.
 
-GRANTs ya existen para `catalogos`/`remisiones`; no se cambian políticas RLS.
+### 2A. Vista Calendario (nueva, default)
+Nuevo componente `calendario-turnos.tsx`:
+- Grilla mensual tipo calendario; cada día muestra turnos por colaborador con **color + abreviatura** (M, T, N, M/T, ADM…).
+- Click en un día → **modal simple de detalle** (funcionario, día, turno, horario, novedad). Admin/coordinador puede editar/borrar ahí; el alta principal sigue siendo por "Agregar".
+- Matriz existente pasa a vista secundaria (reutiliza la tabla actual).
 
-## 2. Catálogo EAPB/ERP (catalogo-maestras.tsx)
-Para tipo `EAPB`, mostrar `extra1Label = "Tiene plataforma (SI/NO)"` y `extra2Label = "Genera código de radicación (SI/NO)"` como selects SI/NO (en vez de texto libre). No se agrega nombre de plataforma ni observaciones. Otros tipos quedan igual.
+### 2B. Botones principales
+- Eliminar "Plantilla TH-FR-10" y "Asignar plantilla de turno".
+- Dejar solo **Exportar Excel** (rename de "Exportar cuadro TH-FR-10") e **Importar Excel**.
 
-## 3. Formulario Remisión saliente (nuevo-registro-dialog.tsx)
-Agregar al tab "Remisión":
-- Select **EAPB/ERP** (desde catálogo EAPB). Al elegir, se leen sus flags `tiene_plataforma` y `genera_codigo`.
-- Si `tiene_plataforma = SI` y NO es SOAT: pregunta obligatoria **¿La plataforma se encuentra funcionando? (Sí/No)**.
-- Campo obligatorio **Tipo de trámite** (desde catálogo TIPO_TRAMITE).
-- Campo obligatorio **Alcance de gestión**: Red local | Red local + red nacional.
-- Si alcance incluye local: checkboxes de **IPS locales** (catálogo IPS_LOCAL), mínimo 1.
-- Si alcance incluye nacional: checkboxes de **departamentos** (catálogo DEPARTAMENTO) + "Otro" con campo de texto, mínimo 1.
-- `codigo_radicacion` NO se digita aquí: se guarda "PENDIENTE DE RADICACIÓN" (si genera código) o "NO APLICA" (si no genera).
-- Fecha/hora de inicio y radicación siguen como están (no editables / automáticas).
+### 2C. Colaborador + Cargo + Agregar
+- Colaborador = **lista desplegable** con funcionarios (`profiles`).
+- Cargo se **autollena** al elegir colaborador.
+- "Agregar" abre el **modal de asignación por bloques**.
 
-Al guardar el caso, se persisten los nuevos campos y se abre la **ventana de plantilla inicial**.
+### 2D. Modal de asignación por bloques (nuevo `asignar-turnos-dialog.tsx`)
+- Colaborador (preseleccionado o elegible) + cargo visible.
+- Repetir bloques: elegir **turno** + **días exactos** del mes (multi-selección) → agregar bloque → agregar otro bloque → guardar todo.
+- Turnos desde tipos parametrizados (`shift_types`): M, T, N, M/T, M/N, T/N, ADM, etc.
 
-## 4. Generador de plantillas (nuevo archivo src/lib/indigo-trazabilidad.ts)
-Función pura que recibe los datos del caso y devuelve string de texto plano, eligiendo la plantilla 8.1–8.11 según: tipo de pagador (EAPB vs SOAT), tipo de trámite, tiene_plataforma, plataforma_funcionando, alcance (local / local+nacional). Reemplaza variables `{{ips_red_local}}`, `{{departamentos_red_nacional}}`, `{{codigo_radicacion}}`, etc. Incluye:
-- Las 11 plantillas iniciales exactas del requerimiento.
-- Notas aclaratorias (sección 9) con placeholders visibles si faltan datos.
-- Plantillas de seguimiento de radicación (10.1, 10.2, 10.3) y plantilla especial 8.12.
-Todo en MAYÚSCULAS/texto plano, sin HTML.
+## 3) Export / Import Excel (formato real TH-FR-10)
 
-## 5. Ventana de plantilla inicial (nuevo componente indigo-panel.tsx)
-Modal con:
-- Título: "INICIO DE TRÁMITE DE REMISIÓN - TRAZABILIDAD ÍNDIGO".
-- `Textarea` editable con la plantilla generada.
-- Botón **Copiar para Índigo** (copia `textarea.value` como texto plano vía `navigator.clipboard.writeText`).
-- Botón **Regenerar plantilla** (re-aplica el generador descartando ediciones).
-- Botón **Cerrar / Continuar**.
-Reutilizable también para mostrar la plantilla desde la tarjeta del caso.
+Archivo: `src/lib/cuadro-excel.ts`
+- Reescribir export a **1 fila por colaborador** (`Colaborador|Cargo|Sede|1..N`) + hoja `Convenciones` (código/nombre/horas), igual al archivo real.
+- Ajustar el import para leer ese layout (ya soporta detección de encabezado; alinear a 1 fila/colaborador).
 
-## 6. Seguimiento "Radicación en plataforma" (seguimiento-dialog.tsx)
-- Agregar tipo "Radicación en plataforma" a la lista de tipos.
-- Si EAPB `genera_codigo = SI`: campo **Código de radicación** obligatorio; al guardar actualiza `codigo_radicacion` del caso.
-- Generar plantilla 10.1 (o 10.2 si la plataforma estaba caída) en `Textarea` editable + botón "Copiar para Índigo".
-- Si `genera_codigo = NO`: no exigir código; plantilla 10.3.
-- Plantilla especial 8.12 disponible como opción de seguimiento editable.
+## 4) Modal "Nuevo registro de ausentismo"
 
-## 7. Auditoría (sección 12)
-Llamar `registrar_auditoria` (función ya existente) en: creación de caso saliente, generación de plantilla inicial, seguimiento de radicación y registro/modificación de código. Sin datos sensibles ni claves en logs. No se cambia la lógica de auditoría existente.
+Archivo: `src/components/cuadro-turno/ausentismo-panel.tsx`
+- Trabajador = **desplegable** de funcionarios; autollena **C.C.** y **Cargo**.
+- Fecha de registro = **hoy** automática.
+- Quitar: EPS, ARL, Salario día, Recursos requeridos, Detalles adicionales.
+- Mantener: Trabajador, C.C., Cargo, Fecha registro, Fecha inicio/fin, Hora inicio/fin, No. minutos, No. días, Evento, Motivo.
+- **Cálculo automático** de minutos y días desde fechas/horas.
+- Alimentar ausentismo también desde **solicitudes aprobadas**.
 
-## Detalles técnicos
-- Todo el texto se genera con un módulo TS puro (`indigo-trazabilidad.ts`); el panel solo muestra/edita/copa.
-- "Copiar para Índigo" usa `navigator.clipboard.writeText(value)` — siempre texto plano.
-- No se importa nada de `oficio.ts` ni de los componentes de entrantes; cero cambios en entrantes.
-- Migración 100% aditiva; los casos antiguos quedan con los nuevos campos en null y la app los maneja con defaults.
+## 5) Historial integrado (dentro de pestaña B)
+- Últimos 5 cambios aprobados + lista de funcionarios que solicitaron + botón "Ver actividad" (historial completo).
 
-## Pruebas recomendadas
-1. Catálogo: marcar EAPB con/sin plataforma y con/sin código.
-2. Crear caso EAPB con plataforma funcionando + red local → plantilla 8.1.
-3. EAPB con plataforma caída + local+nacional → plantilla 8.8 (sin exigir código).
-4. SOAT + local → plantilla 8.5 (sin hablar de plataforma/código).
-5. Trámite administrativo con plataforma → 8.9; sin plataforma → 8.10.
-6. Seguimiento "Radicación en plataforma" con EAPB que genera código → exige código y plantilla 10.1.
-7. Verificar que "Copiar para Índigo" pega texto plano y que NO existe botón WhatsApp.
-8. Confirmar que remisiones entrantes no cambió.
+---
+
+## Notas técnicas
+- Reutilizar componentes existentes (matriz, solicitudes, firmas, config) moviéndolos dentro de las pestañas nuevas — sin reescribir lo que ya sirve.
+- No se tocan otros módulos ni el backend salvo que un campo falte (se avisaría antes de migrar).
+- Permisos admin/coordinador vs operativo se conservan con `isAdmin`/`canEdit`.
+
+## Orden de ejecución
+1. Limpieza Red/IPS (rápido). 2. Export/Import TH-FR-10 real. 3. Modal ausentismo. 4. Consolidación de pestañas + calendario + modal de asignación por bloques. 5. Verificación (build + prueba en preview).

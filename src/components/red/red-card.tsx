@@ -27,15 +27,13 @@ import {
 interface Props {
   reg: RedRegistro;
   grupo: GrupoConfig;
-  /** Si el usuario puede editar / cambiar disponibilidad (Admin). */
+  /** Si el usuario puede editar (Admin). */
   canEdit: boolean;
   onView: (r: RedRegistro) => void;
   onEdit?: (r: RedRegistro) => void;
-  onToggle: (r: RedRegistro, value: boolean) => void;
 }
 
-export function RedCard({ reg, grupo, canEdit, onView, onEdit, onToggle }: Props) {
-  const disponible = !!reg.disponible_para_remisiones;
+export function RedCard({ reg, grupo, canEdit, onView, onEdit }: Props) {
   const activo = esActivo(reg);
   const Icon = grupo.icon;
   const servicios = serviciosList(reg);
@@ -52,11 +50,7 @@ export function RedCard({ reg, grupo, canEdit, onView, onEdit, onToggle }: Props
   };
 
   return (
-    <div
-      className={`rounded-2xl border border-border border-l-4 bg-card p-4 shadow-sm transition-shadow hover:shadow-md ${
-        disponible ? "border-l-status-green" : "border-l-status-red"
-      }`}
-    >
+    <div className="rounded-2xl border border-border border-l-4 border-l-vitalis-blue bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
       <div className="flex items-start gap-4">
         <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-vitalis-blue/10 text-vitalis-blue">
           <Icon className="h-7 w-7" />
@@ -99,16 +93,6 @@ export function RedCard({ reg, grupo, canEdit, onView, onEdit, onToggle }: Props
                 )
               )}
             </div>
-
-            <span
-              className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
-                disponible
-                  ? "bg-status-green/15 text-status-green"
-                  : "bg-status-red/15 text-status-red"
-              }`}
-            >
-              {disponible ? "● DISPONIBLE" : "● NO DISPONIBLE"}
-            </span>
           </div>
 
           <div className="mt-2 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
@@ -140,6 +124,12 @@ export function RedCard({ reg, grupo, canEdit, onView, onEdit, onToggle }: Props
                 {reg.horario ? ` · ${reg.horario}` : ""}
               </p>
             )}
+            {esTep && (reg.fecha_inicio || reg.fecha_final) && (
+              <p className="truncate">
+                <span className="font-medium">Vigencia: </span>
+                {[reg.fecha_inicio, reg.fecha_final].filter(Boolean).join(" → ")}
+              </p>
+            )}
             {reg.recorrido && (
               <p className="truncate">
                 <span className="font-medium">Recorrido: </span>
@@ -167,7 +157,7 @@ export function RedCard({ reg, grupo, canEdit, onView, onEdit, onToggle }: Props
           )}
         </div>
 
-        {/* Acciones: solo menú discreto (sin switch visible en la tarjeta) */}
+        {/* Acciones: ver / editar */}
         <div className="shrink-0">
           <DropdownMenu>
             <DropdownMenuTrigger className="rounded-full p-1.5 text-muted-foreground hover:bg-accent">
@@ -180,12 +170,6 @@ export function RedCard({ reg, grupo, canEdit, onView, onEdit, onToggle }: Props
               {canEdit && onEdit && (
                 <DropdownMenuItem onClick={() => onEdit(reg)}>
                   <Pencil className="mr-2 h-4 w-4" /> Editar
-                </DropdownMenuItem>
-              )}
-              {canEdit && activo && (
-                <DropdownMenuItem onClick={() => onToggle(reg, !disponible)}>
-                  <Clock className="mr-2 h-4 w-4" />
-                  {disponible ? "Marcar NO disponible" : "Marcar disponible"}
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
