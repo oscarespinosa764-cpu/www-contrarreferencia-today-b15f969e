@@ -168,8 +168,6 @@ function construirLibroOficial(p: OfficialParams): XLSX.WorkBook {
     [totalCol, extraCol, pendCol, ttotCol].forEach((c) =>
       merges.push({ s: { r: turnoIdx, c }, e: { r: horasIdx, c } }),
     );
-
-    cellRefs.turno.push(totRef);
   }
 
   // --- Bloque CONVERSIONES (convenciones) ---
