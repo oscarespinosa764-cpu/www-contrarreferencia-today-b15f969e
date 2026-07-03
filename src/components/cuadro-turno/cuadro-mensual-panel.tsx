@@ -77,6 +77,7 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
   const tipoMap = useMemo(() => new Map(tipos.map((t) => [t.code, t])), [tipos]);
   const [cell, setCell] = useState<{ member: ShiftMember; day: number } | null>(null);
   const [plantillaOpen, setPlantillaOpen] = useState(false);
+  const [vista, setVista] = useState<"matriz" | "calendario">("matriz");
   const fileRef = useRef<HTMLInputElement>(null);
   const [importando, setImportando] = useState(false);
 
