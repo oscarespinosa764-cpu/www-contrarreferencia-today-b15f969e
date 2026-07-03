@@ -13,14 +13,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, UserPlus, FileDown, Upload, Loader2, CalendarRange } from "lucide-react";
+import { Plus, UserPlus, FileDown, Upload, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   MESES, diasDelMes, letraDiaSemana, fechaISO, totalHorasMiembro, tiempoExtra, tiempoTotal,
-  diasSegunFrecuencia,
   type ShiftType, type ShiftSchedule, type ShiftMember, type ShiftDay,
 } from "@/lib/cuadro-turno-utils";
-import { exportarPlantillaCuadro, exportarCuadroMensual, importarCuadroExcel } from "@/lib/cuadro-excel";
+import { exportarCuadroMensual, importarCuadroExcel } from "@/lib/cuadro-excel";
 
 export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
   const { user } = useAuth();
@@ -76,19 +75,15 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
 
   const tipoMap = useMemo(() => new Map(tipos.map((t) => [t.code, t])), [tipos]);
   const [cell, setCell] = useState<{ member: ShiftMember; day: number } | null>(null);
-  const [plantillaOpen, setPlantillaOpen] = useState(false);
-  const [vista, setVista] = useState<"matriz" | "calendario">("matriz");
+  const [asignar, setAsignar] = useState<ShiftMember | null>(null);
+  const [asignarOpen, setAsignarOpen] = useState(false);
+  const [vista, setVista] = useState<"matriz" | "calendario">("calendario");
   const fileRef = useRef<HTMLInputElement>(null);
   const [importando, setImportando] = useState(false);
 
-  const exportarPlantilla = () => {
-    exportarPlantillaCuadro({ anio, mes, members, days, tipos, baseHoras: schedule?.base_hours });
-    registrarAuditoria({ data: { accion: "PLANTILLA_TH-FR-10_DESCARGADA", modulo: "cuadro_turno", tabla: "shift_schedules", registroId: schedule?.id ?? "", resultado: "exito", detalles: { anio, mes } } }).catch(() => {});
-  };
-
   const exportarCuadro = () => {
     exportarCuadroMensual({ anio, mes, members, days, tipos, baseHoras: schedule?.base_hours });
-    registrarAuditoria({ data: { accion: "CUADRO_TH-FR-10_EXPORTADO", modulo: "cuadro_turno", tabla: "shift_schedules", registroId: schedule?.id ?? "", resultado: "exito", detalles: { anio, mes } } }).catch(() => {});
+    registrarAuditoria({ data: { accion: "CUADRO_EXPORTADO", modulo: "cuadro_turno", tabla: "shift_schedules", registroId: schedule?.id ?? "", resultado: "exito", detalles: { anio, mes } } }).catch(() => {});
   };
 
   const onImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -114,7 +109,6 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
     }
   };
 
-
   const crearCuadro = async () => {
     const { error } = await supabase.from("shift_schedules").insert({
       year: anio, month: mes, dependency, base_hours: 176, status: "borrador", created_by: user!.id,
@@ -123,6 +117,11 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
     registrarAuditoria({ data: { accion: "CUADRO_CREADO", modulo: "cuadro_turno", tabla: "shift_schedules", resultado: "exito" } }).catch(() => {});
     toast.success("Cuadro creado.");
     qc.invalidateQueries({ queryKey: ["schedule"] });
+  };
+
+  const abrirAsignacion = (m: ShiftMember | null) => {
+    setAsignar(m);
+    setAsignarOpen(true);
   };
 
   return (
@@ -138,17 +137,17 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
           <div className="flex overflow-hidden rounded-md border">
             <button
               type="button"
-              onClick={() => setVista("matriz")}
-              className={`px-2.5 py-1 font-medium transition-colors ${vista === "matriz" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-accent"}`}
-            >
-              Matriz
-            </button>
-            <button
-              type="button"
               onClick={() => setVista("calendario")}
               className={`px-2.5 py-1 font-medium transition-colors ${vista === "calendario" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-accent"}`}
             >
               Calendario
+            </button>
+            <button
+              type="button"
+              onClick={() => setVista("matriz")}
+              className={`px-2.5 py-1 font-medium transition-colors ${vista === "matriz" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-accent"}`}
+            >
+              Matriz
             </button>
           </div>
           {tipos.filter((t) => t.active).map((t) => (
@@ -169,14 +168,8 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
           {isAdmin && (
             <>
               <div className="flex flex-wrap items-center gap-2">
-                <Button size="sm" variant="outline" onClick={exportarPlantilla}>
-                  <FileDown className="mr-1.5 h-4 w-4" /> Plantilla TH-FR-10
-                </Button>
                 <Button size="sm" onClick={exportarCuadro}>
-                  <FileDown className="mr-1.5 h-4 w-4" /> Exportar cuadro TH-FR-10
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setPlantillaOpen(true)}>
-                  <CalendarRange className="mr-1.5 h-4 w-4" /> Asignar plantilla de turno
+                  <FileDown className="mr-1.5 h-4 w-4" /> Exportar Excel
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={importando}>
                   {importando ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Upload className="mr-1.5 h-4 w-4" />}
@@ -184,10 +177,26 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
                 </Button>
                 <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={onImportFile} />
               </div>
-              <AddMemberInline scheduleId={schedule.id} sortOrder={members.length} onAdded={() => qc.invalidateQueries({ queryKey: ["schedule-members"] })} />
+              <AgregarColaborador
+                scheduleId={schedule.id}
+                sortOrder={members.length}
+                members={members}
+                onAsignar={abrirAsignacion}
+                onMembersChanged={() => qc.invalidateQueries({ queryKey: ["schedule-members"] })}
+              />
             </>
           )}
-          {vista === "matriz" ? (
+          {vista === "calendario" ? (
+            <CalendarView
+              anio={anio}
+              mes={mes}
+              ndias={ndias}
+              members={members}
+              dayMap={dayMap}
+              tipoMap={tipoMap}
+              onCellClick={(m, d) => setCell({ member: m, day: d })}
+            />
+          ) : (
             <>
               <Card className="overflow-x-auto">
                 <table className="w-full border-collapse text-xs">
@@ -227,9 +236,9 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
                             return (
                               <td
                                 key={d}
-                                className={`px-1 py-1 text-center ${isAdmin ? "cursor-pointer hover:ring-1 hover:ring-primary" : ""}`}
+                                className="cursor-pointer px-1 py-1 text-center hover:ring-1 hover:ring-primary"
                                 style={tipo ? { background: tipo.color + "33" } : undefined}
-                                onClick={() => isAdmin && setCell({ member: m, day: d })}
+                                onClick={() => setCell({ member: m, day: d })}
                               >
                                 {cd?.shift_code ?? ""}
                               </td>
@@ -246,19 +255,8 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
                   </tbody>
                 </table>
               </Card>
-              <p className="text-xs text-muted-foreground">Horas base del mes: {schedule.base_hours}. {isAdmin ? "Haz clic en una celda para asignar turno." : "Vista de solo lectura."}</p>
+              <p className="text-xs text-muted-foreground">Horas base del mes: {schedule.base_hours}. Haz clic en una celda para ver o editar el turno.</p>
             </>
-          ) : (
-            <CalendarView
-              anio={anio}
-              mes={mes}
-              ndias={ndias}
-              members={members}
-              dayMap={dayMap}
-              tipoMap={tipoMap}
-              isAdmin={isAdmin}
-              onCellClick={(m, d) => setCell({ member: m, day: d })}
-            />
           )}
         </>
       )}
@@ -272,22 +270,24 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
           current={dayMap.get(`${cell.member.id}:${cell.day}`) ?? null}
           tipos={tipos}
           userId={user!.id}
+          isAdmin={isAdmin}
           onClose={() => setCell(null)}
           onSaved={() => { setCell(null); qc.invalidateQueries({ queryKey: ["schedule-days"] }); }}
         />
       )}
 
-      {plantillaOpen && schedule && (
-        <AsignarPlantillaDialog
+      {asignarOpen && schedule && (
+        <AsignarTurnosDialog
           scheduleId={schedule.id}
           anio={anio}
           mes={mes}
           ndias={ndias}
+          member={asignar}
           members={members}
           tipos={tipos}
           userId={user!.id}
-          onClose={() => setPlantillaOpen(false)}
-          onSaved={() => { setPlantillaOpen(false); qc.invalidateQueries({ queryKey: ["schedule-days"] }); }}
+          onClose={() => { setAsignarOpen(false); setAsignar(null); }}
+          onSaved={() => { setAsignarOpen(false); setAsignar(null); qc.invalidateQueries({ queryKey: ["schedule-days"] }); }}
         />
       )}
     </div>
@@ -297,13 +297,12 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
 const DOW_HEADERS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
 function CalendarView({
-  anio, mes, ndias, members, dayMap, tipoMap, isAdmin, onCellClick,
+  anio, mes, ndias, members, dayMap, tipoMap, onCellClick,
 }: {
   anio: number; mes: number; ndias: number;
   members: ShiftMember[];
   dayMap: Map<string, ShiftDay>;
   tipoMap: Map<string, ShiftType>;
-  isAdmin: boolean;
   onCellClick: (m: ShiftMember, d: number) => void;
 }) {
   const firstDow = new Date(anio, mes - 1, 1).getDay(); // 0=Dom
@@ -320,7 +319,7 @@ function CalendarView({
         {Array.from({ length: totalCells }, (_, i) => {
           const dayNum = i - firstDow + 1;
           const valido = dayNum >= 1 && dayNum <= ndias;
-          if (!valido) return <div key={i} className="min-h-[92px] rounded-lg bg-muted/20" />;
+          if (!valido) return <div key={i} className="min-h-[96px] rounded-lg bg-muted/20" />;
 
           const asignados = members
             .map((m) => ({ m, cd: dayMap.get(`${m.id}:${dayNum}`) }))
@@ -329,7 +328,7 @@ function CalendarView({
           return (
             <div
               key={i}
-              className="min-h-[92px] rounded-lg border bg-background p-1.5 transition-colors hover:border-primary/40"
+              className="flex min-h-[96px] flex-col rounded-lg border bg-background p-1.5 transition-colors hover:border-primary/40"
             >
               <div className="mb-1 text-right text-[11px] font-bold text-muted-foreground">{dayNum}</div>
               <div className="space-y-0.5">
@@ -342,9 +341,8 @@ function CalendarView({
                       <button
                         key={m.id}
                         type="button"
-                        disabled={!isAdmin}
-                        onClick={() => isAdmin && onCellClick(m, dayNum)}
-                        className={`flex w-full items-center gap-1 truncate rounded px-1 py-0.5 text-left text-[10px] ${isAdmin ? "hover:ring-1 hover:ring-primary" : ""}`}
+                        onClick={() => onCellClick(m, dayNum)}
+                        className="flex w-full items-center gap-1 truncate rounded px-1 py-0.5 text-left text-[10px] hover:ring-1 hover:ring-primary"
                         style={tipo ? { background: tipo.color + "33" } : undefined}
                         title={`${m.full_name} · ${cd!.shift_code}${cd!.notes ? ` · ${cd!.notes}` : ""}`}
                       >
@@ -361,69 +359,116 @@ function CalendarView({
         })}
       </div>
       <p className="mt-2 text-[11px] text-muted-foreground">
-        {isAdmin ? "Haz clic en un turno para editarlo." : "Vista de solo lectura."}
+        Haz clic en un turno para ver el detalle.
       </p>
     </Card>
   );
 }
 
-function AddMemberInline({ scheduleId, sortOrder, onAdded }: { scheduleId: string; sortOrder: number; onAdded: () => void }) {
-  const [nombre, setNombre] = useState("");
-  const [cargo, setCargo] = useState("");
+/** Selecciona un funcionario del sistema, autollena el cargo y abre la asignación de turnos. */
+function AgregarColaborador({
+  scheduleId, sortOrder, members, onAsignar, onMembersChanged,
+}: {
+  scheduleId: string;
+  sortOrder: number;
+  members: ShiftMember[];
+  onAsignar: (m: ShiftMember) => void;
+  onMembersChanged: () => void;
+}) {
+  const [perfilId, setPerfilId] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const { data: cargos = [] } = useQuery({
-    queryKey: ["cargos-sugeridos"],
+  const { data: perfiles = [] } = useQuery({
+    queryKey: ["perfiles-cuadro"],
     queryFn: async () => {
-      const [{ data: perfiles }, { data: miembros }] = await Promise.all([
-        supabase.from("profiles").select("cargo").not("cargo", "is", null),
-        supabase.from("shift_schedule_members").select("role_name").not("role_name", "is", null),
-      ]);
-      const set = new Set<string>();
-      (perfiles ?? []).forEach((p: any) => p.cargo && set.add(String(p.cargo).trim()));
-      (miembros ?? []).forEach((m: any) => m.role_name && set.add(String(m.role_name).trim()));
-      return Array.from(set).filter(Boolean).sort();
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, nombre, cargo")
+        .eq("activo", true)
+        .order("nombre");
+      return (data ?? []) as unknown as { user_id: string; nombre: string; cargo: string | null }[];
     },
+    staleTime: 300_000,
   });
 
-  const add = async () => {
-    if (!nombre.trim()) return toast.error("Nombre requerido.");
-    const { error } = await supabase.from("shift_schedule_members").insert({
-      schedule_id: scheduleId, full_name: nombre.trim(), role_name: cargo || null, sort_order: sortOrder,
-    });
-    if (error) return toast.error("No se pudo agregar.");
-    setNombre(""); setCargo(""); onAdded();
+  const perfil = perfiles.find((p) => p.user_id === perfilId);
+  const cargo = perfil?.cargo ?? "";
+
+  const agregar = async () => {
+    if (!perfil) return toast.error("Selecciona un colaborador.");
+    setBusy(true);
+    try {
+      const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+      let member = members.find((m) => norm(m.full_name) === norm(perfil.nombre) || m.user_id === perfil.user_id);
+      if (!member) {
+        const { data, error } = await supabase
+          .from("shift_schedule_members")
+          .insert({
+            schedule_id: scheduleId,
+            user_id: perfil.user_id,
+            full_name: perfil.nombre,
+            role_name: perfil.cargo || null,
+            sort_order: sortOrder,
+          })
+          .select("*").single();
+        if (error) throw error;
+        member = data as unknown as ShiftMember;
+        onMembersChanged();
+      }
+      onAsignar(member);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "No se pudo agregar el colaborador.");
+    } finally {
+      setBusy(false);
+    }
   };
+
   return (
-    <div className="flex flex-wrap items-end gap-2">
-      <div><Label className="text-xs">Colaborador</Label><Input value={nombre} onChange={(e) => setNombre(e.target.value)} className="w-48" /></div>
+    <div className="flex flex-wrap items-end gap-2 rounded-lg border bg-muted/30 p-3">
+      <div className="min-w-[220px]">
+        <Label className="text-xs">Colaborador</Label>
+        <Select value={perfilId} onValueChange={setPerfilId}>
+          <SelectTrigger className="w-56"><SelectValue placeholder="Selecciona un funcionario" /></SelectTrigger>
+          <SelectContent>
+            {perfiles.map((p) => (
+              <SelectItem key={p.user_id} value={p.user_id}>{p.nombre}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       <div>
         <Label className="text-xs">Cargo</Label>
-        <Input list="cargos-sugeridos-list" value={cargo} onChange={(e) => setCargo(e.target.value)} className="w-40" placeholder="Buscar o escribir…" />
-        <datalist id="cargos-sugeridos-list">
-          {cargos.map((c) => <option key={c} value={c} />)}
-        </datalist>
+        <Input value={cargo} readOnly className="w-44 bg-muted/40" placeholder="—" />
       </div>
-      <Button size="sm" variant="outline" onClick={add}><UserPlus className="mr-1.5 h-4 w-4" /> Agregar</Button>
+      <Button size="sm" onClick={agregar} disabled={busy || !perfil}>
+        {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <UserPlus className="mr-1.5 h-4 w-4" />}
+        Agregar
+      </Button>
     </div>
   );
 }
 
 function EditCellDialog({
-  scheduleId, member, day, dateISO, current, tipos, userId, onClose, onSaved,
+  scheduleId, member, day, dateISO, current, tipos, userId, isAdmin, onClose, onSaved,
 }: {
   scheduleId: string; member: ShiftMember; day: number; dateISO: string;
-  current: ShiftDay | null; tipos: ShiftType[]; userId: string;
+  current: ShiftDay | null; tipos: ShiftType[]; userId: string; isAdmin: boolean;
   onClose: () => void; onSaved: () => void;
 }) {
   const [code, setCode] = useState(current?.shift_code ?? "");
   const [notas, setNotas] = useState(current?.notes ?? "");
   const [saving, setSaving] = useState(false);
 
+  const tipoSel = tipos.find((t) => t.code === code);
+  const horario = tipoSel?.start_time && tipoSel?.end_time
+    ? `${tipoSel.start_time.slice(0, 5)} – ${tipoSel.end_time.slice(0, 5)}`
+    : "—";
+
   const save = async () => {
     setSaving(true);
     try {
-      const tipo = tipos.find((t) => t.code === code);
-      const hours = tipo?.hours ?? 0;
+      const hours = tipoSel?.hours ?? 0;
       const payload = {
         schedule_id: scheduleId, member_id: member.id, day_number: day,
         shift_date: dateISO, shift_code: code || null, hours, notes: notas || null,
@@ -437,116 +482,124 @@ function EditCellDialog({
     } catch (e) { console.error(e); toast.error("No se pudo guardar."); } finally { setSaving(false); }
   };
 
+  const borrar = async () => {
+    if (!current) return onClose();
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("shift_schedule_days").delete().eq("id", current.id);
+      if (error) throw error;
+      registrarAuditoria({ data: { accion: "TURNO_BORRADO", modulo: "cuadro_turno", tabla: "shift_schedule_days", registroId: current.id, resultado: "exito", detalles: { colaborador: member.full_name, dia: day } } }).catch(() => {});
+      onSaved();
+    } catch (e) { console.error(e); toast.error("No se pudo borrar."); } finally { setSaving(false); }
+  };
+
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader><DialogTitle>{member.full_name} · día {day}</DialogTitle></DialogHeader>
         <div className="space-y-3 text-sm">
-          <div>
-            <Label className="text-xs">Turno</Label>
-            <Select value={code || "__none"} onValueChange={(v) => setCode(v === "__none" ? "" : v)}>
-              <SelectTrigger><SelectValue placeholder="Sin turno" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none">Sin turno</SelectItem>
-                {tipos.filter((t) => t.active).map((t) => (
-                  <SelectItem key={t.id} value={t.code}>{t.code} — {t.name} ({t.hours}h)</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-2 rounded-md bg-muted/40 p-2 text-xs">
+            <div><span className="text-muted-foreground">Funcionario:</span> <span className="font-medium">{member.full_name}</span></div>
+            <div><span className="text-muted-foreground">Cargo:</span> <span className="font-medium">{member.role_name || "—"}</span></div>
+            <div><span className="text-muted-foreground">Turno:</span> <span className="font-medium">{code || "Sin turno"}</span></div>
+            <div><span className="text-muted-foreground">Horario:</span> <span className="font-medium">{horario}</span></div>
           </div>
-          <div><Label className="text-xs">Novedad / nota</Label><Input value={notas} onChange={(e) => setNotas(e.target.value)} /></div>
+          {isAdmin ? (
+            <>
+              <div>
+                <Label className="text-xs">Turno</Label>
+                <Select value={code || "__none"} onValueChange={(v) => setCode(v === "__none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Sin turno" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">Sin turno</SelectItem>
+                    {tipos.filter((t) => t.active).map((t) => (
+                      <SelectItem key={t.id} value={t.code}>{t.code} — {t.name} ({t.hours}h)</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div><Label className="text-xs">Novedad / nota</Label><Input value={notas} onChange={(e) => setNotas(e.target.value)} /></div>
+            </>
+          ) : (
+            <div><span className="text-muted-foreground text-xs">Novedad / nota:</span> <p className="text-sm">{notas || "—"}</p></div>
+          )}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={save} disabled={saving}>{saving ? "Guardando…" : "Guardar"}</Button>
+        <DialogFooter className="gap-2 sm:justify-between">
+          {isAdmin && current ? (
+            <Button variant="ghost" className="text-rose-600" onClick={borrar} disabled={saving}>
+              <Trash2 className="mr-1.5 h-4 w-4" /> Borrar
+            </Button>
+          ) : <span />}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose}>Cerrar</Button>
+            {isAdmin && <Button onClick={save} disabled={saving}>{saving ? "Guardando…" : "Guardar"}</Button>}
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-const DOW_OPCIONES = [
-  { dow: 1, label: "L" },
-  { dow: 2, label: "M" },
-  { dow: 3, label: "X" },
-  { dow: 4, label: "J" },
-  { dow: 5, label: "V" },
-  { dow: 6, label: "S" },
-  { dow: 0, label: "D" },
-];
+interface Bloque { code: string; dias: number[] }
 
-function AsignarPlantillaDialog({
-  scheduleId, anio, mes, ndias, members, tipos, userId, onClose, onSaved,
+function AsignarTurnosDialog({
+  scheduleId, anio, mes, ndias, member, members, tipos, userId, onClose, onSaved,
 }: {
   scheduleId: string; anio: number; mes: number; ndias: number;
-  members: ShiftMember[]; tipos: ShiftType[]; userId: string;
+  member: ShiftMember | null; members: ShiftMember[]; tipos: ShiftType[]; userId: string;
   onClose: () => void; onSaved: () => void;
 }) {
-  const [memberId, setMemberId] = useState<string>("__all");
+  const [memberId, setMemberId] = useState<string>(member?.id ?? members[0]?.id ?? "");
   const [code, setCode] = useState<string>("");
-  const [desde, setDesde] = useState(1);
-  const [hasta, setHasta] = useState(ndias);
-  const [frecuencia, setFrecuencia] = useState<"todos" | "dias">("todos");
-  const [weekdays, setWeekdays] = useState<number[]>([1, 2, 3, 4, 5]);
-  const [sobrescribir, setSobrescribir] = useState(false);
+  const [dias, setDias] = useState<number[]>([]);
+  const [bloques, setBloques] = useState<Bloque[]>([]);
   const [saving, setSaving] = useState(false);
 
-  const toggleDow = (dow: number) =>
-    setWeekdays((prev) => (prev.includes(dow) ? prev.filter((d) => d !== dow) : [...prev, dow]));
+  const activeMember = members.find((m) => m.id === memberId);
+  const tipoMap = useMemo(() => new Map(tipos.map((t) => [t.code, t])), [tipos]);
 
-  const diasObjetivo = useMemo(
-    () => diasSegunFrecuencia(anio, mes, { desde, hasta, todos: frecuencia === "todos", weekdays }),
-    [anio, mes, desde, hasta, frecuencia, weekdays],
-  );
+  const toggleDia = (d: number) =>
+    setDias((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]));
 
-  const targets = memberId === "__all" ? members : members.filter((m) => m.id === memberId);
-
-  const aplicar = async () => {
+  const agregarBloque = () => {
     if (!code) return toast.error("Selecciona un turno.");
-    if (targets.length === 0) return toast.error("No hay colaboradores.");
-    if (diasObjetivo.length === 0) return toast.error("No hay días que coincidan con la frecuencia.");
+    if (dias.length === 0) return toast.error("Selecciona al menos un día.");
+    setBloques((prev) => [...prev, { code, dias: [...dias].sort((a, b) => a - b) }]);
+    setCode("");
+    setDias([]);
+  };
+
+  const quitarBloque = (i: number) => setBloques((prev) => prev.filter((_, idx) => idx !== i));
+
+  const guardar = async () => {
+    if (!memberId) return toast.error("Selecciona un colaborador.");
+    const todos = [...bloques];
+    if (code && dias.length > 0) todos.push({ code, dias: [...dias] });
+    if (todos.length === 0) return toast.error("Agrega al menos un bloque de turno.");
     setSaving(true);
     try {
-      const tipo = tipos.find((t) => t.code === code);
-      const hours = tipo?.hours ?? 0;
-      const now = new Date().toISOString();
+      const nowIso = new Date().toISOString();
       const rows: any[] = [];
-      for (const m of targets) {
-        for (const d of diasObjetivo) {
+      for (const b of todos) {
+        const tipo = tipos.find((t) => t.code === b.code);
+        const hours = tipo?.hours ?? 0;
+        for (const d of b.dias) {
           rows.push({
-            schedule_id: scheduleId, member_id: m.id, day_number: d,
-            shift_date: fechaISO(anio, mes, d), shift_code: code, hours,
-            origin: "plantilla", changed_by: userId, changed_at: now,
+            schedule_id: scheduleId, member_id: memberId, day_number: d,
+            shift_date: fechaISO(anio, mes, d), shift_code: b.code, hours,
+            origin: "asignacion", changed_by: userId, changed_at: nowIso,
           });
         }
       }
-      // Si no se sobrescribe, no tocar días ya asignados.
-      let filas = rows;
-      if (!sobrescribir) {
-        const { data: existentes } = await supabase.from("shift_schedule_days")
-          .select("member_id, day_number, shift_code")
-          .eq("schedule_id", scheduleId);
-        const ocupados = new Set(
-          (existentes ?? [])
-            .filter((e: any) => e.shift_code)
-            .map((e: any) => `${e.member_id}:${e.day_number}`),
-        );
-        filas = rows.filter((r) => !ocupados.has(`${r.member_id}:${r.day_number}`));
-      }
-      if (filas.length === 0) {
-        toast.error("Todos los días seleccionados ya tienen turno. Activa «Sobrescribir» para reemplazarlos.");
-        setSaving(false);
-        return;
-      }
       const { error } = await supabase.from("shift_schedule_days")
-        .upsert(filas, { onConflict: "member_id,day_number" });
+        .upsert(rows, { onConflict: "member_id,day_number" });
       if (error) throw error;
-      registrarAuditoria({ data: { accion: "PLANTILLA_TURNO_APLICADA", modulo: "cuadro_turno", tabla: "shift_schedule_days", registroId: scheduleId, resultado: "exito", detalles: { turno: code, colaboradores: targets.length, dias: diasObjetivo.length, filas: filas.length, frecuencia } } }).catch(() => {});
-      toast.success(`Plantilla aplicada: ${filas.length} asignación(es).`);
+      registrarAuditoria({ data: { accion: "TURNOS_ASIGNADOS", modulo: "cuadro_turno", tabla: "shift_schedule_days", registroId: scheduleId, resultado: "exito", detalles: { member_id: memberId, bloques: todos.length, dias: rows.length } } }).catch(() => {});
+      toast.success(`${rows.length} asignación(es) guardadas.`);
       onSaved();
     } catch (e: any) {
       console.error(e);
-      toast.error(e?.message || "No se pudo aplicar la plantilla.");
+      toast.error(e?.message || "No se pudo guardar la asignación.");
     } finally {
       setSaving(false);
     }
@@ -554,78 +607,86 @@ function AsignarPlantillaDialog({
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Asignar plantilla de turno</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3 text-sm">
-          <div>
-            <Label className="text-xs">Colaborador</Label>
-            <Select value={memberId} onValueChange={setMemberId}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">Todos los colaboradores</SelectItem>
-                {members.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      <DialogContent className="max-h-[92vh] max-w-lg overflow-y-auto">
+        <DialogHeader><DialogTitle>Asignar turnos por días</DialogTitle></DialogHeader>
+        <div className="space-y-4 text-sm">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Colaborador</Label>
+              <Select value={memberId} onValueChange={setMemberId}>
+                <SelectTrigger><SelectValue placeholder="Selecciona" /></SelectTrigger>
+                <SelectContent>
+                  {members.map((m) => <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Cargo</Label>
+              <Input value={activeMember?.role_name || ""} readOnly className="bg-muted/40" placeholder="—" />
+            </div>
           </div>
-          <div>
-            <Label className="text-xs">Turno</Label>
+
+          <div className="rounded-lg border p-3">
+            <p className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Nuevo bloque</p>
+            <Label className="text-xs">Tipo de turno</Label>
             <Select value={code} onValueChange={setCode}>
               <SelectTrigger><SelectValue placeholder="Selecciona un turno" /></SelectTrigger>
               <SelectContent>
                 {tipos.filter((t) => t.active).map((t) => (
-                  <SelectItem key={t.id} value={t.code}>{t.code} — {t.name} ({t.hours}h)</SelectItem>
+                  <SelectItem key={t.id} value={t.code}>
+                    {t.code} — {t.name}{t.start_time && t.end_time ? ` (${t.start_time.slice(0, 5)}-${t.end_time.slice(0, 5)})` : ""}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+
+            <Label className="mt-3 block text-xs">Días del mes</Label>
+            <div className="mt-1 grid grid-cols-7 gap-1">
+              {Array.from({ length: ndias }, (_, i) => i + 1).map((d) => {
+                const sel = dias.includes(d);
+                return (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => toggleDia(d)}
+                    className={`flex h-9 flex-col items-center justify-center rounded-md border text-[11px] font-semibold transition-colors ${
+                      sel ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background text-muted-foreground hover:bg-accent"
+                    }`}
+                  >
+                    <span>{d}</span>
+                    <span className="text-[8px] opacity-70">{letraDiaSemana(anio, mes, d)}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <Button size="sm" variant="outline" className="mt-3" onClick={agregarBloque}>
+              <Plus className="mr-1.5 h-4 w-4" /> Agregar bloque
+            </Button>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label className="text-xs">Desde (día)</Label><Input type="number" min={1} max={ndias} value={desde} onChange={(e) => setDesde(Number(e.target.value))} /></div>
-            <div><Label className="text-xs">Hasta (día)</Label><Input type="number" min={1} max={ndias} value={hasta} onChange={(e) => setHasta(Number(e.target.value))} /></div>
-          </div>
-          <div>
-            <Label className="text-xs">Frecuencia</Label>
-            <Select value={frecuencia} onValueChange={(v) => setFrecuencia(v as "todos" | "dias")}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos los días del rango</SelectItem>
-                <SelectItem value="dias">Días específicos de la semana</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {frecuencia === "dias" && (
-            <div className="flex flex-wrap gap-1.5">
-              {DOW_OPCIONES.map((o) => (
-                <button
-                  key={o.dow}
-                  type="button"
-                  onClick={() => toggleDow(o.dow)}
-                  className={`h-8 w-8 rounded-md border text-xs font-semibold transition-colors ${
-                    weekdays.includes(o.dow)
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-input bg-background text-muted-foreground hover:bg-accent"
-                  }`}
-                >
-                  {o.label}
-                </button>
-              ))}
+
+          {bloques.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-semibold uppercase text-muted-foreground">Bloques a guardar</p>
+              {bloques.map((b, i) => {
+                const tipo = tipoMap.get(b.code);
+                return (
+                  <div key={i} className="flex items-center gap-2 rounded-md border px-2 py-1.5 text-xs">
+                    <span className="inline-block h-3 w-3 rounded" style={{ background: tipo?.color ?? "#999" }} />
+                    <span className="font-bold">{b.code}</span>
+                    <span className="text-muted-foreground">{tipo?.name}</span>
+                    <span className="ml-auto">días: {b.dias.join(", ")}</span>
+                    <button type="button" onClick={() => quitarBloque(i)} className="text-rose-600 hover:opacity-70">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
-          <label className="flex items-center gap-2 text-xs">
-            <input type="checkbox" checked={sobrescribir} onChange={(e) => setSobrescribir(e.target.checked)} />
-            Sobrescribir días que ya tienen turno
-          </label>
-          <p className="rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-            Se aplicará a <strong>{targets.length}</strong> colaborador(es) en{" "}
-            <strong>{diasObjetivo.length}</strong> día(s) del mes.
-          </p>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={aplicar} disabled={saving}>{saving ? "Aplicando…" : "Aplicar plantilla"}</Button>
+          <Button onClick={guardar} disabled={saving}>{saving ? "Guardando…" : "Guardar turnos"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

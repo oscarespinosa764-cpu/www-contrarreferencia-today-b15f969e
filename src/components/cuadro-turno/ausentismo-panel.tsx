@@ -175,9 +175,52 @@ export function AusentismoPanel() {
   );
 }
 
+interface PerfilOpt {
+  user_id: string;
+  nombre: string;
+  cargo: string | null;
+  numero_documento: string | null;
+}
+
 function NuevoRegistroDialog({ adminId, onClose, onDone }: { adminId: string; onClose: () => void; onDone: () => void }) {
-  const [f, setF] = useState<any>({ event_code: "", registration_date: new Date().toISOString().slice(0, 10) });
+  const hoy = new Date().toISOString().slice(0, 10);
+  const [f, setF] = useState<any>({ event_code: "", registration_date: hoy });
   const [saving, setSaving] = useState(false);
+
+  const { data: perfiles = [] } = useQuery({
+    queryKey: ["perfiles-ausentismo"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, nombre, cargo, numero_documento")
+        .eq("activo", true)
+        .order("nombre");
+      return (data ?? []) as unknown as PerfilOpt[];
+    },
+    staleTime: 300_000,
+  });
+
+  // Cálculo automático de minutos y días.
+  const minutosAuto = useMemo(
+    () => minutosEntreHoras(f.start_time || null, f.end_time || null),
+    [f.start_time, f.end_time],
+  );
+  const diasAuto = useMemo(
+    () => diasEntreFechas(f.start_date || null, f.end_date || null),
+    [f.start_date, f.end_date],
+  );
+
+  const seleccionarTrabajador = (userId: string) => {
+    const p = perfiles.find((x) => x.user_id === userId);
+    if (!p) return;
+    setF((prev: any) => ({
+      ...prev,
+      user_id: p.user_id,
+      worker_name: p.nombre,
+      identification_number: p.numero_documento || "",
+      role_name: p.cargo || "",
+    }));
+  };
 
   const save = async () => {
     if (!f.worker_name?.trim()) return toast.error("Trabajador obligatorio.");
@@ -186,21 +229,17 @@ function NuevoRegistroDialog({ adminId, onClose, onDone }: { adminId: string; on
     if (!f.reason?.trim()) return toast.error("Motivo obligatorio.");
     setSaving(true);
     try {
-      const minutos = minutosEntreHoras(f.start_time || null, f.end_time || null);
-      const dias = diasEntreFechas(f.start_date || null, f.end_date || null);
       const { error } = await supabase.from("shift_absenteeism_records").insert({
-        registration_date: f.registration_date,
+        registration_date: f.registration_date || hoy,
+        user_id: f.user_id || null,
         identification_number: f.identification_number || null,
         worker_name: f.worker_name, role_name: f.role_name || null,
         start_date: f.start_date, end_date: f.end_date || null,
         start_time: f.start_time || null, end_time: f.end_time || null,
-        minutes_number: f.minutes_number ? Number(f.minutes_number) : minutos,
-        days_number: f.days_number ? Number(f.days_number) : dias,
+        minutes_number: f.minutes_number ? Number(f.minutes_number) : minutosAuto,
+        days_number: f.days_number ? Number(f.days_number) : diasAuto,
         event_code: f.event_code, event_name: eventoNombre(f.event_code),
-        reason: f.reason, eps: f.eps || null, arl: f.arl || null,
-        daily_salary: f.daily_salary ? Number(f.daily_salary) : null,
-        required_resources: f.required_resources || null,
-        additional_details: f.additional_details || null,
+        reason: f.reason,
         origin: "registro_manual", created_by: adminId,
       });
       if (error) throw error;
@@ -217,28 +256,36 @@ function NuevoRegistroDialog({ adminId, onClose, onDone }: { adminId: string; on
       <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
         <DialogHeader><DialogTitle>Nuevo registro de ausentismo</DialogTitle></DialogHeader>
         <div className="grid grid-cols-2 gap-3 text-sm">
-          <div><Label className="text-xs">Trabajador *</Label><Input uppercase value={f.worker_name || ""} onChange={set("worker_name")} /></div>
-          <div><Label className="text-xs">C.C.</Label><Input value={f.identification_number || ""} onChange={set("identification_number")} /></div>
-          <div><Label className="text-xs">Cargo</Label><Input uppercase value={f.role_name || ""} onChange={set("role_name")} /></div>
-          <div><Label className="text-xs">Fecha de registro</Label><Input type="date" value={f.registration_date} onChange={set("registration_date")} /></div>
-          <div><Label className="text-xs">Fecha inicio *</Label><Input type="date" value={f.start_date || ""} onChange={set("start_date")} /></div>
-          <div><Label className="text-xs">Fecha fin</Label><Input type="date" value={f.end_date || ""} onChange={set("end_date")} /></div>
-          <div><Label className="text-xs">Hora inicio</Label><TimeField value={f.start_time || ""} onChange={(v) => setF({ ...f, start_time: v })} /></div>
-          <div><Label className="text-xs">Hora fin</Label><TimeField value={f.end_time || ""} onChange={(v) => setF({ ...f, end_time: v })} /></div>
-          <div><Label className="text-xs">No. minutos</Label><Input type="number" value={f.minutes_number || ""} onChange={set("minutes_number")} placeholder="auto" /></div>
-          <div><Label className="text-xs">No. días</Label><Input type="number" value={f.days_number || ""} onChange={set("days_number")} placeholder="auto" /></div>
+          <div className="col-span-2">
+            <Label className="text-xs">Trabajador *</Label>
+            <Select value={f.user_id || ""} onValueChange={seleccionarTrabajador}>
+              <SelectTrigger><SelectValue placeholder="Selecciona un funcionario" /></SelectTrigger>
+              <SelectContent>
+                {perfiles.map((p) => (
+                  <SelectItem key={p.user_id} value={p.user_id}>{p.nombre}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div><Label className="text-xs">C.C.</Label><Input value={f.identification_number || ""} readOnly className="bg-muted/40" /></div>
+          <div><Label className="text-xs">Cargo</Label><Input value={f.role_name || ""} readOnly className="bg-muted/40" /></div>
+          <div><Label className="text-xs">Fecha de registro</Label><Input type="date" value={f.registration_date} readOnly className="bg-muted/40" /></div>
           <div><Label className="text-xs">Evento presentado *</Label>
             <Select value={f.event_code} onValueChange={(v) => setF({ ...f, event_code: v })}>
               <SelectTrigger><SelectValue placeholder="Selecciona" /></SelectTrigger>
               <SelectContent>{EVENTOS_TH48.map((e) => <SelectItem key={e.code} value={e.code}>{e.code} — {e.name}</SelectItem>)}</SelectContent>
             </Select></div>
-          <div><Label className="text-xs">EPS</Label><Input value={f.eps || ""} onChange={set("eps")} /></div>
-          <div><Label className="text-xs">ARL</Label><Input value={f.arl || ""} onChange={set("arl")} /></div>
-          <div><Label className="text-xs">Salario día</Label><Input type="number" value={f.daily_salary || ""} onChange={set("daily_salary")} /></div>
+          <div><Label className="text-xs">Fecha inicio *</Label><Input type="date" value={f.start_date || ""} onChange={set("start_date")} /></div>
+          <div><Label className="text-xs">Fecha fin</Label><Input type="date" value={f.end_date || ""} onChange={set("end_date")} /></div>
+          <div><Label className="text-xs">Hora inicio</Label><TimeField value={f.start_time || ""} onChange={(v) => setF({ ...f, start_time: v })} /></div>
+          <div><Label className="text-xs">Hora fin</Label><TimeField value={f.end_time || ""} onChange={(v) => setF({ ...f, end_time: v })} /></div>
+          <div><Label className="text-xs">No. minutos</Label><Input type="number" value={f.minutes_number ?? ""} onChange={set("minutes_number")} placeholder={String(minutosAuto)} /></div>
+          <div><Label className="text-xs">No. días</Label><Input type="number" value={f.days_number ?? ""} onChange={set("days_number")} placeholder={String(diasAuto)} /></div>
           <div className="col-span-2"><Label className="text-xs">Motivo *</Label><Input value={f.reason || ""} onChange={set("reason")} /></div>
-          <div className="col-span-2"><Label className="text-xs">Recursos requeridos</Label><Input value={f.required_resources || ""} onChange={set("required_resources")} /></div>
-          <div className="col-span-2"><Label className="text-xs">Detalles adicionales</Label><Textarea value={f.additional_details || ""} onChange={set("additional_details")} rows={2} /></div>
         </div>
+        <p className="text-[11px] text-muted-foreground">
+          Cálculo automático: <strong>{minutosAuto}</strong> minuto(s) · <strong>{diasAuto}</strong> día(s). Puedes ajustarlos manualmente si lo requieres.
+        </p>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
           <Button onClick={save} disabled={saving}>{saving ? "Guardando…" : "Guardar"}</Button>

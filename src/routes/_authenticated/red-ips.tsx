@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
-import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { AppHeader } from "@/components/app-header";
 import { Input } from "@/components/ui/input";
 import {
@@ -20,16 +19,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
   Search,
   Network,
   Building2,
@@ -38,7 +27,6 @@ import {
   Ambulance,
   ChevronRight,
 } from "lucide-react";
-import { toast } from "sonner";
 import { RedCard } from "@/components/red/red-card";
 import {
   RED_GRUPOS,
@@ -51,7 +39,6 @@ import {
   esActivo,
   ubicacion,
   serviciosList,
-  fmtFechaHora,
   type RedRegistro,
   type RedGrupo,
   type TipoRed,
@@ -62,8 +49,7 @@ export const Route = createFileRoute("/_authenticated/red-ips")({
 });
 
 function RedIpsPage() {
-  const { canEdit, user } = useAuth();
-  const qc = useQueryClient();
+  const { canEdit } = useAuth();
 
   const [grupo, setGrupo] = useState<RedGrupo>("jornadas_tep");
   const [ambito, setAmbito] = useState("todos"); // todos | caqueta | nacional
@@ -72,19 +58,7 @@ function RedIpsPage() {
 
   const [detalle, setDetalle] = useState<RedRegistro | null>(null);
 
-  const [dispTarget, setDispTarget] = useState<{ reg: RedRegistro; value: boolean } | null>(null);
-  const [novedadInput, setNovedadInput] = useState("");
 
-  const { data: perfiles } = useQuery({
-    queryKey: ["perfiles-nombres"],
-    queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("user_id, nombre");
-      const map: Record<string, string> = {};
-      (data ?? []).forEach((p: any) => (map[p.user_id] = p.nombre));
-      return map;
-    },
-    staleTime: 300_000,
-  });
 
   const { data: registros, isLoading } = useQuery({
     queryKey: ["red-operativa"],
@@ -107,8 +81,8 @@ function RedIpsPage() {
     const enGrupo = (k: RedGrupo) => all.filter((r) => grupoDeTipo(r.tipo_red) === k);
     const ips = enGrupo("ips");
     return {
-      ipsActivas: ips.filter((r) => esActivo(r) && r.disponible_para_remisiones).length,
-      ipsNoDisp: ips.filter((r) => !esActivo(r) || !r.disponible_para_remisiones).length,
+      ipsActivas: ips.filter((r) => esActivo(r)).length,
+      ipsNoDisp: ips.filter((r) => !esActivo(r)).length,
       especialidades: enGrupo("especialidades_cedim").filter((r) => esActivo(r)).length,
       ambulancias: enGrupo("ambulancias").filter((r) => esActivo(r)).length,
     };
@@ -124,10 +98,7 @@ function RedIpsPage() {
         return ambito === "caqueta" ? esCaqueta(r) : !esCaqueta(r);
       })
       .filter((r) => {
-        const disp = !!r.disponible_para_remisiones;
         const act = esActivo(r);
-        if (filtro === "disponibles") return disp;
-        if (filtro === "no-disponibles") return !disp;
         if (filtro === "activos") return act;
         if (filtro === "inactivos") return !act;
         return true;
@@ -135,60 +106,9 @@ function RedIpsPage() {
       .filter((r) => (term ? textoBusqueda(r).includes(term) : true));
   }, [all, grupo, grupoCfg, ambito, filtro, term]);
 
-  const auditar = (accion: string, registroId: string, detalles: Record<string, unknown>) => {
-    registrarAuditoria({
-      data: { accion, modulo: "red-ips", tabla: "red_operativa", registroId, detalles },
-    }).catch(() => {});
-  };
-
-  const pedirCambio = (r: RedRegistro, value: boolean) => {
-    if (!canEdit) {
-      toast.error("No tienes permisos para modificar disponibilidad.");
-      return;
-    }
-    setNovedadInput("");
-    setDispTarget({ reg: r, value });
-  };
-
-  const aplicarDisponibilidad = async () => {
-    if (!dispTarget) return;
-    const { reg: r, value } = dispTarget;
-    const estadoAnterior = r.disponible_para_remisiones ? "disponible" : "no_disponible";
-    const estadoNuevo = value ? "disponible" : "no_disponible";
-    const novedad =
-      novedadInput.trim() ||
-      `${r.entidad || "Institución"} marcada como ${
-        value ? "DISPONIBLE" : "NO DISPONIBLE"
-      } para remisiones.`;
-    const { error } = await supabase
-      .from("red_operativa")
-      .update({
-        disponible_para_remisiones: value,
-        novedad_disponibilidad: novedad,
-        fecha_actualizacion_disponibilidad: new Date().toISOString(),
-        usuario_actualizacion: user?.id ?? null,
-      })
-      .eq("id", r.id);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    auditar("cambiar_disponibilidad_red", r.id, {
-      recurso: r.entidad || "",
-      tipo_red: r.tipo_red || "",
-      estado_anterior: estadoAnterior,
-      estado_nuevo: estadoNuevo,
-      novedad,
-    });
-    toast.success(value ? "Recurso marcado como disponible" : "Recurso marcado como no disponible");
-    setDispTarget(null);
-    setNovedadInput("");
-    qc.invalidateQueries({ queryKey: ["red-operativa"] });
-  };
-
   const countCards = [
-    { label: "IPS activas / disponibles", value: conteos.ipsActivas, icon: Building2, color: "green" },
-    { label: "IPS inactivas / no disp.", value: conteos.ipsNoDisp, icon: XCircle, color: "red" },
+    { label: "IPS activas", value: conteos.ipsActivas, icon: Building2, color: "green" },
+    { label: "IPS inactivas", value: conteos.ipsNoDisp, icon: XCircle, color: "red" },
     {
       label: "Especialidades CEDIM activas",
       value: conteos.especialidades,
@@ -204,6 +124,7 @@ function RedIpsPage() {
     sky: "bg-status-sky/10 text-status-sky",
     violet: "bg-vitalis-blue/10 text-vitalis-blue",
   };
+
 
   return (
     <div>
@@ -287,8 +208,6 @@ function RedIpsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="disponibles">Disponibles</SelectItem>
-                  <SelectItem value="no-disponibles">No disponibles</SelectItem>
                   <SelectItem value="activos">Activos</SelectItem>
                   <SelectItem value="inactivos">Inactivos</SelectItem>
                 </SelectContent>
@@ -307,8 +226,8 @@ function RedIpsPage() {
                     grupo={grupoCfg}
                     canEdit={canEdit}
                     onView={setDetalle}
-                    onToggle={pedirCambio}
                   />
+
                 ))}
               </div>
             ) : (
@@ -365,10 +284,6 @@ function RedIpsPage() {
               <div className="max-h-[70vh] space-y-2 overflow-y-auto text-sm">
                 <DetRow k="Tipo" v={TIPO_RED_LABEL[(detalle.tipo_red as TipoRed) || "ips_departamental"]} />
                 <DetRow k="Estado" v={esActivo(detalle) ? "Activo" : "Inactivo"} />
-                <DetRow
-                  k="Disponibilidad"
-                  v={detalle.disponible_para_remisiones ? "Disponible" : "No disponible"}
-                />
                 <DetRow k="NIT" v={detalle.nit || ""} />
                 <DetRow k="Empresa TEP" v={detalle.empresa_tep || ""} />
                 <DetRow k="Tipo de ambulancia" v={detalle.tipo_ambulancia || ""} />
@@ -398,70 +313,15 @@ function RedIpsPage() {
                   v={[detalle.vigencia_desde, detalle.vigencia_hasta].filter(Boolean).join(" → ")}
                 />
                 <DetRow k="Observaciones" v={detalle.observaciones || ""} />
-                <DetRow
-                  k="Última actualización"
-                  v={
-                    detalle.fecha_actualizacion_disponibilidad
-                      ? fmtFechaHora(detalle.fecha_actualizacion_disponibilidad)
-                      : ""
-                  }
-                />
-                <DetRow
-                  k="Actualizado por"
-                  v={
-                    detalle.usuario_actualizacion && perfiles?.[detalle.usuario_actualizacion]
-                      ? perfiles[detalle.usuario_actualizacion]
-                      : ""
-                  }
-                />
               </div>
             </>
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Confirmar cambio de disponibilidad + novedad */}
-      <AlertDialog open={!!dispTarget} onOpenChange={(v) => !v && setDispTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Confirmar cambio de disponibilidad?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {dispTarget && (
-                <>
-                  «{dispTarget.reg.entidad || "Recurso"}» pasará a{" "}
-                  <span
-                    className={
-                      dispTarget.value ? "font-bold text-status-green" : "font-bold text-status-red"
-                    }
-                  >
-                    {dispTarget.value ? "DISPONIBLE" : "NO DISPONIBLE"}
-                  </span>
-                  .
-                </>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          {dispTarget && !dispTarget.value && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-foreground">Novedad (opcional)</label>
-              <textarea
-                value={novedadInput}
-                onChange={(e) => setNovedadInput(e.target.value)}
-                rows={2}
-                placeholder="Ej: Sin disponibilidad de UCI adultos por sobreocupación."
-                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              />
-            </div>
-          )}
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={aplicarDisponibilidad}>Confirmar</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
+
 
 function DetRow({ k, v }: { k: string; v: string }) {
   if (!v || !v.trim()) return null;
