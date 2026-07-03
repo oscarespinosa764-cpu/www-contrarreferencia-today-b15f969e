@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { enviarTelegram } from "./notifications.server";
 import {
   renderPlantilla,
   PLANTILLA_TELEGRAM_DEFAULT,
