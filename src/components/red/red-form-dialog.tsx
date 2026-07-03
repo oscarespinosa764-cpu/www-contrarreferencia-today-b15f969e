@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { DictationTextarea } from "@/components/voz/dictation-textarea";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -12,39 +11,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { AutoComplete } from "@/components/rc/autocomplete";
 import {
-  Home,
-  ChevronRight,
-  Plus,
-  Trash2,
-  Copy,
-  Save,
-  Phone,
-  Stethoscope,
-  Ambulance as AmbulanceIcon,
-  ClipboardList,
-  Info,
-} from "lucide-react";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { AutoComplete } from "@/components/rc/autocomplete";
+import { Save } from "lucide-react";
 import { toast } from "sonner";
 import {
-  RED_TABS,
-  TIPO_RED_LABEL,
   JORNADAS,
-  TIPOS_APOYO,
-  getTab,
+  ESTADOS_JORNADA,
+  TIPOS_AMBULANCIA,
+  getGrupo,
+  grupoDeTipo,
   type RedRegistro,
   type TipoRed,
-  type RelacionRed,
-  type CodigoApoyo,
+  type RedGrupo,
 } from "@/lib/red-ips-utils";
 
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  tipo: TipoRed;
-  onTipoChange: (t: TipoRed) => void;
+  grupo: RedGrupo;
   editing: RedRegistro | null;
   especialidades: string[];
   ipsOptions: string[];
@@ -52,73 +43,94 @@ interface Props {
 }
 
 type FormState = {
+  tipo_red: TipoRed;
   estado: string;
+  ambito: string; // caqueta | nacional
+  entidad: string;
+  nit: string;
+  servicio_especialidad: string;
+  medico: string;
   sede: string;
   ciudad: string;
   departamento: string;
-  entidad: string;
-  servicio_especialidad: string;
+  direccion: string;
   telefono: string;
   correo: string;
   contacto_principal: string;
-  direccion: string;
-  observaciones: string;
+  cargo_contacto: string;
+  eapb_aseguradoras: string;
+  tipo_ambulancia: string;
   tipo_apoyo: string;
-  fecha_inicio: string;
-  fecha_final: string;
+  cups: string;
+  cups_descripcion: string;
+  recorrido: string;
+  empresa_tep: string;
   jornada: string;
   horario: string;
+  fecha_inicio: string;
+  fecha_final: string;
+  vigencia_desde: string;
+  vigencia_hasta: string;
   disponible_para_remisiones: boolean;
-  novedad_disponibilidad: string;
-  relaciones_red: RelacionRed[];
-  codigos_apoyo: CodigoApoyo[];
+  observaciones: string;
 };
 
 const EMPTY: FormState = {
+  tipo_red: "ips_departamental",
   estado: "activo",
+  ambito: "caqueta",
+  entidad: "",
+  nit: "",
+  servicio_especialidad: "",
+  medico: "",
   sede: "",
   ciudad: "",
   departamento: "",
-  entidad: "",
-  servicio_especialidad: "",
+  direccion: "",
   telefono: "",
   correo: "",
   contacto_principal: "",
-  direccion: "",
-  observaciones: "",
+  cargo_contacto: "",
+  eapb_aseguradoras: "",
+  tipo_ambulancia: "",
   tipo_apoyo: "",
-  fecha_inicio: "",
-  fecha_final: "",
+  cups: "",
+  cups_descripcion: "",
+  recorrido: "",
+  empresa_tep: "",
   jornada: "",
   horario: "",
-  disponible_para_remisiones: false,
-  novedad_disponibilidad: "",
-  relaciones_red: [],
-  codigos_apoyo: [],
+  fecha_inicio: "",
+  fecha_final: "",
+  vigencia_desde: "",
+  vigencia_hasta: "",
+  disponible_para_remisiones: true,
+  observaciones: "",
 };
 
-function BlockTitle({ n, children }: { n: number; children: React.ReactNode }) {
-  return (
-    <div className="mb-3 flex items-center gap-2">
-      <span className="flex h-6 w-6 items-center justify-center rounded-md bg-vitalis-blue text-xs font-bold text-white">
-        {n}
-      </span>
-      <h3 className="text-sm font-bold text-foreground">{children}</h3>
-    </div>
-  );
+function defaultTipo(grupo: RedGrupo): TipoRed {
+  switch (grupo) {
+    case "jornadas_tep":
+      return "jornada_especialidad";
+    case "ips":
+      return "ips_departamental";
+    case "ambulancias":
+      return "ambulancia_autorizacion";
+    case "especialidades_cedim":
+      return "especialista_interno";
+  }
 }
 
 export function RedFormDialog({
   open,
   onOpenChange,
-  tipo,
-  onTipoChange,
+  grupo,
   editing,
   especialidades,
   ipsOptions,
   onSubmit,
 }: Props) {
-  const tab = getTab(tipo);
+  const cfg = getGrupo(grupo);
   const [f, setF] = useState<FormState>(EMPTY);
   const [busy, setBusy] = useState(false);
 
@@ -129,57 +141,68 @@ export function RedFormDialog({
     if (!open) return;
     if (editing) {
       setF({
+        tipo_red: (editing.tipo_red as TipoRed) || defaultTipo(grupo),
         estado: editing.estado || "activo",
+        ambito: editing.ambito || (grupoDeTipo(editing.tipo_red) === "ips" ? "caqueta" : "caqueta"),
+        entidad: editing.entidad || "",
+        nit: editing.nit || "",
+        servicio_especialidad: editing.servicio_especialidad || "",
+        medico: editing.medico || "",
         sede: editing.sede || "",
         ciudad: editing.ciudad || "",
         departamento: editing.departamento || "",
-        entidad: editing.entidad || "",
-        servicio_especialidad: editing.servicio_especialidad || "",
+        direccion: editing.direccion || "",
         telefono: editing.telefono || editing.contacto || "",
         correo: editing.correo || "",
         contacto_principal: editing.contacto_principal || "",
-        direccion: editing.direccion || "",
-        observaciones: editing.observaciones || "",
+        cargo_contacto: editing.cargo_contacto || "",
+        eapb_aseguradoras: editing.eapb_aseguradoras || "",
+        tipo_ambulancia: editing.tipo_ambulancia || "",
         tipo_apoyo: editing.tipo_apoyo || "",
-        fecha_inicio: editing.fecha_inicio || "",
-        fecha_final: editing.fecha_final || "",
+        cups: editing.cups || "",
+        cups_descripcion: editing.cups_descripcion || "",
+        recorrido: editing.recorrido || "",
+        empresa_tep: editing.empresa_tep || "",
         jornada: editing.jornada || "",
         horario: editing.horario || "",
-        disponible_para_remisiones: !!editing.disponible_para_remisiones,
-        novedad_disponibilidad: editing.novedad_disponibilidad || "",
-        relaciones_red: Array.isArray(editing.relaciones_red) ? editing.relaciones_red : [],
-        codigos_apoyo: Array.isArray(editing.codigos_apoyo) ? editing.codigos_apoyo : [],
+        fecha_inicio: editing.fecha_inicio || "",
+        fecha_final: editing.fecha_final || "",
+        vigencia_desde: editing.vigencia_desde || "",
+        vigencia_hasta: editing.vigencia_hasta || "",
+        disponible_para_remisiones: editing.disponible_para_remisiones ?? true,
+        observaciones: editing.observaciones || "",
       });
     } else {
-      setF(EMPTY);
+      setF({ ...EMPTY, tipo_red: defaultTipo(grupo) });
     }
-  }, [open, editing]);
+  }, [open, editing, grupo]);
 
   const inactivo = f.estado === "inactivo";
-  // Si el registro está inactivo, no puede estar disponible para remisiones.
   const disponibleEff = inactivo ? false : f.disponible_para_remisiones;
 
-  const resumen = useMemo(
-    () => ({
-      tipo: TIPO_RED_LABEL[tipo],
-      estado: f.estado === "inactivo" ? "Inactivo" : "Activo",
-      disponible: disponibleEff,
-    }),
-    [tipo, f.estado, disponibleEff],
-  );
+  // ¿Qué subtipo aplica según el grupo?
+  const esTEP = f.tipo_red === "codigo_tep";
+  const esJornada = f.tipo_red === "jornada_especialidad";
+  const esEspecialidad = grupo === "especialidades_cedim";
+  const esAmbulancia = grupo === "ambulancias";
+  const esIps = grupo === "ips";
 
   const validar = (): string | null => {
+    if (grupo === "jornadas_tep") {
+      if (esTEP) {
+        if (!f.empresa_tep.trim()) return "Indica la empresa TEP";
+        if (!f.tipo_ambulancia) return "Indica el tipo de ambulancia";
+      } else {
+        if (!f.servicio_especialidad.trim()) return "Indica la especialidad";
+        if (!f.entidad.trim()) return "Indica la IPS de la jornada";
+      }
+      return null;
+    }
     if (!f.entidad.trim())
-      return tab.esEspecialista
-        ? "Indica el nombre del médico / contacto"
-        : tab.esAmbulancia
-          ? "Indica el nombre de la empresa / entidad"
-          : "Indica el nombre de la institución";
-    if (!f.ciudad.trim()) return "Indica la ciudad / departamento";
-    if (!f.telefono.trim() && !f.correo.trim()) return "Indica al menos teléfono o correo";
-    if (tab.esEspecialista && !f.servicio_especialidad.trim())
-      return "Indica la especialidad";
-    if (tab.esAmbulancia && !f.tipo_apoyo.trim()) return "Indica el tipo de apoyo";
+      return esEspecialidad ? "Indica el profesional / especialidad" : "Indica el nombre";
+    if (esEspecialidad && !f.servicio_especialidad.trim()) return "Indica la especialidad";
+    if (esAmbulancia && !f.tipo_ambulancia) return "Indica el tipo de ambulancia";
+    if (!esEspecialidad && !f.ciudad.trim()) return "Indica la ciudad / municipio";
     return null;
   };
 
@@ -187,240 +210,204 @@ export function RedFormDialog({
     const err = validar();
     if (err) return toast.error(err);
     setBusy(true);
+    // Ajuste de tipo_red según ámbito para IPS
+    let tipoRed = f.tipo_red;
+    if (esIps) tipoRed = f.ambito === "nacional" ? "ips_nacional" : "ips_departamental";
     const payload: Record<string, unknown> = {
-      tipo_red: tipo,
+      tipo_red: tipoRed,
       estado: f.estado,
+      ambito: cfg.tieneAmbito ? f.ambito : null,
+      entidad: (esEspecialidad ? f.medico || f.entidad : f.entidad).trim() || null,
+      nit: f.nit.trim() || null,
+      servicio_especialidad: f.servicio_especialidad.trim() || null,
+      medico: esEspecialidad ? (f.medico || f.entidad).trim() || null : f.medico.trim() || null,
       sede: f.sede.trim() || null,
       ciudad: f.ciudad.trim() || null,
       departamento: f.departamento.trim() || null,
-      entidad: f.entidad.trim(),
-      medico: tab.esEspecialista ? f.entidad.trim() : null,
-      servicio_especialidad: f.servicio_especialidad.trim() || null,
+      direccion: f.direccion.trim() || null,
       telefono: f.telefono.trim() || null,
       contacto: f.telefono.trim() || null,
       correo: f.correo.trim() || null,
       contacto_principal: f.contacto_principal.trim() || null,
-      direccion: f.direccion.trim() || null,
-      observaciones: f.observaciones.trim() || null,
-      tipo_apoyo: tab.esAmbulancia ? f.tipo_apoyo.trim() || null : null,
-      fecha_inicio: f.fecha_inicio || null,
-      fecha_final: f.fecha_final || null,
+      cargo_contacto: f.cargo_contacto.trim() || null,
+      eapb_aseguradoras: f.eapb_aseguradoras.trim() || null,
+      tipo_ambulancia: f.tipo_ambulancia || null,
+      tipo_apoyo: f.tipo_apoyo.trim() || null,
+      cups: f.cups.trim() || null,
+      cups_descripcion: f.cups_descripcion.trim() || null,
+      recorrido: f.recorrido.trim() || null,
+      empresa_tep: f.empresa_tep.trim() || null,
       jornada: f.jornada || null,
       horario: f.horario.trim() || null,
+      fecha_inicio: f.fecha_inicio || null,
+      fecha_final: f.fecha_final || null,
+      vigencia_desde: f.vigencia_desde || null,
+      vigencia_hasta: f.vigencia_hasta || null,
       disponible_para_remisiones: disponibleEff,
-      novedad_disponibilidad: f.novedad_disponibilidad.trim() || null,
-      relaciones_red: f.relaciones_red,
-      codigos_apoyo: f.codigos_apoyo,
+      observaciones: f.observaciones.trim() || null,
     };
     const ok = await onSubmit(payload, editing?.id);
     setBusy(false);
     if (ok) onOpenChange(false);
   };
 
-  // --- relaciones_red helpers ---
-  const addRelacion = () =>
-    set("relaciones_red", [...f.relaciones_red, { nombre: "" }]);
-  const updRelacion = (i: number, patch: Partial<RelacionRed>) =>
-    set(
-      "relaciones_red",
-      f.relaciones_red.map((r, idx) => (idx === i ? { ...r, ...patch } : r)),
-    );
-  const delRelacion = (i: number) =>
-    set("relaciones_red", f.relaciones_red.filter((_, idx) => idx !== i));
-
-  // --- codigos_apoyo helpers ---
-  const addCodigo = () =>
-    set("codigos_apoyo", [...f.codigos_apoyo, { entidad: "" }]);
-  const updCodigo = (i: number, patch: Partial<CodigoApoyo>) =>
-    set(
-      "codigos_apoyo",
-      f.codigos_apoyo.map((r, idx) => (idx === i ? { ...r, ...patch } : r)),
-    );
-  const delCodigo = (i: number) =>
-    set("codigos_apoyo", f.codigos_apoyo.filter((_, idx) => idx !== i));
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] max-w-6xl overflow-y-auto p-0">
-        {/* Encabezado */}
-        <div className="sticky top-0 z-10 border-b border-border bg-card px-6 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Home className="h-4 w-4 text-vitalis-blue" />
-              <span className="font-semibold text-vitalis-blue">Red de instituciones</span>
-              <ChevronRight className="h-3.5 w-3.5" />
-              <span>{editing ? "Editar registro" : "Nuevo registro"}</span>
-            </p>
-            <span className="rounded-full border border-vitalis-blue/30 bg-vitalis-blue/10 px-4 py-1 text-xs font-bold uppercase tracking-wide text-vitalis-blue">
-              Ingreso de información
-            </span>
-          </div>
-          {/* Pestañas de tipo */}
-          <div className="mt-3 flex flex-wrap gap-2">
-            {RED_TABS.map((t) => {
-              const Icon = t.icon;
-              const active = t.key === tipo;
-              return (
-                <button
-                  key={t.key}
-                  type="button"
-                  onClick={() => onTipoChange(t.key)}
-                  className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide transition-colors ${
-                    active
-                      ? "border-vitalis-blue bg-vitalis-blue text-white"
-                      : "border-border bg-secondary text-muted-foreground hover:bg-accent"
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5" /> {t.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+      <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {editing ? "Editar" : "Nuevo"} · {cfg.label}
+          </DialogTitle>
+        </DialogHeader>
 
-        <div className="grid gap-6 px-6 pb-6 lg:grid-cols-[1fr_300px]">
-          {/* Columna principal de bloques */}
-          <div className="space-y-6">
-            {/* Bloque 1 */}
-            <section className="rounded-xl border border-border bg-background/40 p-4">
-              <BlockTitle n={1}>Información general</BlockTitle>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label>Tipo de registro</Label>
-                  <Select value={tipo} onValueChange={(v) => onTipoChange(v as TipoRed)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {RED_TABS.map((t) => (
-                        <SelectItem key={t.key} value={t.key}>
-                          {TIPO_RED_LABEL[t.key]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Estado del registro</Label>
-                  <Select value={f.estado} onValueChange={(v) => set("estado", v)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
+        <div className="space-y-4">
+          {/* Selector de subtipo para JORNADAS / CÓDIGOS TEP */}
+          {grupo === "jornadas_tep" && (
+            <div className="space-y-1.5">
+              <Label>Tipo de registro</Label>
+              <Select value={f.tipo_red} onValueChange={(v) => set("tipo_red", v as TipoRed)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="jornada_especialidad">
+                    Jornada de especialidad / IPS
+                  </SelectItem>
+                  <SelectItem value="codigo_tep">Código TEP</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Estado + ámbito */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>Estado</Label>
+              <Select value={f.estado} onValueChange={(v) => set("estado", v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {esJornada ? (
+                    ESTADOS_JORNADA.map((e) => (
+                      <SelectItem key={e} value={e.toLowerCase()}>
+                        {e}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <>
                       <SelectItem value="activo">Activo</SelectItem>
                       <SelectItem value="inactivo">Inactivo</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            {cfg.tieneAmbito && (
+              <div className="space-y-1.5">
+                <Label>Ámbito</Label>
+                <Select value={f.ambito} onValueChange={(v) => set("ambito", v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="caqueta">Departamental — Caquetá</SelectItem>
+                    <SelectItem value="nacional">Nacional — fuera del Caquetá</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+
+          {/* ====== JORNADAS / CÓDIGOS TEP ====== */}
+          {grupo === "jornadas_tep" && esTEP && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Empresa TEP</Label>
+                <Input value={f.empresa_tep} onChange={(e) => set("empresa_tep", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Tipo de ambulancia</Label>
+                <Select value={f.tipo_ambulancia} onValueChange={(v) => set("tipo_ambulancia", v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIPOS_AMBULANCIA.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Recorrido / cobertura</Label>
+                <Input value={f.recorrido} onChange={(e) => set("recorrido", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Código CUPS</Label>
+                <Input value={f.cups} onChange={(e) => set("cups", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Descripción del CUPS</Label>
+                <Input
+                  value={f.cups_descripcion}
+                  onChange={(e) => set("cups_descripcion", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>EAPB / aseguradora</Label>
+                <Input
+                  value={f.eapb_aseguradoras}
+                  onChange={(e) => set("eapb_aseguradoras", e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:col-span-2">
                 <div className="space-y-1.5">
-                  <Label>Sede / institución</Label>
-                  <Input value={f.sede} onChange={(e) => set("sede", e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Ciudad / departamento</Label>
+                  <Label>Vigencia desde</Label>
                   <Input
-                    value={f.ciudad}
-                    onChange={(e) => set("ciudad", e.target.value)}
-                    placeholder="Florencia, Caquetá"
+                    type="date"
+                    value={f.vigencia_desde}
+                    onChange={(e) => set("vigencia_desde", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Vigencia hasta</Label>
+                  <Input
+                    type="date"
+                    value={f.vigencia_hasta}
+                    onChange={(e) => set("vigencia_hasta", e.target.value)}
                   />
                 </div>
               </div>
-            </section>
+            </div>
+          )}
 
-            {/* Bloque 2 */}
-            <section className="rounded-xl border border-border bg-background/40 p-4">
-              <BlockTitle n={2}>Datos del profesional o institución</BlockTitle>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label>
-                    {tab.esEspecialista
-                      ? "Nombre del médico / contacto"
-                      : tab.esAmbulancia
-                        ? "Nombre de empresa / entidad"
-                        : "Nombre de la institución"}
-                  </Label>
-                  <Input value={f.entidad} onChange={(e) => set("entidad", e.target.value)} />
-                </div>
-
-                {tab.esEspecialista ? (
-                  <AutoComplete
-                    label="Especialidad"
-                    value={f.servicio_especialidad}
-                    onChange={(v) => set("servicio_especialidad", v)}
-                    options={especialidades}
-                    placeholder="Neurocirugía…"
-                  />
-                ) : tab.esAmbulancia ? (
-                  <div className="space-y-1.5">
-                    <Label>Tipo de apoyo</Label>
-                    <Select value={f.tipo_apoyo} onValueChange={(v) => set("tipo_apoyo", v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TIPOS_APOYO.map((t) => (
-                          <SelectItem key={t} value={t}>
-                            {t}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ) : (
-                  <div className="space-y-1.5">
-                    <Label>Servicios</Label>
-                    <Input
-                      value={f.servicio_especialidad}
-                      onChange={(e) => set("servicio_especialidad", e.target.value)}
-                      placeholder="UCI Adultos, Hospitalización, Urgencias"
-                    />
-                  </div>
-                )}
-
-                <div className="space-y-1.5">
-                  <Label>Teléfono / WhatsApp</Label>
-                  <Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Correo electrónico</Label>
-                  <Input
-                    type="email"
-                    value={f.correo}
-                    onChange={(e) => set("correo", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Contacto principal</Label>
-                  <Input
-                    value={f.contacto_principal}
-                    onChange={(e) => set("contacto_principal", e.target.value)}
-                  />
-                </div>
-                {!tab.esEspecialista && (
-                  <div className="space-y-1.5">
-                    <Label>Dirección</Label>
-                    <Input
-                      value={f.direccion}
-                      onChange={(e) => set("direccion", e.target.value)}
-                    />
-                  </div>
-                )}
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label>Observaciones</Label>
-                  <DictationTextarea
-                    dictationKey="red.observaciones"
-                    rows={2}
-                    value={f.observaciones}
-                    onChange={(e) => set("observaciones", e.target.value)}
-                  />
-                </div>
+          {grupo === "jornadas_tep" && esJornada && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <AutoComplete
+                label="Especialidad"
+                value={f.servicio_especialidad}
+                onChange={(v) => set("servicio_especialidad", v)}
+                options={especialidades}
+                placeholder="Neurocirugía…"
+              />
+              <AutoComplete
+                label="IPS que tendrá la jornada"
+                value={f.entidad}
+                onChange={(v) => set("entidad", v)}
+                options={ipsOptions}
+              />
+              <div className="space-y-1.5">
+                <Label>Ciudad / departamento</Label>
+                <Input value={f.ciudad} onChange={(e) => set("ciudad", e.target.value)} />
               </div>
-            </section>
-
-            {/* Bloque 3 */}
-            <section className="rounded-xl border border-border bg-background/40 p-4">
-              <BlockTitle n={3}>Disponibilidad y jornadas</BlockTitle>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-1.5">
+                <Label>Médico / profesional</Label>
+                <Input value={f.medico} onChange={(e) => set("medico", e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1.5">
                   <Label>Fecha inicio</Label>
                   <Input
@@ -437,301 +424,243 @@ export function RedFormDialog({
                     onChange={(e) => set("fecha_final", e.target.value)}
                   />
                 </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Jornada</Label>
+                <Select value={f.jornada} onValueChange={(v) => set("jornada", v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {JORNADAS.map((j) => (
+                      <SelectItem key={j} value={j}>
+                        {j}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Horario</Label>
+                <Input value={f.horario} onChange={(e) => set("horario", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Contacto</Label>
+                <Input
+                  value={f.contacto_principal}
+                  onChange={(e) => set("contacto_principal", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Teléfono</Label>
+                <Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Correo</Label>
+                <Input value={f.correo} onChange={(e) => set("correo", e.target.value)} />
+              </div>
+            </div>
+          )}
+
+          {/* ====== IPS / AMBULANCIAS / ESPECIALIDADES CEDIM ====== */}
+          {grupo !== "jornadas_tep" && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>
+                  {esEspecialidad
+                    ? "Profesional / médico"
+                    : esAmbulancia
+                      ? "Nombre de la empresa"
+                      : "Nombre de la IPS"}
+                </Label>
+                <Input
+                  value={esEspecialidad ? f.medico || f.entidad : f.entidad}
+                  onChange={(e) =>
+                    esEspecialidad ? set("medico", e.target.value) : set("entidad", e.target.value)
+                  }
+                />
+              </div>
+
+              {esEspecialidad ? (
+                <AutoComplete
+                  label="Especialidad"
+                  value={f.servicio_especialidad}
+                  onChange={(v) => set("servicio_especialidad", v)}
+                  options={especialidades}
+                />
+              ) : (
                 <div className="space-y-1.5">
-                  <Label>Jornada</Label>
-                  <Select value={f.jornada} onValueChange={(v) => set("jornada", v)}>
+                  <Label>NIT (si aplica)</Label>
+                  <Input value={f.nit} onChange={(e) => set("nit", e.target.value)} />
+                </div>
+              )}
+
+              {esAmbulancia && (
+                <div className="space-y-1.5">
+                  <Label>Tipo(s) de ambulancia</Label>
+                  <Select value={f.tipo_ambulancia} onValueChange={(v) => set("tipo_ambulancia", v)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar…" />
                     </SelectTrigger>
                     <SelectContent>
-                      {JORNADAS.map((j) => (
-                        <SelectItem key={j} value={j}>
-                          {j}
+                      {TIPOS_AMBULANCIA.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Horario</Label>
+              )}
+
+              {!esEspecialidad && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label>Departamento</Label>
+                    <Input
+                      value={f.departamento}
+                      onChange={(e) => set("departamento", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Ciudad / municipio</Label>
+                    <Input value={f.ciudad} onChange={(e) => set("ciudad", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Dirección (si aplica)</Label>
+                    <Input value={f.direccion} onChange={(e) => set("direccion", e.target.value)} />
+                  </div>
+                </>
+              )}
+
+              {esEspecialidad && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label>Sede</Label>
+                    <Input value={f.sede} onChange={(e) => set("sede", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Servicio relacionado</Label>
+                    <Input
+                      value={f.tipo_apoyo}
+                      onChange={(e) => set("tipo_apoyo", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Jornada</Label>
+                    <Select value={f.jornada} onValueChange={(v) => set("jornada", v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {JORNADAS.map((j) => (
+                          <SelectItem key={j} value={j}>
+                            {j}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Horario</Label>
+                    <Input value={f.horario} onChange={(e) => set("horario", e.target.value)} />
+                  </div>
+                </>
+              )}
+
+              <div className="space-y-1.5">
+                <Label>Teléfono(s) de contacto</Label>
+                <Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Correo electrónico</Label>
+                <Input value={f.correo} onChange={(e) => set("correo", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Contacto responsable</Label>
+                <Input
+                  value={f.contacto_principal}
+                  onChange={(e) => set("contacto_principal", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Cargo del contacto</Label>
+                <Input
+                  value={f.cargo_contacto}
+                  onChange={(e) => set("cargo_contacto", e.target.value)}
+                />
+              </div>
+
+              {!esEspecialidad && (
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>{esAmbulancia ? "Servicios / cobertura / recorridos" : "Especialidades y servicios"}</Label>
                   <Input
-                    value={f.horario}
-                    onChange={(e) => set("horario", e.target.value)}
-                    placeholder="07:00 - 13:00"
+                    value={f.servicio_especialidad}
+                    onChange={(e) => set("servicio_especialidad", e.target.value)}
+                    placeholder={esAmbulancia ? "Traslados, cobertura…" : "UCI, Hospitalización, Urgencias…"}
                   />
                 </div>
-              </div>
-              <div className="mt-3 flex items-center gap-3 rounded-lg border border-border bg-card p-3">
-                <Switch
-                  checked={disponibleEff}
-                  disabled={inactivo}
-                  onCheckedChange={(v) => set("disponible_para_remisiones", v)}
-                />
-                <span className="text-sm font-medium text-foreground">
-                  Disponible para remisiones
-                </span>
-                {inactivo && (
-                  <span className="text-[11px] text-muted-foreground">
-                    (registro inactivo → no disponible)
-                  </span>
-                )}
-              </div>
-              <div className="mt-3 space-y-1.5">
-                <Label>Novedades</Label>
-                <DictationTextarea
-                  dictationKey="red.novedades"
-                  rows={2}
-                  value={f.novedad_disponibilidad}
-                  onChange={(e) => set("novedad_disponibilidad", e.target.value)}
-                  placeholder="Disponible del 25 al 30 de junio. No agenda los jueves…"
-                />
-              </div>
-            </section>
+              )}
 
-            {/* Bloque 4 */}
-            <section className="rounded-xl border border-border bg-background/40 p-4">
-              <div className="flex items-center justify-between">
-                <BlockTitle n={4}>Red externa / IPS aliadas</BlockTitle>
-                <Button type="button" size="sm" variant="outline" onClick={addRelacion}>
-                  <Plus className="mr-1 h-3.5 w-3.5" /> Agregar
-                </Button>
-              </div>
-              {f.relaciones_red.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  Sin instituciones relacionadas.
-                </p>
-              ) : (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {f.relaciones_red.map((r, i) => (
-                    <div key={i} className="rounded-lg border border-border bg-card p-3">
-                      <div className="mb-2 flex items-center justify-between">
-                        <span className="text-[11px] font-bold uppercase text-muted-foreground">
-                          Relación {i + 1}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => delRelacion(i)}
-                          className="text-status-red"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                      <div className="grid gap-2">
-                        <AutoComplete
-                          value={r.nombre}
-                          onChange={(v) => updRelacion(i, { nombre: v })}
-                          options={ipsOptions}
-                          placeholder="Nombre IPS aliada"
-                        />
-                        <Input
-                          value={r.especialidad || ""}
-                          onChange={(e) => updRelacion(i, { especialidad: e.target.value })}
-                          placeholder="Especialidad / servicio"
-                        />
-                        <div className="grid grid-cols-2 gap-2">
-                          <Input
-                            value={r.fechas || ""}
-                            onChange={(e) => updRelacion(i, { fechas: e.target.value })}
-                            placeholder="Fechas"
-                          />
-                          <Input
-                            value={r.jornada || ""}
-                            onChange={(e) => updRelacion(i, { jornada: e.target.value })}
-                            placeholder="Jornada"
-                          />
-                        </div>
-                        <Input
-                          value={r.contacto || ""}
-                          onChange={(e) => updRelacion(i, { contacto: e.target.value })}
-                          placeholder="Contacto"
-                        />
-                      </div>
-                    </div>
-                  ))}
+              {esAmbulancia && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label>Recorrido / cobertura</Label>
+                    <Input value={f.recorrido} onChange={(e) => set("recorrido", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Códigos CUPS (si aplica)</Label>
+                    <Input value={f.cups} onChange={(e) => set("cups", e.target.value)} />
+                  </div>
+                </>
+              )}
+
+              {!esEspecialidad && (
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>EAPB y aseguradoras que atiende</Label>
+                  <Input
+                    value={f.eapb_aseguradoras}
+                    onChange={(e) => set("eapb_aseguradoras", e.target.value)}
+                  />
                 </div>
               )}
-            </section>
+            </div>
+          )}
 
-            {/* Bloque 5 */}
-            <section className="rounded-xl border border-border bg-background/40 p-4">
-              <div className="flex items-center justify-between">
-                <BlockTitle n={5}>Ambulancias y autorizaciones</BlockTitle>
-                <Button type="button" size="sm" variant="outline" onClick={addCodigo}>
-                  <Plus className="mr-1 h-3.5 w-3.5" /> Agregar
-                </Button>
-              </div>
-              {f.codigos_apoyo.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  Sin entidades de apoyo / códigos.
-                </p>
-              ) : (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {f.codigos_apoyo.map((c, i) => (
-                    <div key={i} className="rounded-lg border border-border bg-card p-3">
-                      <div className="mb-2 flex items-center justify-between">
-                        <span className="text-[11px] font-bold uppercase text-muted-foreground">
-                          Entidad {i + 1}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => delCodigo(i)}
-                          className="text-status-red"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                      <div className="grid gap-2">
-                        <Input
-                          value={c.entidad}
-                          onChange={(e) => updCodigo(i, { entidad: e.target.value })}
-                          placeholder="Entidad"
-                        />
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="flex items-center gap-1">
-                            <Input
-                              value={c.codigo_principal || ""}
-                              onChange={(e) => updCodigo(i, { codigo_principal: e.target.value })}
-                              placeholder="Código principal"
-                            />
-                            {c.codigo_principal && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(c.codigo_principal!);
-                                  toast.success("Código copiado");
-                                }}
-                              >
-                                <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                              </button>
-                            )}
-                          </div>
-                          <Input
-                            value={c.codigo_alterno || ""}
-                            onChange={(e) => updCodigo(i, { codigo_alterno: e.target.value })}
-                            placeholder="Código alterno"
-                          />
-                        </div>
-                        <Input
-                          value={c.telefono || ""}
-                          onChange={(e) => updCodigo(i, { telefono: e.target.value })}
-                          placeholder="Teléfono"
-                        />
-                        <Input
-                          value={c.observacion || ""}
-                          onChange={(e) => updCodigo(i, { observacion: e.target.value })}
-                          placeholder="Observación"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
+          {/* Observaciones */}
+          <div className="space-y-1.5">
+            <Label>Observaciones</Label>
+            <DictationTextarea
+              dictationKey="red.observaciones"
+              rows={2}
+              value={f.observaciones}
+              onChange={(e) => set("observaciones", e.target.value)}
+            />
           </div>
 
-          {/* Panel lateral derecho */}
-          <aside className="space-y-4">
-            <div className="rounded-xl border border-border bg-background/40 p-4">
-              <p className="mb-3 flex items-center gap-2 text-sm font-bold text-foreground">
-                <ClipboardList className="h-4 w-4 text-vitalis-blue" /> Resumen del registro
-              </p>
-              <dl className="space-y-2 text-sm">
-                <div className="flex justify-between gap-2">
-                  <dt className="text-muted-foreground">Tipo</dt>
-                  <dd className="text-right font-medium text-foreground">{resumen.tipo}</dd>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <dt className="text-muted-foreground">Estado</dt>
-                  <dd className="text-right font-medium text-foreground">{resumen.estado}</dd>
-                </div>
-                <div className="flex justify-between gap-2">
-                  <dt className="text-muted-foreground">Disponibilidad</dt>
-                  <dd
-                    className={`text-right font-medium ${
-                      resumen.disponible ? "text-status-green" : "text-status-red"
-                    }`}
-                  >
-                    {resumen.disponible ? "● Sí" : "● No"}
-                  </dd>
-                </div>
-              </dl>
+          {/* Disponibilidad operativa (dato interno, sin switch en tarjeta) */}
+          {(esIps || esAmbulancia || esEspecialidad) && (
+            <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
+              <Switch
+                checked={disponibleEff}
+                disabled={inactivo}
+                onCheckedChange={(v) => set("disponible_para_remisiones", v)}
+              />
+              <span className="text-sm font-medium text-foreground">
+                Disponibilidad operativa (dato interno)
+              </span>
             </div>
-
-            <div className="rounded-xl border border-border bg-background/40 p-4">
-              <p className="mb-3 flex items-center gap-2 text-sm font-bold text-foreground">
-                <Phone className="h-4 w-4 text-vitalis-blue" /> Contactos rápidos
-              </p>
-              <div className="space-y-2 text-sm">
-                <button
-                  type="button"
-                  onClick={() => onTipoChange("ips_nacional")}
-                  className="flex w-full items-center gap-2 rounded-lg border border-border bg-card p-2 text-left hover:bg-accent"
-                >
-                  <Home className="h-4 w-4 text-vitalis-blue" />
-                  <span>
-                    <span className="block font-medium text-foreground">IPS</span>
-                    <span className="block text-[11px] text-muted-foreground">
-                      Instituciones receptoras
-                    </span>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onTipoChange("especialista_interno")}
-                  className="flex w-full items-center gap-2 rounded-lg border border-border bg-card p-2 text-left hover:bg-accent"
-                >
-                  <Stethoscope className="h-4 w-4 text-vitalis-blue" />
-                  <span>
-                    <span className="block font-medium text-foreground">Especialistas</span>
-                    <span className="block text-[11px] text-muted-foreground">
-                      Directorio médico interno
-                    </span>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onTipoChange("ambulancia_autorizacion")}
-                  className="flex w-full items-center gap-2 rounded-lg border border-border bg-card p-2 text-left hover:bg-accent"
-                >
-                  <AmbulanceIcon className="h-4 w-4 text-vitalis-blue" />
-                  <span>
-                    <span className="block font-medium text-foreground">Ambulancias</span>
-                    <span className="block text-[11px] text-muted-foreground">
-                      Autorizaciones y traslados
-                    </span>
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-border bg-background/40 p-4">
-              <p className="mb-3 flex items-center gap-2 text-sm font-bold text-foreground">
-                <Info className="h-4 w-4 text-vitalis-blue" /> Ayuda / recomendaciones
-              </p>
-              <ul className="space-y-1.5 text-[12px] text-muted-foreground">
-                <li>• Verifique correo y teléfono.</li>
-                <li>• Registrar novedades del turno.</li>
-                <li>• Actualizar fechas de disponibilidad.</li>
-                <li>• Validar disponibilidad antes de comentar remisiones.</li>
-              </ul>
-            </div>
-          </aside>
+          )}
         </div>
 
-        {/* Pie */}
-        <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-card px-6 py-4">
-          <p className="text-[11px] text-muted-foreground">
-            Revise la información antes de guardar el registro.
-          </p>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
-              Cancelar
-            </Button>
-            <Button onClick={guardar} disabled={busy}>
-              <Save className="mr-1.5 h-4 w-4" /> {busy ? "Guardando…" : "Guardar registro"}
-            </Button>
-          </div>
-        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+            Cancelar
+          </Button>
+          <Button onClick={guardar} disabled={busy}>
+            <Save className="mr-1.5 h-4 w-4" /> {busy ? "Guardando…" : "Guardar"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
