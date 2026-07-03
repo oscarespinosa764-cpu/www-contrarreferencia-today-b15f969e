@@ -262,8 +262,7 @@ export function RedAdminDialog({
       <RedFormDialog
         open={formOpen}
         onOpenChange={setFormOpen}
-        tipo={formTipo}
-        onTipoChange={setFormTipo}
+        grupo={grupo}
         editing={editing}
         especialidades={catalogos.data.especialidades}
         ipsOptions={catalogos.data.ips}
