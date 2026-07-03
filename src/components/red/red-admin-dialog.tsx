@@ -26,13 +26,14 @@ import { Search, Plus, Pencil, Power, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { RedFormDialog } from "@/components/red/red-form-dialog";
 import {
-  RED_TABS,
-  TIPO_RED_LABEL,
+  RED_GRUPOS,
+  getGrupo,
+  grupoDeTipo,
   norm,
   textoBusqueda,
   esActivo,
   type RedRegistro,
-  type TipoRed,
+  type RedGrupo,
 } from "@/lib/red-ips-utils";
 
 export function RedAdminDialog({
