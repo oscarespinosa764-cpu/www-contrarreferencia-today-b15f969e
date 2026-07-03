@@ -46,6 +46,7 @@ export function SolicitudFormDialog({
   const { user } = useAuth();
   const qc = useQueryClient();
   const padRef = useRef<SignaturePadHandle>(null);
+  const dispatchNotif = useServerFn(dispatchEventNotification);
 
   const [perfil, setPerfil] = useState<{ nombre: string; doc: string; cargo: string } | null>(null);
   const [firmaActiva, setFirmaActiva] = useState<{ id: string; hash: string | null; signedUrl: string | null } | null>(null);
