@@ -1110,6 +1110,14 @@ export function SeguimientoDialog({
         };
       case T.CIERRE:
         return { egreso: cierreEgreso || null, ips_receptora: caso?.ips_receptora ?? ipsReceptora ?? null };
+      case T.CAMBIO_EAPB:
+        return {
+          nueva_eapb: cambioEapb.trim() || null,
+          tiene_plataforma: cambioTienePlataforma,
+          plataforma_funcionando: cambioTienePlataforma ? cambioPlataformaFunc || null : null,
+          genera_codigo: cambioGeneraCodigo,
+          nuevo_radicado: cambioRadicado.trim() || null,
+        };
       case T.OTRO:
         return { cual: otroCual.trim() };
       default:
