@@ -2203,6 +2203,72 @@ export function SeguimientoDialog({
             </div>
           )}
 
+          {/* CAMBIO DE ASEGURADOR A EAPB */}
+          {esSaliente && esCambioEapb && (
+            <div className={sectionCls}>
+              <div className="space-y-1.5">
+                <Label className={labelCls}>EAPB *</Label>
+                <AutoComplete
+                  value={cambioEapb}
+                  options={eapbOptions}
+                  placeholder="Escribe para buscar la nueva EAPB…"
+                  onChange={(v) => {
+                    setCambioEapb(v);
+                    setCambioPlataformaFunc("");
+                    setCambioRadicado("");
+                  }}
+                  onPick={(v) => {
+                    setCambioEapb(v);
+                    setCambioPlataformaFunc("");
+                    setCambioRadicado("");
+                  }}
+                />
+                {cambioEapbActual && (
+                  <p className="text-[10px] text-muted-foreground">
+                    {cambioTipoEntidad || "SIN TIPO"} ·{" "}
+                    {cambioTienePlataforma ? "Tiene plataforma" : "Sin plataforma"} ·{" "}
+                    {cambioGeneraCodigo ? "Genera código" : "No genera código"}
+                  </p>
+                )}
+              </div>
+
+              {cambioTienePlataforma && (
+                <div className="space-y-1.5">
+                  <Label className={labelCls}>¿La plataforma se encuentra funcionando? *</Label>
+                  <Select
+                    value={cambioPlataformaFunc}
+                    onValueChange={(v) => setCambioPlataformaFunc(v as "SI" | "NO")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SI">SÍ</SelectItem>
+                      <SelectItem value="NO">NO</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {cambioGeneraCodigo && (
+                <div className="space-y-1.5">
+                  <Label className={labelCls}>Número de radicado de la nueva EAPB *</Label>
+                  <Input
+                    value={cambioRadicado}
+                    onChange={(e) => setCambioRadicado(e.target.value)}
+                    placeholder="Número de radicado"
+                  />
+                </div>
+              )}
+
+              <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                Al guardar se actualizará la aseguradora del caso con la nueva EAPB y sus datos de
+                plataforma/radicado. Estado de solicitud → NO APLICA.
+              </p>
+            </div>
+          )}
+
+
           {/* OTRO */}
           {esSaliente && tipoSeg === T.OTRO && (
             <div className={sectionCls}>
