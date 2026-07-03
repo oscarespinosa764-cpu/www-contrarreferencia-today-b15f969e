@@ -4,6 +4,10 @@
 // IMPORTANTE (control de costos): el PDF se construye en memoria en el
 // navegador y se entrega para descarga. NO se guarda en el bucket ni en la
 // base de datos. jsPDF es 100% JavaScript (sin servicios externos, sin IA).
+//
+// Layout tipo FORMATO INSTITUCIONAL: encabezado con logo + código, casillas
+// de verificación para el tipo de solicitud, campos con recuadro y bloque de
+// firmas (solicitante / jefe inmediato / talento humano) en una sola página.
 
 import logoAsset from "@/assets/cedim-logo.png.asset.json";
 import { fmtFecha, fmtFechaHora, type ShiftRequest } from "@/lib/cuadro-turno-utils";
@@ -12,7 +16,8 @@ const INSTITUCION = "CENTRO DE IMAGENES DIAGNOSTICAS CEDIM I.P.S S.A.S";
 const NIT = "NIT: 900559103-5";
 const PIE = "SISTEMA DE REFERENCIA Y CONTRARREFERENCIA";
 const TITULO = "SOLICITUD DE PERMISO, AUSENCIA, SALIDA O CAMBIO DE TURNO";
-const CODIGO = "Código: TH-FR-09";
+const CODIGO = "TH-FR-09";
+const VERSION = "Versión: 01";
 
 let logoCache: string | null | undefined;
 async function getLogo(): Promise<string | null> {
@@ -42,132 +47,199 @@ export async function generarSolicitudPDF(
   const doc: Doc = new jsPDF({ unit: "mm", format: "letter" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const marginX = 14;
-  const contentW = pageW - marginX * 2;
+  const mX = 12;
+  const right = pageW - mX;
+  const contentW = pageW - mX * 2;
 
-  // -------- Encabezado --------
+  doc.setDrawColor(60);
+  doc.setLineWidth(0.2);
+
+  // ============ ENCABEZADO (tabla de 3 columnas) ============
+  const hTop = 12;
+  const hH = 18;
+  const logoW = 34;
+  const codeW = 40;
+  const nameW = contentW - logoW - codeW;
+
+  // marco
+  doc.rect(mX, hTop, contentW, hH);
+  doc.line(mX + logoW, hTop, mX + logoW, hTop + hH);
+  doc.line(mX + logoW + nameW, hTop, mX + logoW + nameW, hTop + hH);
+
   const logo = await getLogo();
-  if (logo) doc.addImage(logo, "PNG", marginX, 8, 20, 14.5);
+  if (logo) doc.addImage(logo, "PNG", mX + 5, hTop + 3, 24, 12);
+
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text(INSTITUCION, pageW / 2, 12, { align: "center" });
-  doc.setFontSize(9);
-  doc.text(TITULO, pageW / 2, 17.5, { align: "center" });
+  doc.setFontSize(9.5);
+  doc.setTextColor(20);
+  doc.text(INSTITUCION, mX + logoW + nameW / 2, hTop + 6, { align: "center", maxWidth: nameW - 4 });
+  doc.setFontSize(8.5);
+  doc.text(TITULO, mX + logoW + nameW / 2, hTop + 12.5, { align: "center", maxWidth: nameW - 4 });
+
+  // caja de código (3 filas)
+  const cx = mX + logoW + nameW;
+  doc.line(cx, hTop + 6, right, hTop + 6);
+  doc.line(cx, hTop + 12, right, hTop + 12);
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "bold");
+  doc.text(`Código: ${CODIGO}`, cx + 2, hTop + 4);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.text(NIT, pageW - marginX, 12, { align: "right" });
-  doc.text(CODIGO, pageW - marginX, 16.5, { align: "right" });
-  doc.setDrawColor(150);
-  doc.line(marginX, 25, pageW - marginX, 25);
+  doc.text(VERSION, cx + 2, hTop + 10);
+  doc.text(NIT, cx + 2, hTop + 16);
 
-  let y = 31;
+  let y = hTop + hH;
 
-  const seccion = (titulo: string) => {
-    if (y > pageH - 30) { doc.addPage(); y = 20; }
-    doc.setFillColor(230, 232, 236);
-    doc.rect(marginX, y - 4.5, contentW, 6, "F");
+  // helpers -----------------------------------------------------------------
+  const bandaTitulo = (txt: string) => {
+    doc.setFillColor(225, 228, 233);
+    doc.rect(mX, y, contentW, 6, "F");
+    doc.rect(mX, y, contentW, 6);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(8.5);
-    doc.setTextColor(40);
-    doc.text(titulo, marginX + 2, y);
+    doc.setFontSize(8);
+    doc.setTextColor(30);
+    doc.text(txt, mX + 2, y + 4);
     y += 6;
   };
 
-  const fila = (label: string, value: string) => {
-    if (y > pageH - 22) { doc.addPage(); y = 20; }
+  // Campo con recuadro: [label] valor. Ancho fraccional (0..1) del contentW.
+  const campo = (label: string, value: string, frac = 1, h = 8): void => {
+    const w = contentW * frac;
+    doc.rect(mX + campoX, y, w, h);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.setTextColor(70);
-    doc.text(label, marginX + 2, y);
+    doc.setFontSize(6.5);
+    doc.setTextColor(90);
+    doc.text(label.toUpperCase(), mX + campoX + 1.5, y + 3);
     doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
     doc.setTextColor(20);
-    const lines = doc.splitTextToSize(value || "—", contentW - 52);
-    doc.text(lines, marginX + 50, y);
-    y += Math.max(5, lines.length * 4.3);
+    const lines = doc.splitTextToSize(value || "—", w - 3);
+    doc.text(lines.slice(0, 2), mX + campoX + 1.5, y + 6.4);
+    campoX += w;
+  };
+  let campoX = 0;
+  const fila = (h = 8) => { campoX = 0; y += h; };
+
+  const casilla = (x: number, yy: number, marcado: boolean, label: string) => {
+    doc.rect(x, yy, 4, 4);
+    if (marcado) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.text("X", x + 0.8, yy + 3.4);
+    }
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(20);
+    doc.text(label, x + 6, yy + 3.3);
   };
 
+  // ============ TIPO DE SOLICITUD ============
+  bandaTitulo("TIPO DE SOLICITUD");
+  const esCambio = r.request_type === "cambio_turno";
+  const boxY = y + 2;
+  casilla(mX + 4, boxY, !esCambio, "Permiso / Ausencia / Salida");
+  casilla(mX + contentW / 2, boxY, esCambio, "Cambio de turno");
+  y += 9;
+
+  // ============ DATOS DEL SOLICITANTE ============
+  bandaTitulo("DATOS DEL SOLICITANTE");
+  campo("Colaborador", r.requester_name || "", 0.6);
+  campo("Identificación", r.requester_identification || "", 0.4);
+  fila();
+  campo("Cargo", r.requester_role || "", 0.55);
+  campo("Sede / dependencia", r.requester_sede || "", 0.45);
+  fila();
+  campo("Fecha de solicitud", fmtFechaHora(r.created_at), 1);
+  fila();
+
+  // ============ DETALLE ============
+  bandaTitulo("DETALLE DE LA SOLICITUD");
   const motivo = r.reason_type === "Otro" ? r.other_reason || "Otro" : r.reason_type || "—";
-  const tipo = r.request_type === "cambio_turno"
-    ? "Cambio de turno"
-    : "Permiso / ausencia / salida";
+  campo("Motivo", motivo, 1);
+  fila();
 
-  // -------- Datos de identificación --------
-  seccion("DATOS DE IDENTIFICACIÓN");
-  fila("Colaborador", r.requester_name || "—");
-  fila("Identificación", r.requester_identification || "—");
-  fila("Cargo", r.requester_role || "—");
-  fila("Sede / dependencia", r.requester_sede || "—");
-  fila("Fecha de solicitud", fmtFechaHora(r.created_at));
-  y += 1.5;
-
-  // -------- Detalle de la solicitud --------
-  seccion("DETALLE DE LA SOLICITUD");
-  fila("Tipo", tipo);
-  fila("Motivo", motivo);
-
-  if (r.request_type === "cambio_turno") {
-    fila("Turno original", `${r.original_shift_code || "—"} (${fmtFecha(r.original_shift_date)})`);
-    fila("Turno solicitado", `${r.requested_shift_code || "—"} (${fmtFecha(r.requested_shift_date)})`);
-    if (r.swap_partner_name) fila("Cambia con", r.swap_partner_name);
+  if (esCambio) {
+    campo("Turno original", `${r.original_shift_code || "—"} (${fmtFecha(r.original_shift_date)})`, 0.5);
+    campo("Turno solicitado", `${r.requested_shift_code || "—"} (${fmtFecha(r.requested_shift_date)})`, 0.5);
+    fila();
+    campo("Cambia con", r.swap_partner_name || "—", 1);
+    fila();
   } else {
-    fila("Desde", `${fmtFecha(r.start_date)}${r.start_time ? " " + r.start_time : ""}`);
-    fila("Hasta", `${fmtFecha(r.end_date)}${r.end_time ? " " + r.end_time : ""}`);
+    campo("Desde", `${fmtFecha(r.start_date)}${r.start_time ? " " + r.start_time : ""}`, 0.5);
+    campo("Hasta", `${fmtFecha(r.end_date)}${r.end_time ? " " + r.end_time : ""}`, 0.5);
+    fila();
   }
-  fila("Recupera tiempo", r.will_recover_time ? "Sí" : "No");
-  fila("Requiere reemplazo", r.requires_replacement
-    ? `Sí${r.replacement_name ? ` — ${r.replacement_name}` : ""}${r.replacement_role ? ` (${r.replacement_role})` : ""}`
-    : "No");
-  if (r.paid != null) fila("Remunerado", r.paid ? "Sí" : "No");
-  if (r.reason_detail) fila("Descripción", r.reason_detail);
-  if (r.observations) fila("Observaciones", r.observations);
-  y += 1.5;
 
-  // -------- Trazabilidad / decisión --------
-  seccion("TRAZABILIDAD DE LA SOLICITUD");
-  fila("Estado actual", r.status);
-  if (r.approved_at) fila("Aprobada", fmtFechaHora(r.approved_at));
-  if (r.approval_observation) fila("Obs. aprobación", r.approval_observation);
-  if (r.rejected_at) fila("Respondida", fmtFechaHora(r.rejected_at));
-  if (r.rejection_reason) fila("Razón / ajuste", r.rejection_reason);
-  if (r.response_observation) fila("Obs. respuesta", r.response_observation);
-  y += 3;
+  // casillas Sí/No
+  const flagsY = y + 2;
+  casilla(mX + 4, flagsY, r.will_recover_time, "Recupera tiempo");
+  casilla(mX + contentW / 3 + 4, flagsY, r.requires_replacement, "Requiere reemplazo");
+  if (r.paid != null) casilla(mX + (contentW * 2) / 3 + 4, flagsY, !!r.paid, "Remunerado");
+  y += 9;
 
-  // -------- Firma --------
-  if (y > pageH - 45) { doc.addPage(); y = 20; }
-  seccion("FIRMA DEL SOLICITANTE");
-  y += 2;
+  if (r.requires_replacement && (r.replacement_name || r.replacement_role)) {
+    campo("Reemplazo", `${r.replacement_name || "—"}${r.replacement_role ? ` (${r.replacement_role})` : ""}`, 1);
+    fila();
+  }
+  if (r.reason_detail) { campo("Descripción", r.reason_detail, 1, 12); fila(12); }
+  if (r.observations) { campo("Observaciones", r.observations, 1, 12); fila(12); }
+
+  // ============ TRAZABILIDAD / DECISIÓN ============
+  bandaTitulo("TRAZABILIDAD DE LA DECISIÓN");
+  campo("Estado actual", r.status, 0.5);
+  campo("Fecha de respuesta", r.approved_at ? fmtFechaHora(r.approved_at) : r.rejected_at ? fmtFechaHora(r.rejected_at) : "—", 0.5);
+  fila();
+  const obsDec = r.approval_observation || r.rejection_reason || r.response_observation || "";
+  campo("Observación / ajuste", obsDec, 1, 10);
+  fila(10);
+
+  // ============ FIRMAS ============
+  bandaTitulo("FIRMAS");
+  const firmaBoxY = y + 2;
+  const fW = contentW / 3;
+  const fH = 24;
+  for (let i = 0; i < 3; i++) doc.rect(mX + fW * i, firmaBoxY, fW, fH);
+
+  // firma del solicitante (imagen si existe)
   if (opts?.firmaDataUrl) {
-    try {
-      doc.addImage(opts.firmaDataUrl, "PNG", marginX + 2, y, 50, 20);
-    } catch { /* firma no embebible */ }
+    try { doc.addImage(opts.firmaDataUrl, "PNG", mX + 4, firmaBoxY + 3, fW - 8, 12); } catch { /* no embebible */ }
   }
-  doc.setDrawColor(120);
-  doc.line(marginX + 2, y + 22, marginX + 72, y + 22);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7.5);
-  doc.setTextColor(60);
-  doc.text(r.requester_name || "Firma del solicitante", marginX + 2, y + 26);
-  if (r.requester_signature_hash) {
-    doc.text(`Verificación: ${r.requester_signature_hash.slice(0, 16)}…`, marginX + 2, y + 30);
-  }
-
-  // -------- Pie en cada página --------
-  const total = doc.getNumberOfPages();
-  for (let p = 1; p <= total; p++) {
-    doc.setPage(p);
-    doc.setDrawColor(150);
-    doc.line(marginX, pageH - 14, pageW - marginX, pageH - 14);
+  const firmaLabels = ["SOLICITANTE", "JEFE INMEDIATO", "TALENTO HUMANO"];
+  const firmaNombres = [r.requester_name || "", "", ""];
+  doc.setTextColor(20);
+  for (let i = 0; i < 3; i++) {
+    const cxi = mX + fW * i;
+    doc.line(cxi + 4, firmaBoxY + fH - 7, cxi + fW - 4, firmaBoxY + fH - 7);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
-    doc.setTextColor(110);
-    doc.text(PIE, marginX, pageH - 9);
-    doc.text(
-      `Generado: ${fmtFechaHora(new Date().toISOString())}${opts?.usuario ? " · " + opts.usuario : ""}`,
-      marginX,
-      pageH - 5.5,
-    );
-    doc.text(`Página ${p} de ${total}`, pageW - marginX, pageH - 9, { align: "right" });
+    if (firmaNombres[i]) doc.text(firmaNombres[i], cxi + fW / 2, firmaBoxY + fH - 4, { align: "center", maxWidth: fW - 6 });
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6.5);
+    doc.setTextColor(90);
+    doc.text(firmaLabels[i], cxi + fW / 2, firmaBoxY + fH - 1, { align: "center" });
+    doc.setTextColor(20);
   }
+  y = firmaBoxY + fH + 3;
+  if (r.requester_signature_hash) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.5);
+    doc.setTextColor(110);
+    doc.text(`Verificación de firma: ${r.requester_signature_hash.slice(0, 24)}…`, mX, y);
+    y += 3;
+  }
+
+  // ============ PIE ============
+  doc.setDrawColor(150);
+  doc.line(mX, pageH - 14, right, pageH - 14);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6.5);
+  doc.setTextColor(110);
+  doc.text(PIE, mX, pageH - 9.5);
+  doc.text(
+    `Generado: ${fmtFechaHora(new Date().toISOString())}${opts?.usuario ? " · " + opts.usuario : ""}`,
+    mX,
+    pageH - 6,
+  );
+  doc.text(`${CODIGO} · ${VERSION}`, right, pageH - 9.5, { align: "right" });
 
   const slug = (r.requester_name || "solicitud").replace(/[^a-z0-9]+/gi, "_").slice(0, 40);
   doc.save(`TH-FR-09_${slug}_${r.id.slice(0, 8)}.pdf`);

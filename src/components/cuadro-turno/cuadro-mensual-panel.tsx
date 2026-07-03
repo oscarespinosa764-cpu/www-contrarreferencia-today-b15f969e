@@ -370,6 +370,21 @@ function CalendarView({
 function AddMemberInline({ scheduleId, sortOrder, onAdded }: { scheduleId: string; sortOrder: number; onAdded: () => void }) {
   const [nombre, setNombre] = useState("");
   const [cargo, setCargo] = useState("");
+
+  const { data: cargos = [] } = useQuery({
+    queryKey: ["cargos-sugeridos"],
+    queryFn: async () => {
+      const [{ data: perfiles }, { data: miembros }] = await Promise.all([
+        supabase.from("profiles").select("cargo").not("cargo", "is", null),
+        supabase.from("shift_schedule_members").select("role_name").not("role_name", "is", null),
+      ]);
+      const set = new Set<string>();
+      (perfiles ?? []).forEach((p: any) => p.cargo && set.add(String(p.cargo).trim()));
+      (miembros ?? []).forEach((m: any) => m.role_name && set.add(String(m.role_name).trim()));
+      return Array.from(set).filter(Boolean).sort();
+    },
+  });
+
   const add = async () => {
     if (!nombre.trim()) return toast.error("Nombre requerido.");
     const { error } = await supabase.from("shift_schedule_members").insert({
@@ -381,7 +396,13 @@ function AddMemberInline({ scheduleId, sortOrder, onAdded }: { scheduleId: strin
   return (
     <div className="flex flex-wrap items-end gap-2">
       <div><Label className="text-xs">Colaborador</Label><Input value={nombre} onChange={(e) => setNombre(e.target.value)} className="w-48" /></div>
-      <div><Label className="text-xs">Cargo</Label><Input value={cargo} onChange={(e) => setCargo(e.target.value)} className="w-40" /></div>
+      <div>
+        <Label className="text-xs">Cargo</Label>
+        <Input list="cargos-sugeridos-list" value={cargo} onChange={(e) => setCargo(e.target.value)} className="w-40" placeholder="Buscar o escribir…" />
+        <datalist id="cargos-sugeridos-list">
+          {cargos.map((c) => <option key={c} value={c} />)}
+        </datalist>
+      </div>
       <Button size="sm" variant="outline" onClick={add}><UserPlus className="mr-1.5 h-4 w-4" /> Agregar</Button>
     </div>
   );
