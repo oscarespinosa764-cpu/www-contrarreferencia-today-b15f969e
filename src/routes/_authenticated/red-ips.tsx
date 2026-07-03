@@ -5,7 +5,6 @@ import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { AppHeader } from "@/components/app-header";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -35,17 +34,18 @@ import {
   Network,
   Building2,
   XCircle,
-  UserRound,
+  Stethoscope,
   Ambulance,
   ChevronRight,
-  Bell,
 } from "lucide-react";
 import { toast } from "sonner";
 import { RedCard } from "@/components/red/red-card";
 import {
-  RED_TABS,
+  RED_GRUPOS,
   TIPO_RED_LABEL,
-  getTab,
+  getGrupo,
+  grupoDeTipo,
+  esCaqueta,
   norm,
   textoBusqueda,
   esActivo,
@@ -53,6 +53,7 @@ import {
   serviciosList,
   fmtFechaHora,
   type RedRegistro,
+  type RedGrupo,
   type TipoRed,
 } from "@/lib/red-ips-utils";
 
@@ -60,20 +61,17 @@ export const Route = createFileRoute("/_authenticated/red-ips")({
   component: RedIpsPage,
 });
 
-const IPS_TIPOS: TipoRed[] = ["ips_nacional", "ips_departamental", "ips_aliada"];
-
 function RedIpsPage() {
   const { canEdit, user } = useAuth();
   const qc = useQueryClient();
 
-  const [tab, setTab] = useState<TipoRed>("ips_nacional");
+  const [grupo, setGrupo] = useState<RedGrupo>("jornadas_tep");
+  const [ambito, setAmbito] = useState("todos"); // todos | caqueta | nacional
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState("todos");
 
   const [detalle, setDetalle] = useState<RedRegistro | null>(null);
-  const [verNovedades, setVerNovedades] = useState(false);
 
-  // Confirmación de cambio de disponibilidad + novedad opcional.
   const [dispTarget, setDispTarget] = useState<{ reg: RedRegistro; value: boolean } | null>(null);
   const [novedadInput, setNovedadInput] = useState("");
 
@@ -102,38 +100,29 @@ function RedIpsPage() {
   });
 
   const all = registros ?? [];
+  const grupoCfg = getGrupo(grupo);
 
-  // --- Conteos del panel lateral ---
+  // --- Indicadores laterales ---
   const conteos = useMemo(() => {
-    const ips = all.filter((r) => IPS_TIPOS.includes(r.tipo_red as TipoRed) && esActivo(r));
+    const enGrupo = (k: RedGrupo) => all.filter((r) => grupoDeTipo(r.tipo_red) === k);
+    const ips = enGrupo("ips");
     return {
-      disponibles: ips.filter((r) => r.disponible_para_remisiones).length,
-      noDisponibles: ips.filter((r) => !r.disponible_para_remisiones).length,
-      especialistas: all.filter((r) => r.tipo_red === "especialista_interno" && esActivo(r)).length,
-      ambulancias: all.filter(
-        (r) => r.tipo_red === "ambulancia_autorizacion" && esActivo(r),
-      ).length,
+      ipsActivas: ips.filter((r) => esActivo(r) && r.disponible_para_remisiones).length,
+      ipsNoDisp: ips.filter((r) => !esActivo(r) || !r.disponible_para_remisiones).length,
+      especialidades: enGrupo("especialidades_cedim").filter((r) => esActivo(r)).length,
+      ambulancias: enGrupo("ambulancias").filter((r) => esActivo(r)).length,
     };
   }, [all]);
 
-  // --- Novedades del turno ---
-  const novedades = useMemo(() => {
-    return all
-      .filter((r) => (r.novedad_disponibilidad || "").trim())
-      .map((r) => ({
-        id: r.id,
-        texto: r.novedad_disponibilidad!.trim(),
-        entidad: r.entidad || "",
-        fecha: r.fecha_actualizacion_disponibilidad || r.updated_at || r.created_at,
-      }))
-      .sort((a, b) => new Date(b.fecha || 0).getTime() - new Date(a.fecha || 0).getTime());
-  }, [all]);
-
-  // --- Lista filtrada por pestaña + búsqueda + filtro ---
+  // --- Lista filtrada por grupo + ámbito + búsqueda + filtro ---
   const term = norm(q.trim());
   const lista = useMemo(() => {
     return all
-      .filter((r) => (r.tipo_red || "ips_departamental") === tab)
+      .filter((r) => grupoDeTipo(r.tipo_red) === grupo)
+      .filter((r) => {
+        if (!grupoCfg.tieneAmbito || ambito === "todos") return true;
+        return ambito === "caqueta" ? esCaqueta(r) : !esCaqueta(r);
+      })
       .filter((r) => {
         const disp = !!r.disponible_para_remisiones;
         const act = esActivo(r);
@@ -141,16 +130,10 @@ function RedIpsPage() {
         if (filtro === "no-disponibles") return !disp;
         if (filtro === "activos") return act;
         if (filtro === "inactivos") return !act;
-        if (filtro.startsWith("jornada-")) {
-          const j = filtro.replace("jornada-", "");
-          return norm(r.jornada || "").includes(j);
-        }
         return true;
       })
       .filter((r) => (term ? textoBusqueda(r).includes(term) : true));
-  }, [all, tab, filtro, term]);
-
-  const tabCfg = getTab(tab);
+  }, [all, grupo, grupoCfg, ambito, filtro, term]);
 
   const auditar = (accion: string, registroId: string, detalles: Record<string, unknown>) => {
     registrarAuditoria({
@@ -158,8 +141,6 @@ function RedIpsPage() {
     }).catch(() => {});
   };
 
-  // El operativo puede actualizar disponibilidad durante el turno.
-  // Abre la confirmación; el cambio real se aplica en aplicarDisponibilidad().
   const pedirCambio = (r: RedRegistro, value: boolean) => {
     if (!canEdit) {
       toast.error("No tienes permisos para modificar disponibilidad.");
@@ -197,7 +178,7 @@ function RedIpsPage() {
       tipo_red: r.tipo_red || "",
       estado_anterior: estadoAnterior,
       estado_nuevo: estadoNuevo,
-      novedad: novedad,
+      novedad,
     });
     toast.success(value ? "Recurso marcado como disponible" : "Recurso marcado como no disponible");
     setDispTarget(null);
@@ -206,20 +187,15 @@ function RedIpsPage() {
   };
 
   const countCards = [
-    { label: "IPS disponibles", value: conteos.disponibles, icon: Building2, color: "green" },
-    { label: "IPS no disponibles", value: conteos.noDisponibles, icon: XCircle, color: "red" },
+    { label: "IPS activas / disponibles", value: conteos.ipsActivas, icon: Building2, color: "green" },
+    { label: "IPS inactivas / no disp.", value: conteos.ipsNoDisp, icon: XCircle, color: "red" },
     {
-      label: "Especialistas activos",
-      value: conteos.especialistas,
-      icon: UserRound,
+      label: "Especialidades CEDIM activas",
+      value: conteos.especialidades,
+      icon: Stethoscope,
       color: "sky",
     },
-    {
-      label: "Ambulancias aliadas",
-      value: conteos.ambulancias,
-      icon: Ambulance,
-      color: "violet",
-    },
+    { label: "Ambulancias activas", value: conteos.ambulancias, icon: Ambulance, color: "violet" },
   ] as const;
 
   const colorMap: Record<string, string> = {
@@ -233,49 +209,74 @@ function RedIpsPage() {
     <div>
       <AppHeader
         title="Red / Disponibilidad IPS"
-        subtitle="Instituciones receptoras y su disponibilidad para recibir remisiones"
+        subtitle="Instituciones receptoras, ambulancias, jornadas y especialidades CEDIM"
       />
 
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
-        {/* Rótulo central */}
         <div className="mb-4 flex justify-center">
           <span className="rounded-full border border-border bg-secondary px-4 py-1 text-xs font-bold uppercase tracking-wide text-secondary-foreground">
             Red de instituciones
           </span>
         </div>
 
-        {/* Pestañas internas */}
+        {/* Pestañas principales (grupos) */}
         <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
-          {RED_TABS.map((t) => {
-            const Icon = t.icon;
-            const active = t.key === tab;
+          {RED_GRUPOS.map((g) => {
+            const Icon = g.icon;
+            const active = g.key === grupo;
             return (
               <button
-                key={t.key}
+                key={g.key}
                 type="button"
-                onClick={() => setTab(t.key)}
+                onClick={() => {
+                  setGrupo(g.key);
+                  setAmbito("todos");
+                }}
                 className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3.5 py-2 text-[11px] font-bold uppercase tracking-wide transition-colors ${
                   active
                     ? "border-vitalis-blue bg-vitalis-blue text-white shadow-sm"
                     : "border-border bg-secondary text-muted-foreground hover:bg-accent"
                 }`}
               >
-                <Icon className="h-4 w-4" /> {t.label}
+                <Icon className="h-4 w-4" /> {g.label}
               </button>
             );
           })}
         </div>
 
         <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
-          {/* Columna principal */}
           <div className="min-w-0">
-            {/* Búsqueda + filtro + agregar */}
+            {/* Segmentación interna por ámbito (IPS / Ambulancias) */}
+            {grupoCfg.tieneAmbito && (
+              <div className="mb-4 flex flex-wrap gap-2">
+                {[
+                  { k: "todos", l: "Todas" },
+                  { k: "caqueta", l: "Departamentales — Caquetá" },
+                  { k: "nacional", l: "Nacionales — fuera del Caquetá" },
+                ].map((c) => (
+                  <button
+                    key={c.k}
+                    type="button"
+                    onClick={() => setAmbito(c.k)}
+                    className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors ${
+                      ambito === c.k
+                        ? "border-vitalis-blue bg-vitalis-blue/10 text-vitalis-blue"
+                        : "border-border bg-secondary text-muted-foreground hover:bg-accent"
+                    }`}
+                  >
+                    {c.l}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Búsqueda + filtro */}
             <div className="mb-4 flex flex-wrap items-center gap-3">
               <div className="relative min-w-[220px] flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   className="rounded-full pl-9"
-                  placeholder="Buscar IPS, servicio, contacto…"
+                  placeholder={grupoCfg.buscarPlaceholder}
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                 />
@@ -290,10 +291,6 @@ function RedIpsPage() {
                   <SelectItem value="no-disponibles">No disponibles</SelectItem>
                   <SelectItem value="activos">Activos</SelectItem>
                   <SelectItem value="inactivos">Inactivos</SelectItem>
-                  <SelectItem value="jornada-mañana">Jornada mañana</SelectItem>
-                  <SelectItem value="jornada-tarde">Jornada tarde</SelectItem>
-                  <SelectItem value="jornada-noche">Jornada noche</SelectItem>
-                  <SelectItem value="jornada-completa">Jornada completa</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -307,7 +304,7 @@ function RedIpsPage() {
                   <RedCard
                     key={r.id}
                     reg={r}
-                    tab={tabCfg}
+                    grupo={grupoCfg}
                     canEdit={canEdit}
                     onView={setDetalle}
                     onToggle={pedirCambio}
@@ -329,74 +326,33 @@ function RedIpsPage() {
             </p>
           </div>
 
-          {/* Panel lateral derecho */}
-          <aside className="space-y-4">
-            <div className="space-y-3">
-              {countCards.map((c) => {
-                const Icon = c.icon;
-                return (
-                  <div
-                    key={c.label}
-                    className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3 shadow-sm"
-                  >
-                    <div
-                      className={`flex h-11 w-11 items-center justify-center rounded-xl ${colorMap[c.color]}`}
-                    >
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs text-muted-foreground">{c.label}</p>
-                      <p className="text-2xl font-extrabold leading-tight text-foreground">
-                        {c.value}
-                      </p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Novedades del turno */}
-            <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-              <p className="mb-3 flex items-center gap-2 text-sm font-bold text-foreground">
-                <Bell className="h-4 w-4 text-vitalis-blue" /> Novedades del turno
-              </p>
-              {novedades.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  Sin novedades registradas en el turno.
-                </p>
-              ) : (
-                <ul className="space-y-2.5">
-                  {novedades.slice(0, 4).map((n) => (
-                    <li key={n.id} className="flex gap-2 text-xs">
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-vitalis-blue" />
-                      <span className="text-muted-foreground">
-                        {n.texto}
-                        {n.fecha && (
-                          <span className="ml-1 text-[10px] opacity-70">
-                            · {fmtFechaHora(n.fecha)}
-                          </span>
-                        )}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {novedades.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setVerNovedades(true)}
-                  className="mt-3 text-xs font-semibold text-vitalis-blue hover:underline"
+          {/* Panel lateral derecho — solo indicadores */}
+          <aside className="space-y-3">
+            {countCards.map((c) => {
+              const Icon = c.icon;
+              return (
+                <div
+                  key={c.label}
+                  className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3 shadow-sm"
                 >
-                  Ver todas las novedades →
-                </button>
-              )}
-            </div>
+                  <div
+                    className={`flex h-11 w-11 items-center justify-center rounded-xl ${colorMap[c.color]}`}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-muted-foreground">{c.label}</p>
+                    <p className="text-2xl font-extrabold leading-tight text-foreground">
+                      {c.value}
+                    </p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              );
+            })}
           </aside>
         </div>
       </div>
-
-
 
       {/* Detalle */}
       <Dialog open={!!detalle} onOpenChange={(v) => !v && setDetalle(null)}>
@@ -404,29 +360,44 @@ function RedIpsPage() {
           {detalle && (
             <>
               <DialogHeader>
-                <DialogTitle>{detalle.entidad || "Registro"}</DialogTitle>
+                <DialogTitle>{detalle.entidad || detalle.empresa_tep || "Registro"}</DialogTitle>
               </DialogHeader>
-              <div className="space-y-2 text-sm">
+              <div className="max-h-[70vh] space-y-2 overflow-y-auto text-sm">
                 <DetRow k="Tipo" v={TIPO_RED_LABEL[(detalle.tipo_red as TipoRed) || "ips_departamental"]} />
                 <DetRow k="Estado" v={esActivo(detalle) ? "Activo" : "Inactivo"} />
                 <DetRow
                   k="Disponibilidad"
                   v={detalle.disponible_para_remisiones ? "Disponible" : "No disponible"}
                 />
+                <DetRow k="NIT" v={detalle.nit || ""} />
+                <DetRow k="Empresa TEP" v={detalle.empresa_tep || ""} />
+                <DetRow k="Tipo de ambulancia" v={detalle.tipo_ambulancia || ""} />
                 <DetRow k="Servicios / especialidad" v={serviciosList(detalle).join(", ")} />
+                <DetRow k="Recorrido / cobertura" v={detalle.recorrido || ""} />
+                <DetRow k="CUPS" v={detalle.cups || ""} />
+                <DetRow k="Descripción CUPS" v={detalle.cups_descripcion || ""} />
+                <DetRow k="EAPB / aseguradoras" v={detalle.eapb_aseguradoras || ""} />
                 <DetRow k="Ubicación" v={ubicacion(detalle)} />
                 <DetRow k="Teléfono" v={detalle.telefono || detalle.contacto || ""} />
                 <DetRow k="Correo" v={detalle.correo || ""} />
-                <DetRow k="Contacto principal" v={detalle.contacto_principal || ""} />
+                <DetRow k="Contacto responsable" v={detalle.contacto_principal || ""} />
+                <DetRow k="Cargo del contacto" v={detalle.cargo_contacto || ""} />
                 <DetRow k="Dirección" v={detalle.direccion || ""} />
                 <DetRow k="Sede" v={detalle.sede || ""} />
+                <DetRow k="Médico / profesional" v={detalle.medico || ""} />
                 <DetRow
                   k="Jornada / horario"
                   v={[detalle.jornada, detalle.horario].filter(Boolean).join(" · ")}
                 />
-                <DetRow k="Tipo de apoyo" v={detalle.tipo_apoyo || ""} />
+                <DetRow
+                  k="Fechas"
+                  v={[detalle.fecha_inicio, detalle.fecha_final].filter(Boolean).join(" → ")}
+                />
+                <DetRow
+                  k="Vigencia"
+                  v={[detalle.vigencia_desde, detalle.vigencia_hasta].filter(Boolean).join(" → ")}
+                />
                 <DetRow k="Observaciones" v={detalle.observaciones || ""} />
-                <DetRow k="Novedad" v={detalle.novedad_disponibilidad || ""} />
                 <DetRow
                   k="Última actualización"
                   v={
@@ -443,59 +414,8 @@ function RedIpsPage() {
                       : ""
                   }
                 />
-                {(detalle.relaciones_red?.length ?? 0) > 0 && (
-                  <div>
-                    <p className="font-semibold text-foreground">Red externa / IPS aliadas</p>
-                    <ul className="ml-3 list-disc text-muted-foreground">
-                      {detalle.relaciones_red!.map((rel, i) => (
-                        <li key={i}>
-                          {[rel.nombre, rel.especialidad, rel.fechas, rel.jornada, rel.contacto]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {(detalle.codigos_apoyo?.length ?? 0) > 0 && (
-                  <div>
-                    <p className="font-semibold text-foreground">Ambulancias y autorizaciones</p>
-                    <ul className="ml-3 list-disc text-muted-foreground">
-                      {detalle.codigos_apoyo!.map((c, i) => (
-                        <li key={i}>
-                          {[c.entidad, c.codigo_principal, c.codigo_alterno, c.telefono]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
               </div>
             </>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Todas las novedades */}
-      <Dialog open={verNovedades} onOpenChange={setVerNovedades}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Novedades del turno</DialogTitle>
-          </DialogHeader>
-          {novedades.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Sin novedades registradas en el turno.</p>
-          ) : (
-            <ul className="max-h-[60vh] space-y-3 overflow-y-auto">
-              {novedades.map((n) => (
-                <li key={n.id} className="rounded-lg border border-border p-3 text-sm">
-                  <p className="text-foreground">{n.texto}</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    {n.entidad} {n.fecha ? `· ${fmtFechaHora(n.fecha)}` : ""}
-                  </p>
-                </li>
-              ))}
-            </ul>
           )}
         </DialogContent>
       </Dialog>
@@ -523,9 +443,7 @@ function RedIpsPage() {
           </AlertDialogHeader>
           {dispTarget && !dispTarget.value && (
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-foreground">
-                Novedad (opcional)
-              </label>
+              <label className="text-xs font-medium text-foreground">Novedad (opcional)</label>
               <textarea
                 value={novedadInput}
                 onChange={(e) => setNovedadInput(e.target.value)}
