@@ -4,11 +4,11 @@ import {
   MapPin,
   MoreVertical,
   Eye,
+  Pencil,
   Stethoscope,
   Clock,
   Copy,
 } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,7 +18,7 @@ import {
 import { toast } from "sonner";
 import {
   type RedRegistro,
-  type TabConfig,
+  type GrupoConfig,
   esActivo,
   ubicacion,
   serviciosList,
@@ -26,23 +26,29 @@ import {
 
 interface Props {
   reg: RedRegistro;
-  tab: TabConfig;
-  /** Si el usuario puede marcar disponibilidad (Admin / Operativo activo). */
+  grupo: GrupoConfig;
+  /** Si el usuario puede editar / cambiar disponibilidad (Admin). */
   canEdit: boolean;
   onView: (r: RedRegistro) => void;
+  onEdit?: (r: RedRegistro) => void;
   onToggle: (r: RedRegistro, value: boolean) => void;
 }
 
-export function RedCard({ reg, tab, canEdit, onView, onToggle }: Props) {
+export function RedCard({ reg, grupo, canEdit, onView, onEdit, onToggle }: Props) {
   const disponible = !!reg.disponible_para_remisiones;
   const activo = esActivo(reg);
-  const Icon = tab.icon;
+  const Icon = grupo.icon;
   const servicios = serviciosList(reg);
   const loc = ubicacion(reg);
 
+  const esEspecialidad = grupo.key === "especialidades_cedim";
+  const esAmbulancia = grupo.key === "ambulancias";
+  const esTep = grupo.key === "jornadas_tep";
+  const esCodigoTep = reg.tipo_red === "codigo_tep";
+
   const copiar = (txt: string) => {
     navigator.clipboard.writeText(txt);
-    toast.success("Código copiado");
+    toast.success("Copiado");
   };
 
   return (
@@ -52,30 +58,37 @@ export function RedCard({ reg, tab, canEdit, onView, onToggle }: Props) {
       }`}
     >
       <div className="flex items-start gap-4">
-        {/* Ícono institucional */}
         <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-vitalis-blue/10 text-vitalis-blue">
           <Icon className="h-7 w-7" />
         </div>
 
-        {/* Cuerpo */}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="truncate text-[15px] font-bold text-foreground">
-                {reg.entidad || "—"}
+                {esCodigoTep ? reg.empresa_tep || reg.entidad || "—" : reg.entidad || "—"}
               </p>
 
-              {/* Línea de servicios / especialidad */}
-              {tab.esEspecialista ? (
+              {esEspecialidad ? (
                 <p className="mt-0.5 flex items-center gap-1.5 text-sm text-vitalis-blue">
                   <Stethoscope className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">
                     {reg.servicio_especialidad || "Sin especialidad"}
                   </span>
                 </p>
-              ) : tab.esAmbulancia ? (
+              ) : esAmbulancia ? (
                 <p className="mt-0.5 text-sm text-vitalis-blue">
-                  {reg.tipo_apoyo || reg.tipo_ambulancia || "Apoyo"}
+                  {reg.tipo_ambulancia || reg.tipo_apoyo || "Ambulancia"}
+                </p>
+              ) : esCodigoTep ? (
+                <p className="mt-0.5 text-sm text-vitalis-blue">
+                  {reg.tipo_ambulancia || ""}
+                  {reg.cups ? ` · CUPS ${reg.cups}` : ""}
+                </p>
+              ) : esTep ? (
+                <p className="mt-0.5 flex items-center gap-1.5 text-sm text-vitalis-blue">
+                  <Stethoscope className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{reg.servicio_especialidad || "Jornada"}</span>
                 </p>
               ) : (
                 servicios.length > 0 && (
@@ -98,7 +111,6 @@ export function RedCard({ reg, tab, canEdit, onView, onToggle }: Props) {
             </span>
           </div>
 
-          {/* Datos de contacto */}
           <div className="mt-2 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
             {loc && (
               <p className="flex items-center gap-1.5">
@@ -116,35 +128,35 @@ export function RedCard({ reg, tab, canEdit, onView, onToggle }: Props) {
                 <span className="truncate">{reg.correo}</span>
               </p>
             )}
-            {tab.esEspecialista && reg.jornada && (
+            {reg.eapb_aseguradoras && (
+              <p className="truncate">
+                <span className="font-medium">EAPB: </span>
+                {reg.eapb_aseguradoras}
+              </p>
+            )}
+            {(esEspecialidad || esTep) && reg.jornada && (
               <p className="flex items-center gap-1.5">
                 <Clock className="h-3.5 w-3.5 shrink-0" /> {reg.jornada}
                 {reg.horario ? ` · ${reg.horario}` : ""}
               </p>
             )}
+            {reg.recorrido && (
+              <p className="truncate">
+                <span className="font-medium">Recorrido: </span>
+                {reg.recorrido}
+              </p>
+            )}
           </div>
 
-          {/* Códigos para ambulancias / autorizaciones */}
-          {tab.esAmbulancia && (reg.codigo_principal || reg.codigo_alterno) && (
+          {esCodigoTep && reg.cups && (
             <div className="mt-2 flex flex-wrap gap-2">
-              {reg.codigo_principal && (
-                <button
-                  type="button"
-                  onClick={() => copiar(reg.codigo_principal!)}
-                  className="flex items-center gap-1 rounded-full border border-border bg-secondary px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground"
-                >
-                  {reg.codigo_principal} <Copy className="h-3 w-3" />
-                </button>
-              )}
-              {reg.codigo_alterno && (
-                <button
-                  type="button"
-                  onClick={() => copiar(reg.codigo_alterno!)}
-                  className="flex items-center gap-1 rounded-full border border-border bg-secondary px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground"
-                >
-                  {reg.codigo_alterno} <Copy className="h-3 w-3" />
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => copiar(reg.cups!)}
+                className="flex items-center gap-1 rounded-full border border-border bg-secondary px-2 py-0.5 text-[10px] font-semibold text-secondary-foreground"
+              >
+                CUPS {reg.cups} <Copy className="h-3 w-3" />
+              </button>
             </div>
           )}
 
@@ -155,25 +167,8 @@ export function RedCard({ reg, tab, canEdit, onView, onToggle }: Props) {
           )}
         </div>
 
-        {/* Acciones a la derecha — solo consulta y disponibilidad */}
-        <div className="flex shrink-0 flex-col items-end gap-2">
-          {canEdit ? (
-            <div className="flex flex-col items-center">
-              <span className="text-[10px] font-medium text-muted-foreground">
-                Marcar disponibilidad
-              </span>
-              <Switch
-                checked={disponible}
-                onCheckedChange={(v) => onToggle(reg, v)}
-                disabled={!activo}
-                className="mt-1"
-              />
-            </div>
-          ) : (
-            <span className="max-w-[120px] text-right text-[10px] text-muted-foreground">
-              Sin permisos para modificar disponibilidad
-            </span>
-          )}
+        {/* Acciones: solo menú discreto (sin switch visible en la tarjeta) */}
+        <div className="shrink-0">
           <DropdownMenu>
             <DropdownMenuTrigger className="rounded-full p-1.5 text-muted-foreground hover:bg-accent">
               <MoreVertical className="h-4 w-4" />
@@ -182,6 +177,17 @@ export function RedCard({ reg, tab, canEdit, onView, onToggle }: Props) {
               <DropdownMenuItem onClick={() => onView(reg)}>
                 <Eye className="mr-2 h-4 w-4" /> Ver detalle
               </DropdownMenuItem>
+              {canEdit && onEdit && (
+                <DropdownMenuItem onClick={() => onEdit(reg)}>
+                  <Pencil className="mr-2 h-4 w-4" /> Editar
+                </DropdownMenuItem>
+              )}
+              {canEdit && activo && (
+                <DropdownMenuItem onClick={() => onToggle(reg, !disponible)}>
+                  <Clock className="mr-2 h-4 w-4" />
+                  {disponible ? "Marcar NO disponible" : "Marcar disponible"}
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

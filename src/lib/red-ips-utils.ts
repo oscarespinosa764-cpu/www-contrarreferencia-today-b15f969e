@@ -1,19 +1,25 @@
 import {
+  CalendarClock,
   Building2,
-  Building,
-  UserRound,
-  Handshake,
   Ambulance,
+  Stethoscope,
   type LucideIcon,
 } from "lucide-react";
 
-// Tipos de red soportados por el módulo Red / Disponibilidad IPS.
+// ---------------------------------------------------------------------------
+// Tipos de red (valor guardado en red_operativa.tipo_red)
+// ---------------------------------------------------------------------------
 export type TipoRed =
   | "ips_nacional"
   | "ips_departamental"
-  | "especialista_interno"
+  | "especialista_interno" // ESPECIALIDADES CEDIM
   | "ips_aliada"
-  | "ambulancia_autorizacion";
+  | "ambulancia_autorizacion"
+  | "jornada_especialidad"
+  | "codigo_tep";
+
+// Pestañas principales (grupos) del módulo
+export type RedGrupo = "jornadas_tep" | "ips" | "ambulancias" | "especialidades_cedim";
 
 export interface RelacionRed {
   nombre: string;
@@ -31,7 +37,6 @@ export interface CodigoApoyo {
   observacion?: string;
 }
 
-// Forma del registro tal como vive en la tabla red_operativa (campos usados).
 export interface RedRegistro {
   id: string;
   entidad: string | null;
@@ -44,6 +49,7 @@ export interface RedRegistro {
   correo: string | null;
   contacto: string | null;
   contacto_principal: string | null;
+  cargo_contacto: string | null;
   direccion: string | null;
   medico: string | null;
   sede: string | null;
@@ -53,6 +59,15 @@ export interface RedRegistro {
   tipo_ambulancia: string | null;
   codigo_principal: string | null;
   codigo_alterno: string | null;
+  nit: string | null;
+  eapb_aseguradoras: string | null;
+  ambito: string | null; // 'caqueta' | 'nacional'
+  empresa_tep: string | null;
+  cups: string | null;
+  cups_descripcion: string | null;
+  recorrido: string | null;
+  vigencia_desde: string | null;
+  vigencia_hasta: string | null;
   disponible_para_remisiones: boolean | null;
   novedad_disponibilidad: string | null;
   fecha_actualizacion_disponibilidad: string | null;
@@ -67,77 +82,78 @@ export interface RedRegistro {
   updated_at: string | null;
 }
 
-export interface TabConfig {
-  key: TipoRed;
+export interface GrupoConfig {
+  key: RedGrupo;
   label: string;
-  short: string;
-  addLabel: string;
   icon: LucideIcon;
-  esEspecialista: boolean;
-  esAmbulancia: boolean;
+  tipos: TipoRed[]; // tipo_red que pertenecen a este grupo
+  tieneAmbito: boolean; // divide interno Caquetá / Nacional
+  buscarPlaceholder: string;
 }
 
-export const RED_TABS: TabConfig[] = [
+// Orden solicitado: JORNADAS/CÓDIGOS TEP primero
+export const RED_GRUPOS: GrupoConfig[] = [
   {
-    key: "ips_nacional",
-    label: "IPS NACIONALES",
-    short: "IPS",
-    addLabel: "Agregar IPS",
+    key: "jornadas_tep",
+    label: "JORNADAS / CÓDIGOS TEP",
+    icon: CalendarClock,
+    tipos: ["jornada_especialidad", "codigo_tep"],
+    tieneAmbito: false,
+    buscarPlaceholder: "Buscar especialidad, IPS, empresa TEP, CUPS, EAPB…",
+  },
+  {
+    key: "ips",
+    label: "IPS",
     icon: Building2,
-    esEspecialista: false,
-    esAmbulancia: false,
+    tipos: ["ips_nacional", "ips_departamental"],
+    tieneAmbito: true,
+    buscarPlaceholder: "Buscar IPS, ciudad, especialidad, servicio, EAPB, contacto…",
   },
   {
-    key: "ips_departamental",
-    label: "IPS DEPARTAMENTALES",
-    short: "IPS",
-    addLabel: "Agregar IPS",
-    icon: Building,
-    esEspecialista: false,
-    esAmbulancia: false,
-  },
-  {
-    key: "especialista_interno",
-    label: "ESPECIALISTAS INTERNOS",
-    short: "Especialista",
-    addLabel: "Agregar especialista",
-    icon: UserRound,
-    esEspecialista: true,
-    esAmbulancia: false,
-  },
-  {
-    key: "ips_aliada",
-    label: "IPS ALIADAS",
-    short: "IPS aliada",
-    addLabel: "Agregar IPS aliada",
-    icon: Handshake,
-    esEspecialista: false,
-    esAmbulancia: false,
-  },
-  {
-    key: "ambulancia_autorizacion",
-    label: "AMBULANCIAS / AUTORIZACIONES",
-    short: "Ambulancia / autorización",
-    addLabel: "Agregar ambulancia/autorización",
+    key: "ambulancias",
+    label: "AMBULANCIAS",
     icon: Ambulance,
-    esEspecialista: false,
-    esAmbulancia: true,
+    tipos: ["ambulancia_autorizacion", "ips_aliada"],
+    tieneAmbito: true,
+    buscarPlaceholder: "Buscar empresa, ciudad, tipo de ambulancia, EAPB, CUPS…",
+  },
+  {
+    key: "especialidades_cedim",
+    label: "ESPECIALIDADES CEDIM",
+    icon: Stethoscope,
+    tipos: ["especialista_interno"],
+    tieneAmbito: false,
+    buscarPlaceholder: "Buscar especialidad, profesional, servicio, sede…",
   },
 ];
 
 export const TIPO_RED_LABEL: Record<TipoRed, string> = {
   ips_nacional: "IPS nacional",
   ips_departamental: "IPS departamental",
-  especialista_interno: "Especialista interno",
+  especialista_interno: "Especialidad CEDIM",
   ips_aliada: "IPS aliada",
   ambulancia_autorizacion: "Ambulancia / autorización",
+  jornada_especialidad: "Jornada de especialidad / IPS",
+  codigo_tep: "Código TEP",
 };
 
-export const JORNADAS = ["Mañana", "Tarde", "Noche", "Jornada completa"];
-export const TIPOS_APOYO = ["Ambulancia", "Autorizaciones", "Ambulancia y autorizaciones"];
+export const JORNADAS = ["Mañana", "Tarde", "Noche", "Día completo", "Otro"];
+export const ESTADOS_JORNADA = ["Activo", "Inactivo", "Finalizado"];
+export const TIPOS_AMBULANCIA = ["TAB", "TAM", "TAM-N", "AÉREA"];
 
-export function getTab(tipo: TipoRed): TabConfig {
-  return RED_TABS.find((t) => t.key === tipo) ?? RED_TABS[1];
+export function getGrupo(key: RedGrupo): GrupoConfig {
+  return RED_GRUPOS.find((g) => g.key === key) ?? RED_GRUPOS[0];
+}
+
+export function grupoDeTipo(tipo: string | null | undefined): RedGrupo {
+  const t = (tipo || "ips_departamental") as TipoRed;
+  return RED_GRUPOS.find((g) => g.tipos.includes(t))?.key ?? "ips";
+}
+
+// Ámbito: usa el campo explícito o infiere por departamento (Caquetá).
+export function esCaqueta(r: RedRegistro): boolean {
+  if (r.ambito) return r.ambito.toLowerCase() === "caqueta";
+  return norm(r.departamento || r.ciudad || "").includes("caquet");
 }
 
 // Normaliza para búsqueda tolerante a tildes/mayúsculas.
@@ -148,7 +164,6 @@ export function norm(s: string): string {
     .toLowerCase();
 }
 
-// Texto completo de un registro para el buscador.
 export function textoBusqueda(r: RedRegistro): string {
   const rels = (r.relaciones_red ?? [])
     .map((x) => [x.nombre, x.especialidad, x.contacto].filter(Boolean).join(" "))
@@ -158,24 +173,11 @@ export function textoBusqueda(r: RedRegistro): string {
     .join(" ");
   return norm(
     [
-      r.entidad,
-      r.servicio_especialidad,
-      r.medico,
-      r.telefono,
-      r.correo,
-      r.contacto,
-      r.contacto_principal,
-      r.ciudad,
-      r.departamento,
-      r.direccion,
-      r.tipo_apoyo,
-      r.tipo_ambulancia,
-      r.codigo_principal,
-      r.codigo_alterno,
-      r.novedad_disponibilidad,
-      r.observaciones,
-      rels,
-      cods,
+      r.entidad, r.servicio_especialidad, r.medico, r.telefono, r.correo, r.contacto,
+      r.contacto_principal, r.cargo_contacto, r.ciudad, r.departamento, r.direccion,
+      r.tipo_apoyo, r.tipo_ambulancia, r.codigo_principal, r.codigo_alterno, r.nit,
+      r.eapb_aseguradoras, r.empresa_tep, r.cups, r.cups_descripcion, r.recorrido,
+      r.jornada, r.novedad_disponibilidad, r.observaciones, rels, cods,
     ]
       .filter(Boolean)
       .join(" "),

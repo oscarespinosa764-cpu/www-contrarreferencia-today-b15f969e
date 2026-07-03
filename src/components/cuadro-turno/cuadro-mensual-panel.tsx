@@ -19,7 +19,7 @@ import {
   MESES, diasDelMes, letraDiaSemana, fechaISO, totalHorasMiembro, tiempoExtra, tiempoTotal,
   type ShiftType, type ShiftSchedule, type ShiftMember, type ShiftDay,
 } from "@/lib/cuadro-turno-utils";
-import { exportarPlantillaCuadro, importarCuadroExcel } from "@/lib/cuadro-excel";
+import { exportarPlantillaCuadro, exportarCuadroMensual, importarCuadroExcel } from "@/lib/cuadro-excel";
 
 export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
   const { user } = useAuth();
@@ -78,8 +78,15 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [importando, setImportando] = useState(false);
 
-  const exportarPlantilla = () =>
-    exportarPlantillaCuadro({ anio, mes, members, days, tipos });
+  const exportarPlantilla = () => {
+    exportarPlantillaCuadro({ anio, mes, members, days, tipos, baseHoras: schedule?.base_hours });
+    registrarAuditoria({ data: { accion: "PLANTILLA_TH-FR-10_DESCARGADA", modulo: "cuadro_turno", tabla: "shift_schedules", registroId: schedule?.id ?? "", resultado: "exito", detalles: { anio, mes } } }).catch(() => {});
+  };
+
+  const exportarCuadro = () => {
+    exportarCuadroMensual({ anio, mes, members, days, tipos, baseHoras: schedule?.base_hours });
+    registrarAuditoria({ data: { accion: "CUADRO_TH-FR-10_EXPORTADO", modulo: "cuadro_turno", tabla: "shift_schedules", registroId: schedule?.id ?? "", resultado: "exito", detalles: { anio, mes } } }).catch(() => {});
+  };
 
   const onImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -145,6 +152,9 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
               <div className="flex flex-wrap items-center gap-2">
                 <Button size="sm" variant="outline" onClick={exportarPlantilla}>
                   <FileDown className="mr-1.5 h-4 w-4" /> Plantilla TH-FR-10
+                </Button>
+                <Button size="sm" onClick={exportarCuadro}>
+                  <FileDown className="mr-1.5 h-4 w-4" /> Exportar cuadro TH-FR-10
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={importando}>
                   {importando ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Upload className="mr-1.5 h-4 w-4" />}

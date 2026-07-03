@@ -26,13 +26,14 @@ import { Search, Plus, Pencil, Power, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { RedFormDialog } from "@/components/red/red-form-dialog";
 import {
-  RED_TABS,
-  TIPO_RED_LABEL,
+  RED_GRUPOS,
+  getGrupo,
+  grupoDeTipo,
   norm,
   textoBusqueda,
   esActivo,
   type RedRegistro,
-  type TipoRed,
+  type RedGrupo,
 } from "@/lib/red-ips-utils";
 
 export function RedAdminDialog({
@@ -46,10 +47,9 @@ export function RedAdminDialog({
   const qc = useQueryClient();
   const catalogos = useCatalogos();
 
-  const [tab, setTab] = useState<TipoRed>("ips_nacional");
+  const [grupo, setGrupo] = useState<RedGrupo>("jornadas_tep");
   const [q, setQ] = useState("");
   const [formOpen, setFormOpen] = useState(false);
-  const [formTipo, setFormTipo] = useState<TipoRed>("ips_nacional");
   const [editing, setEditing] = useState<RedRegistro | null>(null);
   const [delTarget, setDelTarget] = useState<RedRegistro | null>(null);
 
@@ -75,9 +75,9 @@ export function RedAdminDialog({
   const term = norm(q.trim());
   const lista = useMemo(() => {
     return (registros ?? [])
-      .filter((r) => (r.tipo_red || "ips_departamental") === tab)
+      .filter((r) => grupoDeTipo(r.tipo_red) === grupo)
       .filter((r) => (term ? textoBusqueda(r).includes(term) : true));
-  }, [registros, tab, term]);
+  }, [registros, grupo, term]);
 
   const auditar = (accion: string, registroId: string, detalles: Record<string, unknown>) =>
     registrarAuditoria({
@@ -148,12 +148,11 @@ export function RedAdminDialog({
 
   const abrirNuevo = () => {
     setEditing(null);
-    setFormTipo(tab);
     setFormOpen(true);
   };
   const abrirEditar = (r: RedRegistro) => {
     setEditing(r);
-    setFormTipo((r.tipo_red as TipoRed) || "ips_departamental");
+    setGrupo(grupoDeTipo(r.tipo_red));
     setFormOpen(true);
   };
 
@@ -165,23 +164,24 @@ export function RedAdminDialog({
             <DialogTitle>Gestión de red y disponibilidad</DialogTitle>
           </DialogHeader>
 
-          {/* Pestañas por tipo de red */}
+          {/* Pestañas por grupo */}
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {RED_TABS.map((t) => (
+            {RED_GRUPOS.map((g) => (
               <button
-                key={t.key}
+                key={g.key}
                 type="button"
-                onClick={() => setTab(t.key)}
+                onClick={() => setGrupo(g.key)}
                 className={`shrink-0 rounded-lg border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide ${
-                  t.key === tab
+                  g.key === grupo
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-secondary text-muted-foreground hover:bg-accent"
                 }`}
               >
-                {t.label}
+                {g.label}
               </button>
             ))}
           </div>
+
 
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative min-w-[200px] flex-1">
@@ -202,7 +202,7 @@ export function RedAdminDialog({
             <p className="py-8 text-center text-sm text-muted-foreground">Cargando…</p>
           ) : lista.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              No hay registros en «{TIPO_RED_LABEL[tab]}».
+              No hay registros en «{getGrupo(grupo).label}».
             </p>
           ) : (
             <div className="space-y-2">
@@ -262,8 +262,7 @@ export function RedAdminDialog({
       <RedFormDialog
         open={formOpen}
         onOpenChange={setFormOpen}
-        tipo={formTipo}
-        onTipoChange={setFormTipo}
+        grupo={grupo}
         editing={editing}
         especialidades={catalogos.data.especialidades}
         ipsOptions={catalogos.data.ips}
