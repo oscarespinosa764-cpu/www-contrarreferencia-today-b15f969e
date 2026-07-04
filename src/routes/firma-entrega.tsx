@@ -179,10 +179,9 @@ function FirmaEntregaPage() {
       </div>
 
       <div className="rounded-lg border bg-muted/40 p-3 text-sm">
-        <Dato k="Paciente" v={snap.paciente} />
-        <Dato k="Documento" v={snap.documento} />
+        <Dato k="Paciente (iniciales)" v={snap.paciente_iniciales} />
+        <Dato k="Documento" v={snap.documento_enmascarado} />
         <Dato k="IPS receptora" v={snap.ips_receptora} />
-        <Dato k="Empresa de traslado" v={snap.empresa_traslado} />
         <Dato k="Fecha/hora de entrega" v={snap.fecha_entrega} />
       </div>
 
@@ -191,13 +190,13 @@ function FirmaEntregaPage() {
           Documentos entregados
         </p>
         <ul className="mt-1.5 space-y-1 text-sm">
-          {docs.filter((d) => d.marcado).map((d, i) => (
+          {docs.map((label, i) => (
             <li key={i} className="flex gap-2">
               <span className="text-emerald-600">✓</span>
-              {d.label}
+              {label}
             </li>
           ))}
-          {docs.filter((d) => d.marcado).length === 0 && (
+          {docs.length === 0 && (
             <li className="text-muted-foreground">Sin documentos marcados.</li>
           )}
         </ul>
