@@ -146,20 +146,7 @@ const firmaInput = z.object({
 });
 
 type FirmaResultado =
-  | {
-      ok: true;
-      codigo_verificacion: string;
-      firmado_at: string;
-      snapshot: EntregaSnapshot;
-      firmante: {
-        nombre: string;
-        cargo: string;
-        empresa: string;
-        documento: string;
-        telefono: string;
-      };
-      firma_data: string;
-    }
+  | { ok: true; codigo_verificacion: string; firmado_at: string }
   | { ok: false; error: "NO_EXISTE" | "VENCIDA" | "FIRMADA" | "ANULADA" | "DATOS" };
 
 /** Registra la firma del personal externo. Valida token, vencimiento y uso único. */
