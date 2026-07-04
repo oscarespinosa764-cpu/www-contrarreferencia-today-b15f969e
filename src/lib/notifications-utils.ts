@@ -65,6 +65,8 @@ export function sanitizarMensajeManual(text: string): string {
     if (digits.length < 6) return m;
     return "•".repeat(Math.max(3, digits.length - 2)) + digits.slice(-2);
   });
+}
+
 
 /** Convierte un nombre a iniciales: OSCAR JAVIER ESPINOSA OLARTE → OSCAR J. E. O. */
 export function maskNombre(nombre?: string | null): string {
