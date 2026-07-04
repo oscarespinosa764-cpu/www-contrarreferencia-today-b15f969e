@@ -147,7 +147,7 @@ function SidebarContent({
         </div>
       )}
 
-      <nav className="flex-1 space-y-5 overflow-y-auto overflow-x-hidden p-3">
+      <nav className="no-scrollbar flex-1 space-y-5 overflow-y-auto overflow-x-hidden p-3">
         {groups
           .filter((g) => !g.adminOnly || isAdmin)
           .map((group) => (
@@ -238,7 +238,7 @@ function AuthenticatedLayout() {
   }, [path]);
 
   const { data: profile } = useQuery({
-    queryKey: ["mi-perfil", user?.id],
+    queryKey: ["mi-perfil-nav", user?.id],
     enabled: !!user,
     queryFn: async () => {
       const { data } = await supabase.from("profiles").select("nombre, cargo").eq("user_id", user!.id).maybeSingle();
