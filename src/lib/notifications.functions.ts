@@ -4,6 +4,7 @@ import {
   renderPlantilla,
   plantillaPorCanal,
   labelAlerta,
+  sanitizarMensajeManual,
   type PlantillaVars,
 } from "./notifications-utils";
 
@@ -226,10 +227,14 @@ export const sendManualNotification = createServerFn({ method: "POST" })
     if (!data.message?.trim()) return { ok: false, error: "El mensaje es obligatorio." };
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    // El mensaje manual puede contener PHI pegada por error: se enmascara antes
+    // de enviarlo y antes de guardarlo en el log.
+    const mensajeSeguro = sanitizarMensajeManual(data.message.trim());
+
     const { data: prof } = await (supabase as any).from("profiles").select("nombre").eq("user_id", userId).maybeSingle();
     const prefijo = data.priority === "Crítico" ? "🚨" : data.priority === "Alerta" ? "⚠️" : "ℹ️";
     const text =
-      `${prefijo} AVISO CEDIM IPS\nTipo: ${labelAlerta(data.alert_type)}\n${data.module ? `Módulo: ${data.module}\n` : ""}Prioridad: ${data.priority}\n\n${data.message.trim()}\n\nEnviado por: ${prof?.nombre || "Administrador"}`;
+      `${prefijo} AVISO CEDIM IPS\nTipo: ${labelAlerta(data.alert_type)}\n${data.module ? `Módulo: ${data.module}\n` : ""}Prioridad: ${data.priority}\n\n${mensajeSeguro}\n\nEnviado por: ${prof?.nombre || "Administrador"}`;
 
     const { data: canales } = await (supabaseAdmin as any)
       .from("notification_channels")
@@ -250,7 +255,7 @@ export const sendManualNotification = createServerFn({ method: "POST" })
         alert_type: data.alert_type,
         module: data.module || "control_mando",
         recipient: res.recipient ?? null,
-        message_preview: data.message.trim().slice(0, 140),
+        message_preview: mensajeSeguro.slice(0, 140),
         status: res.ok ? "sent" : "error",
         error_message: res.ok ? null : res.error,
         sent_at: res.ok ? new Date().toISOString() : null,
