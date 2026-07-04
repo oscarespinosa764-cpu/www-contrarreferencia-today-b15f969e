@@ -238,7 +238,7 @@ function AuthenticatedLayout() {
   }, [path]);
 
   const { data: profile } = useQuery({
-    queryKey: ["mi-perfil", user?.id],
+    queryKey: ["mi-perfil-nav", user?.id],
     enabled: !!user,
     queryFn: async () => {
       const { data } = await supabase.from("profiles").select("nombre, cargo").eq("user_id", user!.id).maybeSingle();
