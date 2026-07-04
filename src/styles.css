@@ -247,3 +247,12 @@ input[type="datetime-local"],
 input[type="month"] {
   position: relative;
 }
+
+/* Scroll funcional pero sin barra visible (menú lateral, etc.) */
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE y Edge antiguo */
+  scrollbar-width: none; /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Edge */
+}
