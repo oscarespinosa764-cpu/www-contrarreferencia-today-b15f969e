@@ -29,12 +29,11 @@ export const Route = createFileRoute("/firma-entrega")({
 });
 
 type Snap = {
-  paciente?: string;
-  documento?: string;
+  paciente_iniciales?: string;
+  documento_enmascarado?: string;
   ips_receptora?: string;
-  empresa_traslado?: string;
   fecha_entrega?: string;
-  documentos?: { label: string; marcado: boolean }[];
+  documentos?: string[];
 };
 
 function Aviso({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
