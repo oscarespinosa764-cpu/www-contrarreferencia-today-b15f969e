@@ -255,7 +255,7 @@ export const sendManualNotification = createServerFn({ method: "POST" })
         alert_type: data.alert_type,
         module: data.module || "control_mando",
         recipient: res.recipient ?? null,
-        message_preview: data.message.trim().slice(0, 140),
+        message_preview: mensajeSeguro.slice(0, 140),
         status: res.ok ? "sent" : "error",
         error_message: res.ok ? null : res.error,
         sent_at: res.ok ? new Date().toISOString() : null,
