@@ -4,6 +4,7 @@ import {
   renderPlantilla,
   plantillaPorCanal,
   labelAlerta,
+  sanitizarMensajeManual,
   type PlantillaVars,
 } from "./notifications-utils";
 
