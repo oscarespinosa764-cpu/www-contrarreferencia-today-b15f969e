@@ -147,7 +147,7 @@ function SidebarContent({
         </div>
       )}
 
-      <nav className="flex-1 space-y-5 overflow-y-auto overflow-x-hidden p-3">
+      <nav className="no-scrollbar flex-1 space-y-5 overflow-y-auto overflow-x-hidden p-3">
         {groups
           .filter((g) => !g.adminOnly || isAdmin)
           .map((group) => (
