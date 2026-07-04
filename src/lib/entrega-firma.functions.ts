@@ -33,19 +33,65 @@ function generarCodigoVerificacion(): string {
   return out;
 }
 
-export type EntregaSnapshot = {
+// Forma COMPLETA del snapshot almacenado (uso interno). Contiene PHI y NUNCA
+// se devuelve tal cual a la ruta pública.
+type EntregaSnapshotInterno = {
   paciente?: string;
   documento?: string;
   ips_receptora?: string;
   empresa_traslado?: string;
   fecha_entrega?: string;
-  documentos?: string[];
+  documentos?: ({ label: string; marcado?: boolean } | string)[];
   caso_id?: string;
+  caso_ref?: string;
+  [k: string]: unknown;
 };
+
+// Forma MÍNIMA que ve el firmante externo en la ruta pública (sin login).
+// Solo datos estrictamente necesarios para confirmar la entrega: iniciales,
+// documento enmascarado, IPS receptora y la lista de documentos a recibir.
+export type SnapshotPublico = {
+  paciente_iniciales?: string;
+  documento_enmascarado?: string;
+  ips_receptora?: string;
+  fecha_entrega?: string;
+  documentos?: string[];
+};
+
+/** Convierte "Juan Pérez Gómez" → "J.P.G." (nunca expone el nombre completo). */
+function inicialesNombre(nombre?: string): string {
+  const partes = (nombre ?? "").trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return "—";
+  return partes.map((p) => p[0]!.toUpperCase()).join(".") + ".";
+}
+
+/** Enmascara un documento dejando solo los últimos 2 dígitos: 1117545825 → •••••••25 */
+function enmascararDocumento(doc?: string): string {
+  const d = (doc ?? "").replace(/\s+/g, "");
+  if (!d) return "—";
+  if (d.length <= 2) return "•".repeat(d.length);
+  return "•".repeat(Math.max(3, d.length - 2)) + d.slice(-2);
+}
+
+/** Reduce el snapshot interno a lo mínimo visible en la ruta pública. */
+function snapshotPublicoDesde(raw: EntregaSnapshotInterno): SnapshotPublico {
+  const docs = (raw.documentos ?? [])
+    .map((d) => (typeof d === "string" ? { label: d, marcado: true } : d))
+    .filter((d) => d && d.marcado !== false)
+    .map((d) => d.label)
+    .filter((l): l is string => typeof l === "string" && l.length > 0);
+  return {
+    paciente_iniciales: inicialesNombre(raw.paciente),
+    documento_enmascarado: enmascararDocumento(raw.documento),
+    ips_receptora: raw.ips_receptora || undefined,
+    fecha_entrega: raw.fecha_entrega || undefined,
+    documentos: docs,
+  };
+}
 
 type SesionPublica = {
   estado: "PENDIENTE" | "FIRMADA" | "VENCIDA" | "ANULADA" | "NO_EXISTE";
-  snapshot?: EntregaSnapshot;
+  snapshot?: SnapshotPublico;
   codigo_verificacion?: string | null;
 };
 
@@ -81,7 +127,11 @@ export const obtenerSesionFirma = createServerFn({ method: "POST" })
       return { estado: "VENCIDA" };
     }
 
-    return { estado: "PENDIENTE", snapshot: (row.snapshot ?? {}) as EntregaSnapshot };
+    // Solo datos mínimos enmascarados: nunca se envía el snapshot crudo con PHI.
+    return {
+      estado: "PENDIENTE",
+      snapshot: snapshotPublicoDesde((row.snapshot ?? {}) as EntregaSnapshotInterno),
+    };
   });
 
 const firmaInput = z.object({
