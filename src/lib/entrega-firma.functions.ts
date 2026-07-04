@@ -210,6 +210,8 @@ export const firmarEntrega = createServerFn({ method: "POST" })
     if (upErr) return { ok: false, error: "DATOS" };
 
     // Auditoría atribuida al usuario interno que generó el QR.
+    // No se guarda PHI (ni nombre del firmante ni IP en texto plano); la IP
+    // queda solo en la columna técnica firma_ip de la fila, de acceso admin.
     try {
       if (row.usuario_genero) {
         const { registrarAuditoriaServer } = await import("./auditoria.server");
@@ -219,25 +221,13 @@ export const firmarEntrega = createServerFn({ method: "POST" })
           tabla: "entrega_firmas",
           registroId: row.id,
           resultado: "exito",
-          detalles: { codigo, firmante: data.firmante_nombre, ip },
+          detalles: { codigo },
         });
       }
     } catch {
       /* la auditoría no interrumpe la firma */
     }
 
-    return {
-      ok: true,
-      codigo_verificacion: codigo,
-      firmado_at: firmadoAt,
-      snapshot: (row.snapshot ?? {}) as EntregaSnapshot,
-      firmante: {
-        nombre: data.firmante_nombre,
-        cargo: data.firmante_cargo,
-        empresa: data.firmante_empresa || "",
-        documento: data.firmante_documento || "",
-        telefono: data.firmante_telefono || "",
-      },
-      firma_data: data.firma_data,
-    };
+    // Respuesta mínima: nunca se devuelve la firma (base64) ni el snapshot con PHI.
+    return { ok: true, codigo_verificacion: codigo, firmado_at: firmadoAt };
   });
