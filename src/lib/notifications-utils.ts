@@ -54,6 +54,18 @@ export function maskDocumento(doc?: string | null): string {
   return "****" + clean.slice(-4);
 }
 
+/**
+ * Sanea un mensaje MANUAL escrito por un admin antes de enviarlo y de guardarlo
+ * en el log: enmascara secuencias largas de dígitos (documentos/teléfonos),
+ * dejando solo los últimos 2. Defensa contra PHI pegada por error.
+ */
+export function sanitizarMensajeManual(text: string): string {
+  return (text ?? "").replace(/\d[\d.\-\s]{5,}\d/g, (m) => {
+    const digits = m.replace(/\D/g, "");
+    if (digits.length < 6) return m;
+    return "•".repeat(Math.max(3, digits.length - 2)) + digits.slice(-2);
+  });
+
 /** Convierte un nombre a iniciales: OSCAR JAVIER ESPINOSA OLARTE → OSCAR J. E. O. */
 export function maskNombre(nombre?: string | null): string {
   if (!nombre) return "";
