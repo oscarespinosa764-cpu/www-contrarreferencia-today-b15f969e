@@ -218,13 +218,14 @@ export function HistoricosPanel() {
           onOpenChange={(v) => !v && setActivo(null)}
           destino={activo.destino}
           titulo={activo.label}
+          permiteExportar={activo.exportar}
         />
       )}
 
       <IndicadoresDatosDialog open={indOpen} onOpenChange={setIndOpen} />
       <BorradoSeguroDialog open={borradoOpen} onOpenChange={setBorradoOpen} />
 
-      <RedAdminDialog open={redAdminOpen} onOpenChange={setRedAdminOpen} />
+      <ImportarRedDialog open={redImportOpen} onOpenChange={setRedImportOpen} />
     </div>
   );
 }
