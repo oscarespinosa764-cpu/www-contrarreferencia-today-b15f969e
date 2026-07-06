@@ -7,20 +7,21 @@ import { useAuth } from "@/lib/auth";
 import { BarChart3, DatabaseBackup, Loader2, Network } from "lucide-react";
 import { toast } from "sonner";
 import { ImportarDialog } from "./importar-dialog";
+import { ImportarRedDialog } from "./importar-red-dialog";
 import { IndicadoresDatosDialog } from "./indicadores-datos";
 import { BorradoSeguroDialog } from "./borrado-seguro-dialog";
-import { RedAdminDialog } from "@/components/red/red-admin-dialog";
 import { respaldoTotal } from "@/lib/backup.functions";
 import type { DestinoKey } from "@/lib/importar.functions";
 
-type ImportItem = { emoji: string; label: string; destino: DestinoKey };
+type ImportItem = { emoji: string; label: string; destino: DestinoKey; exportar?: boolean };
 type Grupo = { titulo: string; items: ImportItem[] };
 
 const grupos: Grupo[] = [
   {
     titulo: "Dashboard Operativo salientes",
     items: [
-      { emoji: "🚑", label: "Remisiones salientes", destino: "remisiones" },
+      // Único módulo (junto con Indicadores) autorizado a exportar datos.
+      { emoji: "🚑", label: "Remisiones salientes", destino: "remisiones", exportar: true },
       { emoji: "🏠", label: "PHD / PAD / Oxígeno y especiales", destino: "domiciliarios" },
       { emoji: "🔁", label: "Referencias internas", destino: "referencia_interna" },
       { emoji: "📌", label: "Pendientes", destino: "pendientes" },
@@ -53,15 +54,15 @@ function AdminBadge({ tone = "amber" }: { tone?: "amber" | "red" }) {
 }
 
 export function HistoricosPanel() {
-  const { isAdmin, user } = useAuth();
+  const { isAdmin } = useAuth();
 
   const [activo, setActivo] = useState<ImportItem | null>(null);
   const [indOpen, setIndOpen] = useState(false);
   const [borradoOpen, setBorradoOpen] = useState(false);
   const [respaldando, setRespaldando] = useState(false);
 
-  // Gestión administrativa de red / disponibilidad
-  const [redAdminOpen, setRedAdminOpen] = useState(false);
+  // Importación de red / disponibilidad (modal de archivo, no CRUD)
+  const [redImportOpen, setRedImportOpen] = useState(false);
 
   const generarRespaldo = useServerFn(respaldoTotal);
 
@@ -118,7 +119,7 @@ export function HistoricosPanel() {
             <GrupoBotones key={g.titulo} g={g} onSelect={setActivo} />
           ))}
 
-          {/* Red y disponibilidad: importación + gestión individual */}
+          {/* Red y disponibilidad: solo importación por archivo (sin CRUD, sin exportar) */}
           <div>
             <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
               Red y disponibilidad
@@ -127,20 +128,10 @@ export function HistoricosPanel() {
               <Button
                 variant="outline"
                 className="h-auto justify-start gap-2 whitespace-normal rounded-xl py-3 text-left text-sm font-semibold"
-                onClick={() =>
-                  setActivo({ emoji: "🔗", label: "Red / disponibilidad IPS", destino: "red_operativa" })
-                }
-              >
-                <span className="text-base">🔗</span>
-                <span>Red / disponibilidad IPS</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="h-auto justify-start gap-2 whitespace-normal rounded-xl py-3 text-left text-sm font-semibold"
-                onClick={() => setRedAdminOpen(true)}
+                onClick={() => setRedImportOpen(true)}
               >
                 <Network className="h-4 w-4 text-primary" />
-                <span>Red y disponibilidad (gestión)</span>
+                <span>Red / disponibilidad</span>
               </Button>
             </div>
           </div>
@@ -227,13 +218,14 @@ export function HistoricosPanel() {
           onOpenChange={(v) => !v && setActivo(null)}
           destino={activo.destino}
           titulo={activo.label}
+          permiteExportar={activo.exportar}
         />
       )}
 
       <IndicadoresDatosDialog open={indOpen} onOpenChange={setIndOpen} />
       <BorradoSeguroDialog open={borradoOpen} onOpenChange={setBorradoOpen} />
 
-      <RedAdminDialog open={redAdminOpen} onOpenChange={setRedAdminOpen} />
+      <ImportarRedDialog open={redImportOpen} onOpenChange={setRedImportOpen} />
     </div>
   );
 }
