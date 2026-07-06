@@ -235,7 +235,7 @@ function RedIpsPage() {
                 <Network className="h-10 w-10 opacity-40" />
                 <p className="max-w-sm text-sm">
                   No hay registros en esta categoría. La gestión administrativa de la red se
-                  realiza desde Control de Mando → Históricos → Red y disponibilidad.
+                  realiza desde Control de Mando → Históricos → RED/DISPONIBILIDAD.
                 </p>
               </div>
             )}
