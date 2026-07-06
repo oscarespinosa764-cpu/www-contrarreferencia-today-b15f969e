@@ -54,7 +54,7 @@ function AdminBadge({ tone = "amber" }: { tone?: "amber" | "red" }) {
 }
 
 export function HistoricosPanel() {
-  const { isAdmin, user } = useAuth();
+  const { isAdmin } = useAuth();
 
   const [activo, setActivo] = useState<ImportItem | null>(null);
   const [indOpen, setIndOpen] = useState(false);
