@@ -119,7 +119,7 @@ export function HistoricosPanel() {
             <GrupoBotones key={g.titulo} g={g} onSelect={setActivo} />
           ))}
 
-          {/* Red y disponibilidad: importación + gestión individual */}
+          {/* Red y disponibilidad: solo importación por archivo (sin CRUD, sin exportar) */}
           <div>
             <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
               Red y disponibilidad
@@ -128,20 +128,10 @@ export function HistoricosPanel() {
               <Button
                 variant="outline"
                 className="h-auto justify-start gap-2 whitespace-normal rounded-xl py-3 text-left text-sm font-semibold"
-                onClick={() =>
-                  setActivo({ emoji: "🔗", label: "Red / disponibilidad IPS", destino: "red_operativa" })
-                }
-              >
-                <span className="text-base">🔗</span>
-                <span>Red / disponibilidad IPS</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="h-auto justify-start gap-2 whitespace-normal rounded-xl py-3 text-left text-sm font-semibold"
-                onClick={() => setRedAdminOpen(true)}
+                onClick={() => setRedImportOpen(true)}
               >
                 <Network className="h-4 w-4 text-primary" />
-                <span>Red y disponibilidad (gestión)</span>
+                <span>Red / disponibilidad</span>
               </Button>
             </div>
           </div>
