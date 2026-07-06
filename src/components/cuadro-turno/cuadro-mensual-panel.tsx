@@ -86,28 +86,8 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
     registrarAuditoria({ data: { accion: "CUADRO_EXPORTADO", modulo: "cuadro_turno", tabla: "shift_schedules", registroId: schedule?.id ?? "", resultado: "exito", detalles: { anio, mes } } }).catch(() => {});
   };
 
-  const onImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file || !schedule) return;
-    setImportando(true);
-    try {
-      const r = await importarCuadroExcel({
-        file, scheduleId: schedule.id, anio, mes, members, tipos, userId: user!.id,
-      });
-      registrarAuditoria({ data: { accion: "CUADRO_IMPORTADO", modulo: "cuadro_turno", tabla: "shift_schedule_days", registroId: schedule.id, resultado: "exito", detalles: { ...r } } }).catch(() => {});
-      let msg = `Importado: ${r.miembrosNuevos} nuevo(s), ${r.diasCargados} día(s).`;
-      if (r.codigosDesconocidos.length) msg += ` Códigos no reconocidos: ${r.codigosDesconocidos.join(", ")}.`;
-      toast.success(msg);
-      qc.invalidateQueries({ queryKey: ["schedule-members"] });
-      qc.invalidateQueries({ queryKey: ["schedule-days"] });
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err?.message || "No se pudo importar el archivo.");
-    } finally {
-      setImportando(false);
-    }
-  };
+
+
 
   const crearCuadro = async () => {
     const { error } = await supabase.from("shift_schedules").insert({
