@@ -9,29 +9,137 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 // Solo coordinación (ADMIN) puede ejecutarlo.
 // ---------------------------------------------------------------------------
 
-// Lista blanca: únicas tablas que se permiten vaciar.
+// Lista blanca: únicas tablas que se permiten vaciar. SOLO datos
+// transaccionales. NUNCA aparecen aquí: usuarios, perfiles, roles, catálogos,
+// plantillas, reglas, red/IPS/ambulancias maestras, indicadores base,
+// firmas maestras del personal (user_signatures), canales de notificación,
+// tipos de turno, audit_logs ni configuración crítica.
 export const GRUPOS_BORRADO = {
+  // Remisiones entrantes / salientes / domiciliarios / referencias
+  casos_entrantes: { tabla: "casos_entrantes", label: "Casos entrantes" },
   remisiones: { tabla: "remisiones", label: "Remisiones salientes" },
   domiciliarios: { tabla: "domiciliarios", label: "PHD / PAD / Oxígeno y especiales" },
   referencia_interna: { tabla: "referencia_interna", label: "Referencias internas" },
   pendientes: { tabla: "pendientes", label: "Pendientes" },
-  casos_entrantes: { tabla: "casos_entrantes", label: "Casos entrantes" },
+  // Trazabilidad transversal
   seguimientos: { tabla: "seguimientos", label: "Seguimientos / bitácora" },
   historicos_casos: { tabla: "historicos_casos", label: "Históricos (entrantes y salientes)" },
-  coordinacion: { tabla: "coordinacion", label: "Alertas de coordinación" },
-  avisos: { tabla: "avisos", label: "Avisos" },
+  // Cuadro de turno
+  shift_schedules: { tabla: "shift_schedules", label: "Programación mensual de turnos" },
+  shift_schedule_days: { tabla: "shift_schedule_days", label: "Turnos asignados por día" },
+  shift_schedule_members: { tabla: "shift_schedule_members", label: "Integrantes del cuadro" },
+  turnos: { tabla: "turnos", label: "Turnos (registro operativo)" },
+  shift_requests: { tabla: "shift_requests", label: "Solicitudes de permisos / cambios de turno" },
+  shift_request_audit: { tabla: "shift_request_audit", label: "Historial de cambios de solicitudes" },
+  shift_request_recovery_logs: { tabla: "shift_request_recovery_logs", label: "Devoluciones de tiempo" },
+  shift_absenteeism_records: { tabla: "shift_absenteeism_records", label: "Control de ausentismo" },
   entregas_turno: { tabla: "entregas_turno", label: "Entregas de turno" },
   historial_turnos: { tabla: "historial_turnos", label: "Historial de turnos" },
-  turnos: { tabla: "turnos", label: "Turnos" },
-  control_mando: { tabla: "control_mando", label: "Registros de control de mando" },
+  // Entrega documental / QR
+  entrega_firmas: { tabla: "entrega_firmas", label: "Firmas y evidencias de entrega documental (QR)" },
+  // Alertas y avisos
+  coordinacion: { tabla: "coordinacion", label: "Alertas de coordinación" },
+  avisos: { tabla: "avisos", label: "Avisos operativos" },
+  notification_logs: { tabla: "notification_logs", label: "Historial de notificaciones externas" },
+  // Indicadores (solo mediciones transaccionales)
   mediciones_indicadores: { tabla: "mediciones_indicadores", label: "Mediciones de indicadores" },
+  // Control de mando / históricos operativos
+  control_mando: { tabla: "control_mando", label: "Registros de control de mando" },
 } satisfies Record<string, { tabla: string; label: string }>;
 
 export type GrupoBorradoKey = keyof typeof GRUPOS_BORRADO;
 
+// Agrupación por módulo / ventana para la UI (tipo acordeón). Cada módulo
+// referencia subgrupos que son claves de GRUPOS_BORRADO. Es SOLO presentación:
+// el backend valida siempre contra GRUPOS_BORRADO.
+export const MODULOS_BORRADO: {
+  id: string;
+  label: string;
+  descripcion: string;
+  subgrupos: GrupoBorradoKey[];
+}[] = [
+  {
+    id: "entrantes",
+    label: "Remisiones entrantes",
+    descripcion: "Casos y trazabilidad de referencias entrantes.",
+    subgrupos: ["casos_entrantes"],
+  },
+  {
+    id: "salientes",
+    label: "Remisiones salientes",
+    descripcion: "Remisiones salientes y su coordinación.",
+    subgrupos: ["remisiones"],
+  },
+  {
+    id: "domiciliarios",
+    label: "PHD / PAD / O₂ / Especiales",
+    descripcion: "Casos domiciliarios y especiales.",
+    subgrupos: ["domiciliarios"],
+  },
+  {
+    id: "referencias",
+    label: "Referencias internas",
+    descripcion: "Referencias entre servicios internos.",
+    subgrupos: ["referencia_interna"],
+  },
+  {
+    id: "pendientes",
+    label: "Pendientes",
+    descripcion: "Pendientes transversales del sistema.",
+    subgrupos: ["pendientes"],
+  },
+  {
+    id: "trazabilidad",
+    label: "Seguimientos e históricos",
+    descripcion: "Seguimientos, bitácoras e históricos de casos.",
+    subgrupos: ["seguimientos", "historicos_casos"],
+  },
+  {
+    id: "cuadro_turno",
+    label: "Cuadro de turno",
+    descripcion: "Calendario, solicitudes, ausentismo y entregas de turno.",
+    subgrupos: [
+      "shift_schedules",
+      "shift_schedule_days",
+      "shift_schedule_members",
+      "turnos",
+      "shift_requests",
+      "shift_request_audit",
+      "shift_request_recovery_logs",
+      "shift_absenteeism_records",
+      "entregas_turno",
+      "historial_turnos",
+    ],
+  },
+  {
+    id: "entrega_qr",
+    label: "Entrega documental / QR",
+    descripcion: "Firmas y evidencias de recepción documental por QR.",
+    subgrupos: ["entrega_firmas"],
+  },
+  {
+    id: "alertas",
+    label: "Alertas y avisos",
+    descripcion: "Alertas de coordinación, avisos e historial de notificaciones.",
+    subgrupos: ["coordinacion", "avisos", "notification_logs"],
+  },
+  {
+    id: "indicadores",
+    label: "Indicadores",
+    descripcion: "Mediciones transaccionales de indicadores.",
+    subgrupos: ["mediciones_indicadores"],
+  },
+  {
+    id: "control_mando",
+    label: "Control de mando / históricos operativos",
+    descripcion: "Registros operativos del control de mando.",
+    subgrupos: ["control_mando"],
+  },
+];
+
 // Frase exacta obligatoria para autorizar el borrado. Larga a propósito para
 // evitar borrados accidentales.
-export const FRASE_CONFIRMACION_BORRADO = "BORRAR DATOS TRANSACCIONALES DE PRODUCCION";
+export const FRASE_CONFIRMACION_BORRADO = "BORRAR DATOS TRANSACCIONALES SELECCIONADOS";
 
 const inputSchema = z.object({
   grupos: z
