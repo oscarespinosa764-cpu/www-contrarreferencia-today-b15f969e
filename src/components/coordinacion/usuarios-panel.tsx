@@ -31,6 +31,7 @@ import {
   editarUsuario,
 } from "@/lib/usuarios.functions";
 import { UsuarioActividadDialog } from "@/components/coordinacion/usuario-actividad-dialog";
+import { FirmaFuncionarioSection } from "@/components/coordinacion/firma-funcionario-section";
 
 type Rol = "admin" | "operativa" | "temporal";
 
