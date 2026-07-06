@@ -52,7 +52,7 @@ const groups: NavGroup[] = [
     items: [
       { to: "/dashboard", label: "Dashboard General", icon: LayoutDashboard },
       { to: "/historial", label: "Historial de Casos E & S", icon: Search },
-      { to: "/red-ips", label: "Red / Disponibilidad IPS", icon: Network },
+      { to: "/red-ips", label: "RED/DISPONIBILIDAD", icon: Network },
       { to: "/cuadro-turno", label: "Cuadro de Turno", icon: CalendarDays },
     ],
   },
