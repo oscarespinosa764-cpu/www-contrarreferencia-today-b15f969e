@@ -93,8 +93,12 @@ export const limpiarDatos = createServerFn({ method: "POST" })
       return { ok: false, resultados: [] as { grupo: string; eliminadas: number }[], error: "Acción reservada a coordinación." as string | null };
     }
 
-    if (data.confirmacion.trim().toUpperCase() !== "BORRAR") {
-      return { ok: false, resultados: [], error: 'Escribe "BORRAR" para confirmar.' as string | null };
+    if (data.confirmacion.trim().toUpperCase() !== FRASE_CONFIRMACION_BORRADO) {
+      return { ok: false, resultados: [], error: `Escribe exactamente "${FRASE_CONFIRMACION_BORRADO}" para confirmar.` as string | null };
+    }
+
+    if (!data.confirmacionBackup) {
+      return { ok: false, resultados: [], error: "Debes confirmar que ya descargaste un respaldo antes de borrar." as string | null };
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
