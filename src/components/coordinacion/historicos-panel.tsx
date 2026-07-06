@@ -66,6 +66,10 @@ export function HistoricosPanel() {
   // Importación de red / disponibilidad (modal de archivo, no CRUD)
   const [redImportOpen, setRedImportOpen] = useState(false);
 
+  // Importaciones de Cuadro de turno
+  const [cuadroOpen, setCuadroOpen] = useState(false);
+  const [turnoTipo, setTurnoTipo] = useState<TurnoImportTipo | null>(null);
+
   const generarRespaldo = useServerFn(respaldoTotal);
 
   if (!isAdmin) {
