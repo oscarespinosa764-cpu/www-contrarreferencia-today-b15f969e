@@ -129,7 +129,7 @@ function RedIpsPage() {
   return (
     <div>
       <AppHeader
-        title="Red / Disponibilidad IPS"
+        title="RED/DISPONIBILIDAD"
         subtitle="Instituciones receptoras, ambulancias, jornadas y especialidades CEDIM"
       />
 
