@@ -179,18 +179,38 @@ export function ImportarRedDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Network className="h-5 w-5 text-primary" /> Red / disponibilidad
+            <Network className="h-5 w-5 text-primary" /> RED/DISPONIBILIDAD
           </DialogTitle>
           <DialogDescription>
-            Descarga la plantilla base, diligénciala y súbela nuevamente para importar la
-            información al sistema. Los encabezados deben coincidir con la plantilla.
+            Descarga la plantilla base para cargar instituciones, ambulancias, jornadas y
+            especialidades. También puedes exportar la información actual para respaldo operativo o
+            actualización controlada de datos.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <Button variant="outline" size="sm" className="rounded-full" onClick={descargarPlantilla}>
-            <Download className="mr-1.5 h-4 w-4" /> Descargar plantilla
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" className="rounded-full" onClick={descargarPlantilla}>
+              <Download className="mr-1.5 h-4 w-4" /> Descargar plantilla
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              onClick={exportarDatos}
+              disabled={exportando}
+            >
+              {exportando ? (
+                <>
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Exportando…
+                </>
+              ) : (
+                <>
+                  <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Exportar datos
+                </>
+              )}
+            </Button>
+          </div>
 
           <input
             ref={inputRef}
