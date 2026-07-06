@@ -125,10 +125,10 @@ export function HistoricosPanel() {
             <GrupoBotones key={g.titulo} g={g} onSelect={setActivo} />
           ))}
 
-          {/* Red y disponibilidad: solo importación por archivo (sin CRUD, sin exportar) */}
+          {/* Red y disponibilidad: importación por archivo + exportación de datos */}
           <div>
             <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-              Red y disponibilidad
+              RED/DISPONIBILIDAD
             </p>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               <Button
@@ -137,7 +137,40 @@ export function HistoricosPanel() {
                 onClick={() => setRedImportOpen(true)}
               >
                 <Network className="h-4 w-4 text-primary" />
-                <span>Red / disponibilidad</span>
+                <span>Red/Disponibilidad</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Cuadro de turno: importación por archivo (sin exportar aquí) */}
+          <div>
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Cuadro de turno
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <Button
+                variant="outline"
+                className="h-auto justify-start gap-2 whitespace-normal rounded-xl py-3 text-left text-sm font-semibold"
+                onClick={() => setCuadroOpen(true)}
+              >
+                <CalendarDays className="h-4 w-4 text-primary" />
+                <span>Cuadro de turno</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto justify-start gap-2 whitespace-normal rounded-xl py-3 text-left text-sm font-semibold"
+                onClick={() => setTurnoTipo("solicitudes")}
+              >
+                <ClipboardList className="h-4 w-4 text-primary" />
+                <span>Solicitudes / permisos / cambios de turno</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto justify-start gap-2 whitespace-normal rounded-xl py-3 text-left text-sm font-semibold"
+                onClick={() => setTurnoTipo("ausentismo")}
+              >
+                <CalendarClock className="h-4 w-4 text-primary" />
+                <span>Control de ausentismo</span>
               </Button>
             </div>
           </div>
