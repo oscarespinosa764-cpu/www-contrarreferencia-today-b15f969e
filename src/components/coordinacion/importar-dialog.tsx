@@ -129,9 +129,15 @@ export function ImportarDialog({
         <DialogHeader>
           <DialogTitle>{titulo}</DialogTitle>
           <DialogDescription>
-            Sube un archivo .xlsx / .xlsm / .csv. Los encabezados deben coincidir con la
-            plantilla. Usa <strong>Exportar datos</strong> para descargar la información actual
-            con el formato exacto y reutilizarla como base.
+            Descarga la plantilla base, diligénciala y súbela nuevamente para importar la
+            información al sistema. Los encabezados deben coincidir con la plantilla. Formatos:
+            .xlsx / .xlsm / .csv.
+            {permiteExportar && (
+              <>
+                {" "}
+                Usa <strong>Exportar Excel</strong> para descargar la información actual.
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -140,23 +146,25 @@ export function ImportarDialog({
             <Button variant="outline" size="sm" className="rounded-full" onClick={descargarPlantilla}>
               <Download className="mr-1.5 h-4 w-4" /> Descargar plantilla
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-full"
-              onClick={exportarDatos}
-              disabled={exportando}
-            >
-              {exportando ? (
-                <>
-                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Exportando…
-                </>
-              ) : (
-                <>
-                  <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Exportar datos (Excel)
-                </>
-              )}
-            </Button>
+            {permiteExportar && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-full"
+                onClick={exportarDatos}
+                disabled={exportando}
+              >
+                {exportando ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Exportando…
+                  </>
+                ) : (
+                  <>
+                    <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Exportar Excel
+                  </>
+                )}
+              </Button>
+            )}
           </div>
 
 
