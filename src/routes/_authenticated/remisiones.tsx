@@ -264,18 +264,8 @@ function RemisionesPage() {
   const miNombreExport = () =>
     auxiliares?.find((a) => a.user_id === user?.id)?.nombre || user?.email || "USUARIO";
 
-  const handleExcelCRUE = async () => {
-    setBusyCrue(true);
-    try {
-      descargarExcelCRUE(remisiones ?? []);
-      auditarExport("exportar_excel_crue", { registros: remisiones?.length ?? 0 });
-      toast.success("Excel CRUE generado");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "No se pudo generar el Excel. Intente nuevamente.");
-    } finally {
-      setBusyCrue(false);
-    }
-  };
+
+
 
   const handleReporteGeneral = async () => {
     setBusyReporte(true);
