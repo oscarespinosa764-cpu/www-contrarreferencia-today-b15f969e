@@ -29,6 +29,7 @@ import {
   type ResumenRed,
 } from "@/lib/red-import";
 import { procesarImportRed } from "@/lib/importar-red.functions";
+import { exportarRed } from "@/lib/importar-red.functions";
 
 type HojasData = Partial<Record<HojaRedKey, Record<string, unknown>[]>>;
 
