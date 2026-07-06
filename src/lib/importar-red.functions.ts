@@ -159,3 +159,62 @@ async function auditar(userId: string, resultado: string, resumen: ResumenRed) {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Exportación de RED / DISPONIBILIDAD (bajo demanda, sin guardar archivos).
+// Devuelve, por hoja de la plantilla, columnas + filas con los datos actuales.
+// Reservado a coordinación (ADMIN). Auditado.
+// ---------------------------------------------------------------------------
+
+export const exportarRed = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{
+    ok: boolean;
+    hojas: { hoja: HojaRedKey; columnas: string[]; filas: Record<string, string>[] }[];
+    error: string | null;
+  }> => {
+    const { supabase, userId } = context;
+    const { COLUMNAS_RED, HOJAS_RED_ORDEN: ORDEN, desmapearFilaRed } = await import("./red-import");
+
+    const { data: esAdmin } = await (supabase as any).rpc("has_role", {
+      _user_id: userId,
+      _role: "admin",
+    });
+    if (!esAdmin) {
+      return { ok: false, hojas: [], error: "Acción reservada a coordinación." };
+    }
+
+    const { data: rows, error } = await (supabase as any)
+      .from("red_operativa")
+      .select("*")
+      .eq("archivado", false)
+      .limit(10000);
+    if (error) {
+      console.error("exportarRed: error leyendo red_operativa");
+      return { ok: false, hojas: [], error: "No se pudo exportar la información." };
+    }
+
+    const porHoja = new Map<HojaRedKey, Record<string, string>[]>();
+    for (const hoja of ORDEN) porHoja.set(hoja, []);
+    for (const r of (rows ?? []) as Record<string, unknown>[]) {
+      const m = desmapearFilaRed(r);
+      if (m) porHoja.get(m.hoja)!.push(m.fila);
+    }
+
+    const hojas = ORDEN.map((hoja) => ({
+      hoja,
+      columnas: COLUMNAS_RED[hoja],
+      filas: porHoja.get(hoja)!,
+    }));
+
+    const { registrarAuditoriaServer } = await import("./auditoria.server");
+    await registrarAuditoriaServer(userId, {
+      accion: "exportar",
+      modulo: "exportacion",
+      tabla: "red_operativa",
+      resultado: "exito",
+      detalles: { total: (rows ?? []).length },
+    });
+
+    return { ok: true, hojas, error: null };
+  });
