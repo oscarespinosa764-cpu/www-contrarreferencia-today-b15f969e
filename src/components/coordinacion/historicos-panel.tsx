@@ -265,6 +265,14 @@ export function HistoricosPanel() {
       <BorradoSeguroDialog open={borradoOpen} onOpenChange={setBorradoOpen} />
 
       <ImportarRedDialog open={redImportOpen} onOpenChange={setRedImportOpen} />
+      <ImportarCuadroDialog open={cuadroOpen} onOpenChange={setCuadroOpen} />
+      {turnoTipo && (
+        <ImportarTurnoDialog
+          open={!!turnoTipo}
+          onOpenChange={(v) => !v && setTurnoTipo(null)}
+          tipo={turnoTipo}
+        />
+      )}
     </div>
   );
 }
