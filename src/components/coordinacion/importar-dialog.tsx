@@ -21,11 +21,14 @@ export function ImportarDialog({
   onOpenChange,
   destino,
   titulo,
+  permiteExportar = false,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   destino: DestinoKey;
   titulo: string;
+  /** Solo Dashboard Operativo Salientes e Indicadores pueden exportar datos. */
+  permiteExportar?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [archivo, setArchivo] = useState<File | null>(null);
