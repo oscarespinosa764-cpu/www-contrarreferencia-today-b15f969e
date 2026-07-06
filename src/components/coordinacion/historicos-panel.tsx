@@ -61,8 +61,8 @@ export function HistoricosPanel() {
   const [borradoOpen, setBorradoOpen] = useState(false);
   const [respaldando, setRespaldando] = useState(false);
 
-  // Gestión administrativa de red / disponibilidad
-  const [redAdminOpen, setRedAdminOpen] = useState(false);
+  // Importación de red / disponibilidad (modal de archivo, no CRUD)
+  const [redImportOpen, setRedImportOpen] = useState(false);
 
   const generarRespaldo = useServerFn(respaldoTotal);
 
