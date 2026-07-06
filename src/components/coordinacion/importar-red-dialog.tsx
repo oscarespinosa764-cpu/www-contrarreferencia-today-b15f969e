@@ -48,7 +48,9 @@ export function ImportarRedDialog({
   const [resumen, setResumen] = useState<ResumenRed | null>(null);
   const [validando, setValidando] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [exportando, setExportando] = useState(false);
   const procesar = useServerFn(procesarImportRed);
+  const exportar = useServerFn(exportarRed);
 
   const reset = () => {
     setArchivo(null);
