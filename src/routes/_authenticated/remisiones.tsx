@@ -20,7 +20,6 @@ import { NuevoRegistroDialog } from "@/components/remisiones/nuevo-registro-dial
 import { useAvisosOperativos } from "@/lib/use-avisos-operativos";
 import { NIVEL_BADGE } from "@/lib/avisos-reglas";
 import {
-  descargarExcelCRUE,
   descargarReporteGeneralPDF,
   descargarEntregaTurnoPDF,
 } from "@/lib/salientes-export";
