@@ -43,7 +43,7 @@ function RemisionesPage() {
   const [turnoEntrega, setTurnoEntrega] = useState<string>(getTurno().nombre);
   const [recibe, setRecibe] = useState("");
   const [confirmEntrega, setConfirmEntrega] = useState(false);
-  const [busyCrue, setBusyCrue] = useState(false);
+  
   const [busyReporte, setBusyReporte] = useState(false);
   const [busyPdfTurno, setBusyPdfTurno] = useState(false);
 
