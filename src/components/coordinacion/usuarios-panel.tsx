@@ -661,6 +661,7 @@ export function UsuariosPanel() {
                   No puedes cambiar tu propio rol ni tu propio estado.
                 </p>
               )}
+              <FirmaFuncionarioSection userId={editForm.userId} nombre={editForm.nombre} />
             </div>
           )}
 
