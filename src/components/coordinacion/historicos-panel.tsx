@@ -7,20 +7,21 @@ import { useAuth } from "@/lib/auth";
 import { BarChart3, DatabaseBackup, Loader2, Network } from "lucide-react";
 import { toast } from "sonner";
 import { ImportarDialog } from "./importar-dialog";
+import { ImportarRedDialog } from "./importar-red-dialog";
 import { IndicadoresDatosDialog } from "./indicadores-datos";
 import { BorradoSeguroDialog } from "./borrado-seguro-dialog";
-import { RedAdminDialog } from "@/components/red/red-admin-dialog";
 import { respaldoTotal } from "@/lib/backup.functions";
 import type { DestinoKey } from "@/lib/importar.functions";
 
-type ImportItem = { emoji: string; label: string; destino: DestinoKey };
+type ImportItem = { emoji: string; label: string; destino: DestinoKey; exportar?: boolean };
 type Grupo = { titulo: string; items: ImportItem[] };
 
 const grupos: Grupo[] = [
   {
     titulo: "Dashboard Operativo salientes",
     items: [
-      { emoji: "🚑", label: "Remisiones salientes", destino: "remisiones" },
+      // Único módulo (junto con Indicadores) autorizado a exportar datos.
+      { emoji: "🚑", label: "Remisiones salientes", destino: "remisiones", exportar: true },
       { emoji: "🏠", label: "PHD / PAD / Oxígeno y especiales", destino: "domiciliarios" },
       { emoji: "🔁", label: "Referencias internas", destino: "referencia_interna" },
       { emoji: "📌", label: "Pendientes", destino: "pendientes" },
