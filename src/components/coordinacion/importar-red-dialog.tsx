@@ -74,6 +74,33 @@ export function ImportarRedDialog({
     XLSX.writeFile(wb, "plantilla_red_disponibilidad.xlsx");
   };
 
+  const exportarDatos = async () => {
+    setExportando(true);
+    try {
+      const res = await exportar();
+      if (!res.ok) {
+        toast.error(res.error ?? "No se pudo exportar.");
+        return;
+      }
+      const wb = XLSX.utils.book_new();
+      let total = 0;
+      for (const h of res.hojas) {
+        const matriz = [h.columnas, ...h.filas.map((f) => h.columnas.map((c) => f[c] ?? ""))];
+        const ws = XLSX.utils.aoa_to_sheet(matriz);
+        XLSX.utils.book_append_sheet(wb, ws, h.hoja);
+        total += h.filas.length;
+      }
+      const fecha = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `red_disponibilidad_export_${fecha}.xlsx`);
+      toast.success(`${total} registro(s) exportado(s).`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al exportar. Intenta de nuevo.");
+    } finally {
+      setExportando(false);
+    }
+  };
+
   const onFile = async (file: File) => {
     setResumen(null);
     try {
