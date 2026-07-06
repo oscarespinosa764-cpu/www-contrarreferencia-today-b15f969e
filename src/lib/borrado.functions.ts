@@ -29,13 +29,54 @@ export const GRUPOS_BORRADO = {
 
 export type GrupoBorradoKey = keyof typeof GRUPOS_BORRADO;
 
+// Frase exacta obligatoria para autorizar el borrado. Larga a propósito para
+// evitar borrados accidentales.
+export const FRASE_CONFIRMACION_BORRADO = "BORRAR DATOS TRANSACCIONALES DE PRODUCCION";
+
 const inputSchema = z.object({
   grupos: z
     .array(z.enum(Object.keys(GRUPOS_BORRADO) as [GrupoBorradoKey, ...GrupoBorradoKey[]]))
     .min(1, "Selecciona al menos un grupo de datos a vaciar.")
     .max(Object.keys(GRUPOS_BORRADO).length),
   confirmacion: z.string(),
+  // El administrador debe confirmar explícitamente que ya descargó un respaldo.
+  confirmacionBackup: z.boolean(),
 });
+
+const contarSchema = z.object({
+  grupos: z
+    .array(z.enum(Object.keys(GRUPOS_BORRADO) as [GrupoBorradoKey, ...GrupoBorradoKey[]]))
+    .min(1)
+    .max(Object.keys(GRUPOS_BORRADO).length),
+});
+
+// Devuelve el conteo de registros por grupo ANTES de borrar, para que el
+// administrador vea exactamente cuántos datos se eliminarán.
+export const contarDatos = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => contarSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: esAdmin, error: adminErr } = await (supabase as any).rpc("has_role", {
+      _user_id: userId,
+      _role: "admin",
+    });
+    if (adminErr || !esAdmin) {
+      return { ok: false, conteos: [] as { key: string; label: string; total: number }[], error: "Acción reservada a coordinación." as string | null };
+    }
+
+    const conteos: { key: string; label: string; total: number }[] = [];
+    for (const key of data.grupos) {
+      const def = GRUPOS_BORRADO[key];
+      const { count, error } = await (supabase as any)
+        .from(def.tabla)
+        .select("id", { count: "exact", head: true });
+      conteos.push({ key, label: def.label, total: error ? -1 : count ?? 0 });
+    }
+
+    return { ok: true, conteos, error: null as string | null };
+  });
 
 export const limpiarDatos = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -52,8 +93,12 @@ export const limpiarDatos = createServerFn({ method: "POST" })
       return { ok: false, resultados: [] as { grupo: string; eliminadas: number }[], error: "Acción reservada a coordinación." as string | null };
     }
 
-    if (data.confirmacion.trim().toUpperCase() !== "BORRAR") {
-      return { ok: false, resultados: [], error: 'Escribe "BORRAR" para confirmar.' as string | null };
+    if (data.confirmacion.trim().toUpperCase() !== FRASE_CONFIRMACION_BORRADO) {
+      return { ok: false, resultados: [], error: `Escribe exactamente "${FRASE_CONFIRMACION_BORRADO}" para confirmar.` as string | null };
+    }
+
+    if (!data.confirmacionBackup) {
+      return { ok: false, resultados: [], error: "Debes confirmar que ya descargaste un respaldo antes de borrar." as string | null };
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
