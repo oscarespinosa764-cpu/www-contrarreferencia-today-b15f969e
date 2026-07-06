@@ -78,8 +78,6 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
   const [asignar, setAsignar] = useState<ShiftMember | null>(null);
   const [asignarOpen, setAsignarOpen] = useState(false);
   const [vista, setVista] = useState<"matriz" | "calendario">("calendario");
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [importando, setImportando] = useState(false);
 
   const exportarCuadro = () => {
     exportarCuadroMensual({ anio, mes, members, days, tipos, baseHoras: schedule?.base_hours });
