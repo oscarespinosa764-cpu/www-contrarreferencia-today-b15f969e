@@ -171,11 +171,6 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
                 <Button size="sm" onClick={exportarCuadro}>
                   <FileDown className="mr-1.5 h-4 w-4" /> Exportar Excel
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={importando}>
-                  {importando ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Upload className="mr-1.5 h-4 w-4" />}
-                  Importar Excel
-                </Button>
-                <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={onImportFile} />
               </div>
               <AgregarColaborador
                 scheduleId={schedule.id}
