@@ -31,6 +31,7 @@ import {
   editarUsuario,
 } from "@/lib/usuarios.functions";
 import { UsuarioActividadDialog } from "@/components/coordinacion/usuario-actividad-dialog";
+import { FirmaFuncionarioSection } from "@/components/coordinacion/firma-funcionario-section";
 
 type Rol = "admin" | "operativa" | "temporal";
 
@@ -661,6 +662,7 @@ export function UsuariosPanel() {
                   No puedes cambiar tu propio rol ni tu propio estado.
                 </p>
               )}
+              <FirmaFuncionarioSection userId={editForm.userId} nombre={editForm.nombre} />
             </div>
           )}
 

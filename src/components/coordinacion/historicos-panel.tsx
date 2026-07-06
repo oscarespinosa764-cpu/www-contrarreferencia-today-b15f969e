@@ -4,10 +4,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
-import { BarChart3, DatabaseBackup, Loader2, Network } from "lucide-react";
+import { BarChart3, DatabaseBackup, Loader2, Network, CalendarDays, ClipboardList, CalendarClock } from "lucide-react";
 import { toast } from "sonner";
 import { ImportarDialog } from "./importar-dialog";
 import { ImportarRedDialog } from "./importar-red-dialog";
+import { ImportarCuadroDialog } from "./importar-cuadro-dialog";
+import { ImportarTurnoDialog, type TurnoImportTipo } from "./importar-turno-dialog";
 import { IndicadoresDatosDialog } from "./indicadores-datos";
 import { BorradoSeguroDialog } from "./borrado-seguro-dialog";
 import { respaldoTotal } from "@/lib/backup.functions";
@@ -64,6 +66,10 @@ export function HistoricosPanel() {
   // Importación de red / disponibilidad (modal de archivo, no CRUD)
   const [redImportOpen, setRedImportOpen] = useState(false);
 
+  // Importaciones de Cuadro de turno
+  const [cuadroOpen, setCuadroOpen] = useState(false);
+  const [turnoTipo, setTurnoTipo] = useState<TurnoImportTipo | null>(null);
+
   const generarRespaldo = useServerFn(respaldoTotal);
 
   if (!isAdmin) {
@@ -119,10 +125,10 @@ export function HistoricosPanel() {
             <GrupoBotones key={g.titulo} g={g} onSelect={setActivo} />
           ))}
 
-          {/* Red y disponibilidad: solo importación por archivo (sin CRUD, sin exportar) */}
+          {/* Red y disponibilidad: importación por archivo + exportación de datos */}
           <div>
             <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-              Red y disponibilidad
+              RED/DISPONIBILIDAD
             </p>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               <Button
@@ -131,7 +137,40 @@ export function HistoricosPanel() {
                 onClick={() => setRedImportOpen(true)}
               >
                 <Network className="h-4 w-4 text-primary" />
-                <span>Red / disponibilidad</span>
+                <span>Red/Disponibilidad</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Cuadro de turno: importación por archivo (sin exportar aquí) */}
+          <div>
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Cuadro de turno
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <Button
+                variant="outline"
+                className="h-auto justify-start gap-2 whitespace-normal rounded-xl py-3 text-left text-sm font-semibold"
+                onClick={() => setCuadroOpen(true)}
+              >
+                <CalendarDays className="h-4 w-4 text-primary" />
+                <span>Cuadro de turno</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto justify-start gap-2 whitespace-normal rounded-xl py-3 text-left text-sm font-semibold"
+                onClick={() => setTurnoTipo("solicitudes")}
+              >
+                <ClipboardList className="h-4 w-4 text-primary" />
+                <span>Solicitudes / permisos / cambios de turno</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto justify-start gap-2 whitespace-normal rounded-xl py-3 text-left text-sm font-semibold"
+                onClick={() => setTurnoTipo("ausentismo")}
+              >
+                <CalendarClock className="h-4 w-4 text-primary" />
+                <span>Control de ausentismo</span>
               </Button>
             </div>
           </div>
@@ -226,6 +265,14 @@ export function HistoricosPanel() {
       <BorradoSeguroDialog open={borradoOpen} onOpenChange={setBorradoOpen} />
 
       <ImportarRedDialog open={redImportOpen} onOpenChange={setRedImportOpen} />
+      <ImportarCuadroDialog open={cuadroOpen} onOpenChange={setCuadroOpen} />
+      {turnoTipo && (
+        <ImportarTurnoDialog
+          open={!!turnoTipo}
+          onOpenChange={(v) => !v && setTurnoTipo(null)}
+          tipo={turnoTipo}
+        />
+      )}
     </div>
   );
 }

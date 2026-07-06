@@ -289,3 +289,139 @@ export type ResumenRed = {
   omitidos: number;
   errores: ErrorFila[];
 };
+
+// ---------------------------------------------------------------------------
+// EXPORTACIÓN de RED / DISPONIBILIDAD: mapeo inverso de `red_operativa` a las
+// hojas de la plantilla. Se usa para descargar la información actual con el
+// MISMO formato de la plantilla (actualización controlada / respaldo).
+// ---------------------------------------------------------------------------
+
+const soloFechaExport = (v: unknown) => {
+  const s = String(v ?? "").trim();
+  return s ? s.slice(0, 10) : "";
+};
+const sino = (v: unknown) => (v === true ? "SI" : v === false ? "NO" : "");
+const val = (v: unknown) => (v == null ? "" : String(v));
+
+/** Devuelve la hoja de la plantilla a la que pertenece un registro. */
+export function hojaDeTipoRed(tipo: string): HojaRedKey | null {
+  if (tipo === "ips_nacional" || tipo === "ips_departamental") return "IPS";
+  if (tipo === "ambulancia_autorizacion" || tipo === "ips_aliada") return "AMBULANCIAS";
+  if (tipo === "jornada_especialidad") return "JORNADAS";
+  if (tipo === "codigo_tep") return "CODIGOS_TEP";
+  if (tipo === "especialista_interno") return "ESPECIALIDADES_CEDIM";
+  return null;
+}
+
+/** Mapea un registro de `red_operativa` a la fila de su hoja (columnas de plantilla). */
+export function desmapearFilaRed(
+  r: Record<string, unknown>,
+): { hoja: HojaRedKey; fila: Record<string, string> } | null {
+  const tipo = String(r.tipo_red ?? "");
+  const hoja = hojaDeTipoRed(tipo);
+  if (!hoja) return null;
+
+  if (hoja === "IPS") {
+    return {
+      hoja,
+      fila: {
+        tipo_ips: tipo === "ips_nacional" ? "Nacional" : "Departamental",
+        nombre_ips: val(r.entidad),
+        nit: val(r.nit),
+        departamento: val(r.departamento),
+        ciudad: val(r.ciudad),
+        direccion: val(r.direccion),
+        correo: val(r.correo),
+        telefonos: val(r.telefono),
+        contactos: val(r.contacto_principal),
+        cargo_contacto: val(r.cargo_contacto),
+        especialidades: val(r.servicio_especialidad),
+        servicios: "",
+        eapb_aseguradoras: val(r.eapb_aseguradoras),
+        observaciones: val(r.observaciones),
+        estado: val(r.estado),
+        disponibilidad_operativa: sino(r.disponible_para_remisiones),
+      },
+    };
+  }
+  if (hoja === "AMBULANCIAS") {
+    return {
+      hoja,
+      fila: {
+        tipo_empresa: val(r.tipo_apoyo),
+        nombre_empresa: val(r.entidad),
+        nit: val(r.nit),
+        departamento: val(r.departamento),
+        ciudad: val(r.ciudad),
+        direccion: val(r.direccion),
+        correo: val(r.correo),
+        telefonos: val(r.telefono),
+        contactos: val(r.contacto_principal),
+        cargo_contacto: val(r.cargo_contacto),
+        tipos_ambulancia: val(r.tipo_ambulancia),
+        servicios: val(r.servicio_especialidad),
+        cobertura_recorridos: val(r.recorrido),
+        eapb_aseguradoras: val(r.eapb_aseguradoras),
+        cups_asociados: val(r.cups),
+        observaciones: val(r.observaciones),
+        estado: val(r.estado),
+        disponibilidad_operativa: sino(r.disponible_para_remisiones),
+      },
+    };
+  }
+  if (hoja === "JORNADAS") {
+    return {
+      hoja,
+      fila: {
+        especialidad: val(r.servicio_especialidad),
+        fecha_inicio: soloFechaExport(r.fecha_inicio),
+        fecha_fin: soloFechaExport(r.fecha_final),
+        ips: val(r.entidad),
+        ciudad: val(r.ciudad),
+        departamento: val(r.departamento),
+        medico_profesional: val(r.medico),
+        jornada: val(r.jornada),
+        horario: val(r.horario),
+        contacto: val(r.contacto_principal),
+        telefono: val(r.telefono),
+        correo: val(r.correo),
+        observaciones: val(r.observaciones),
+        estado: val(r.estado),
+      },
+    };
+  }
+  if (hoja === "CODIGOS_TEP") {
+    return {
+      hoja,
+      fila: {
+        empresa_tep: val(r.empresa_tep),
+        tipo_ambulancia: val(r.tipo_ambulancia),
+        recorrido_cobertura: val(r.recorrido),
+        codigo_cups: val(r.cups),
+        descripcion_cups: val(r.cups_descripcion),
+        eapb_aseguradora: val(r.eapb_aseguradoras),
+        vigencia_desde: soloFechaExport(r.vigencia_desde),
+        vigencia_hasta: soloFechaExport(r.vigencia_hasta),
+        observaciones: val(r.observaciones),
+        estado: val(r.estado),
+      },
+    };
+  }
+  // ESPECIALIDADES_CEDIM
+  return {
+    hoja,
+    fila: {
+      especialidad: val(r.servicio_especialidad),
+      profesional_medico: val(r.medico),
+      jornada: val(r.jornada),
+      horario: val(r.horario),
+      sede: val(r.sede),
+      servicio: val(r.tipo_apoyo),
+      telefono: val(r.telefono),
+      correo: val(r.correo),
+      disponibilidad: sino(r.disponible_para_remisiones),
+      observaciones: val(r.observaciones),
+      estado: val(r.estado),
+    },
+  };
+}

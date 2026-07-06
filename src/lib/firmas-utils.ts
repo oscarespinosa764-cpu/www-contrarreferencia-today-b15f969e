@@ -121,3 +121,38 @@ export async function getFirmaDataUrlById(signatureId: string): Promise<string |
     return null;
   }
 }
+
+/**
+ * Elimina (desactiva) la firma activa de un usuario. Marca todas sus filas como
+ * inactivas; conserva el registro histórico. Solo admin/coordinador o el propio
+ * usuario, según RLS. Devuelve true si había una firma activa.
+ */
+export async function eliminarFirma(userId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("user_signatures")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("active", true)
+    .maybeSingle();
+  if (!data?.id) return false;
+  const { error } = await supabase
+    .from("user_signatures")
+    .update({ active: false })
+    .eq("user_id", userId)
+    .eq("active", true);
+  if (error) throw error;
+  return true;
+}
+
+/** Estado de firma de un usuario (para UI): registrada + fecha de actualización. */
+export async function getFirmaEstado(
+  userId: string,
+): Promise<{ registrada: boolean; updatedAt: string | null }> {
+  const { data } = await supabase
+    .from("user_signatures")
+    .select("id, updated_at")
+    .eq("user_id", userId)
+    .eq("active", true)
+    .maybeSingle();
+  return { registrada: !!data?.id, updatedAt: data?.updated_at ?? null };
+}

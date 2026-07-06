@@ -29,6 +29,7 @@ import {
   type ResumenRed,
 } from "@/lib/red-import";
 import { procesarImportRed } from "@/lib/importar-red.functions";
+import { exportarRed } from "@/lib/importar-red.functions";
 
 type HojasData = Partial<Record<HojaRedKey, Record<string, unknown>[]>>;
 
@@ -47,7 +48,9 @@ export function ImportarRedDialog({
   const [resumen, setResumen] = useState<ResumenRed | null>(null);
   const [validando, setValidando] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [exportando, setExportando] = useState(false);
   const procesar = useServerFn(procesarImportRed);
+  const exportar = useServerFn(exportarRed);
 
   const reset = () => {
     setArchivo(null);
@@ -69,6 +72,33 @@ export function ImportarRedDialog({
       XLSX.utils.book_append_sheet(wb, ws, hoja);
     }
     XLSX.writeFile(wb, "plantilla_red_disponibilidad.xlsx");
+  };
+
+  const exportarDatos = async () => {
+    setExportando(true);
+    try {
+      const res = await exportar();
+      if (!res.ok) {
+        toast.error(res.error ?? "No se pudo exportar.");
+        return;
+      }
+      const wb = XLSX.utils.book_new();
+      let total = 0;
+      for (const h of res.hojas) {
+        const matriz = [h.columnas, ...h.filas.map((f) => h.columnas.map((c) => f[c] ?? ""))];
+        const ws = XLSX.utils.aoa_to_sheet(matriz);
+        XLSX.utils.book_append_sheet(wb, ws, h.hoja);
+        total += h.filas.length;
+      }
+      const fecha = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `red_disponibilidad_export_${fecha}.xlsx`);
+      toast.success(`${total} registro(s) exportado(s).`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al exportar. Intenta de nuevo.");
+    } finally {
+      setExportando(false);
+    }
   };
 
   const onFile = async (file: File) => {
@@ -149,18 +179,38 @@ export function ImportarRedDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Network className="h-5 w-5 text-primary" /> Red / disponibilidad
+            <Network className="h-5 w-5 text-primary" /> RED/DISPONIBILIDAD
           </DialogTitle>
           <DialogDescription>
-            Descarga la plantilla base, diligénciala y súbela nuevamente para importar la
-            información al sistema. Los encabezados deben coincidir con la plantilla.
+            Descarga la plantilla base para cargar instituciones, ambulancias, jornadas y
+            especialidades. También puedes exportar la información actual para respaldo operativo o
+            actualización controlada de datos.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <Button variant="outline" size="sm" className="rounded-full" onClick={descargarPlantilla}>
-            <Download className="mr-1.5 h-4 w-4" /> Descargar plantilla
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" className="rounded-full" onClick={descargarPlantilla}>
+              <Download className="mr-1.5 h-4 w-4" /> Descargar plantilla
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+              onClick={exportarDatos}
+              disabled={exportando}
+            >
+              {exportando ? (
+                <>
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Exportando…
+                </>
+              ) : (
+                <>
+                  <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Exportar datos
+                </>
+              )}
+            </Button>
+          </div>
 
           <input
             ref={inputRef}

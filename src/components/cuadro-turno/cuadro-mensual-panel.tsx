@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
@@ -13,13 +13,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, UserPlus, FileDown, Upload, Loader2, Trash2 } from "lucide-react";
+import { Plus, UserPlus, FileDown, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   MESES, diasDelMes, letraDiaSemana, fechaISO, totalHorasMiembro, tiempoExtra, tiempoTotal,
   type ShiftType, type ShiftSchedule, type ShiftMember, type ShiftDay,
 } from "@/lib/cuadro-turno-utils";
-import { exportarCuadroMensual, importarCuadroExcel } from "@/lib/cuadro-excel";
+import { exportarCuadroMensual } from "@/lib/cuadro-excel";
 
 export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
   const { user } = useAuth();
@@ -78,36 +78,14 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
   const [asignar, setAsignar] = useState<ShiftMember | null>(null);
   const [asignarOpen, setAsignarOpen] = useState(false);
   const [vista, setVista] = useState<"matriz" | "calendario">("calendario");
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [importando, setImportando] = useState(false);
 
   const exportarCuadro = () => {
     exportarCuadroMensual({ anio, mes, members, days, tipos, baseHoras: schedule?.base_hours });
     registrarAuditoria({ data: { accion: "CUADRO_EXPORTADO", modulo: "cuadro_turno", tabla: "shift_schedules", registroId: schedule?.id ?? "", resultado: "exito", detalles: { anio, mes } } }).catch(() => {});
   };
 
-  const onImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file || !schedule) return;
-    setImportando(true);
-    try {
-      const r = await importarCuadroExcel({
-        file, scheduleId: schedule.id, anio, mes, members, tipos, userId: user!.id,
-      });
-      registrarAuditoria({ data: { accion: "CUADRO_IMPORTADO", modulo: "cuadro_turno", tabla: "shift_schedule_days", registroId: schedule.id, resultado: "exito", detalles: { ...r } } }).catch(() => {});
-      let msg = `Importado: ${r.miembrosNuevos} nuevo(s), ${r.diasCargados} día(s).`;
-      if (r.codigosDesconocidos.length) msg += ` Códigos no reconocidos: ${r.codigosDesconocidos.join(", ")}.`;
-      toast.success(msg);
-      qc.invalidateQueries({ queryKey: ["schedule-members"] });
-      qc.invalidateQueries({ queryKey: ["schedule-days"] });
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err?.message || "No se pudo importar el archivo.");
-    } finally {
-      setImportando(false);
-    }
-  };
+
+
 
   const crearCuadro = async () => {
     const { error } = await supabase.from("shift_schedules").insert({
@@ -171,11 +149,6 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
                 <Button size="sm" onClick={exportarCuadro}>
                   <FileDown className="mr-1.5 h-4 w-4" /> Exportar Excel
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={importando}>
-                  {importando ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Upload className="mr-1.5 h-4 w-4" />}
-                  Importar Excel
-                </Button>
-                <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={onImportFile} />
               </div>
               <AgregarColaborador
                 scheduleId={schedule.id}

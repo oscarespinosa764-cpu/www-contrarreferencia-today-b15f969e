@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Search, RotateCw, FileSpreadsheet, FileText, FileDown, Loader2 } from "lucide-react";
+import { Plus, Search, RotateCw, FileText, FileDown, Loader2 } from "lucide-react";
 import { getTurno } from "@/lib/turno";
 import { CasoRemisionCard, type Remision } from "@/components/remisiones/caso-remision-card";
 import { CasoGenericoCard, type GenericoTipo } from "@/components/remisiones/caso-generico-card";
@@ -20,7 +20,6 @@ import { NuevoRegistroDialog } from "@/components/remisiones/nuevo-registro-dial
 import { useAvisosOperativos } from "@/lib/use-avisos-operativos";
 import { NIVEL_BADGE } from "@/lib/avisos-reglas";
 import {
-  descargarExcelCRUE,
   descargarReporteGeneralPDF,
   descargarEntregaTurnoPDF,
 } from "@/lib/salientes-export";
@@ -43,7 +42,7 @@ function RemisionesPage() {
   const [turnoEntrega, setTurnoEntrega] = useState<string>(getTurno().nombre);
   const [recibe, setRecibe] = useState("");
   const [confirmEntrega, setConfirmEntrega] = useState(false);
-  const [busyCrue, setBusyCrue] = useState(false);
+  
   const [busyReporte, setBusyReporte] = useState(false);
   const [busyPdfTurno, setBusyPdfTurno] = useState(false);
 
@@ -264,18 +263,8 @@ function RemisionesPage() {
   const miNombreExport = () =>
     auxiliares?.find((a) => a.user_id === user?.id)?.nombre || user?.email || "USUARIO";
 
-  const handleExcelCRUE = async () => {
-    setBusyCrue(true);
-    try {
-      descargarExcelCRUE(remisiones ?? []);
-      auditarExport("exportar_excel_crue", { registros: remisiones?.length ?? 0 });
-      toast.success("Excel CRUE generado");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "No se pudo generar el Excel. Intente nuevamente.");
-    } finally {
-      setBusyCrue(false);
-    }
-  };
+
+
 
   const handleReporteGeneral = async () => {
     setBusyReporte(true);
@@ -400,14 +389,6 @@ function RemisionesPage() {
           <p className="mt-3 text-center text-[12px] italic text-muted-foreground">{entregaEstadoTexto}</p>
 
           <div className="mt-3 flex flex-wrap justify-center gap-2 border-t border-border pt-3">
-            <Button className="rounded-full" onClick={handleExcelCRUE} disabled={busyCrue}>
-              {busyCrue ? (
-                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-              ) : (
-                <FileSpreadsheet className="mr-1.5 h-4 w-4" />
-              )}
-              {busyCrue ? "Generando…" : "Excel CRUE"}
-            </Button>
             <Button variant="outline" className="rounded-full" onClick={handleReporteGeneral} disabled={busyReporte}>
               {busyReporte ? (
                 <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
