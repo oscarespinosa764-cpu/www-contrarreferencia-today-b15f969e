@@ -400,14 +400,6 @@ function RemisionesPage() {
           <p className="mt-3 text-center text-[12px] italic text-muted-foreground">{entregaEstadoTexto}</p>
 
           <div className="mt-3 flex flex-wrap justify-center gap-2 border-t border-border pt-3">
-            <Button className="rounded-full" onClick={handleExcelCRUE} disabled={busyCrue}>
-              {busyCrue ? (
-                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-              ) : (
-                <FileSpreadsheet className="mr-1.5 h-4 w-4" />
-              )}
-              {busyCrue ? "Generando…" : "Excel CRUE"}
-            </Button>
             <Button variant="outline" className="rounded-full" onClick={handleReporteGeneral} disabled={busyReporte}>
               {busyReporte ? (
                 <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
