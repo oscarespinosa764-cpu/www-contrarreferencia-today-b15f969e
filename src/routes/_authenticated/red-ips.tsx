@@ -1,10 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
+import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { AppHeader } from "@/components/app-header";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -19,6 +22,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Search,
   Network,
   Building2,
@@ -26,8 +39,10 @@ import {
   Stethoscope,
   Ambulance,
   ChevronRight,
+  Plus,
 } from "lucide-react";
 import { RedCard } from "@/components/red/red-card";
+import { RedFormDialog } from "@/components/red/red-form-dialog";
 import {
   RED_GRUPOS,
   TIPO_RED_LABEL,
