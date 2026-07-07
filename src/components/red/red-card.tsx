@@ -8,6 +8,7 @@ import {
   Stethoscope,
   Clock,
   Copy,
+  Trash2,
 } from "lucide-react";
 import {
   DropdownMenu,
