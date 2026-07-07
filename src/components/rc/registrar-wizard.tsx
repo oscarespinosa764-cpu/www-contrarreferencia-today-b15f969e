@@ -578,7 +578,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 onChange={setIps}
                 onPick={onPickIps}
                 options={ipsOptions}
-                openAllOnFocus={!!ciudad.trim()}
+                openAllOnFocus={false}
                 minChars={2}
                 placeholder="Escribe para buscar la IPS…"
               />
