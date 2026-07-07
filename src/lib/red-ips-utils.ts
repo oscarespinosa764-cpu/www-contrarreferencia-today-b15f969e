@@ -3,6 +3,7 @@ import {
   Building2,
   Ambulance,
   Stethoscope,
+  BookUser,
   type LucideIcon,
 } from "lucide-react";
 
