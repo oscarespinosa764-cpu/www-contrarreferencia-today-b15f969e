@@ -124,7 +124,19 @@ const EMPTY: FormState = {
   vigencia_hasta: "",
   disponible_para_remisiones: true,
   observaciones: "",
+  telefonos_alternos: "",
+  correos_alternos: "",
+  indicativo: "",
+  cobertura: "",
+  opcion_menu: "",
+  tipo_recurso: "",
+  descripcion: "",
+  categoria: "",
+  subcategoria: "",
+  link: "",
+  orden_visualizacion: "",
 };
+
 
 function defaultTipo(grupo: RedGrupo): TipoRed {
   switch (grupo) {
