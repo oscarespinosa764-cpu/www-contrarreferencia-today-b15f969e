@@ -49,91 +49,113 @@ export const GRUPOS_BORRADO = {
 
 export type GrupoBorradoKey = keyof typeof GRUPOS_BORRADO;
 
-// Agrupación por módulo / ventana para la UI (tipo acordeón). Cada módulo
-// referencia subgrupos que son claves de GRUPOS_BORRADO. Es SOLO presentación:
-// el backend valida siempre contra GRUPOS_BORRADO.
+// Agrupación por módulo / ventana para la UI (tipo tarjetas expandibles). Cada
+// módulo referencia subgrupos que son claves de GRUPOS_BORRADO. Es SOLO
+// presentación: el backend valida siempre contra GRUPOS_BORRADO.
+//
+// `vacio: true` marca módulos que hoy NO tienen datos transaccionales
+// borrables (su información es maestra o solo temporal en memoria). Se muestran
+// para dar contexto completo pero NO son seleccionables.
 export const MODULOS_BORRADO: {
   id: string;
   label: string;
   descripcion: string;
   subgrupos: GrupoBorradoKey[];
+  vacio?: boolean;
+  nota?: string;
 }[] = [
   {
     id: "entrantes",
-    label: "Remisiones entrantes",
-    descripcion: "Casos y trazabilidad de referencias entrantes.",
+    label: "Dashboard operativo entrantes",
+    descripcion: "Casos entrantes, aceptaciones, negaciones, direccionamientos y confirmaciones de ingreso.",
     subgrupos: ["casos_entrantes"],
   },
   {
     id: "salientes",
-    label: "Remisiones salientes",
-    descripcion: "Remisiones salientes y su coordinación.",
+    label: "Dashboard operativo salientes",
+    descripcion: "Remisiones salientes, aceptaciones de IPS, ambulancia coordinada, cierres y novedades.",
     subgrupos: ["remisiones"],
   },
   {
     id: "domiciliarios",
     label: "PHD / PAD / O₂ / Especiales",
-    descripcion: "Casos domiciliarios y especiales.",
+    descripcion: "Casos domiciliarios, oxígeno y especiales con sus estados y bitácoras.",
     subgrupos: ["domiciliarios"],
   },
   {
     id: "referencias",
     label: "Referencias internas",
-    descripcion: "Referencias entre servicios internos.",
+    descripcion: "Referencias entre servicios internos, estados y bitácoras.",
     subgrupos: ["referencia_interna"],
   },
   {
     id: "pendientes",
     label: "Pendientes",
-    descripcion: "Pendientes transversales del sistema.",
+    descripcion: "Pendientes de aceptación, seguimiento, notificación, egreso y transversales.",
     subgrupos: ["pendientes"],
-  },
-  {
-    id: "trazabilidad",
-    label: "Seguimientos e históricos",
-    descripcion: "Seguimientos, bitácoras e históricos de casos.",
-    subgrupos: ["seguimientos", "historicos_casos"],
   },
   {
     id: "cuadro_turno",
     label: "Cuadro de turno",
-    descripcion: "Calendario, solicitudes, ausentismo y entregas de turno.",
+    descripcion: "Programación mensual, solicitudes, ausentismo, entregas e historial de turnos.",
     subgrupos: [
       "shift_schedules",
       "shift_schedule_days",
       "shift_schedule_members",
       "turnos",
+      "historial_turnos",
+      "entregas_turno",
       "shift_requests",
       "shift_request_audit",
       "shift_request_recovery_logs",
       "shift_absenteeism_records",
-      "entregas_turno",
-      "historial_turnos",
     ],
   },
   {
-    id: "entrega_qr",
-    label: "Entrega documental / QR",
-    descripcion: "Firmas y evidencias de recepción documental por QR.",
-    subgrupos: ["entrega_firmas"],
-  },
-  {
-    id: "alertas",
-    label: "Alertas y avisos",
-    descripcion: "Alertas de coordinación, avisos e historial de notificaciones.",
-    subgrupos: ["coordinacion", "avisos", "notification_logs"],
+    id: "red",
+    label: "Red / Disponibilidad",
+    descripcion: "La red es información maestra y se preserva siempre.",
+    subgrupos: [],
+    vacio: true,
+    nota: "Sin datos transaccionales borrables. La red maestra (IPS, ambulancias, especialidades CEDIM, jornadas / códigos TEP) se preserva.",
   },
   {
     id: "indicadores",
     label: "Indicadores",
-    descripcion: "Mediciones transaccionales de indicadores.",
+    descripcion: "Mediciones mensuales cargadas. Los indicadores base, fórmulas y metas se preservan.",
     subgrupos: ["mediciones_indicadores"],
   },
   {
+    id: "reglas_alertas",
+    label: "Reglas y alertas",
+    descripcion: "Alertas de coordinación, avisos operativos e historial de notificaciones. Las reglas y la configuración se preservan.",
+    subgrupos: ["coordinacion", "avisos", "notification_logs"],
+  },
+  {
     id: "control_mando",
-    label: "Control de mando / históricos operativos",
-    descripcion: "Registros operativos del control de mando.",
+    label: "Control de mando",
+    descripcion: "Registros operativos del control de mando. Usuarios, roles y auditoría se preservan.",
     subgrupos: ["control_mando"],
+  },
+  {
+    id: "entrega_qr",
+    label: "Entrega documental / QR",
+    descripcion: "Sesiones de firma QR, evidencias y firmas de recepción documental.",
+    subgrupos: ["entrega_firmas"],
+  },
+  {
+    id: "reportes",
+    label: "Reportes temporales / exportaciones",
+    descripcion: "Los reportes y exportaciones se generan bajo demanda y no se almacenan.",
+    subgrupos: [],
+    vacio: true,
+    nota: "Sin datos transaccionales borrables. Los reportes y exportaciones se generan bajo demanda y no dejan archivos permanentes.",
+  },
+  {
+    id: "historial",
+    label: "Historial de casos",
+    descripcion: "Históricos de entrantes y salientes, seguimientos y bitácoras históricas.",
+    subgrupos: ["historicos_casos", "seguimientos"],
   },
 ];
 
