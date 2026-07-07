@@ -33,16 +33,12 @@ function tarjetasResumen(p: {
 }): [string, string][] {
   const c = p.contadores ?? {};
   return [
+    // Reporte General: solo 5 tarjetas resumen (institucionales, proporcionadas).
     ["REMISIONES ACTIVAS", String(p.activas)],
     ["PENDIENTES ACEPTACIÓN", String(c.acepPendiente ?? 0)],
     ["ACEPTADO SIN AMB.", String(c.acepSinAmb ?? 0)],
     ["ACEPTADO CON AMB.", String(c.acepConAmb ?? 0)],
-    ["PHD/PAD/O2/ESP.", String(p.especiales)],
-    ["REFERENCIAS INTERNAS", String(p.internas)],
-    ["PENDIENTES GENERALES", String(p.pendientes)],
     ["DESISTIMIENTOS", String(c.desistimientos ?? 0)],
-    ["ALTA PRIORIDAD", String(c.altaPrioridad ?? 0)],
-    ["SIN SEG. RECIENTE", String(c.sinSeguimiento ?? 0)],
   ];
 }
 
