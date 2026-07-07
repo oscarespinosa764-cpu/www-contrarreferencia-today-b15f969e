@@ -98,6 +98,10 @@ function RedIpsPage() {
   const all = registros ?? [];
   const grupoCfg = getGrupo(grupo);
 
+  // Subsección activa (directorios externos / interno). Vacía si el grupo no tiene.
+  const subActiva =
+    grupoCfg.subsecciones?.find((s) => s.key === subKey) ?? grupoCfg.subsecciones?.[0] ?? null;
+
   // --- Indicadores laterales ---
   const conteos = useMemo(() => {
     const enGrupo = (k: RedGrupo) => all.filter((r) => grupoDeTipo(r.tipo_red) === k);
@@ -110,11 +114,22 @@ function RedIpsPage() {
     };
   }, [all]);
 
-  // --- Lista filtrada por grupo + ámbito + búsqueda + filtro ---
+  // Conteo por subsección (para las pestañas internas).
+  const conteoSub = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const r of all) m[String(r.tipo_red)] = (m[String(r.tipo_red)] ?? 0) + 1;
+    return m;
+  }, [all]);
+
+  // --- Lista filtrada por grupo/subsección + ámbito + búsqueda + filtro ---
   const term = norm(q.trim());
   const lista = useMemo(() => {
     return all
-      .filter((r) => grupoDeTipo(r.tipo_red) === grupo)
+      .filter((r) =>
+        subActiva
+          ? r.tipo_red === subActiva.tipo
+          : grupoDeTipo(r.tipo_red) === grupo,
+      )
       .filter((r) => {
         if (!grupoCfg.tieneAmbito || ambito === "todos") return true;
         return ambito === "caqueta" ? esCaqueta(r) : !esCaqueta(r);
@@ -126,7 +141,8 @@ function RedIpsPage() {
         return true;
       })
       .filter((r) => (term ? textoBusqueda(r).includes(term) : true));
-  }, [all, grupo, grupoCfg, ambito, filtro, term]);
+  }, [all, grupo, grupoCfg, subActiva, ambito, filtro, term]);
+
 
   // Opciones de autocompletado para el formulario contextual.
   const especialidadesOpts = useMemo(
