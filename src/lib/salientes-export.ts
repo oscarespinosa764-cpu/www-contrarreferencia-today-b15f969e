@@ -452,6 +452,7 @@ export async function descargarEntregaTurnoPDF(params: {
       v(rr.remision_por),
       v(rr.especificacion),
       v(rr.tipo_tramite),
+      v(r.eapb || r.asegurador),
       v(r.regimen),
       v(r.codigo_radicacion),
       v(r.estado),
