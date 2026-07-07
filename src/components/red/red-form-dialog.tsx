@@ -148,6 +148,8 @@ function defaultTipo(grupo: RedGrupo): TipoRed {
       return "ambulancia_autorizacion";
     case "especialidades_cedim":
       return "especialista_interno";
+    case "directorios_externos":
+      return "eapb_eps";
     case "directorio_interno":
       return "directorio_contacto";
   }
@@ -160,6 +162,7 @@ export function RedFormDialog({
   editing,
   especialidades,
   ipsOptions,
+  presetTipo,
   onSubmit,
 }: Props) {
   const cfg = getGrupo(grupo);
@@ -204,10 +207,23 @@ export function RedFormDialog({
         vigencia_hasta: editing.vigencia_hasta || "",
         disponible_para_remisiones: editing.disponible_para_remisiones ?? true,
         observaciones: editing.observaciones || "",
+        telefonos_alternos: editing.telefonos_alternos || "",
+        correos_alternos: editing.correos_alternos || "",
+        indicativo: editing.indicativo || "",
+        cobertura: editing.cobertura || "",
+        opcion_menu: editing.opcion_menu || "",
+        tipo_recurso: editing.tipo_recurso || "",
+        descripcion: editing.descripcion || "",
+        categoria: editing.categoria || "",
+        subcategoria: editing.subcategoria || "",
+        link: editing.link || "",
+        orden_visualizacion:
+          editing.orden_visualizacion != null ? String(editing.orden_visualizacion) : "",
       });
     } else {
-      setF({ ...EMPTY, tipo_red: defaultTipo(grupo) });
+      setF({ ...EMPTY, tipo_red: presetTipo ?? defaultTipo(grupo) });
     }
+
   }, [open, editing, grupo]);
 
   const inactivo = f.estado === "inactivo";
