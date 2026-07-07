@@ -1065,6 +1065,14 @@ export function RedFormDialog({
             <div className="grid gap-3 sm:grid-cols-2">
               {esRef && (
                 <>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Nombre de la institución</Label>
+                    <Input value={f.entidad} onChange={(e) => set("entidad", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Indicativo</Label>
+                    <Input value={f.indicativo} onChange={(e) => set("indicativo", e.target.value)} />
+                  </div>
                   <div className="space-y-1.5">
                     <Label>Número general</Label>
                     <Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} />
@@ -1081,11 +1089,24 @@ export function RedFormDialog({
                     <Input value={f.correo} onChange={(e) => set("correo", e.target.value)} />
                   </div>
                   <div className="space-y-1.5">
+                    <Label>Ciudad</Label>
+                    <Input value={f.ciudad} onChange={(e) => set("ciudad", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Departamento</Label>
+                    <Input value={f.departamento} onChange={(e) => set("departamento", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Dirección principal</Label>
+                    <Input value={f.direccion} onChange={(e) => set("direccion", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
                     <Label>Horario de atención (si aplica)</Label>
                     <Input value={f.horario} onChange={(e) => set("horario", e.target.value)} />
                   </div>
                 </>
               )}
+
 
               {esSede && (
                 <>
