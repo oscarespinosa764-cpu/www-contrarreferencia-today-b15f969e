@@ -25,12 +25,18 @@ import {
   JORNADAS,
   ESTADOS_JORNADA,
   TIPOS_AMBULANCIA,
+  TIPOS_EAPB,
+  TIPOS_LINEA,
+  COBERTURAS,
+  CATEGORIAS_RECURSO,
+  TIPOS_RECURSO,
   getGrupo,
   grupoDeTipo,
   type RedRegistro,
   type TipoRed,
   type RedGrupo,
 } from "@/lib/red-ips-utils";
+
 
 interface Props {
   open: boolean;
