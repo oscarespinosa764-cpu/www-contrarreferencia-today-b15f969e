@@ -2051,7 +2051,19 @@ export function SeguimientoDialog({
             </div>
           )}
 
-          {/* NOVEDADES (Parte 12) */}
+          {/* CIERRE DE CASO POR TRASLADO EFECTIVO */}
+          {esSaliente && esTraslado && (
+            <div className={sectionCls}>
+              <p className={labelCls}>Cierre por traslado efectivo</p>
+              <p className="rounded-md border border-amber-200 bg-amber-50/60 p-3 text-xs leading-relaxed text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
+                Se confirma que el paciente fue trasladado y recibido en la IPS receptora. Al
+                guardar se generará la plantilla de cierre, el caso pasará al estado{" "}
+                <strong>CERRADO POR TRASLADO EFECTIVO</strong> y se moverá al historial.
+              </p>
+            </div>
+          )}
+
+
           {esSaliente && esNovedades && (
             <div className={sectionCls}>
               <p className={labelCls}>Tipo de novedad</p>
