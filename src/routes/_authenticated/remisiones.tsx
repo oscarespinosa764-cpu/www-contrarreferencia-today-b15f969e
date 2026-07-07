@@ -103,6 +103,21 @@ function RemisionesPage() {
     },
   });
 
+  // Jornadas de otras IPS registradas en RED/DISPONIBILIDAD (para el PDF).
+  const { data: redJornadas } = useQuery({
+    queryKey: ["red-jornadas-entrega"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("red_operativa")
+        .select("entidad, servicio_especialidad, ciudad, jornada, fecha_inicio, fecha_final, estado")
+        .eq("tipo_red", "jornada_especialidad")
+        .eq("archivado", false)
+        .neq("estado", "inactivo")
+        .order("fecha_inicio", { ascending: false });
+      return data ?? [];
+    },
+  });
+
   const { data: ultGestiones } = useQuery({
     queryKey: ["seguimientos-ult"],
     queryFn: async () => {
