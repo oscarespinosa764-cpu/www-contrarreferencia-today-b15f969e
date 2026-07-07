@@ -123,16 +123,29 @@ export function RedCard({ reg, grupo, canEdit, onView, onEdit, onDelete }: Props
               </p>
             )}
             {(reg.telefono || reg.contacto) && (
-              <p className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => copiar((reg.telefono || reg.contacto)!)}
+                className="flex items-center gap-1.5 text-left hover:text-foreground"
+                title="Copiar teléfono"
+              >
                 <Phone className="h-3.5 w-3.5 shrink-0" /> {reg.telefono || reg.contacto}
-              </p>
+                <Copy className="h-3 w-3 opacity-50" />
+              </button>
             )}
             {reg.correo && (
-              <p className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => copiar(reg.correo!)}
+                className="flex items-center gap-1.5 text-left hover:text-foreground"
+                title="Copiar correo"
+              >
                 <Mail className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">{reg.correo}</span>
-              </p>
+                <Copy className="h-3 w-3 shrink-0 opacity-50" />
+              </button>
             )}
+
             {reg.eapb_aseguradoras && (
               <p className="truncate">
                 <span className="font-medium">EAPB: </span>
