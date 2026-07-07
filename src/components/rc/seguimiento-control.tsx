@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
+import { siguienteCodigo } from "@/lib/codigo.functions";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,7 @@ import {
   fechaCasoStr,
   fmtFechaHora,
   fmtMinutos,
-  nextCodigo,
+  
   type Caso,
 } from "@/lib/rc-utils";
 import type { Catalogos } from "@/lib/use-rc-data";
@@ -312,32 +313,48 @@ function AccionDialog({
   const MOTIVO_VENC = "NO INGRESO DEL PACIENTE POR VENCIMIENTO DE CUPO";
   const ciudadIps = catalogos.ipsConCiudades.find((x) => x.nombre === caso.ips)?.ciudades[0] || "";
 
-  // Datos para la notificación de vencimiento (modal de archivar)
-  const archivarInfo = useMemo(() => {
-    if (accion !== "archivar") return null;
-    const ahora = new Date();
-    const ven = calcularVencimiento(caso, casos);
-    const codigo = nextCodigo(casos, "CAN", ahora);
-    const motCat = catalogos.motivosCancelacion.find((m) => m.nombre === "NO INGRESO DEL PACIENTE");
-    const mensaje = buildMensaje(
-      plantillas,
-      catalogos.medicos,
-      { codigo, fecha: fmtFechaHora(ahora), fechaVence: "", hrsReserva: "" },
-      {
-        tipo: "CAN",
-        documento: caso.documento ?? undefined,
-        ips: caso.ips ?? undefined,
-        medico: caso.medico ?? undefined,
-        especialidad: caso.especialidad ?? undefined,
-        unidad: caso.unidad ?? undefined,
-        eapb: caso.eapb ?? undefined,
-        regimen: caso.regimen ?? undefined,
-        codRef: caso.codigo,
-        motivoCancelacion: MOTIVO_VENC,
-        justificacionCancelacion: motCat?.justificacion || "",
-      } as any,
-    );
-    return { ven, codigo, mensaje };
+  // Datos para la notificación de vencimiento (modal de archivar).
+  // El código se calcula en el servidor (consecutivo continuo por año e
+  // incluyendo el historial), por eso se carga de forma asíncrona.
+  const [archivarInfo, setArchivarInfo] = useState<
+    { ven: ReturnType<typeof calcularVencimiento>; codigo: string; mensaje: string } | null
+  >(null);
+  useEffect(() => {
+    if (accion !== "archivar") {
+      setArchivarInfo(null);
+      return;
+    }
+    let cancelado = false;
+    (async () => {
+      const ahora = new Date();
+      const ven = calcularVencimiento(caso, casos);
+      const { codigo } = await siguienteCodigo({
+        data: { tipo: "CAN", yyyy: ahora.getFullYear(), mm: ahora.getMonth() + 1 },
+      });
+      const motCat = catalogos.motivosCancelacion.find((m) => m.nombre === "NO INGRESO DEL PACIENTE");
+      const mensaje = buildMensaje(
+        plantillas,
+        catalogos.medicos,
+        { codigo, fecha: fmtFechaHora(ahora), fechaVence: "", hrsReserva: "" },
+        {
+          tipo: "CAN",
+          documento: caso.documento ?? undefined,
+          ips: caso.ips ?? undefined,
+          medico: caso.medico ?? undefined,
+          especialidad: caso.especialidad ?? undefined,
+          unidad: caso.unidad ?? undefined,
+          eapb: caso.eapb ?? undefined,
+          regimen: caso.regimen ?? undefined,
+          codRef: caso.codigo,
+          motivoCancelacion: MOTIVO_VENC,
+          justificacionCancelacion: motCat?.justificacion || "",
+        } as any,
+      );
+      if (!cancelado) setArchivarInfo({ ven, codigo, mensaje });
+    })();
+    return () => {
+      cancelado = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accion]);
 
@@ -364,7 +381,9 @@ function AccionDialog({
       };
 
       if (accion === "ingreso") {
-        const codigo = nextCodigo(casos, "ING", ahora);
+        const { codigo } = await siguienteCodigo({
+          data: { tipo: "ING", yyyy: ahora.getFullYear(), mm: ahora.getMonth() + 1 },
+        });
         // Fecha/hora de ingreso elegidas (formato dd/mm/aaaa para el oficio).
         const [yy, mm, dd] = (fechaIngreso || ahora.toISOString().slice(0, 10)).split("-");
         const fechaFmt = `${dd}/${mm}/${yy}`;
@@ -432,7 +451,9 @@ function AccionDialog({
       }
 
       if (accion === "ampliar") {
-        const codigo = nextCodigo(casos, "AMP", ahora);
+        const { codigo } = await siguienteCodigo({
+          data: { tipo: "AMP", yyyy: ahora.getFullYear(), mm: ahora.getMonth() + 1 },
+        });
         const hrs = calcHrsReserva(caso.unidad || "", "AMP", catalogos.unidades);
         // Acumula el tiempo restante del cupo vigente + las horas de ampliación.
         // (vencimiento vigente = ahora + tiempo restante) → nuevo vencimiento = vigente + horas.
@@ -491,7 +512,14 @@ function AccionDialog({
         const motCat = catalogos.motivosCancelacion.find(
           (m) => m.nombre === (esArchivar ? "NO INGRESO DEL PACIENTE" : motivo),
         );
-        const codigo = esArchivar && archivarInfo ? archivarInfo.codigo : nextCodigo(casos, "CAN", ahora);
+        const codigo =
+          esArchivar && archivarInfo
+            ? archivarInfo.codigo
+            : (
+                await siguienteCodigo({
+                  data: { tipo: "CAN", yyyy: ahora.getFullYear(), mm: ahora.getMonth() + 1 },
+                })
+              ).codigo;
         const mensaje =
           esArchivar && archivarInfo
             ? archivarInfo.mensaje

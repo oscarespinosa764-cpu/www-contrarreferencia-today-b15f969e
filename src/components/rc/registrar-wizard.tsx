@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
+import { siguienteCodigo } from "@/lib/codigo.functions";
 import { useAuth } from "@/lib/auth";
 import { AutoComplete } from "@/components/rc/autocomplete";
 import { ResultadoCard } from "@/components/rc/resultado-card";
@@ -31,7 +32,7 @@ import {
   fechaCasoStr,
   fmtFechaHora,
   fmtMinutos,
-  nextCodigo,
+  
   type Caso,
 } from "@/lib/rc-utils";
 import type { Catalogos } from "@/lib/use-rc-data";
@@ -320,7 +321,9 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     setBusy(true);
     try {
       const ahora = new Date();
-      const codigo = nextCodigo(casos, tipo, ahora);
+      const { codigo } = await siguienteCodigo({
+        data: { tipo, yyyy: ahora.getFullYear(), mm: ahora.getMonth() + 1 },
+      });
 
       const esActivo = tipo === "ACEP" || tipo === "CRUE_ACEP";
       const unidadEff = isCrue ? unidadReq : unidad;
