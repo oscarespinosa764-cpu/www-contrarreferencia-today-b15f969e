@@ -584,6 +584,7 @@ export function SeguimientoDialog({
   const esTelefono = usaIndigo && tipoSeg === T.TELEFONO;
   const esEntregaDoc = usaIndigo && tipoSeg === T.ENTREGA_DOC;
   const esCierre = usaIndigo && tipoSeg === T.CIERRE;
+  const esTraslado = usaIndigo && tipoSeg === T.TRASLADO;
   const esCambioEapb = usaIndigo && tipoSeg === T.CAMBIO_EAPB;
   const esNovedades = usaIndigo && tipoSeg === T.NOVEDADES;
 
