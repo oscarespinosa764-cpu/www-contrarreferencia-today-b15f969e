@@ -65,6 +65,7 @@ export const Route = createFileRoute("/_authenticated/red-ips")({
 
 function RedIpsPage() {
   const { canEdit } = useAuth();
+  const qc = useQueryClient();
 
   const [grupo, setGrupo] = useState<RedGrupo>("jornadas_tep");
   const [ambito, setAmbito] = useState("todos"); // todos | caqueta | nacional
@@ -72,6 +73,10 @@ function RedIpsPage() {
   const [filtro, setFiltro] = useState("todos");
 
   const [detalle, setDetalle] = useState<RedRegistro | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<RedRegistro | null>(null);
+  const [aEliminar, setAEliminar] = useState<RedRegistro | null>(null);
+
 
 
 
