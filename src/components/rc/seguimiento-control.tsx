@@ -381,7 +381,9 @@ function AccionDialog({
       };
 
       if (accion === "ingreso") {
-        const codigo = nextCodigo(casos, "ING", ahora);
+        const { codigo } = await siguienteCodigo({
+          data: { tipo: "ING", yyyy: ahora.getFullYear(), mm: ahora.getMonth() + 1 },
+        });
         // Fecha/hora de ingreso elegidas (formato dd/mm/aaaa para el oficio).
         const [yy, mm, dd] = (fechaIngreso || ahora.toISOString().slice(0, 10)).split("-");
         const fechaFmt = `${dd}/${mm}/${yy}`;
