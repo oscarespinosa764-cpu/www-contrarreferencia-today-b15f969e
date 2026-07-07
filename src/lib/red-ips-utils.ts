@@ -17,10 +17,19 @@ export type TipoRed =
   | "ips_aliada"
   | "ambulancia_autorizacion"
   | "jornada_especialidad"
-  | "codigo_tep";
+  | "codigo_tep"
+  // DIRECTORIO INTERNO (contactos institucionales, sedes, extensiones)
+  | "directorio_referencia"
+  | "sede"
+  | "directorio_contacto";
 
 // Pestañas principales (grupos) del módulo
-export type RedGrupo = "jornadas_tep" | "ips" | "ambulancias" | "especialidades_cedim";
+export type RedGrupo =
+  | "jornadas_tep"
+  | "ips"
+  | "ambulancias"
+  | "especialidades_cedim"
+  | "directorio_interno";
 
 export interface RelacionRed {
   nombre: string;
