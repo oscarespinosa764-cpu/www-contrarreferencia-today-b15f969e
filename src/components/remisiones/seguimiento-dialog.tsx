@@ -1462,9 +1462,9 @@ export function SeguimientoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] overflow-auto p-4 sm:max-w-xl sm:p-6">
-        <DialogHeader>
-          <DialogTitle className="break-words text-base">Seguimiento · {paciente}</DialogTitle>
+      <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] overflow-y-auto overflow-x-hidden p-4 sm:max-w-2xl sm:p-6">
+        <DialogHeader className="pr-6">
+          <DialogTitle className="break-words text-base leading-snug">Seguimiento · {paciente}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
