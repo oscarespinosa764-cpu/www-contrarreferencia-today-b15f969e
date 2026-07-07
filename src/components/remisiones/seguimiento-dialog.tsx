@@ -2063,9 +2063,10 @@ export function SeguimientoDialog({
             </div>
           )}
 
-
+          {/* NOVEDADES (Parte 12) */}
           {esSaliente && esNovedades && (
             <div className={sectionCls}>
+
               <p className={labelCls}>Tipo de novedad</p>
               <div className="flex flex-col gap-2">
                 <label className="flex items-center gap-2 text-sm">
