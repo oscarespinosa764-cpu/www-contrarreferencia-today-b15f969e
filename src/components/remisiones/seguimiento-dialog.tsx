@@ -1357,14 +1357,21 @@ export function SeguimientoDialog({
       // Salientes: estado automático según la cadena secuencial.
       if (esSaliente) {
         if (estadoDestino && estadoDestino !== (estadoActual ?? "")) update.estado = estadoDestino;
-        // Cierre por egresos (remisión exitosa) o desistimiento general → cierra y archiva.
+        // Cierre por egresos (remisión exitosa), traslado efectivo o
+        // desistimiento general → cierra el caso y lo archiva (pasa a histórico).
         if (
           (esCierre && cierreEgreso === "si") ||
+          esTraslado ||
           estadoDestino === EST.CERRADO_EXITOSO ||
+          estadoDestino === EST.CERRADO_TRASLADO ||
           estadoDestino === EST.DESIST_GENERAL
         ) {
           update.estado =
-            estadoDestino === EST.DESIST_GENERAL ? EST.DESIST_GENERAL : EST.CERRADO_EXITOSO;
+            estadoDestino === EST.DESIST_GENERAL
+              ? EST.DESIST_GENERAL
+              : esTraslado || estadoDestino === EST.CERRADO_TRASLADO
+                ? EST.CERRADO_TRASLADO
+                : EST.CERRADO_EXITOSO;
           update.archivado = true;
         }
       } else if (estadoOpciones && estadoCaso) {
