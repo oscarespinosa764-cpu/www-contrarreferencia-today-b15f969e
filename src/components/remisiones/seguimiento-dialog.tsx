@@ -1118,6 +1118,8 @@ export function SeguimientoDialog({
         };
       case T.CIERRE:
         return { egreso: cierreEgreso || null, ips_receptora: caso?.ips_receptora ?? ipsReceptora ?? null };
+      case T.TRASLADO:
+        return { traslado_efectivo: true, ips_receptora: caso?.ips_receptora ?? ipsReceptora ?? null };
       case T.CAMBIO_EAPB:
         return {
           nueva_eapb: cambioEapb.trim() || null,
