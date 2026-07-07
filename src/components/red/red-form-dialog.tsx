@@ -777,6 +777,289 @@ export function RedFormDialog({
             </div>
           )}
 
+          {/* ====== DIRECTORIOS EXTERNOS: EAPB / EPS ====== */}
+          {esExterno && esEapb && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Tipo de entidad</Label>
+                <Select value={f.tipo_apoyo} onValueChange={(v) => set("tipo_apoyo", v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIPOS_EAPB.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nombre de la entidad</Label>
+                <Input value={f.entidad} onChange={(e) => set("entidad", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Departamento</Label>
+                <Input value={f.departamento} onChange={(e) => set("departamento", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Ciudad / municipio</Label>
+                <Input value={f.ciudad} onChange={(e) => set("ciudad", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nombre del contacto</Label>
+                <Input
+                  value={f.contacto_principal}
+                  onChange={(e) => set("contacto_principal", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Unidad, área o cargo</Label>
+                <Input value={f.cargo_contacto} onChange={(e) => set("cargo_contacto", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Teléfono principal</Label>
+                <Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Teléfonos alternos</Label>
+                <Input
+                  value={f.telefonos_alternos}
+                  onChange={(e) => set("telefonos_alternos", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Extensión (si aplica)</Label>
+                <Input value={f.codigo_principal} onChange={(e) => set("codigo_principal", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Correo electrónico</Label>
+                <Input value={f.correo} onChange={(e) => set("correo", e.target.value)} />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Dirección (si aplica)</Label>
+                <Input value={f.direccion} onChange={(e) => set("direccion", e.target.value)} />
+              </div>
+              <p className="sm:col-span-2 text-xs text-muted-foreground">
+                Para varios contactos de una misma entidad, registra cada contacto en Observaciones
+                o crea filas por contacto en la plantilla; no dupliques la entidad.
+              </p>
+            </div>
+          )}
+
+          {/* ====== DIRECTORIOS EXTERNOS: CRUE ====== */}
+          {esExterno && esCrue && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Nombre del CRUE</Label>
+                <Input value={f.entidad} onChange={(e) => set("entidad", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Indicativo (si aplica)</Label>
+                <Input value={f.indicativo} onChange={(e) => set("indicativo", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Departamento</Label>
+                <Input value={f.departamento} onChange={(e) => set("departamento", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Ciudad / municipio</Label>
+                <Input value={f.ciudad} onChange={(e) => set("ciudad", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nombre del contacto / representante</Label>
+                <Input
+                  value={f.contacto_principal}
+                  onChange={(e) => set("contacto_principal", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Cargo</Label>
+                <Input value={f.cargo_contacto} onChange={(e) => set("cargo_contacto", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Teléfono principal</Label>
+                <Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Teléfonos alternos</Label>
+                <Input
+                  value={f.telefonos_alternos}
+                  onChange={(e) => set("telefonos_alternos", e.target.value)}
+                  placeholder="Separa varios con , o salto de línea"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Correo principal</Label>
+                <Input value={f.correo} onChange={(e) => set("correo", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Correos alternos</Label>
+                <Input
+                  value={f.correos_alternos}
+                  onChange={(e) => set("correos_alternos", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Cobertura</Label>
+                <Input value={f.cobertura} onChange={(e) => set("cobertura", e.target.value)} />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Dirección</Label>
+                <Input value={f.direccion} onChange={(e) => set("direccion", e.target.value)} />
+              </div>
+            </div>
+          )}
+
+          {/* ====== DIRECTORIOS EXTERNOS: LÍNEAS DE EMERGENCIA ====== */}
+          {esExterno && esLinea && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Entidad</Label>
+                <Input value={f.entidad} onChange={(e) => set("entidad", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Tipo de entidad</Label>
+                <Select value={f.tipo_apoyo} onValueChange={(v) => set("tipo_apoyo", v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIPOS_LINEA.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Departamento</Label>
+                <Input value={f.departamento} onChange={(e) => set("departamento", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Municipio</Label>
+                <Input value={f.ciudad} onChange={(e) => set("ciudad", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nombre del contacto / representante</Label>
+                <Input
+                  value={f.contacto_principal}
+                  onChange={(e) => set("contacto_principal", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Cargo o dependencia</Label>
+                <Input value={f.cargo_contacto} onChange={(e) => set("cargo_contacto", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Teléfono principal</Label>
+                <Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Números alternos</Label>
+                <Input
+                  value={f.telefonos_alternos}
+                  onChange={(e) => set("telefonos_alternos", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Correo electrónico</Label>
+                <Input value={f.correo} onChange={(e) => set("correo", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Cobertura</Label>
+                <Select value={f.cobertura} onValueChange={(v) => set("cobertura", v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COBERTURAS.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          {/* ====== DIRECTORIOS EXTERNOS: RECURSOS DE REFERENCIA ====== */}
+          {esExterno && esRecurso && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Categoría</Label>
+                <Select value={f.categoria} onValueChange={(v) => set("categoria", v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIAS_RECURSO.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Entidad</Label>
+                <Input value={f.entidad} onChange={(e) => set("entidad", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nombre del recurso</Label>
+                <Input value={f.subcategoria} onChange={(e) => set("subcategoria", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Tipo de recurso</Label>
+                <Select value={f.tipo_recurso} onValueChange={(v) => set("tipo_recurso", v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIPOS_RECURSO.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Descripción</Label>
+                <Input value={f.descripcion} onChange={(e) => set("descripcion", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>URL</Label>
+                <Input value={f.link} onChange={(e) => set("link", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Correo</Label>
+                <Input value={f.correo} onChange={(e) => set("correo", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Teléfono</Label>
+                <Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Orden de visualización</Label>
+                <Input
+                  type="number"
+                  value={f.orden_visualizacion}
+                  onChange={(e) => set("orden_visualizacion", e.target.value)}
+                />
+              </div>
+              <p className="sm:col-span-2 rounded-md bg-status-amber/10 p-2 text-xs text-status-amber-foreground">
+                No registres contraseñas, tokens, llaves API ni credenciales de acceso en esta
+                sección.
+              </p>
+            </div>
+          )}
+
+
+
           {/* ====== DIRECTORIO INTERNO ====== */}
           {esDirectorio && (
             <div className="grid gap-3 sm:grid-cols-2">
