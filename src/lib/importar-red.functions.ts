@@ -122,13 +122,21 @@ export const procesarImportRed = createServerFn({ method: "POST" })
       return { ok: false, resumen, error: "No hay filas válidas para importar." };
     }
 
-    // Inserciones en lote.
+    // Inserciones en lote (por bloques para no exceder límites de la Data API).
     if (prep.nuevos.length > 0) {
-      const { error } = await (supabase as any).from("red_operativa").insert(prep.nuevos);
-      if (error) {
-        console.error("procesarImportRed: error insertando");
-        await auditar(userId, "fallido", resumen);
-        return { ok: false, resumen, error: "No se pudieron guardar los registros nuevos." };
+      const LOTE = 500;
+      for (let i = 0; i < prep.nuevos.length; i += LOTE) {
+        const bloque = prep.nuevos.slice(i, i + LOTE);
+        const { error } = await (supabase as any).from("red_operativa").insert(bloque);
+        if (error) {
+          console.error("procesarImportRed: error insertando", error);
+          await auditar(userId, "fallido", resumen);
+          return {
+            ok: false,
+            resumen,
+            error: `No se pudieron guardar los registros nuevos. ${error.message ?? ""}`.trim(),
+          };
+        }
       }
     }
     // Actualizaciones por id.

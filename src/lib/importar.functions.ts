@@ -155,7 +155,7 @@ const inputSchema = z.object({
   filas: z
     .array(z.record(z.string(), z.unknown()))
     .min(1, "El archivo no contiene filas.")
-    .max(5000, "Máximo 5000 filas por importación."),
+    .max(50000, "Máximo 50000 filas por importación."),
 });
 
 export const importarMasivo = createServerFn({ method: "POST" })
@@ -214,18 +214,28 @@ export const importarMasivo = createServerFn({ method: "POST" })
     }
 
     // El nombre de tabla es dinámico; el cliente tipado no lo infiere.
-    const { error } = await (supabase as any).from(def.tabla).insert(registros);
-    if (error) {
-      console.error("importarMasivo error");
-      const { registrarAuditoriaServer } = await import("./auditoria.server");
-      await registrarAuditoriaServer(userId, {
-        accion: "importar",
-        modulo: "importacion",
-        tabla: def.tabla,
-        resultado: "fallido",
-        detalles: { intentadas: registros.length },
-      });
-      return { ok: false, insertadas: 0, omitidas, error: "No se pudo importar. Revisa el formato del archivo." as string | null };
+    // Inserción por lotes para soportar archivos grandes sin exceder límites de la Data API.
+    const LOTE = 1000;
+    for (let i = 0; i < registros.length; i += LOTE) {
+      const bloque = registros.slice(i, i + LOTE);
+      const { error } = await (supabase as any).from(def.tabla).insert(bloque);
+      if (error) {
+        console.error("importarMasivo error", error);
+        const { registrarAuditoriaServer } = await import("./auditoria.server");
+        await registrarAuditoriaServer(userId, {
+          accion: "importar",
+          modulo: "importacion",
+          tabla: def.tabla,
+          resultado: "fallido",
+          detalles: { intentadas: registros.length, insertadas: i },
+        });
+        return {
+          ok: false,
+          insertadas: i,
+          omitidas,
+          error: `No se pudo importar. ${error.message ?? "Revisa el formato del archivo."}` as string | null,
+        };
+      }
     }
 
     const { registrarAuditoriaServer } = await import("./auditoria.server");
