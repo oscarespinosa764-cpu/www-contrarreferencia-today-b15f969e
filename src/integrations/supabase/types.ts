@@ -1103,17 +1103,20 @@ export type Database = {
           cargo_contacto: string | null
           categoria: string | null
           ciudad: string | null
+          cobertura: string | null
           codigo_alterno: string | null
           codigo_principal: string | null
           codigos_apoyo: Json
           contacto: string | null
           contacto_principal: string | null
           correo: string | null
+          correos_alternos: string | null
           created_at: string
           created_by: string | null
           cups: string | null
           cups_descripcion: string | null
           departamento: string | null
+          descripcion: string | null
           direccion: string | null
           disponible_para_remisiones: boolean
           eapb_aseguradoras: string | null
@@ -1126,6 +1129,7 @@ export type Database = {
           fecha_inicio: string | null
           horario: string | null
           id: string
+          indicativo: string | null
           ips: string | null
           jornada: string | null
           link: string | null
@@ -1133,6 +1137,8 @@ export type Database = {
           nit: string | null
           novedad_disponibilidad: string | null
           observaciones: string | null
+          opcion_menu: string | null
+          orden_visualizacion: number | null
           recorrido: string | null
           relaciones_red: Json
           rondas: string | null
@@ -1140,9 +1146,11 @@ export type Database = {
           servicio_especialidad: string | null
           subcategoria: string | null
           telefono: string | null
+          telefonos_alternos: string | null
           tipo_ambulancia: string | null
           tipo_apoyo: string | null
           tipo_contacto: string | null
+          tipo_recurso: string | null
           tipo_red: string | null
           updated_at: string
           usuario_actualizacion: string | null
@@ -1155,17 +1163,20 @@ export type Database = {
           cargo_contacto?: string | null
           categoria?: string | null
           ciudad?: string | null
+          cobertura?: string | null
           codigo_alterno?: string | null
           codigo_principal?: string | null
           codigos_apoyo?: Json
           contacto?: string | null
           contacto_principal?: string | null
           correo?: string | null
+          correos_alternos?: string | null
           created_at?: string
           created_by?: string | null
           cups?: string | null
           cups_descripcion?: string | null
           departamento?: string | null
+          descripcion?: string | null
           direccion?: string | null
           disponible_para_remisiones?: boolean
           eapb_aseguradoras?: string | null
@@ -1178,6 +1189,7 @@ export type Database = {
           fecha_inicio?: string | null
           horario?: string | null
           id?: string
+          indicativo?: string | null
           ips?: string | null
           jornada?: string | null
           link?: string | null
@@ -1185,6 +1197,8 @@ export type Database = {
           nit?: string | null
           novedad_disponibilidad?: string | null
           observaciones?: string | null
+          opcion_menu?: string | null
+          orden_visualizacion?: number | null
           recorrido?: string | null
           relaciones_red?: Json
           rondas?: string | null
@@ -1192,9 +1206,11 @@ export type Database = {
           servicio_especialidad?: string | null
           subcategoria?: string | null
           telefono?: string | null
+          telefonos_alternos?: string | null
           tipo_ambulancia?: string | null
           tipo_apoyo?: string | null
           tipo_contacto?: string | null
+          tipo_recurso?: string | null
           tipo_red?: string | null
           updated_at?: string
           usuario_actualizacion?: string | null
@@ -1207,17 +1223,20 @@ export type Database = {
           cargo_contacto?: string | null
           categoria?: string | null
           ciudad?: string | null
+          cobertura?: string | null
           codigo_alterno?: string | null
           codigo_principal?: string | null
           codigos_apoyo?: Json
           contacto?: string | null
           contacto_principal?: string | null
           correo?: string | null
+          correos_alternos?: string | null
           created_at?: string
           created_by?: string | null
           cups?: string | null
           cups_descripcion?: string | null
           departamento?: string | null
+          descripcion?: string | null
           direccion?: string | null
           disponible_para_remisiones?: boolean
           eapb_aseguradoras?: string | null
@@ -1230,6 +1249,7 @@ export type Database = {
           fecha_inicio?: string | null
           horario?: string | null
           id?: string
+          indicativo?: string | null
           ips?: string | null
           jornada?: string | null
           link?: string | null
@@ -1237,6 +1257,8 @@ export type Database = {
           nit?: string | null
           novedad_disponibilidad?: string | null
           observaciones?: string | null
+          opcion_menu?: string | null
+          orden_visualizacion?: number | null
           recorrido?: string | null
           relaciones_red?: Json
           rondas?: string | null
@@ -1244,9 +1266,11 @@ export type Database = {
           servicio_especialidad?: string | null
           subcategoria?: string | null
           telefono?: string | null
+          telefonos_alternos?: string | null
           tipo_ambulancia?: string | null
           tipo_apoyo?: string | null
           tipo_contacto?: string | null
+          tipo_recurso?: string | null
           tipo_red?: string | null
           updated_at?: string
           usuario_actualizacion?: string | null

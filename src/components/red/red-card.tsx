@@ -45,6 +45,16 @@ export function RedCard({ reg, grupo, canEdit, onView, onEdit, onDelete }: Props
   const esAmbulancia = grupo.key === "ambulancias";
   const esTep = grupo.key === "jornadas_tep";
   const esCodigoTep = reg.tipo_red === "codigo_tep";
+  const esExterno = grupo.key === "directorios_externos";
+  const esInterno = grupo.key === "directorio_interno";
+  const esRecurso = reg.tipo_red === "recurso_referencia";
+  // Título contextual para directorios.
+  const titulo = esRecurso
+    ? reg.subcategoria || reg.entidad || "—"
+    : esCodigoTep
+      ? reg.empresa_tep || reg.entidad || "—"
+      : reg.entidad || "—";
+
 
   const copiar = (txt: string) => {
     navigator.clipboard.writeText(txt);
@@ -61,9 +71,7 @@ export function RedCard({ reg, grupo, canEdit, onView, onEdit, onDelete }: Props
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="truncate text-[15px] font-bold text-foreground">
-                {esCodigoTep ? reg.empresa_tep || reg.entidad || "—" : reg.entidad || "—"}
-              </p>
+              <p className="truncate text-[15px] font-bold text-foreground">{titulo}</p>
 
               {esEspecialidad ? (
                 <p className="mt-0.5 flex items-center gap-1.5 text-sm text-vitalis-blue">
@@ -86,6 +94,16 @@ export function RedCard({ reg, grupo, canEdit, onView, onEdit, onDelete }: Props
                   <Stethoscope className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">{reg.servicio_especialidad || "Jornada"}</span>
                 </p>
+              ) : esExterno ? (
+                <p className="mt-0.5 truncate text-sm text-vitalis-blue">
+                  {[reg.tipo_apoyo, reg.categoria, esRecurso ? reg.tipo_recurso : reg.entidad]
+                    .filter(Boolean)
+                    .join(" · ") || "Directorio externo"}
+                </p>
+              ) : esInterno ? (
+                <p className="mt-0.5 truncate text-sm text-vitalis-blue">
+                  {[reg.sede, reg.cargo_contacto].filter(Boolean).join(" · ") || "Directorio interno"}
+                </p>
               ) : (
                 servicios.length > 0 && (
                   <p className="mt-0.5 text-sm text-vitalis-blue">
@@ -94,6 +112,7 @@ export function RedCard({ reg, grupo, canEdit, onView, onEdit, onDelete }: Props
                   </p>
                 )
               )}
+
             </div>
           </div>
 
@@ -104,16 +123,29 @@ export function RedCard({ reg, grupo, canEdit, onView, onEdit, onDelete }: Props
               </p>
             )}
             {(reg.telefono || reg.contacto) && (
-              <p className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => copiar((reg.telefono || reg.contacto)!)}
+                className="flex items-center gap-1.5 text-left hover:text-foreground"
+                title="Copiar teléfono"
+              >
                 <Phone className="h-3.5 w-3.5 shrink-0" /> {reg.telefono || reg.contacto}
-              </p>
+                <Copy className="h-3 w-3 opacity-50" />
+              </button>
             )}
             {reg.correo && (
-              <p className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => copiar(reg.correo!)}
+                className="flex items-center gap-1.5 text-left hover:text-foreground"
+                title="Copiar correo"
+              >
                 <Mail className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">{reg.correo}</span>
-              </p>
+                <Copy className="h-3 w-3 shrink-0 opacity-50" />
+              </button>
             )}
+
             {reg.eapb_aseguradoras && (
               <p className="truncate">
                 <span className="font-medium">EAPB: </span>

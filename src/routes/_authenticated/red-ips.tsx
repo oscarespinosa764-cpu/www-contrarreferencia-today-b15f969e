@@ -68,6 +68,7 @@ function RedIpsPage() {
   const qc = useQueryClient();
 
   const [grupo, setGrupo] = useState<RedGrupo>("jornadas_tep");
+  const [subKey, setSubKey] = useState<string>(""); // subsección activa (directorios)
   const [ambito, setAmbito] = useState("todos"); // todos | caqueta | nacional
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState("todos");
@@ -76,6 +77,7 @@ function RedIpsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<RedRegistro | null>(null);
   const [aEliminar, setAEliminar] = useState<RedRegistro | null>(null);
+
 
 
 
@@ -96,6 +98,10 @@ function RedIpsPage() {
   const all = registros ?? [];
   const grupoCfg = getGrupo(grupo);
 
+  // Subsección activa (directorios externos / interno). Vacía si el grupo no tiene.
+  const subActiva =
+    grupoCfg.subsecciones?.find((s) => s.key === subKey) ?? grupoCfg.subsecciones?.[0] ?? null;
+
   // --- Indicadores laterales ---
   const conteos = useMemo(() => {
     const enGrupo = (k: RedGrupo) => all.filter((r) => grupoDeTipo(r.tipo_red) === k);
@@ -108,11 +114,22 @@ function RedIpsPage() {
     };
   }, [all]);
 
-  // --- Lista filtrada por grupo + ámbito + búsqueda + filtro ---
+  // Conteo por subsección (para las pestañas internas).
+  const conteoSub = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const r of all) m[String(r.tipo_red)] = (m[String(r.tipo_red)] ?? 0) + 1;
+    return m;
+  }, [all]);
+
+  // --- Lista filtrada por grupo/subsección + ámbito + búsqueda + filtro ---
   const term = norm(q.trim());
   const lista = useMemo(() => {
     return all
-      .filter((r) => grupoDeTipo(r.tipo_red) === grupo)
+      .filter((r) =>
+        subActiva
+          ? r.tipo_red === subActiva.tipo
+          : grupoDeTipo(r.tipo_red) === grupo,
+      )
       .filter((r) => {
         if (!grupoCfg.tieneAmbito || ambito === "todos") return true;
         return ambito === "caqueta" ? esCaqueta(r) : !esCaqueta(r);
@@ -124,7 +141,8 @@ function RedIpsPage() {
         return true;
       })
       .filter((r) => (term ? textoBusqueda(r).includes(term) : true));
-  }, [all, grupo, grupoCfg, ambito, filtro, term]);
+  }, [all, grupo, grupoCfg, subActiva, ambito, filtro, term]);
+
 
   // Opciones de autocompletado para el formulario contextual.
   const especialidadesOpts = useMemo(
@@ -274,6 +292,7 @@ function RedIpsPage() {
                 onClick={() => {
                   setGrupo(g.key);
                   setAmbito("todos");
+                  setSubKey(g.subsecciones?.[0]?.key ?? "");
                 }}
                 className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3.5 py-2 text-[11px] font-bold uppercase tracking-wide transition-colors ${
                   active
@@ -287,14 +306,40 @@ function RedIpsPage() {
           })}
         </div>
 
+        {/* Pestañas internas (subsecciones) para directorios */}
+        {grupoCfg.subsecciones && (
+          <div className="mb-4 flex flex-wrap gap-2">
+            {grupoCfg.subsecciones.map((s) => {
+              const active = (subActiva?.key ?? "") === s.key;
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => setSubKey(s.key)}
+                  className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors ${
+                    active
+                      ? "border-vitalis-blue bg-vitalis-blue/10 text-vitalis-blue"
+                      : "border-border bg-secondary text-muted-foreground hover:bg-accent"
+                  }`}
+                >
+                  {s.label}
+                  <span className="ml-1 opacity-70">({conteoSub[s.tipo] ?? 0})</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Acción de creación contextual (solo administrador) */}
         {canEdit && (
           <div className="mb-4 flex justify-end">
             <Button onClick={abrirNuevo} className="rounded-full">
-              <Plus className="mr-1.5 h-4 w-4" /> Nuevo registro · {grupoCfg.label}
+              <Plus className="mr-1.5 h-4 w-4" /> Nuevo registro ·{" "}
+              {subActiva ? subActiva.label : grupoCfg.label}
             </Button>
           </div>
         )}
+
 
         <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
           <div className="min-w-0">
@@ -447,7 +492,18 @@ function RedIpsPage() {
                   k="Vigencia"
                   v={[detalle.vigencia_desde, detalle.vigencia_hasta].filter(Boolean).join(" → ")}
                 />
+                <DetRow k="Indicativo" v={detalle.indicativo || ""} />
+                <DetRow k="Teléfonos alternos" v={detalle.telefonos_alternos || ""} />
+                <DetRow k="Correos alternos" v={detalle.correos_alternos || ""} />
+                <DetRow k="Cobertura" v={detalle.cobertura || ""} />
+                <DetRow k="Opción de menú" v={detalle.opcion_menu || ""} />
+                <DetRow k="Categoría" v={detalle.categoria || ""} />
+                <DetRow k="Recurso" v={detalle.subcategoria || ""} />
+                <DetRow k="Tipo de recurso" v={detalle.tipo_recurso || ""} />
+                <DetRow k="Descripción" v={detalle.descripcion || ""} />
+                <DetRow k="Enlace / URL" v={detalle.link || ""} />
                 <DetRow k="Observaciones" v={detalle.observaciones || ""} />
+
               </div>
             </>
           )}
@@ -461,8 +517,10 @@ function RedIpsPage() {
           onOpenChange={setFormOpen}
           grupo={grupo}
           editing={editing}
+          presetTipo={subActiva?.tipo}
           especialidades={especialidadesOpts}
           ipsOptions={ipsOpts}
+
           onSubmit={guardarRegistro}
         />
       )}

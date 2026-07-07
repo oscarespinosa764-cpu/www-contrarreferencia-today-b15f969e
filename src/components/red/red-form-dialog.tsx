@@ -25,12 +25,18 @@ import {
   JORNADAS,
   ESTADOS_JORNADA,
   TIPOS_AMBULANCIA,
+  TIPOS_EAPB,
+  TIPOS_LINEA,
+  COBERTURAS,
+  CATEGORIAS_RECURSO,
+  TIPOS_RECURSO,
   getGrupo,
   grupoDeTipo,
   type RedRegistro,
   type TipoRed,
   type RedGrupo,
 } from "@/lib/red-ips-utils";
+
 
 interface Props {
   open: boolean;
@@ -39,8 +45,11 @@ interface Props {
   editing: RedRegistro | null;
   especialidades: string[];
   ipsOptions: string[];
+  /** Subtipo preseleccionado (según la pestaña interna activa). */
+  presetTipo?: TipoRed;
   onSubmit: (payload: Record<string, unknown>, id?: string) => Promise<boolean>;
 }
+
 
 type FormState = {
   tipo_red: TipoRed;
@@ -74,7 +83,20 @@ type FormState = {
   vigencia_hasta: string;
   disponible_para_remisiones: boolean;
   observaciones: string;
+  // Directorios externos e interno CEDIM (campos aditivos)
+  telefonos_alternos: string;
+  correos_alternos: string;
+  indicativo: string;
+  cobertura: string;
+  opcion_menu: string;
+  tipo_recurso: string;
+  descripcion: string;
+  categoria: string;
+  subcategoria: string; // nombre del recurso
+  link: string; // url del recurso
+  orden_visualizacion: string;
 };
+
 
 const EMPTY: FormState = {
   tipo_red: "ips_departamental",
@@ -108,7 +130,19 @@ const EMPTY: FormState = {
   vigencia_hasta: "",
   disponible_para_remisiones: true,
   observaciones: "",
+  telefonos_alternos: "",
+  correos_alternos: "",
+  indicativo: "",
+  cobertura: "",
+  opcion_menu: "",
+  tipo_recurso: "",
+  descripcion: "",
+  categoria: "",
+  subcategoria: "",
+  link: "",
+  orden_visualizacion: "",
 };
+
 
 function defaultTipo(grupo: RedGrupo): TipoRed {
   switch (grupo) {
@@ -120,10 +154,23 @@ function defaultTipo(grupo: RedGrupo): TipoRed {
       return "ambulancia_autorizacion";
     case "especialidades_cedim":
       return "especialista_interno";
+    case "directorios_externos":
+      return "eapb_eps";
     case "directorio_interno":
       return "directorio_contacto";
   }
 }
+
+// Detección de credenciales para bloquear recursos de referencia inseguros.
+const PATRONES_CRED = [
+  "contraseña", "contrasena", "password", "clave", "token", "api key", "apikey",
+  "api_key", "service_role", "secret", "credencial",
+];
+function contieneCredencial(f: { descripcion: string; observaciones: string; subcategoria: string }): boolean {
+  const hay = `${f.descripcion} ${f.observaciones} ${f.subcategoria}`.toLowerCase();
+  return PATRONES_CRED.some((p) => hay.includes(p));
+}
+
 
 export function RedFormDialog({
   open,
@@ -132,6 +179,7 @@ export function RedFormDialog({
   editing,
   especialidades,
   ipsOptions,
+  presetTipo,
   onSubmit,
 }: Props) {
   const cfg = getGrupo(grupo);
@@ -176,11 +224,24 @@ export function RedFormDialog({
         vigencia_hasta: editing.vigencia_hasta || "",
         disponible_para_remisiones: editing.disponible_para_remisiones ?? true,
         observaciones: editing.observaciones || "",
+        telefonos_alternos: editing.telefonos_alternos || "",
+        correos_alternos: editing.correos_alternos || "",
+        indicativo: editing.indicativo || "",
+        cobertura: editing.cobertura || "",
+        opcion_menu: editing.opcion_menu || "",
+        tipo_recurso: editing.tipo_recurso || "",
+        descripcion: editing.descripcion || "",
+        categoria: editing.categoria || "",
+        subcategoria: editing.subcategoria || "",
+        link: editing.link || "",
+        orden_visualizacion:
+          editing.orden_visualizacion != null ? String(editing.orden_visualizacion) : "",
       });
     } else {
-      setF({ ...EMPTY, tipo_red: defaultTipo(grupo) });
+      setF({ ...EMPTY, tipo_red: presetTipo ?? defaultTipo(grupo) });
     }
-  }, [open, editing, grupo]);
+
+  }, [open, editing, grupo, presetTipo]);
 
   const inactivo = f.estado === "inactivo";
   const disponibleEff = inactivo ? false : f.disponible_para_remisiones;
@@ -195,6 +256,12 @@ export function RedFormDialog({
   const esRef = f.tipo_red === "directorio_referencia";
   const esSede = f.tipo_red === "sede";
   const esContacto = f.tipo_red === "directorio_contacto";
+  // Directorios externos
+  const esExterno = grupo === "directorios_externos";
+  const esEapb = f.tipo_red === "eapb_eps";
+  const esCrue = f.tipo_red === "crue";
+  const esLinea = f.tipo_red === "linea_emergencia";
+  const esRecurso = f.tipo_red === "recurso_referencia";
 
   const validar = (): string | null => {
     if (grupo === "jornadas_tep") {
@@ -207,9 +274,19 @@ export function RedFormDialog({
       }
       return null;
     }
+    if (esExterno) {
+      if (esRecurso) {
+        if (!f.subcategoria.trim()) return "Indica el nombre del recurso";
+        if (contieneCredencial(f)) return "No se permiten credenciales en recursos de referencia";
+        return null;
+      }
+      if (!f.entidad.trim()) return "Indica el nombre de la entidad";
+      return null;
+    }
     if (esDirectorio) {
+      if (esRef && !f.entidad.trim()) return "Indica el nombre de la institución";
       if (esSede && !f.entidad.trim()) return "Indica el nombre de la sede";
-      if (esContacto && !f.entidad.trim()) return "Indica el área / servicio";
+      if (esContacto && !f.entidad.trim()) return "Indica la dependencia / área";
       return null;
     }
     if (!f.entidad.trim())
@@ -219,6 +296,7 @@ export function RedFormDialog({
     if (!esEspecialidad && !f.ciudad.trim()) return "Indica la ciudad / municipio";
     return null;
   };
+
 
   const guardar = async () => {
     const err = validar();
@@ -232,12 +310,7 @@ export function RedFormDialog({
       estado: f.estado,
       ambito: cfg.tieneAmbito ? f.ambito : null,
       entidad:
-        (esRef
-          ? "Datos generales de referencia"
-          : esEspecialidad
-            ? f.medico || f.entidad
-            : f.entidad
-        ).trim() || null,
+        (esEspecialidad ? f.medico || f.entidad : f.entidad).trim() || null,
       nit: f.nit.trim() || null,
       servicio_especialidad: f.servicio_especialidad.trim() || null,
       medico: esEspecialidad ? (f.medico || f.entidad).trim() || null : f.medico.trim() || null,
@@ -266,7 +339,22 @@ export function RedFormDialog({
       vigencia_hasta: f.vigencia_hasta || null,
       disponible_para_remisiones: disponibleEff,
       observaciones: f.observaciones.trim() || null,
+      // Directorios externos e interno CEDIM
+      telefonos_alternos: f.telefonos_alternos.trim() || null,
+      correos_alternos: f.correos_alternos.trim() || null,
+      indicativo: f.indicativo.trim() || null,
+      cobertura: f.cobertura.trim() || null,
+      opcion_menu: f.opcion_menu.trim() || null,
+      tipo_recurso: f.tipo_recurso.trim() || null,
+      descripcion: f.descripcion.trim() || null,
+      categoria: f.categoria.trim() || null,
+      subcategoria: f.subcategoria.trim() || null,
+      link: f.link.trim() || null,
+      orden_visualizacion: f.orden_visualizacion.trim()
+        ? Number(f.orden_visualizacion.replace(/[^0-9-]/g, "")) || null
+        : null,
     };
+
     const ok = await onSubmit(payload, editing?.id);
     setBusy(false);
     if (ok) onOpenChange(false);
@@ -320,6 +408,26 @@ export function RedFormDialog({
               </Select>
             </div>
           )}
+
+          {/* Selector de subtipo para DIRECTORIOS EXTERNOS */}
+          {esExterno && (
+            <div className="space-y-1.5">
+              <Label>Tipo de registro</Label>
+              <Select value={f.tipo_red} onValueChange={(v) => set("tipo_red", v as TipoRed)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="eapb_eps">EAPB / EPS</SelectItem>
+                  <SelectItem value="crue">CRUE</SelectItem>
+                  <SelectItem value="linea_emergencia">Línea de emergencia</SelectItem>
+                  <SelectItem value="recurso_referencia">Recurso de referencia</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+
 
           {/* Estado + ámbito */}
           <div className="grid gap-3 sm:grid-cols-2">
@@ -669,11 +777,302 @@ export function RedFormDialog({
             </div>
           )}
 
+          {/* ====== DIRECTORIOS EXTERNOS: EAPB / EPS ====== */}
+          {esExterno && esEapb && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Tipo de entidad</Label>
+                <Select value={f.tipo_apoyo} onValueChange={(v) => set("tipo_apoyo", v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIPOS_EAPB.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nombre de la entidad</Label>
+                <Input value={f.entidad} onChange={(e) => set("entidad", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Departamento</Label>
+                <Input value={f.departamento} onChange={(e) => set("departamento", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Ciudad / municipio</Label>
+                <Input value={f.ciudad} onChange={(e) => set("ciudad", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nombre del contacto</Label>
+                <Input
+                  value={f.contacto_principal}
+                  onChange={(e) => set("contacto_principal", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Unidad, área o cargo</Label>
+                <Input value={f.cargo_contacto} onChange={(e) => set("cargo_contacto", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Teléfono principal</Label>
+                <Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Teléfonos alternos</Label>
+                <Input
+                  value={f.telefonos_alternos}
+                  onChange={(e) => set("telefonos_alternos", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Extensión (si aplica)</Label>
+                <Input value={f.codigo_principal} onChange={(e) => set("codigo_principal", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Correo electrónico</Label>
+                <Input value={f.correo} onChange={(e) => set("correo", e.target.value)} />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Dirección (si aplica)</Label>
+                <Input value={f.direccion} onChange={(e) => set("direccion", e.target.value)} />
+              </div>
+              <p className="sm:col-span-2 text-xs text-muted-foreground">
+                Para varios contactos de una misma entidad, registra cada contacto en Observaciones
+                o crea filas por contacto en la plantilla; no dupliques la entidad.
+              </p>
+            </div>
+          )}
+
+          {/* ====== DIRECTORIOS EXTERNOS: CRUE ====== */}
+          {esExterno && esCrue && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Nombre del CRUE</Label>
+                <Input value={f.entidad} onChange={(e) => set("entidad", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Indicativo (si aplica)</Label>
+                <Input value={f.indicativo} onChange={(e) => set("indicativo", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Departamento</Label>
+                <Input value={f.departamento} onChange={(e) => set("departamento", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Ciudad / municipio</Label>
+                <Input value={f.ciudad} onChange={(e) => set("ciudad", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nombre del contacto / representante</Label>
+                <Input
+                  value={f.contacto_principal}
+                  onChange={(e) => set("contacto_principal", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Cargo</Label>
+                <Input value={f.cargo_contacto} onChange={(e) => set("cargo_contacto", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Teléfono principal</Label>
+                <Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Teléfonos alternos</Label>
+                <Input
+                  value={f.telefonos_alternos}
+                  onChange={(e) => set("telefonos_alternos", e.target.value)}
+                  placeholder="Separa varios con , o salto de línea"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Correo principal</Label>
+                <Input value={f.correo} onChange={(e) => set("correo", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Correos alternos</Label>
+                <Input
+                  value={f.correos_alternos}
+                  onChange={(e) => set("correos_alternos", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Cobertura</Label>
+                <Input value={f.cobertura} onChange={(e) => set("cobertura", e.target.value)} />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Dirección</Label>
+                <Input value={f.direccion} onChange={(e) => set("direccion", e.target.value)} />
+              </div>
+            </div>
+          )}
+
+          {/* ====== DIRECTORIOS EXTERNOS: LÍNEAS DE EMERGENCIA ====== */}
+          {esExterno && esLinea && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Entidad</Label>
+                <Input value={f.entidad} onChange={(e) => set("entidad", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Tipo de entidad</Label>
+                <Select value={f.tipo_apoyo} onValueChange={(v) => set("tipo_apoyo", v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIPOS_LINEA.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Departamento</Label>
+                <Input value={f.departamento} onChange={(e) => set("departamento", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Municipio</Label>
+                <Input value={f.ciudad} onChange={(e) => set("ciudad", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nombre del contacto / representante</Label>
+                <Input
+                  value={f.contacto_principal}
+                  onChange={(e) => set("contacto_principal", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Cargo o dependencia</Label>
+                <Input value={f.cargo_contacto} onChange={(e) => set("cargo_contacto", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Teléfono principal</Label>
+                <Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Números alternos</Label>
+                <Input
+                  value={f.telefonos_alternos}
+                  onChange={(e) => set("telefonos_alternos", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Correo electrónico</Label>
+                <Input value={f.correo} onChange={(e) => set("correo", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Cobertura</Label>
+                <Select value={f.cobertura} onValueChange={(v) => set("cobertura", v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COBERTURAS.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          {/* ====== DIRECTORIOS EXTERNOS: RECURSOS DE REFERENCIA ====== */}
+          {esExterno && esRecurso && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Categoría</Label>
+                <Select value={f.categoria} onValueChange={(v) => set("categoria", v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIAS_RECURSO.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Entidad</Label>
+                <Input value={f.entidad} onChange={(e) => set("entidad", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nombre del recurso</Label>
+                <Input value={f.subcategoria} onChange={(e) => set("subcategoria", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Tipo de recurso</Label>
+                <Select value={f.tipo_recurso} onValueChange={(v) => set("tipo_recurso", v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIPOS_RECURSO.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Descripción</Label>
+                <Input value={f.descripcion} onChange={(e) => set("descripcion", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>URL</Label>
+                <Input value={f.link} onChange={(e) => set("link", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Correo</Label>
+                <Input value={f.correo} onChange={(e) => set("correo", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Teléfono</Label>
+                <Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Orden de visualización</Label>
+                <Input
+                  type="number"
+                  value={f.orden_visualizacion}
+                  onChange={(e) => set("orden_visualizacion", e.target.value)}
+                />
+              </div>
+              <p className="sm:col-span-2 rounded-md bg-status-amber/10 p-2 text-xs text-status-amber-foreground">
+                No registres contraseñas, tokens, llaves API ni credenciales de acceso en esta
+                sección.
+              </p>
+            </div>
+          )}
+
+
+
           {/* ====== DIRECTORIO INTERNO ====== */}
           {esDirectorio && (
             <div className="grid gap-3 sm:grid-cols-2">
               {esRef && (
                 <>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Nombre de la institución</Label>
+                    <Input value={f.entidad} onChange={(e) => set("entidad", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Indicativo</Label>
+                    <Input value={f.indicativo} onChange={(e) => set("indicativo", e.target.value)} />
+                  </div>
                   <div className="space-y-1.5">
                     <Label>Número general</Label>
                     <Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} />
@@ -690,11 +1089,24 @@ export function RedFormDialog({
                     <Input value={f.correo} onChange={(e) => set("correo", e.target.value)} />
                   </div>
                   <div className="space-y-1.5">
+                    <Label>Ciudad</Label>
+                    <Input value={f.ciudad} onChange={(e) => set("ciudad", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Departamento</Label>
+                    <Input value={f.departamento} onChange={(e) => set("departamento", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Dirección principal</Label>
+                    <Input value={f.direccion} onChange={(e) => set("direccion", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
                     <Label>Horario de atención (si aplica)</Label>
                     <Input value={f.horario} onChange={(e) => set("horario", e.target.value)} />
                   </div>
                 </>
               )}
+
 
               {esSede && (
                 <>
@@ -741,8 +1153,12 @@ export function RedFormDialog({
 
               {esContacto && (
                 <>
-                  <div className="space-y-1.5 sm:col-span-2">
-                    <Label>Área / servicio</Label>
+                  <div className="space-y-1.5">
+                    <Label>Sede</Label>
+                    <Input value={f.sede} onChange={(e) => set("sede", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Dependencia / área</Label>
                     <Input value={f.entidad} onChange={(e) => set("entidad", e.target.value)} />
                   </div>
                   <div className="space-y-1.5">
@@ -764,6 +1180,10 @@ export function RedFormDialog({
                     />
                   </div>
                   <div className="space-y-1.5">
+                    <Label>Opción del menú telefónico (si aplica)</Label>
+                    <Input value={f.opcion_menu} onChange={(e) => set("opcion_menu", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
                     <Label>Teléfono directo (si aplica)</Label>
                     <Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} />
                   </div>
@@ -771,12 +1191,9 @@ export function RedFormDialog({
                     <Label>Correo institucional</Label>
                     <Input value={f.correo} onChange={(e) => set("correo", e.target.value)} />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>Sede asociada</Label>
-                    <Input value={f.sede} onChange={(e) => set("sede", e.target.value)} />
-                  </div>
                 </>
               )}
+
             </div>
           )}
 

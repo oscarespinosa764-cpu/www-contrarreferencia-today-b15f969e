@@ -24,10 +24,12 @@ import { toast } from "sonner";
 import {
   COLUMNAS_RED,
   HOJAS_RED_ORDEN,
+  ALIAS_HOJAS_DIRECTORIO,
   norm,
   type HojaRedKey,
   type ResumenRed,
 } from "@/lib/red-import";
+
 import { procesarImportRed } from "@/lib/importar-red.functions";
 import { exportarRed } from "@/lib/importar-red.functions";
 
@@ -46,6 +48,8 @@ export function ImportarRedDialog({
   const [hojas, setHojas] = useState<HojasData>({});
   const [totalFilas, setTotalFilas] = useState(0);
   const [resumen, setResumen] = useState<ResumenRed | null>(null);
+  const [nota, setNota] = useState<string | null>(null);
+
   const [validando, setValidando] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [exportando, setExportando] = useState(false);
@@ -57,6 +61,8 @@ export function ImportarRedDialog({
     setHojas({});
     setTotalFilas(0);
     setResumen(null);
+    setNota(null);
+
     if (inputRef.current) inputRef.current.value = "";
   };
 
@@ -103,28 +109,75 @@ export function ImportarRedDialog({
 
   const onFile = async (file: File) => {
     setResumen(null);
+    setNota(null);
     try {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array", cellDates: false });
-      // Empareja hojas por nombre (tolerante a mayúsculas/espacios).
-      const porNombre = new Map(wb.SheetNames.map((n) => [norm(n), n]));
       const encontradas: HojasData = {};
+      const push = (hoja: HojaRedKey, filas: Record<string, unknown>[]) => {
+        if (filas.length === 0) return;
+        encontradas[hoja] = [...(encontradas[hoja] ?? []), ...filas];
+      };
       let total = 0;
+      const claimadas = new Set<string>();
+
+      // 1) Hojas con el nombre exacto de la plantilla.
+      const porNombre = new Map(wb.SheetNames.map((n) => [norm(n), n]));
       for (const hoja of HOJAS_RED_ORDEN) {
         const real = porNombre.get(norm(hoja));
         if (!real) continue;
+        claimadas.add(real);
         const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[real], {
           defval: "",
         });
-        encontradas[hoja] = json;
+        push(hoja, json);
         total += json.length;
       }
+
+      // 2) Hojas del archivo histórico DIRECTORIO.xlsx (por alias de nombre).
+      for (const real of wb.SheetNames) {
+        if (claimadas.has(real)) continue;
+        const alias = ALIAS_HOJAS_DIRECTORIO[norm(real)];
+        if (!alias) continue;
+        const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[real], {
+          defval: "",
+        });
+        // DISPO. AMB. → CODIGOS_TEP y/o AMBULANCIAS según el contenido de la fila.
+        if (alias === "AMBULANCIAS") {
+          const tep: Record<string, unknown>[] = [];
+          const amb: Record<string, unknown>[] = [];
+          for (const row of json) {
+            const tieneCups = Object.entries(row).some(
+              ([k, v]) => norm(k).includes("cups") && String(v ?? "").trim() !== "",
+            );
+            (tieneCups ? tep : amb).push(row);
+          }
+          push("CODIGOS_TEP", tep);
+          push("AMBULANCIAS", amb);
+        } else {
+          push(alias, json);
+        }
+        total += json.length;
+      }
+
       if (Object.keys(encontradas).length === 0) {
         toast.error(
-          "No se encontraron hojas válidas. Usa la plantilla (IPS, AMBULANCIAS, JORNADAS, CODIGOS_TEP, ESPECIALIDADES_CEDIM).",
+          "No se encontraron hojas válidas. Descarga la plantilla o usa el archivo DIRECTORIO.xlsx.",
         );
         return;
       }
+
+      // Compatibilidad: avisar si es una plantilla antigua (solo 5 hojas base).
+      const nuevas: HojaRedKey[] = [
+        "DIRECTORIO_EAPB_EPS", "DIRECTORIO_CRUE", "LINEAS_EMERGENCIA",
+        "RECURSOS_REFERENCIA", "DATOS_GENERALES_CEDIM", "SEDES_CEDIM",
+        "DIRECTORIO_INTERNO_CEDIM",
+      ];
+      const traeDirectorios = nuevas.some((h) => encontradas[h]?.length);
+      if (!traeDirectorios) {
+        setNota("Archivo compatible sin directorios adicionales: se importarán solo las hojas base.");
+      }
+
       setArchivo(file);
       setHojas(encontradas);
       setTotalFilas(total);
@@ -133,6 +186,7 @@ export function ImportarRedDialog({
       toast.error("No se pudo leer el archivo. Usa formato .xlsx, .xlsm o .csv");
     }
   };
+
 
   const validar = async () => {
     setValidando(true);
@@ -246,7 +300,14 @@ export function ImportarRedDialog({
             )}
           </button>
 
+          {nota && (
+            <p className="rounded-md border border-status-amber/30 bg-status-amber/5 p-2 text-xs text-muted-foreground">
+              {nota}
+            </p>
+          )}
+
           {resumen && (
+
             <div className="space-y-2 rounded-lg border border-border bg-card p-3 text-xs">
               <p className="flex items-center gap-1.5 font-semibold text-foreground">
                 <CheckCircle2 className="h-4 w-4 text-status-green" /> Resumen antes de guardar
