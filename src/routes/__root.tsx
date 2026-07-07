@@ -15,6 +15,8 @@ import { AuthProvider } from "../lib/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/lib/backend-client";
 import { DictationInjector } from "@/lib/dictation-injector";
+import { PracticeProvider } from "@/lib/practice-mode";
+import { PracticeBanner } from "@/components/practice-banner";
 
 function NotFoundComponent() {
   return (
