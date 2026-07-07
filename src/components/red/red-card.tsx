@@ -172,6 +172,14 @@ export function RedCard({ reg, grupo, canEdit, onView, onEdit }: Props) {
                   <Pencil className="mr-2 h-4 w-4" /> Editar
                 </DropdownMenuItem>
               )}
+              {canEdit && onDelete && (
+                <DropdownMenuItem
+                  onClick={() => onDelete(reg)}
+                  className="text-status-red focus:text-status-red"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
