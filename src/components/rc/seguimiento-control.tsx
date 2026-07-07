@@ -512,7 +512,14 @@ function AccionDialog({
         const motCat = catalogos.motivosCancelacion.find(
           (m) => m.nombre === (esArchivar ? "NO INGRESO DEL PACIENTE" : motivo),
         );
-        const codigo = esArchivar && archivarInfo ? archivarInfo.codigo : nextCodigo(casos, "CAN", ahora);
+        const codigo =
+          esArchivar && archivarInfo
+            ? archivarInfo.codigo
+            : (
+                await siguienteCodigo({
+                  data: { tipo: "CAN", yyyy: ahora.getFullYear(), mm: ahora.getMonth() + 1 },
+                })
+              ).codigo;
         const mensaje =
           esArchivar && archivarInfo
             ? archivarInfo.mensaje
