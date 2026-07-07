@@ -492,7 +492,18 @@ function RedIpsPage() {
                   k="Vigencia"
                   v={[detalle.vigencia_desde, detalle.vigencia_hasta].filter(Boolean).join(" → ")}
                 />
+                <DetRow k="Indicativo" v={detalle.indicativo || ""} />
+                <DetRow k="Teléfonos alternos" v={detalle.telefonos_alternos || ""} />
+                <DetRow k="Correos alternos" v={detalle.correos_alternos || ""} />
+                <DetRow k="Cobertura" v={detalle.cobertura || ""} />
+                <DetRow k="Opción de menú" v={detalle.opcion_menu || ""} />
+                <DetRow k="Categoría" v={detalle.categoria || ""} />
+                <DetRow k="Recurso" v={detalle.subcategoria || ""} />
+                <DetRow k="Tipo de recurso" v={detalle.tipo_recurso || ""} />
+                <DetRow k="Descripción" v={detalle.descripcion || ""} />
+                <DetRow k="Enlace / URL" v={detalle.link || ""} />
                 <DetRow k="Observaciones" v={detalle.observaciones || ""} />
+
               </div>
             </>
           )}
