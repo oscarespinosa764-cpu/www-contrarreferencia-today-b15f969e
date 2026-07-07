@@ -451,7 +451,9 @@ function AccionDialog({
       }
 
       if (accion === "ampliar") {
-        const codigo = nextCodigo(casos, "AMP", ahora);
+        const { codigo } = await siguienteCodigo({
+          data: { tipo: "AMP", yyyy: ahora.getFullYear(), mm: ahora.getMonth() + 1 },
+        });
         const hrs = calcHrsReserva(caso.unidad || "", "AMP", catalogos.unidades);
         // Acumula el tiempo restante del cupo vigente + las horas de ampliación.
         // (vencimiento vigente = ahora + tiempo restante) → nuevo vencimiento = vigente + horas.
