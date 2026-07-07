@@ -312,32 +312,48 @@ function AccionDialog({
   const MOTIVO_VENC = "NO INGRESO DEL PACIENTE POR VENCIMIENTO DE CUPO";
   const ciudadIps = catalogos.ipsConCiudades.find((x) => x.nombre === caso.ips)?.ciudades[0] || "";
 
-  // Datos para la notificación de vencimiento (modal de archivar)
-  const archivarInfo = useMemo(() => {
-    if (accion !== "archivar") return null;
-    const ahora = new Date();
-    const ven = calcularVencimiento(caso, casos);
-    const codigo = nextCodigo(casos, "CAN", ahora);
-    const motCat = catalogos.motivosCancelacion.find((m) => m.nombre === "NO INGRESO DEL PACIENTE");
-    const mensaje = buildMensaje(
-      plantillas,
-      catalogos.medicos,
-      { codigo, fecha: fmtFechaHora(ahora), fechaVence: "", hrsReserva: "" },
-      {
-        tipo: "CAN",
-        documento: caso.documento ?? undefined,
-        ips: caso.ips ?? undefined,
-        medico: caso.medico ?? undefined,
-        especialidad: caso.especialidad ?? undefined,
-        unidad: caso.unidad ?? undefined,
-        eapb: caso.eapb ?? undefined,
-        regimen: caso.regimen ?? undefined,
-        codRef: caso.codigo,
-        motivoCancelacion: MOTIVO_VENC,
-        justificacionCancelacion: motCat?.justificacion || "",
-      } as any,
-    );
-    return { ven, codigo, mensaje };
+  // Datos para la notificación de vencimiento (modal de archivar).
+  // El código se calcula en el servidor (consecutivo continuo por año e
+  // incluyendo el historial), por eso se carga de forma asíncrona.
+  const [archivarInfo, setArchivarInfo] = useState<
+    { ven: ReturnType<typeof calcularVencimiento>; codigo: string; mensaje: string } | null
+  >(null);
+  useEffect(() => {
+    if (accion !== "archivar") {
+      setArchivarInfo(null);
+      return;
+    }
+    let cancelado = false;
+    (async () => {
+      const ahora = new Date();
+      const ven = calcularVencimiento(caso, casos);
+      const { codigo } = await siguienteCodigo({
+        data: { tipo: "CAN", yyyy: ahora.getFullYear(), mm: ahora.getMonth() + 1 },
+      });
+      const motCat = catalogos.motivosCancelacion.find((m) => m.nombre === "NO INGRESO DEL PACIENTE");
+      const mensaje = buildMensaje(
+        plantillas,
+        catalogos.medicos,
+        { codigo, fecha: fmtFechaHora(ahora), fechaVence: "", hrsReserva: "" },
+        {
+          tipo: "CAN",
+          documento: caso.documento ?? undefined,
+          ips: caso.ips ?? undefined,
+          medico: caso.medico ?? undefined,
+          especialidad: caso.especialidad ?? undefined,
+          unidad: caso.unidad ?? undefined,
+          eapb: caso.eapb ?? undefined,
+          regimen: caso.regimen ?? undefined,
+          codRef: caso.codigo,
+          motivoCancelacion: MOTIVO_VENC,
+          justificacionCancelacion: motCat?.justificacion || "",
+        } as any,
+      );
+      if (!cancelado) setArchivarInfo({ ven, codigo, mensaje });
+    })();
+    return () => {
+      cancelado = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accion]);
 
