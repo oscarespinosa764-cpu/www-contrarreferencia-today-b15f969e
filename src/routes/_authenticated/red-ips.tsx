@@ -126,6 +126,99 @@ function RedIpsPage() {
       .filter((r) => (term ? textoBusqueda(r).includes(term) : true));
   }, [all, grupo, grupoCfg, ambito, filtro, term]);
 
+  // Opciones de autocompletado para el formulario contextual.
+  const especialidadesOpts = useMemo(
+    () =>
+      Array.from(
+        new Set(all.map((r) => (r.servicio_especialidad || "").trim()).filter(Boolean)),
+      ).sort(),
+    [all],
+  );
+  const ipsOpts = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          all
+            .filter((r) => grupoDeTipo(r.tipo_red) === "ips")
+            .map((r) => (r.entidad || "").trim())
+            .filter(Boolean),
+        ),
+      ).sort(),
+    [all],
+  );
+
+  // --- Creación / edición contextual (solo administrador; RLS lo refuerza) ---
+  const abrirNuevo = () => {
+    setEditing(null);
+    setFormOpen(true);
+  };
+  const abrirEditar = (r: RedRegistro) => {
+    setEditing(r);
+    setFormOpen(true);
+  };
+
+  const guardarRegistro = async (
+    payload: Record<string, unknown>,
+    id?: string,
+  ): Promise<boolean> => {
+    try {
+      if (id) {
+        const { error } = await supabase.from("red_operativa").update(payload).eq("id", id);
+        if (error) throw error;
+        void registrarAuditoria({
+          accion: "editar_red",
+          modulo: "red-ips",
+          tabla: "red_operativa",
+          registroId: id,
+          detalles: { tipo_red: payload.tipo_red, grupo },
+        });
+        toast.success("Registro actualizado");
+      } else {
+        const { data, error } = await supabase
+          .from("red_operativa")
+          .insert(payload)
+          .select("id")
+          .single();
+        if (error) throw error;
+        void registrarAuditoria({
+          accion: "crear_red",
+          modulo: "red-ips",
+          tabla: "red_operativa",
+          registroId: data?.id ?? null,
+          detalles: { tipo_red: payload.tipo_red, grupo },
+        });
+        toast.success("Registro creado");
+      }
+      qc.invalidateQueries({ queryKey: ["red-operativa"] });
+      return true;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo guardar. Verifique permisos.");
+      return false;
+    }
+  };
+
+  const eliminarRegistro = async () => {
+    if (!aEliminar) return;
+    try {
+      const { error } = await supabase.from("red_operativa").delete().eq("id", aEliminar.id);
+      if (error) throw error;
+      void registrarAuditoria({
+        accion: "eliminar_red",
+        modulo: "red-ips",
+        tabla: "red_operativa",
+        registroId: aEliminar.id,
+        detalles: { tipo_red: aEliminar.tipo_red, grupo },
+      });
+      toast.success("Registro eliminado");
+      qc.invalidateQueries({ queryKey: ["red-operativa"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo eliminar. Verifique permisos.");
+    } finally {
+      setAEliminar(null);
+    }
+  };
+
+
   const countCards = [
     { label: "IPS activas", value: conteos.ipsActivas, icon: Building2, color: "green" },
     { label: "IPS inactivas", value: conteos.ipsNoDisp, icon: XCircle, color: "red" },
