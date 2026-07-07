@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
+import { usePractice } from "@/lib/practice-mode";
 import { Button } from "@/components/ui/button";
-import { Moon, Sun, X } from "lucide-react";
+import { Moon, Sun, X, FlaskConical } from "lucide-react";
 import { getSaludo, getSaludoEmoji, getTurnoLabel, getPrimerNombre, useClientTime } from "@/lib/turno";
 
 function useThemeToggle() {
