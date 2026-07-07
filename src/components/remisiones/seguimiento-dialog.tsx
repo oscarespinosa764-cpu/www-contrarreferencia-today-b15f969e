@@ -566,6 +566,7 @@ export function SeguimientoDialog({
     else if (tipoSeg === T.AMBULANCIA) e = EST.ACEPTADO_CON;
     else if (tipoSeg === T.ENTREGA_DOC) e = EST.PENDIENTE_EGRESO;
     else if (tipoSeg === T.CIERRE) e = cierreEgreso === "si" ? EST.CERRADO_EXITOSO : (estadoActual ?? EST.PENDIENTE_ACEPT);
+    else if (tipoSeg === T.TRASLADO) e = EST.CERRADO_TRASLADO;
     else if (tipoSeg === T.NOVEDADES && novPaciente) {
       if (novDesistTipo === "GENERAL") e = EST.DESIST_GENERAL;
       else if (novDesistTipo === "IPS_AMB") {
