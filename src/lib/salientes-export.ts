@@ -466,7 +466,9 @@ export async function descargarEntregaTurnoPDF(params: {
   autoTable(doc, {
     startY: y,
     head: head as never,
-    body: (bodyRem.length ? bodyRem : [["", "Sin remisiones activas", ...Array(22).fill("")]]) as never,
+    body: (bodyRem.length
+      ? bodyRem
+      : [[{ content: "Sin remisiones activas", colSpan: 25, styles: { halign: "center", textColor: [130, 130, 130], fontStyle: "italic" } }]]) as never,
     theme: "grid",
     styles: { fontSize: 5.3, cellPadding: 0.8, overflow: "linebreak", valign: "top", lineColor: [140, 140, 140], lineWidth: 0.15 },
     headStyles: { fillColor: NAVY, textColor: [255, 255, 255], fontStyle: "bold", fontSize: 5.3, halign: "center" },
