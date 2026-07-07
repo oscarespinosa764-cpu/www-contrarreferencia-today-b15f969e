@@ -304,12 +304,7 @@ export function RedFormDialog({
       estado: f.estado,
       ambito: cfg.tieneAmbito ? f.ambito : null,
       entidad:
-        (esRef
-          ? "Datos generales de referencia"
-          : esEspecialidad
-            ? f.medico || f.entidad
-            : f.entidad
-        ).trim() || null,
+        (esEspecialidad ? f.medico || f.entidad : f.entidad).trim() || null,
       nit: f.nit.trim() || null,
       servicio_especialidad: f.servicio_especialidad.trim() || null,
       medico: esEspecialidad ? (f.medico || f.entidad).trim() || null : f.medico.trim() || null,
@@ -338,7 +333,22 @@ export function RedFormDialog({
       vigencia_hasta: f.vigencia_hasta || null,
       disponible_para_remisiones: disponibleEff,
       observaciones: f.observaciones.trim() || null,
+      // Directorios externos e interno CEDIM
+      telefonos_alternos: f.telefonos_alternos.trim() || null,
+      correos_alternos: f.correos_alternos.trim() || null,
+      indicativo: f.indicativo.trim() || null,
+      cobertura: f.cobertura.trim() || null,
+      opcion_menu: f.opcion_menu.trim() || null,
+      tipo_recurso: f.tipo_recurso.trim() || null,
+      descripcion: f.descripcion.trim() || null,
+      categoria: f.categoria.trim() || null,
+      subcategoria: f.subcategoria.trim() || null,
+      link: f.link.trim() || null,
+      orden_visualizacion: f.orden_visualizacion.trim()
+        ? Number(f.orden_visualizacion.replace(/[^0-9-]/g, "")) || null
+        : null,
     };
+
     const ok = await onSubmit(payload, editing?.id);
     setBusy(false);
     if (ok) onOpenChange(false);
