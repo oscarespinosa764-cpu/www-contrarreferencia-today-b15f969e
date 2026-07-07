@@ -163,30 +163,37 @@ function RedIpsPage() {
   ): Promise<boolean> => {
     try {
       if (id) {
-        const { error } = await supabase.from("red_operativa").update(payload).eq("id", id);
+        const { error } = await supabase
+          .from("red_operativa")
+          .update(payload as never)
+          .eq("id", id);
         if (error) throw error;
         void registrarAuditoria({
-          accion: "editar_red",
-          modulo: "red-ips",
-          tabla: "red_operativa",
-          registroId: id,
-          detalles: { tipo_red: payload.tipo_red, grupo },
-        });
+          data: {
+            accion: "editar_red",
+            modulo: "red-ips",
+            tabla: "red_operativa",
+            registroId: id,
+            detalles: { tipo_red: payload.tipo_red, grupo },
+          },
+        }).catch(() => {});
         toast.success("Registro actualizado");
       } else {
         const { data, error } = await supabase
           .from("red_operativa")
-          .insert(payload)
+          .insert(payload as never)
           .select("id")
           .single();
         if (error) throw error;
         void registrarAuditoria({
-          accion: "crear_red",
-          modulo: "red-ips",
-          tabla: "red_operativa",
-          registroId: data?.id ?? null,
-          detalles: { tipo_red: payload.tipo_red, grupo },
-        });
+          data: {
+            accion: "crear_red",
+            modulo: "red-ips",
+            tabla: "red_operativa",
+            registroId: (data as { id?: string } | null)?.id ?? null,
+            detalles: { tipo_red: payload.tipo_red, grupo },
+          },
+        }).catch(() => {});
         toast.success("Registro creado");
       }
       qc.invalidateQueries({ queryKey: ["red-operativa"] });
@@ -203,12 +210,14 @@ function RedIpsPage() {
       const { error } = await supabase.from("red_operativa").delete().eq("id", aEliminar.id);
       if (error) throw error;
       void registrarAuditoria({
-        accion: "eliminar_red",
-        modulo: "red-ips",
-        tabla: "red_operativa",
-        registroId: aEliminar.id,
-        detalles: { tipo_red: aEliminar.tipo_red, grupo },
-      });
+        data: {
+          accion: "eliminar_red",
+          modulo: "red-ips",
+          tabla: "red_operativa",
+          registroId: aEliminar.id,
+          detalles: { tipo_red: aEliminar.tipo_red, grupo },
+        },
+      }).catch(() => {});
       toast.success("Registro eliminado");
       qc.invalidateQueries({ queryKey: ["red-operativa"] });
     } catch (e) {
