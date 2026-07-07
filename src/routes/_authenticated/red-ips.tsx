@@ -357,16 +357,19 @@ function RedIpsPage() {
                     grupo={grupoCfg}
                     canEdit={canEdit}
                     onView={setDetalle}
+                    onEdit={abrirEditar}
+                    onDelete={setAEliminar}
                   />
-
                 ))}
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2 py-14 text-center text-muted-foreground">
                 <Network className="h-10 w-10 opacity-40" />
                 <p className="max-w-sm text-sm">
-                  No hay registros en esta categoría. La gestión administrativa de la red se
-                  realiza desde Control de Mando → Históricos → RED/DISPONIBILIDAD.
+                  No hay registros en esta categoría.
+                  {canEdit
+                    ? " Usa «Nuevo registro» para agregar el primero."
+                    : " Solo los administradores pueden crear registros."}
                 </p>
               </div>
             )}
