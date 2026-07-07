@@ -420,7 +420,7 @@ export async function descargarEntregaTurnoPDF(params: {
     ] as never,
     margin: { left: 12, right: 12 },
   });
-  y = finalY() + 4;
+  y = finalY() + 10; // separación uniforme entre tarjetas y la sección Remisiones Activas
 
   // ── Matriz REMISIONES ACTIVAS ──────────────────────────────────────────
   y = banda(y, "REMISIONES ACTIVAS");
