@@ -164,6 +164,7 @@ export function RedFormDialog({
         tipo_ambulancia: editing.tipo_ambulancia || "",
         tipo_apoyo: editing.tipo_apoyo || "",
         cups: editing.cups || "",
+        codigo_principal: editing.codigo_principal || "",
         cups_descripcion: editing.cups_descripcion || "",
         recorrido: editing.recorrido || "",
         empresa_tep: editing.empresa_tep || "",
