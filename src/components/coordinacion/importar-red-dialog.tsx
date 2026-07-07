@@ -300,7 +300,14 @@ export function ImportarRedDialog({
             )}
           </button>
 
+          {nota && (
+            <p className="rounded-md border border-status-amber/30 bg-status-amber/5 p-2 text-xs text-muted-foreground">
+              {nota}
+            </p>
+          )}
+
           {resumen && (
+
             <div className="space-y-2 rounded-lg border border-border bg-card p-3 text-xs">
               <p className="flex items-center gap-1.5 font-semibold text-foreground">
                 <CheckCircle2 className="h-4 w-4 text-status-green" /> Resumen antes de guardar
