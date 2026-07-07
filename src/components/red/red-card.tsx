@@ -45,6 +45,16 @@ export function RedCard({ reg, grupo, canEdit, onView, onEdit, onDelete }: Props
   const esAmbulancia = grupo.key === "ambulancias";
   const esTep = grupo.key === "jornadas_tep";
   const esCodigoTep = reg.tipo_red === "codigo_tep";
+  const esExterno = grupo.key === "directorios_externos";
+  const esInterno = grupo.key === "directorio_interno";
+  const esRecurso = reg.tipo_red === "recurso_referencia";
+  // Título contextual para directorios.
+  const titulo = esRecurso
+    ? reg.subcategoria || reg.entidad || "—"
+    : esCodigoTep
+      ? reg.empresa_tep || reg.entidad || "—"
+      : reg.entidad || "—";
+
 
   const copiar = (txt: string) => {
     navigator.clipboard.writeText(txt);
