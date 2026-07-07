@@ -313,31 +313,44 @@ export async function descargarEntregaTurnoPDF(params: {
     return yy + 5;
   };
 
-  // Sección de texto libre con placeholder cuando está vacía.
+  // Placeholder uniforme para cualquier sección sin registros: misma tipografía,
+  // misma alineación, misma altura mínima y mismo espaciado bajo la barra azul.
+  const PLACEHOLDER = "Sin registros para esta sección.";
+  const placeholderVacio = (yy: number): number => {
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(7.5);
+    doc.setTextColor(130);
+    doc.text(PLACEHOLDER, 10, yy + 3.5);
+    doc.setTextColor(0);
+    return yy + 9; // altura mínima uniforme del cuerpo vacío
+  };
+
+  // Sección de texto libre con placeholder uniforme cuando está vacía.
   const seccionTexto = (yy: number, titulo: string, contenido: string): number => {
     if (yy > pageH - 20) {
       doc.addPage();
       yy = 16;
     }
     if (titulo) yy = banda(yy, titulo);
-    const txt = (contenido || "").trim() || "Sin registros para esta sección.";
-    doc.setFont("helvetica", contenido ? "normal" : "italic");
+    const txt = (contenido || "").trim();
+    if (!txt) return placeholderVacio(yy) + 3;
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
-    doc.setTextColor(contenido ? 0 : 130);
-    const lines = doc.splitTextToSize(txt, pageW - 20);
-    doc.text(lines, 10, yy + 1);
     doc.setTextColor(0);
-    return yy + 4 * lines.length + 3;
+    const lines = doc.splitTextToSize(txt, pageW - 20);
+    doc.text(lines, 10, yy + 3.5);
+    return yy + 4 * lines.length + 5;
   };
 
   // Tabla genérica (PHD, internas, pendientes).
   const tablaGenerica = (yy: number, titulo: string, items: Record<string, unknown>[]): number => {
     yy = banda(yy, titulo);
-    if (!items || items.length === 0) return seccionTexto(yy - 5, "", "Sin registros para esta sección.");
+    if (!items || items.length === 0) return placeholderVacio(yy) + 3;
     const body = items.map((it) => [
       fmtFechaHora((it.fecha_inicio as string) ?? (it.created_at as string)),
       v(it.paciente ?? it.paciente_asunto),
       v(it.documento),
+
       v(it.servicio ?? it.tipo ?? it.asunto),
       v(it.estado ?? it.prioridad),
       v(it.observaciones ?? it.observacion_entrega ?? it.detalle),
