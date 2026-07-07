@@ -300,6 +300,27 @@ export function RedFormDialog({
             </div>
           )}
 
+          {/* Selector de subtipo para DIRECTORIO INTERNO */}
+          {esDirectorio && (
+            <div className="space-y-1.5">
+              <Label>Tipo de registro</Label>
+              <Select value={f.tipo_red} onValueChange={(v) => set("tipo_red", v as TipoRed)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="directorio_referencia">
+                    Datos generales de referencia
+                  </SelectItem>
+                  <SelectItem value="sede">Sede CEDIM IPS</SelectItem>
+                  <SelectItem value="directorio_contacto">
+                    Directorio telefónico / correo institucional
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {/* Estado + ámbito */}
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
