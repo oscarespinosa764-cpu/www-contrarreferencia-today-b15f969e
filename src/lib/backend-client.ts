@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { isPracticeActive, makePracticeFrom } from "@/lib/practice-store";
 
 type PublicBackendConfig = {
   backendUrl?: string;
