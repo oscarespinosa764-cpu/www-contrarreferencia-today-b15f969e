@@ -137,10 +137,13 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <AuthInvalidator />
-        <Outlet />
-        <DictationInjector />
-        <Toaster richColors position="top-right" />
+        <PracticeProvider>
+          <AuthInvalidator />
+          <PracticeBanner />
+          <Outlet />
+          <DictationInjector />
+          <Toaster richColors position="top-right" />
+        </PracticeProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
