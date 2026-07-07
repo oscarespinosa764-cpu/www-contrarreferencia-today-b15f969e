@@ -15,6 +15,8 @@ import { AuthProvider } from "../lib/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/lib/backend-client";
 import { DictationInjector } from "@/lib/dictation-injector";
+import { PracticeProvider } from "@/lib/practice-mode";
+import { PracticeBanner } from "@/components/practice-banner";
 
 function NotFoundComponent() {
   return (
@@ -135,10 +137,13 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <AuthInvalidator />
-        <Outlet />
-        <DictationInjector />
-        <Toaster richColors position="top-right" />
+        <PracticeProvider>
+          <AuthInvalidator />
+          <PracticeBanner />
+          <Outlet />
+          <DictationInjector />
+          <Toaster richColors position="top-right" />
+        </PracticeProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { isPracticeActive, makePracticeFrom } from "@/lib/practice-store";
 
 type PublicBackendConfig = {
   backendUrl?: string;
@@ -28,10 +29,29 @@ if (!BACKEND_URL || !BACKEND_PUBLISHABLE_KEY) {
   throw new Error("La configuración pública del backend no está disponible.");
 }
 
-export const supabase = createClient<Database>(BACKEND_URL, BACKEND_PUBLISHABLE_KEY, {
+const rawClient = createClient<Database>(BACKEND_URL, BACKEND_PUBLISHABLE_KEY, {
   auth: {
     storage: typeof window !== "undefined" ? localStorage : undefined,
     persistSession: true,
     autoRefreshToken: true,
   },
 });
+
+// Envoltura del cliente para soportar el "modo práctica": cuando está activo,
+// TODA operación `.from(tabla)` se desvía a una superposición en memoria y
+// nunca escribe en la base real. El resto del cliente (auth, storage, rpc,
+// channel, functions) pasa sin cambios.
+export const supabase = new Proxy(rawClient, {
+  get(target, prop, receiver) {
+    if (prop === "from") {
+      return (table: string) => {
+        if (isPracticeActive()) {
+          return makePracticeFrom(table, target as never) as never;
+        }
+        return target.from(table as never);
+      };
+    }
+    const value = Reflect.get(target, prop, receiver);
+    return typeof value === "function" ? value.bind(target) : value;
+  },
+}) as typeof rawClient;

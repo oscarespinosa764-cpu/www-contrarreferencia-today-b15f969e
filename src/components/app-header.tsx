@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
+import { usePractice } from "@/lib/practice-mode";
 import { Button } from "@/components/ui/button";
-import { Moon, Sun, X } from "lucide-react";
+import { Moon, Sun, X, FlaskConical } from "lucide-react";
 import { getSaludo, getSaludoEmoji, getTurnoLabel, getPrimerNombre, useClientTime } from "@/lib/turno";
 
 function useThemeToggle() {
@@ -23,8 +24,9 @@ function useThemeToggle() {
 }
 
 export function AppHeader({ title, subtitle }: { title: string; subtitle?: string }) {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAdmin } = useAuth();
   const { dark, toggle } = useThemeToggle();
+  const { active: practica, toggle: togglePractica } = usePractice();
 
   const { data: profile } = useQuery({
     queryKey: ["mi-perfil", user?.id],
@@ -57,6 +59,22 @@ export function AppHeader({ title, subtitle }: { title: string; subtitle?: strin
         <span className="rounded-full border border-vitalis-blue/30 bg-vitalis-blue/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-vitalis-blue">
           {turnoLabel ?? "—"}
         </span>
+        {isAdmin && (
+          <Button
+            variant={practica ? "default" : "outline"}
+            size="icon"
+            className={
+              practica
+                ? "h-9 w-9 rounded-full bg-amber-500 text-amber-950 hover:bg-amber-600"
+                : "h-9 w-9 rounded-full"
+            }
+            onClick={togglePractica}
+            aria-label="Modo práctica"
+            title={practica ? "Modo práctica activo" : "Activar modo práctica"}
+          >
+            <FlaskConical className="h-4 w-4" />
+          </Button>
+        )}
         <Button
           variant="outline"
           size="icon"
