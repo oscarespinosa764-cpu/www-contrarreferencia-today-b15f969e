@@ -482,18 +482,24 @@ export async function descargarEntregaTurnoPDF(params: {
   y = tablaGenerica(y, "REFERENCIAS INTERNAS", params.refsInternas ?? []);
   y = tablaGenerica(y, "PENDIENTES GENERALES DEL TURNO", params.pendientesGenerales ?? []);
 
-  // ── Secciones operativas de texto ──────────────────────────────────────
-  const noche = params.reinicioNoche
+  // ── Secciones operativas de texto (depuradas) ──────────────────────────
+  // NOVEDADES = avisos operativos activos + alertas de coordinación + evento
+  // automático de cierre nocturno (solo cuando realmente aplica).
+  const cierreNoche = params.reinicioNoche
     ? "Cierre de turno NOCHE: la evolución de todos los casos se reinició a «Sin evolucionar». " +
       "Las evoluciones pendientes se enviaron como alertas a Coordinación."
     : "";
-  y = seccionTexto(y, "NOVEDADES", noche);
-  y = seccionTexto(y, "JORNADAS OTRAS IPS", "");
-  y = seccionTexto(y, "INFORMACIÓN GENERAL", "");
-  y = seccionTexto(y, "NOVEDADES CEDIM IPS", "");
-  y = seccionTexto(y, "LÍNEAS DE CONTACTO", "Referencia y Contrarreferencia · (608) 4366810 EXT: 2007");
-  y = seccionTexto(y, "DATOS DE AMBULANCIAS / CUPS", "");
+  const novedades = [...(params.novedades ?? []), cierreNoche]
+    .map((s) => (s || "").trim())
+    .filter(Boolean)
+    .join("\n");
+  y = seccionTexto(y, "NOVEDADES", novedades);
+  // JORNADAS OTRAS IPS = RED/DISPONIBILIDAD → Jornadas / Códigos TEP.
+  y = seccionTexto(y, "JORNADAS OTRAS IPS", (params.jornadasOtrasIps ?? []).join("\n"));
+  // OBSERVACIONES DE ENTREGA = observaciones registradas al guardar la entrega.
   seccionTexto(y, "OBSERVACIONES DE ENTREGA", params.observaciones ?? "");
+  // Se eliminaron INFORMACIÓN GENERAL, NOVEDADES CEDIM IPS, LÍNEAS DE CONTACTO
+  // y DATOS DE AMBULANCIAS / CUPS: se consultan en RED/DISPONIBILIDAD.
 
   // ── Pie en todas las páginas ───────────────────────────────────────────
   const total = doc.getNumberOfPages();
