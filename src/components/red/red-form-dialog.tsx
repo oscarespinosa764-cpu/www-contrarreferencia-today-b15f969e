@@ -191,6 +191,10 @@ export function RedFormDialog({
   const esEspecialidad = grupo === "especialidades_cedim";
   const esAmbulancia = grupo === "ambulancias";
   const esIps = grupo === "ips";
+  const esDirectorio = grupo === "directorio_interno";
+  const esRef = f.tipo_red === "directorio_referencia";
+  const esSede = f.tipo_red === "sede";
+  const esContacto = f.tipo_red === "directorio_contacto";
 
   const validar = (): string | null => {
     if (grupo === "jornadas_tep") {
@@ -201,6 +205,11 @@ export function RedFormDialog({
         if (!f.servicio_especialidad.trim()) return "Indica la especialidad";
         if (!f.entidad.trim()) return "Indica la IPS de la jornada";
       }
+      return null;
+    }
+    if (esDirectorio) {
+      if (esSede && !f.entidad.trim()) return "Indica el nombre de la sede";
+      if (esContacto && !f.entidad.trim()) return "Indica el área / servicio";
       return null;
     }
     if (!f.entidad.trim())
