@@ -32,9 +32,10 @@ interface Props {
   canEdit: boolean;
   onView: (r: RedRegistro) => void;
   onEdit?: (r: RedRegistro) => void;
+  onDelete?: (r: RedRegistro) => void;
 }
 
-export function RedCard({ reg, grupo, canEdit, onView, onEdit }: Props) {
+export function RedCard({ reg, grupo, canEdit, onView, onEdit, onDelete }: Props) {
   const activo = esActivo(reg);
   const Icon = grupo.icon;
   const servicios = serviciosList(reg);
