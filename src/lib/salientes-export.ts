@@ -283,6 +283,10 @@ export async function descargarEntregaTurnoPDF(params: {
   pendientesGenerales?: Record<string, unknown>[];
   observaciones?: string;
   contadores?: Record<string, number>;
+  // NOVEDADES: avisos operativos activos + alertas de coordinación relevantes.
+  novedades?: string[];
+  // JORNADAS OTRAS IPS: tomadas de RED/DISPONIBILIDAD → Jornadas / Códigos TEP.
+  jornadasOtrasIps?: string[];
 }): Promise<void> {
   const { jsPDF } = await import("jspdf");
   const autoTable = (await import("jspdf-autotable")).default;
