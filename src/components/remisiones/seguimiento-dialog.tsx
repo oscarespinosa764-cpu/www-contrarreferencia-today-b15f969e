@@ -787,6 +787,9 @@ export function SeguimientoDialog({
       case T.CIERRE:
         base = generarPlantillaCierreAdmision(caso?.ips_receptora ?? ipsReceptora);
         break;
+      case T.TRASLADO:
+        base = generarPlantillaCierreTraslado(caso?.ips_receptora ?? ipsReceptora);
+        break;
       case T.CAMBIO_EAPB:
         base = generarPlantillaCambioAsegurador({
           nuevaEapb: cambioEapb,
