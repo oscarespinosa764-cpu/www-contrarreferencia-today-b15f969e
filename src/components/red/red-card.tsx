@@ -71,9 +71,7 @@ export function RedCard({ reg, grupo, canEdit, onView, onEdit, onDelete }: Props
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="truncate text-[15px] font-bold text-foreground">
-                {esCodigoTep ? reg.empresa_tep || reg.entidad || "—" : reg.entidad || "—"}
-              </p>
+              <p className="truncate text-[15px] font-bold text-foreground">{titulo}</p>
 
               {esEspecialidad ? (
                 <p className="mt-0.5 flex items-center gap-1.5 text-sm text-vitalis-blue">
@@ -96,6 +94,16 @@ export function RedCard({ reg, grupo, canEdit, onView, onEdit, onDelete }: Props
                   <Stethoscope className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">{reg.servicio_especialidad || "Jornada"}</span>
                 </p>
+              ) : esExterno ? (
+                <p className="mt-0.5 truncate text-sm text-vitalis-blue">
+                  {[reg.tipo_apoyo, reg.categoria, esRecurso ? reg.tipo_recurso : reg.entidad]
+                    .filter(Boolean)
+                    .join(" · ") || "Directorio externo"}
+                </p>
+              ) : esInterno ? (
+                <p className="mt-0.5 truncate text-sm text-vitalis-blue">
+                  {[reg.sede, reg.cargo_contacto].filter(Boolean).join(" · ") || "Directorio interno"}
+                </p>
               ) : (
                 servicios.length > 0 && (
                   <p className="mt-0.5 text-sm text-vitalis-blue">
@@ -104,6 +112,7 @@ export function RedCard({ reg, grupo, canEdit, onView, onEdit, onDelete }: Props
                   </p>
                 )
               )}
+
             </div>
           </div>
 
