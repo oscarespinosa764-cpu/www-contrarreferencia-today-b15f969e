@@ -506,8 +506,10 @@ function RedIpsPage() {
           onOpenChange={setFormOpen}
           grupo={grupo}
           editing={editing}
+          presetTipo={subActiva?.tipo}
           especialidades={especialidadesOpts}
           ipsOptions={ipsOpts}
+
           onSubmit={guardarRegistro}
         />
       )}
