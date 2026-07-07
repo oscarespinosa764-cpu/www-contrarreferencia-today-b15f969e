@@ -62,6 +62,7 @@ type FormState = {
   tipo_ambulancia: string;
   tipo_apoyo: string;
   cups: string;
+  codigo_principal: string; // extensión (directorio interno)
   cups_descripcion: string;
   recorrido: string;
   empresa_tep: string;
