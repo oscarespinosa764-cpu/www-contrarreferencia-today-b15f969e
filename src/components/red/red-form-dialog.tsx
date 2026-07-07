@@ -155,6 +155,17 @@ function defaultTipo(grupo: RedGrupo): TipoRed {
   }
 }
 
+// Detección de credenciales para bloquear recursos de referencia inseguros.
+const PATRONES_CRED = [
+  "contraseña", "contrasena", "password", "clave", "token", "api key", "apikey",
+  "api_key", "service_role", "secret", "credencial",
+];
+function contieneCredencial(f: { descripcion: string; observaciones: string; subcategoria: string }): boolean {
+  const hay = `${f.descripcion} ${f.observaciones} ${f.subcategoria}`.toLowerCase();
+  return PATRONES_CRED.some((p) => hay.includes(p));
+}
+
+
 export function RedFormDialog({
   open,
   onOpenChange,
