@@ -329,6 +329,23 @@ function RemisionesPage() {
         domiciliarios: (domiciliarios ?? []) as unknown as Record<string, unknown>[],
         refsInternas: (internas ?? []) as unknown as Record<string, unknown>[],
         pendientesGenerales: (pendientes ?? []) as unknown as Record<string, unknown>[],
+        // NOVEDADES = avisos operativos activos + alertas de coordinación relevantes.
+        novedades: (avisos ?? []).map((a) =>
+          `• ${a.titulo}${a.detalle ? ` — ${a.detalle}` : ""} (${a.severidad})`,
+        ),
+        // JORNADAS OTRAS IPS = RED/DISPONIBILIDAD → Jornadas / Códigos TEP.
+        jornadasOtrasIps: (redJornadas ?? []).map((j) => {
+          const fechas = [j.fecha_inicio, j.fecha_final].filter(Boolean).join(" al ");
+          return [
+            j.servicio_especialidad,
+            j.entidad,
+            j.ciudad,
+            j.jornada,
+            fechas,
+          ]
+            .filter(Boolean)
+            .join(" · ");
+        }),
         contadores: {
           acepPendiente: stats.acepPendiente,
           acepSinAmb: stats.acepPendiente,
