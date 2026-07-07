@@ -47,6 +47,7 @@ import {
   generarPlantillaCambioAsegurador,
   generarPlantillaCancelacionRemision,
   generarPlantillaCierreAdmision,
+  generarPlantillaCierreTraslado,
   generarPlantillaCorreoSeg,
   generarPlantillaEvolucionDiaria,
   generarPlantillaEvolucionEspecialidades,
@@ -102,6 +103,7 @@ const T = {
   AMBULANCIA: "AMBULANCIA COORDINADA",
   ENTREGA_DOC: "ENTREGA DE DOCUMENTACIÓN AMBULANCIA",
   CIERRE: "CIERRE DE CASO POR EGRESO",
+  TRASLADO: "CIERRE DE CASO POR TRASLADO EFECTIVO",
   CAMBIO_EAPB: "CAMBIO DE ASEGURADOR A EAPB",
   CANCELACION: "CANCELACIÓN DE TRÁMITE DE REMISIÓN",
   PERTINENCIA: "REVISIÓN AUTORIZACIÓN ESTANCIA (CANCELACIÓN)",
@@ -116,6 +118,7 @@ const EST = {
   ACEPTADO_CON: "ACEPTADO CON AMBULANCIA COORDINADA",
   PENDIENTE_EGRESO: "PENDIENTE EGRESO REMISION",
   CERRADO_EXITOSO: "CERRADO POR REMISION EXITOSA",
+  CERRADO_TRASLADO: "CERRADO POR TRASLADO EFECTIVO",
   DESIST_IPS: "DESISTIMIENTO IPS",
   DESIST_GENERAL: "DESISTIMIENTO GENERAL",
 } as const;
@@ -479,7 +482,7 @@ export function SeguimientoDialog({
       T.NEGACIONES,
       ...(mostrarAmbulancia ? [T.AMBULANCIA] : []),
       ...(mostrarEntregaDocOpt ? [T.ENTREGA_DOC] : []),
-      ...(mostrarCierreOpt ? [T.CIERRE] : []),
+      ...(mostrarCierreOpt ? [T.CIERRE, T.TRASLADO] : []),
       T.CAMBIO_EAPB,
       T.CANCELACION,
       T.PERTINENCIA,
@@ -564,6 +567,7 @@ export function SeguimientoDialog({
     else if (tipoSeg === T.AMBULANCIA) e = EST.ACEPTADO_CON;
     else if (tipoSeg === T.ENTREGA_DOC) e = EST.PENDIENTE_EGRESO;
     else if (tipoSeg === T.CIERRE) e = cierreEgreso === "si" ? EST.CERRADO_EXITOSO : (estadoActual ?? EST.PENDIENTE_ACEPT);
+    else if (tipoSeg === T.TRASLADO) e = EST.CERRADO_TRASLADO;
     else if (tipoSeg === T.NOVEDADES && novPaciente) {
       if (novDesistTipo === "GENERAL") e = EST.DESIST_GENERAL;
       else if (novDesistTipo === "IPS_AMB") {
@@ -581,6 +585,7 @@ export function SeguimientoDialog({
   const esTelefono = usaIndigo && tipoSeg === T.TELEFONO;
   const esEntregaDoc = usaIndigo && tipoSeg === T.ENTREGA_DOC;
   const esCierre = usaIndigo && tipoSeg === T.CIERRE;
+  const esTraslado = usaIndigo && tipoSeg === T.TRASLADO;
   const esCambioEapb = usaIndigo && tipoSeg === T.CAMBIO_EAPB;
   const esNovedades = usaIndigo && tipoSeg === T.NOVEDADES;
 
@@ -782,6 +787,9 @@ export function SeguimientoDialog({
         break;
       case T.CIERRE:
         base = generarPlantillaCierreAdmision(caso?.ips_receptora ?? ipsReceptora);
+        break;
+      case T.TRASLADO:
+        base = generarPlantillaCierreTraslado(caso?.ips_receptora ?? ipsReceptora);
         break;
       case T.CAMBIO_EAPB:
         base = generarPlantillaCambioAsegurador({
@@ -1110,6 +1118,8 @@ export function SeguimientoDialog({
         };
       case T.CIERRE:
         return { egreso: cierreEgreso || null, ips_receptora: caso?.ips_receptora ?? ipsReceptora ?? null };
+      case T.TRASLADO:
+        return { traslado_efectivo: true, ips_receptora: caso?.ips_receptora ?? ipsReceptora ?? null };
       case T.CAMBIO_EAPB:
         return {
           nueva_eapb: cambioEapb.trim() || null,
@@ -1347,14 +1357,21 @@ export function SeguimientoDialog({
       // Salientes: estado automático según la cadena secuencial.
       if (esSaliente) {
         if (estadoDestino && estadoDestino !== (estadoActual ?? "")) update.estado = estadoDestino;
-        // Cierre por egresos (remisión exitosa) o desistimiento general → cierra y archiva.
+        // Cierre por egresos (remisión exitosa), traslado efectivo o
+        // desistimiento general → cierra el caso y lo archiva (pasa a histórico).
         if (
           (esCierre && cierreEgreso === "si") ||
+          esTraslado ||
           estadoDestino === EST.CERRADO_EXITOSO ||
+          estadoDestino === EST.CERRADO_TRASLADO ||
           estadoDestino === EST.DESIST_GENERAL
         ) {
           update.estado =
-            estadoDestino === EST.DESIST_GENERAL ? EST.DESIST_GENERAL : EST.CERRADO_EXITOSO;
+            estadoDestino === EST.DESIST_GENERAL
+              ? EST.DESIST_GENERAL
+              : esTraslado || estadoDestino === EST.CERRADO_TRASLADO
+                ? EST.CERRADO_TRASLADO
+                : EST.CERRADO_EXITOSO;
           update.archivado = true;
         }
       } else if (estadoOpciones && estadoCaso) {
@@ -1445,9 +1462,9 @@ export function SeguimientoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] overflow-auto p-4 sm:max-w-xl sm:p-6">
-        <DialogHeader>
-          <DialogTitle className="break-words text-base">Seguimiento · {paciente}</DialogTitle>
+      <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] overflow-y-auto overflow-x-hidden p-4 sm:max-w-2xl sm:p-6">
+        <DialogHeader className="pr-6">
+          <DialogTitle className="break-words text-base leading-snug">Seguimiento · {paciente}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -2034,9 +2051,22 @@ export function SeguimientoDialog({
             </div>
           )}
 
+          {/* CIERRE DE CASO POR TRASLADO EFECTIVO */}
+          {esSaliente && esTraslado && (
+            <div className={sectionCls}>
+              <p className={labelCls}>Cierre por traslado efectivo</p>
+              <p className="rounded-md border border-amber-200 bg-amber-50/60 p-3 text-xs leading-relaxed text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
+                Se confirma que el paciente fue trasladado y recibido en la IPS receptora. Al
+                guardar se generará la plantilla de cierre, el caso pasará al estado{" "}
+                <strong>CERRADO POR TRASLADO EFECTIVO</strong> y se moverá al historial.
+              </p>
+            </div>
+          )}
+
           {/* NOVEDADES (Parte 12) */}
           {esSaliente && esNovedades && (
             <div className={sectionCls}>
+
               <p className={labelCls}>Tipo de novedad</p>
               <div className="flex flex-col gap-2">
                 <label className="flex items-center gap-2 text-sm">
