@@ -4,6 +4,7 @@ import {
   Ambulance,
   Stethoscope,
   BookUser,
+  Globe2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -18,6 +19,11 @@ export type TipoRed =
   | "ambulancia_autorizacion"
   | "jornada_especialidad"
   | "codigo_tep"
+  // DIRECTORIOS EXTERNOS
+  | "eapb_eps"
+  | "crue"
+  | "linea_emergencia"
+  | "recurso_referencia"
   // DIRECTORIO INTERNO (contactos institucionales, sedes, extensiones)
   | "directorio_referencia"
   | "sede"
@@ -29,6 +35,7 @@ export type RedGrupo =
   | "ips"
   | "ambulancias"
   | "especialidades_cedim"
+  | "directorios_externos"
   | "directorio_interno";
 
 export interface RelacionRed {
@@ -46,6 +53,7 @@ export interface CodigoApoyo {
   telefono?: string;
   observacion?: string;
 }
+
 
 export interface RedRegistro {
   id: string;
@@ -85,11 +93,30 @@ export interface RedRegistro {
   fecha_inicio: string | null;
   fecha_final: string | null;
   observaciones: string | null;
+  // Campos aditivos para directorios externos e interno CEDIM.
+  telefonos_alternos: string | null;
+  correos_alternos: string | null;
+  indicativo: string | null;
+  cobertura: string | null;
+  opcion_menu: string | null;
+  orden_visualizacion: number | null;
+  tipo_recurso: string | null;
+  descripcion: string | null;
+  categoria: string | null;
+  subcategoria: string | null;
+  link: string | null;
   relaciones_red: RelacionRed[] | null;
   codigos_apoyo: CodigoApoyo[] | null;
   archivado: boolean | null;
   created_at: string;
   updated_at: string | null;
+}
+
+
+export interface SubSeccionConfig {
+  key: string;
+  label: string;
+  tipo: TipoRed;
 }
 
 export interface GrupoConfig {
@@ -99,7 +126,9 @@ export interface GrupoConfig {
   tipos: TipoRed[]; // tipo_red que pertenecen a este grupo
   tieneAmbito: boolean; // divide interno Caquetá / Nacional
   buscarPlaceholder: string;
+  subsecciones?: SubSeccionConfig[]; // pestañas internas (directorios)
 }
+
 
 // Orden solicitado: JORNADAS/CÓDIGOS TEP primero
 export const RED_GRUPOS: GrupoConfig[] = [
@@ -136,14 +165,34 @@ export const RED_GRUPOS: GrupoConfig[] = [
     buscarPlaceholder: "Buscar especialidad, profesional, servicio, sede…",
   },
   {
+    key: "directorios_externos",
+    label: "DIRECTORIOS EXTERNOS",
+    icon: Globe2,
+    tipos: ["eapb_eps", "crue", "linea_emergencia", "recurso_referencia"],
+    tieneAmbito: false,
+    buscarPlaceholder: "Buscar entidad, ciudad, contacto, teléfono, correo…",
+    subsecciones: [
+      { key: "eapb_eps", label: "EAPB / EPS", tipo: "eapb_eps" },
+      { key: "crue", label: "CRUE", tipo: "crue" },
+      { key: "lineas", label: "Líneas de emergencia", tipo: "linea_emergencia" },
+      { key: "recursos", label: "Recursos de referencia", tipo: "recurso_referencia" },
+    ],
+  },
+  {
     key: "directorio_interno",
-    label: "DIRECTORIO INTERNO",
+    label: "DIRECTORIO INTERNO CEDIM",
     icon: BookUser,
     tipos: ["directorio_referencia", "sede", "directorio_contacto"],
     tieneAmbito: false,
-    buscarPlaceholder: "Buscar área, sede, extensión, correo, funcionario…",
+    buscarPlaceholder: "Buscar sede, dependencia, extensión, correo, funcionario…",
+    subsecciones: [
+      { key: "datos", label: "Datos generales", tipo: "directorio_referencia" },
+      { key: "sedes", label: "Sedes", tipo: "sede" },
+      { key: "extensiones", label: "Extensiones y contactos", tipo: "directorio_contacto" },
+    ],
   },
 ];
+
 
 export const TIPO_RED_LABEL: Record<TipoRed, string> = {
   ips_nacional: "IPS nacional",
@@ -153,10 +202,47 @@ export const TIPO_RED_LABEL: Record<TipoRed, string> = {
   ambulancia_autorizacion: "Ambulancia / autorización",
   jornada_especialidad: "Jornada de especialidad / IPS",
   codigo_tep: "Código TEP",
-  directorio_referencia: "Datos generales de referencia",
+  eapb_eps: "EAPB / EPS",
+  crue: "CRUE",
+  linea_emergencia: "Línea de emergencia",
+  recurso_referencia: "Recurso de referencia",
+  directorio_referencia: "Datos generales CEDIM",
   sede: "Sede CEDIM IPS",
-  directorio_contacto: "Directorio telefónico / correo",
+  directorio_contacto: "Extensión / contacto interno",
 };
+
+// Tipos de entidad para EAPB/EPS y líneas de emergencia.
+export const TIPOS_EAPB = ["EPS", "EAPB", "ARL", "Aseguradora", "Otra"];
+export const TIPOS_LINEA = [
+  "Emergencias",
+  "Gestión del riesgo",
+  "CRUE",
+  "Policía",
+  "Ejército",
+  "Bomberos",
+  "Defensa Civil",
+  "Fiscalía",
+  "Línea nacional",
+  "Otra",
+];
+export const COBERTURAS = ["Local", "Departamental", "Nacional"];
+export const CATEGORIAS_RECURSO = [
+  "Entidad de referencia",
+  "Enlace de consulta",
+  "Correo institucional",
+  "Reporte",
+  "Buscador",
+  "Normativa",
+  "Otro",
+];
+export const TIPOS_RECURSO = ["URL", "Correo", "Teléfono", "Texto informativo"];
+
+// Etiqueta de subsección (pestaña interna) según el tipo_red.
+export function subseccionDeTipo(grupo: GrupoConfig, tipo: string | null | undefined): string | null {
+  const sub = grupo.subsecciones?.find((s) => s.tipo === tipo);
+  return sub?.key ?? null;
+}
+
 
 export const JORNADAS = ["Mañana", "Tarde", "Noche", "Día completo", "Otro"];
 export const ESTADOS_JORNADA = ["Activo", "Inactivo", "Finalizado"];
@@ -198,7 +284,11 @@ export function textoBusqueda(r: RedRegistro): string {
       r.contacto_principal, r.cargo_contacto, r.ciudad, r.departamento, r.direccion,
       r.tipo_apoyo, r.tipo_ambulancia, r.codigo_principal, r.codigo_alterno, r.nit,
       r.eapb_aseguradoras, r.empresa_tep, r.cups, r.cups_descripcion, r.recorrido,
-      r.jornada, r.novedad_disponibilidad, r.observaciones, rels, cods,
+      r.jornada, r.novedad_disponibilidad, r.observaciones,
+      r.telefonos_alternos, r.correos_alternos, r.indicativo, r.cobertura,
+      r.opcion_menu, r.tipo_recurso, r.descripcion, r.categoria, r.subcategoria,
+      r.sede, r.link, rels, cods,
+
     ]
       .filter(Boolean)
       .join(" "),
