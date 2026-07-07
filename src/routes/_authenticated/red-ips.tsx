@@ -287,6 +287,15 @@ function RedIpsPage() {
           })}
         </div>
 
+        {/* Acción de creación contextual (solo administrador) */}
+        {canEdit && (
+          <div className="mb-4 flex justify-end">
+            <Button onClick={abrirNuevo} className="rounded-full">
+              <Plus className="mr-1.5 h-4 w-4" /> Nuevo registro · {grupoCfg.label}
+            </Button>
+          </div>
+        )}
+
         <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
           <div className="min-w-0">
             {/* Segmentación interna por ámbito (IPS / Ambulancias) */}
