@@ -119,6 +119,23 @@ type Generico = Record<string, unknown> & {
   created_at: string;
 };
 
+type HistoricoCaso = Record<string, unknown> & {
+  id: string;
+  seccion: string | null;
+  tipo_caso: string | null;
+  fuente_hoja: string | null;
+  fuente_archivo: string | null;
+  radicado: string | null;
+  paciente: string | null;
+  documento: string | null;
+  ips: string | null;
+  estado: string | null;
+  asegurador: string | null;
+  fecha: string | null;
+  detalle: string | null;
+  created_at: string;
+};
+
 type Grupo = {
   key: string;
   base: Caso;
@@ -476,6 +493,101 @@ type ResultadosBitacora = {
 const v = (x: unknown): string => (x == null ? "" : String(x).trim());
 const joinList = (x: unknown): string => (Array.isArray(x) ? x.filter(Boolean).join(", ") : v(x));
 
+const HISTORICOS_SELECT =
+  "id,seccion,tipo_caso,fuente_hoja,fuente_archivo,radicado,paciente,documento,ips,estado,asegurador,fecha,detalle,created_at";
+
+async function fetchHistoricosCasos(): Promise<HistoricoCaso[]> {
+  const pageSize = 1000;
+  const rows: HistoricoCaso[] = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from("historicos_casos")
+      .select(HISTORICOS_SELECT)
+      .eq("archivado", false)
+      .order("fecha", { ascending: false, nullsFirst: false })
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    const chunk = (data ?? []) as HistoricoCaso[];
+    rows.push(...chunk);
+    if (chunk.length < pageSize) break;
+  }
+  return rows;
+}
+
+const historicoFecha = (h: HistoricoCaso): string => v(h.fecha) || v(h.created_at);
+const historicoTexto = (h: HistoricoCaso): string =>
+  `${h.seccion ?? ""} ${h.tipo_caso ?? ""} ${h.fuente_hoja ?? ""} ${h.fuente_archivo ?? ""}`.toUpperCase();
+const esHistoricoPHD = (h: HistoricoCaso): boolean => /\b(PHD|PAD|O2|OX[IÍ]GENO|DOMICILI|ESPECIAL)\b/.test(historicoTexto(h));
+const esHistoricoInterna = (h: HistoricoCaso): boolean => /\b(REF\.?\s*INTERNA|REFERENCIA\s*INTERNA|INTERNA)\b/.test(historicoTexto(h));
+
+function historicoAEntrante(h: HistoricoCaso): Caso {
+  const fecha = historicoFecha(h);
+  return {
+    id: `hist-${h.id}`,
+    codigo: h.radicado,
+    tipo: h.tipo_caso || h.fuente_hoja || "HIST",
+    cod_ref: null,
+    documento: h.documento,
+    nombres: h.paciente,
+    apellidos: null,
+    ips: h.ips,
+    unidad: null,
+    especialidad: null,
+    estado: h.estado || estadoEntrante(h.tipo_caso || ""),
+    fecha,
+    fecha_vence: null,
+    detalle: h.detalle || h.fuente_archivo || h.fuente_hoja || null,
+    eapb: h.asegurador,
+    regimen: null,
+    texto_ia: null,
+    created_at: v(h.created_at) || fecha,
+  };
+}
+
+function historicoASaliente(h: HistoricoCaso): Remision {
+  const fecha = historicoFecha(h);
+  return {
+    id: `hist-${h.id}`,
+    codigo_radicacion: h.radicado,
+    documento: h.documento,
+    paciente: h.paciente,
+    servicio: h.tipo_caso || h.fuente_hoja || "Histórico",
+    ips_receptora: h.ips,
+    asegurador: h.asegurador,
+    eapb: h.asegurador,
+    prioridad: null,
+    estado: h.estado || "HISTÓRICO",
+    fecha_radicado: fecha,
+    fecha_inicio: fecha,
+    texto_ia: null,
+    created_at: v(h.created_at) || fecha,
+    observaciones: h.detalle,
+    remision_por: h.detalle,
+    tipo_documento: "CC",
+  } as Remision;
+}
+
+function historicoAGenerico(h: HistoricoCaso): Generico {
+  const fecha = historicoFecha(h);
+  return {
+    id: `hist-${h.id}`,
+    estado: h.estado || "HISTÓRICO",
+    created_at: v(h.created_at) || fecha,
+    paciente: h.paciente,
+    documento: h.documento,
+    tipo_documento: "CC",
+    tipo_solicitud: h.tipo_caso || h.fuente_hoja || "Histórico",
+    tipo_solicitud_detalle: h.detalle,
+    eapb: h.asegurador,
+    proveedor_prestador: h.ips,
+    servicio: h.ips,
+    fecha_inicio: fecha,
+    fecha,
+    codigo_radicacion: h.radicado,
+    observaciones: h.detalle,
+  };
+}
+
 function HistorialPage() {
   const { canEdit, user } = useAuth();
   const usuario =
@@ -506,7 +618,35 @@ function HistorialPage() {
     },
   });
 
-  const { data: remisiones, isLoading: loadingSal } = useQuery({
+  const { data: historicos, isLoading: loadingHist } = useQuery({
+    queryKey: ["historicos-casos-importados"],
+    queryFn: fetchHistoricosCasos,
+  });
+
+  const historicosEntrantes = useMemo(
+    () => (historicos ?? []).filter((h) => h.seccion === "entrante").map(historicoAEntrante),
+    [historicos],
+  );
+
+  const historicosSalientes = useMemo(
+    () =>
+      (historicos ?? [])
+        .filter((h) => h.seccion === "saliente" && !esHistoricoPHD(h) && !esHistoricoInterna(h))
+        .map(historicoASaliente),
+    [historicos],
+  );
+
+  const historicosPhd = useMemo(
+    () => (historicos ?? []).filter(esHistoricoPHD).map(historicoAGenerico),
+    [historicos],
+  );
+
+  const historicosInternas = useMemo(
+    () => (historicos ?? []).filter(esHistoricoInterna).map(historicoAGenerico),
+    [historicos],
+  );
+
+  const { data: remisionesActivas, isLoading: loadingSal } = useQuery({
     queryKey: ["historial-remisiones-full"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -518,6 +658,11 @@ function HistorialPage() {
       return data as Remision[];
     },
   });
+
+  const remisiones = useMemo<Remision[]>(
+    () => [...(remisionesActivas ?? []), ...historicosSalientes],
+    [remisionesActivas, historicosSalientes],
+  );
 
   const { data: phd, isLoading: loadingPhd } = useQuery({
     queryKey: ["historial-domiciliarios"],
@@ -544,6 +689,12 @@ function HistorialPage() {
       return data as Generico[];
     },
   });
+
+  const phdDatos = useMemo<Generico[]>(() => [...((phd ?? []) as Generico[]), ...historicosPhd], [phd, historicosPhd]);
+  const internasDatos = useMemo<Generico[]>(
+    () => [...((internas ?? []) as Generico[]), ...historicosInternas],
+    [internas, historicosInternas],
+  );
 
   const { data: pendientes, isLoading: loadingPen } = useQuery({
     queryKey: ["historial-pendientes"],
@@ -575,7 +726,7 @@ function HistorialPage() {
 
   const grupos = useMemo<Grupo[]>(() => {
     const map = new Map<string, Caso[]>();
-    for (const c of casos ?? []) {
+    for (const c of [...(casos ?? []), ...historicosEntrantes]) {
       const key = (c.cod_ref || c.codigo || c.id).toUpperCase();
       const arr = map.get(key) ?? [];
       arr.push(c);
@@ -591,7 +742,7 @@ function HistorialPage() {
     }
     out.sort((a, b) => new Date(b.base.created_at).getTime() - new Date(a.base.created_at).getTime());
     return out;
-  }, [casos]);
+  }, [casos, historicosEntrantes]);
 
   const term = q.trim().toLowerCase();
 
@@ -638,12 +789,12 @@ function HistorialPage() {
     });
 
   const phdF = useMemo(
-    () => filtraGenerico((phd ?? []) as Generico[], (r) => `${v(r.paciente)} ${v(r.documento)} ${v(r.tipo_solicitud)} ${v(r.eapb)} ${v(r.codigo_radicacion)}`),
-    [phd, genTipo, periodo, fechaEspecifica, term],
+    () => filtraGenerico(phdDatos, (r) => `${v(r.paciente)} ${v(r.documento)} ${v(r.tipo_solicitud)} ${v(r.eapb)} ${v(r.codigo_radicacion)}`),
+    [phdDatos, genTipo, periodo, fechaEspecifica, term],
   );
   const internasF = useMemo(
-    () => filtraGenerico((internas ?? []) as Generico[], (r) => `${v(r.paciente)} ${v(r.documento)} ${v(r.tipo_solicitud)} ${v(r.servicio)} ${v(r.eapb)}`),
-    [internas, genTipo, periodo, fechaEspecifica, term],
+    () => filtraGenerico(internasDatos, (r) => `${v(r.paciente)} ${v(r.documento)} ${v(r.tipo_solicitud)} ${v(r.servicio)} ${v(r.eapb)}`),
+    [internasDatos, genTipo, periodo, fechaEspecifica, term],
   );
   const pendientesF = useMemo(
     () => filtraGenerico((pendientes ?? []) as Generico[], (r) => `${v(r.paciente_asunto)} ${v(r.tipo_pendiente)} ${v(r.ips_area)} ${v(r.prioridad)}`),
@@ -653,7 +804,7 @@ function HistorialPage() {
   // Mensajes recientes
   const mensajes = useMemo<MensajeItem[]>(() => {
     if (vista === "entrantes") {
-      return (casos ?? [])
+      return [...(casos ?? []), ...historicosEntrantes]
         .filter((c) => (c.texto_ia || "").trim().length > 0)
         .slice(0, 20)
         .map((c) => {
@@ -686,7 +837,7 @@ function HistorialPage() {
           mensaje: r.texto_ia || "",
         };
       });
-  }, [vista, casos, remisiones]);
+  }, [vista, casos, historicosEntrantes, remisiones]);
 
   const periodoLabel = fechaEspecifica
     ? `${pad(fechaEspecifica.getDate())}/${pad(fechaEspecifica.getMonth() + 1)}/${fechaEspecifica.getFullYear()}`
@@ -1102,8 +1253,8 @@ function HistorialPage() {
     return {
       entrantes: proc(grupos.filter((g) => match(g.base.documento)).map(buildEntrante)),
       salientes: proc((remisiones ?? []).filter((r) => match(r.documento)).map(buildSaliente)),
-      phd: proc(((phd ?? []) as Generico[]).filter((r) => match(r.documento)).map(buildPHD)),
-      internas: proc(((internas ?? []) as Generico[]).filter((r) => match(r.documento)).map(buildInterna)),
+      phd: proc(phdDatos.filter((r) => match(r.documento)).map(buildPHD)),
+      internas: proc(internasDatos.filter((r) => match(r.documento)).map(buildInterna)),
     };
   };
 
@@ -1137,10 +1288,10 @@ function HistorialPage() {
 
 
   const cargando =
-    vista === "entrantes" ? isLoading
-    : vista === "salientes" ? loadingSal
-    : vista === "phd" ? loadingPhd
-    : vista === "interna" ? loadingInt
+    vista === "entrantes" ? isLoading || loadingHist
+    : vista === "salientes" ? loadingSal || loadingHist
+    : vista === "phd" ? loadingPhd || loadingHist
+    : vista === "interna" ? loadingInt || loadingHist
     : loadingPen;
 
   const vacio =
