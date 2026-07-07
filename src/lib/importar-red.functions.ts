@@ -124,9 +124,19 @@ export const procesarImportRed = createServerFn({ method: "POST" })
 
     // Inserciones en lote (por bloques para no exceder límites de la Data API).
     if (prep.nuevos.length > 0) {
+      // PostgREST calcula la unión de columnas de todo el lote: si una fila no
+      // trae una columna que otra sí trae, la envía como NULL explícito y se
+      // salta el DEFAULT. Rellenamos los NOT NULL para que nunca lleguen nulos.
+      const conDefaults = prep.nuevos.map((r) => ({
+        disponible_para_remisiones: false,
+        archivado: false,
+        relaciones_red: [],
+        codigos_apoyo: [],
+        ...r,
+      }));
       const LOTE = 500;
-      for (let i = 0; i < prep.nuevos.length; i += LOTE) {
-        const bloque = prep.nuevos.slice(i, i + LOTE);
+      for (let i = 0; i < conDefaults.length; i += LOTE) {
+        const bloque = conDefaults.slice(i, i + LOTE);
         const { error } = await (supabase as any).from("red_operativa").insert(bloque);
         if (error) {
           console.error("procesarImportRed: error insertando", error);
