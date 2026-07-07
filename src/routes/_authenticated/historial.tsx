@@ -515,10 +515,22 @@ async function fetchHistoricosCasos(): Promise<HistoricoCaso[]> {
 }
 
 const historicoFecha = (h: HistoricoCaso): string => v(h.fecha) || v(h.created_at);
-const historicoTexto = (h: HistoricoCaso): string =>
-  `${h.seccion ?? ""} ${h.tipo_caso ?? ""} ${h.fuente_hoja ?? ""} ${h.fuente_archivo ?? ""}`.toUpperCase();
-const esHistoricoPHD = (h: HistoricoCaso): boolean => /\b(PHD|PAD|O2|OX[IÍ]GENO|DOMICILI|ESPECIAL)\b/.test(historicoTexto(h));
-const esHistoricoInterna = (h: HistoricoCaso): boolean => /\b(REF\.?\s*INTERNA|REFERENCIA\s*INTERNA|INTERNA)\b/.test(historicoTexto(h));
+const historicoTextoMeta = (h: HistoricoCaso): string =>
+  sinTildes(`${h.seccion ?? ""} ${h.tipo_caso ?? ""} ${h.fuente_hoja ?? ""} ${h.fuente_archivo ?? ""}`).toUpperCase();
+const historicoTextoDetalle = (h: HistoricoCaso): string => sinTildes(h.detalle ?? "").toUpperCase();
+const esHistoricoPHD = (h: HistoricoCaso): boolean => {
+  const meta = historicoTextoMeta(h);
+  const detalle = historicoTextoDetalle(h);
+  // En los históricos antiguos PHD/PAD/O2 llega dentro de MOTIVO_ESTADO/OBSERVACIONES,
+  // no como hoja separada. No se busca "ESPECIAL" en detalle porque todos los salientes
+  // traen campos como ESPECIALIDAD_REMITENTE/RECEPTORA.
+  return (
+    /\b(PHD|PAD|O2|OXIGENO|DOMICILIARIO|DOMICILIARIOS)\b/.test(meta) ||
+    /\b(PHD|PAD|O2|OXIGENO|DOMICILIARIO|DOMICILIARIOS)\b/.test(detalle) ||
+    /\bESPECIALES?\b/.test(meta)
+  );
+};
+const esHistoricoInterna = (h: HistoricoCaso): boolean => /\b(REF\.?\s*INTERNA|REFERENCIA\s*INTERNA|INTERNA)\b/.test(historicoTextoMeta(h));
 
 function historicoAEntrante(h: HistoricoCaso): Caso {
   const fecha = historicoFecha(h);
