@@ -409,6 +409,26 @@ export function RedFormDialog({
             </div>
           )}
 
+          {/* Selector de subtipo para DIRECTORIOS EXTERNOS */}
+          {esExterno && (
+            <div className="space-y-1.5">
+              <Label>Tipo de registro</Label>
+              <Select value={f.tipo_red} onValueChange={(v) => set("tipo_red", v as TipoRed)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="eapb_eps">EAPB / EPS</SelectItem>
+                  <SelectItem value="crue">CRUE</SelectItem>
+                  <SelectItem value="linea_emergencia">Línea de emergencia</SelectItem>
+                  <SelectItem value="recurso_referencia">Recurso de referencia</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+
+
           {/* Estado + ámbito */}
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
