@@ -452,6 +452,36 @@ function RedIpsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Formulario contextual de creación / edición (solo administrador) */}
+      {canEdit && (
+        <RedFormDialog
+          open={formOpen}
+          onOpenChange={setFormOpen}
+          grupo={grupo}
+          editing={editing}
+          especialidades={especialidadesOpts}
+          ipsOptions={ipsOpts}
+          onSubmit={guardarRegistro}
+        />
+      )}
+
+      {/* Confirmación de eliminación */}
+      <AlertDialog open={!!aEliminar} onOpenChange={(v) => !v && setAEliminar(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar este registro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se eliminará «{aEliminar?.entidad || aEliminar?.empresa_tep || "registro"}» de
+              RED/DISPONIBILIDAD. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={eliminarRegistro}>Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
