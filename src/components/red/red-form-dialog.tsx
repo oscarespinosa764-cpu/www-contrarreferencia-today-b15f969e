@@ -62,6 +62,7 @@ type FormState = {
   tipo_ambulancia: string;
   tipo_apoyo: string;
   cups: string;
+  codigo_principal: string; // extensión (directorio interno)
   cups_descripcion: string;
   recorrido: string;
   empresa_tep: string;
@@ -95,6 +96,7 @@ const EMPTY: FormState = {
   tipo_ambulancia: "",
   tipo_apoyo: "",
   cups: "",
+  codigo_principal: "",
   cups_descripcion: "",
   recorrido: "",
   empresa_tep: "",
@@ -118,6 +120,8 @@ function defaultTipo(grupo: RedGrupo): TipoRed {
       return "ambulancia_autorizacion";
     case "especialidades_cedim":
       return "especialista_interno";
+    case "directorio_interno":
+      return "directorio_contacto";
   }
 }
 
@@ -160,6 +164,7 @@ export function RedFormDialog({
         tipo_ambulancia: editing.tipo_ambulancia || "",
         tipo_apoyo: editing.tipo_apoyo || "",
         cups: editing.cups || "",
+        codigo_principal: editing.codigo_principal || "",
         cups_descripcion: editing.cups_descripcion || "",
         recorrido: editing.recorrido || "",
         empresa_tep: editing.empresa_tep || "",
@@ -186,6 +191,10 @@ export function RedFormDialog({
   const esEspecialidad = grupo === "especialidades_cedim";
   const esAmbulancia = grupo === "ambulancias";
   const esIps = grupo === "ips";
+  const esDirectorio = grupo === "directorio_interno";
+  const esRef = f.tipo_red === "directorio_referencia";
+  const esSede = f.tipo_red === "sede";
+  const esContacto = f.tipo_red === "directorio_contacto";
 
   const validar = (): string | null => {
     if (grupo === "jornadas_tep") {
@@ -196,6 +205,11 @@ export function RedFormDialog({
         if (!f.servicio_especialidad.trim()) return "Indica la especialidad";
         if (!f.entidad.trim()) return "Indica la IPS de la jornada";
       }
+      return null;
+    }
+    if (esDirectorio) {
+      if (esSede && !f.entidad.trim()) return "Indica el nombre de la sede";
+      if (esContacto && !f.entidad.trim()) return "Indica el área / servicio";
       return null;
     }
     if (!f.entidad.trim())
@@ -217,7 +231,13 @@ export function RedFormDialog({
       tipo_red: tipoRed,
       estado: f.estado,
       ambito: cfg.tieneAmbito ? f.ambito : null,
-      entidad: (esEspecialidad ? f.medico || f.entidad : f.entidad).trim() || null,
+      entidad:
+        (esRef
+          ? "Datos generales de referencia"
+          : esEspecialidad
+            ? f.medico || f.entidad
+            : f.entidad
+        ).trim() || null,
       nit: f.nit.trim() || null,
       servicio_especialidad: f.servicio_especialidad.trim() || null,
       medico: esEspecialidad ? (f.medico || f.entidad).trim() || null : f.medico.trim() || null,
@@ -234,6 +254,7 @@ export function RedFormDialog({
       tipo_ambulancia: f.tipo_ambulancia || null,
       tipo_apoyo: f.tipo_apoyo.trim() || null,
       cups: f.cups.trim() || null,
+      codigo_principal: f.codigo_principal.trim() || null,
       cups_descripcion: f.cups_descripcion.trim() || null,
       recorrido: f.recorrido.trim() || null,
       empresa_tep: f.empresa_tep.trim() || null,
@@ -274,6 +295,27 @@ export function RedFormDialog({
                     Jornada de especialidad / IPS
                   </SelectItem>
                   <SelectItem value="codigo_tep">Código TEP</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Selector de subtipo para DIRECTORIO INTERNO */}
+          {esDirectorio && (
+            <div className="space-y-1.5">
+              <Label>Tipo de registro</Label>
+              <Select value={f.tipo_red} onValueChange={(v) => set("tipo_red", v as TipoRed)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="directorio_referencia">
+                    Datos generales de referencia
+                  </SelectItem>
+                  <SelectItem value="sede">Sede CEDIM IPS</SelectItem>
+                  <SelectItem value="directorio_contacto">
+                    Directorio telefónico / correo institucional
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -463,7 +505,7 @@ export function RedFormDialog({
           )}
 
           {/* ====== IPS / AMBULANCIAS / ESPECIALIDADES CEDIM ====== */}
-          {grupo !== "jornadas_tep" && (
+          {(esIps || esAmbulancia || esEspecialidad) && (
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>
@@ -623,6 +665,117 @@ export function RedFormDialog({
                     onChange={(e) => set("eapb_aseguradoras", e.target.value)}
                   />
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* ====== DIRECTORIO INTERNO ====== */}
+          {esDirectorio && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {esRef && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label>Número general</Label>
+                    <Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Extensión de referencia</Label>
+                    <Input
+                      value={f.codigo_principal}
+                      onChange={(e) => set("codigo_principal", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Correo de referencia</Label>
+                    <Input value={f.correo} onChange={(e) => set("correo", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Horario de atención (si aplica)</Label>
+                    <Input value={f.horario} onChange={(e) => set("horario", e.target.value)} />
+                  </div>
+                </>
+              )}
+
+              {esSede && (
+                <>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Nombre de la sede</Label>
+                    <Input value={f.entidad} onChange={(e) => set("entidad", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Ciudad</Label>
+                    <Input value={f.ciudad} onChange={(e) => set("ciudad", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Departamento</Label>
+                    <Input
+                      value={f.departamento}
+                      onChange={(e) => set("departamento", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Dirección</Label>
+                    <Input value={f.direccion} onChange={(e) => set("direccion", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Teléfono</Label>
+                    <Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Extensión (si aplica)</Label>
+                    <Input
+                      value={f.codigo_principal}
+                      onChange={(e) => set("codigo_principal", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Correo institucional de la sede</Label>
+                    <Input value={f.correo} onChange={(e) => set("correo", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Horario de atención</Label>
+                    <Input value={f.horario} onChange={(e) => set("horario", e.target.value)} />
+                  </div>
+                </>
+              )}
+
+              {esContacto && (
+                <>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Área / servicio</Label>
+                    <Input value={f.entidad} onChange={(e) => set("entidad", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Funcionario responsable (si aplica)</Label>
+                    <Input value={f.medico} onChange={(e) => set("medico", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Cargo</Label>
+                    <Input
+                      value={f.cargo_contacto}
+                      onChange={(e) => set("cargo_contacto", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Extensión</Label>
+                    <Input
+                      value={f.codigo_principal}
+                      onChange={(e) => set("codigo_principal", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Teléfono directo (si aplica)</Label>
+                    <Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Correo institucional</Label>
+                    <Input value={f.correo} onChange={(e) => set("correo", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Sede asociada</Label>
+                    <Input value={f.sede} onChange={(e) => set("sede", e.target.value)} />
+                  </div>
+                </>
               )}
             </div>
           )}

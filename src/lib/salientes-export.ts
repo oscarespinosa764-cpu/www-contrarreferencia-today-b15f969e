@@ -33,16 +33,12 @@ function tarjetasResumen(p: {
 }): [string, string][] {
   const c = p.contadores ?? {};
   return [
+    // Reporte General: solo 5 tarjetas resumen (institucionales, proporcionadas).
     ["REMISIONES ACTIVAS", String(p.activas)],
     ["PENDIENTES ACEPTACIÓN", String(c.acepPendiente ?? 0)],
     ["ACEPTADO SIN AMB.", String(c.acepSinAmb ?? 0)],
     ["ACEPTADO CON AMB.", String(c.acepConAmb ?? 0)],
-    ["PHD/PAD/O2/ESP.", String(p.especiales)],
-    ["REFERENCIAS INTERNAS", String(p.internas)],
-    ["PENDIENTES GENERALES", String(p.pendientes)],
     ["DESISTIMIENTOS", String(c.desistimientos ?? 0)],
-    ["ALTA PRIORIDAD", String(c.altaPrioridad ?? 0)],
-    ["SIN SEG. RECIENTE", String(c.sinSeguimiento ?? 0)],
   ];
 }
 
@@ -287,6 +283,10 @@ export async function descargarEntregaTurnoPDF(params: {
   pendientesGenerales?: Record<string, unknown>[];
   observaciones?: string;
   contadores?: Record<string, number>;
+  // NOVEDADES: avisos operativos activos + alertas de coordinación relevantes.
+  novedades?: string[];
+  // JORNADAS OTRAS IPS: tomadas de RED/DISPONIBILIDAD → Jornadas / Códigos TEP.
+  jornadasOtrasIps?: string[];
 }): Promise<void> {
   const { jsPDF } = await import("jspdf");
   const autoTable = (await import("jspdf-autotable")).default;
@@ -482,18 +482,24 @@ export async function descargarEntregaTurnoPDF(params: {
   y = tablaGenerica(y, "REFERENCIAS INTERNAS", params.refsInternas ?? []);
   y = tablaGenerica(y, "PENDIENTES GENERALES DEL TURNO", params.pendientesGenerales ?? []);
 
-  // ── Secciones operativas de texto ──────────────────────────────────────
-  const noche = params.reinicioNoche
+  // ── Secciones operativas de texto (depuradas) ──────────────────────────
+  // NOVEDADES = avisos operativos activos + alertas de coordinación + evento
+  // automático de cierre nocturno (solo cuando realmente aplica).
+  const cierreNoche = params.reinicioNoche
     ? "Cierre de turno NOCHE: la evolución de todos los casos se reinició a «Sin evolucionar». " +
       "Las evoluciones pendientes se enviaron como alertas a Coordinación."
     : "";
-  y = seccionTexto(y, "NOVEDADES", noche);
-  y = seccionTexto(y, "JORNADAS OTRAS IPS", "");
-  y = seccionTexto(y, "INFORMACIÓN GENERAL", "");
-  y = seccionTexto(y, "NOVEDADES CEDIM IPS", "");
-  y = seccionTexto(y, "LÍNEAS DE CONTACTO", "Referencia y Contrarreferencia · (608) 4366810 EXT: 2007");
-  y = seccionTexto(y, "DATOS DE AMBULANCIAS / CUPS", "");
+  const novedades = [...(params.novedades ?? []), cierreNoche]
+    .map((s) => (s || "").trim())
+    .filter(Boolean)
+    .join("\n");
+  y = seccionTexto(y, "NOVEDADES", novedades);
+  // JORNADAS OTRAS IPS = RED/DISPONIBILIDAD → Jornadas / Códigos TEP.
+  y = seccionTexto(y, "JORNADAS OTRAS IPS", (params.jornadasOtrasIps ?? []).join("\n"));
+  // OBSERVACIONES DE ENTREGA = observaciones registradas al guardar la entrega.
   seccionTexto(y, "OBSERVACIONES DE ENTREGA", params.observaciones ?? "");
+  // Se eliminaron INFORMACIÓN GENERAL, NOVEDADES CEDIM IPS, LÍNEAS DE CONTACTO
+  // y DATOS DE AMBULANCIAS / CUPS: se consultan en RED/DISPONIBILIDAD.
 
   // ── Pie en todas las páginas ───────────────────────────────────────────
   const total = doc.getNumberOfPages();

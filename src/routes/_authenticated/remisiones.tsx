@@ -103,6 +103,21 @@ function RemisionesPage() {
     },
   });
 
+  // Jornadas de otras IPS registradas en RED/DISPONIBILIDAD (para el PDF).
+  const { data: redJornadas } = useQuery({
+    queryKey: ["red-jornadas-entrega"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("red_operativa")
+        .select("entidad, servicio_especialidad, ciudad, jornada, fecha_inicio, fecha_final, estado")
+        .eq("tipo_red", "jornada_especialidad")
+        .eq("archivado", false)
+        .neq("estado", "inactivo")
+        .order("fecha_inicio", { ascending: false });
+      return data ?? [];
+    },
+  });
+
   const { data: ultGestiones } = useQuery({
     queryKey: ["seguimientos-ult"],
     queryFn: async () => {
@@ -314,6 +329,23 @@ function RemisionesPage() {
         domiciliarios: (domiciliarios ?? []) as unknown as Record<string, unknown>[],
         refsInternas: (internas ?? []) as unknown as Record<string, unknown>[],
         pendientesGenerales: (pendientes ?? []) as unknown as Record<string, unknown>[],
+        // NOVEDADES = avisos operativos activos + alertas de coordinación relevantes.
+        novedades: (avisos ?? []).map((a) =>
+          `• ${a.titulo}${a.detalle ? ` — ${a.detalle}` : ""} (${a.severidad})`,
+        ),
+        // JORNADAS OTRAS IPS = RED/DISPONIBILIDAD → Jornadas / Códigos TEP.
+        jornadasOtrasIps: (redJornadas ?? []).map((j) => {
+          const fechas = [j.fecha_inicio, j.fecha_final].filter(Boolean).join(" al ");
+          return [
+            j.servicio_especialidad,
+            j.entidad,
+            j.ciudad,
+            j.jornada,
+            fechas,
+          ]
+            .filter(Boolean)
+            .join(" · ");
+        }),
         contadores: {
           acepPendiente: stats.acepPendiente,
           acepSinAmb: stats.acepPendiente,

@@ -8,6 +8,7 @@ import {
   Stethoscope,
   Clock,
   Copy,
+  Trash2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -31,9 +32,10 @@ interface Props {
   canEdit: boolean;
   onView: (r: RedRegistro) => void;
   onEdit?: (r: RedRegistro) => void;
+  onDelete?: (r: RedRegistro) => void;
 }
 
-export function RedCard({ reg, grupo, canEdit, onView, onEdit }: Props) {
+export function RedCard({ reg, grupo, canEdit, onView, onEdit, onDelete }: Props) {
   const activo = esActivo(reg);
   const Icon = grupo.icon;
   const servicios = serviciosList(reg);
@@ -170,6 +172,14 @@ export function RedCard({ reg, grupo, canEdit, onView, onEdit }: Props) {
               {canEdit && onEdit && (
                 <DropdownMenuItem onClick={() => onEdit(reg)}>
                   <Pencil className="mr-2 h-4 w-4" /> Editar
+                </DropdownMenuItem>
+              )}
+              {canEdit && onDelete && (
+                <DropdownMenuItem
+                  onClick={() => onDelete(reg)}
+                  className="text-status-red focus:text-status-red"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" /> Eliminar
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>

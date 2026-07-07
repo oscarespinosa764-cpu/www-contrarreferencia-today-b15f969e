@@ -1,10 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
+import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { AppHeader } from "@/components/app-header";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -19,6 +22,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Search,
   Network,
   Building2,
@@ -26,8 +39,10 @@ import {
   Stethoscope,
   Ambulance,
   ChevronRight,
+  Plus,
 } from "lucide-react";
 import { RedCard } from "@/components/red/red-card";
+import { RedFormDialog } from "@/components/red/red-form-dialog";
 import {
   RED_GRUPOS,
   TIPO_RED_LABEL,
@@ -50,6 +65,7 @@ export const Route = createFileRoute("/_authenticated/red-ips")({
 
 function RedIpsPage() {
   const { canEdit } = useAuth();
+  const qc = useQueryClient();
 
   const [grupo, setGrupo] = useState<RedGrupo>("jornadas_tep");
   const [ambito, setAmbito] = useState("todos"); // todos | caqueta | nacional
@@ -57,6 +73,10 @@ function RedIpsPage() {
   const [filtro, setFiltro] = useState("todos");
 
   const [detalle, setDetalle] = useState<RedRegistro | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<RedRegistro | null>(null);
+  const [aEliminar, setAEliminar] = useState<RedRegistro | null>(null);
+
 
 
 
@@ -105,6 +125,108 @@ function RedIpsPage() {
       })
       .filter((r) => (term ? textoBusqueda(r).includes(term) : true));
   }, [all, grupo, grupoCfg, ambito, filtro, term]);
+
+  // Opciones de autocompletado para el formulario contextual.
+  const especialidadesOpts = useMemo(
+    () =>
+      Array.from(
+        new Set(all.map((r) => (r.servicio_especialidad || "").trim()).filter(Boolean)),
+      ).sort(),
+    [all],
+  );
+  const ipsOpts = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          all
+            .filter((r) => grupoDeTipo(r.tipo_red) === "ips")
+            .map((r) => (r.entidad || "").trim())
+            .filter(Boolean),
+        ),
+      ).sort(),
+    [all],
+  );
+
+  // --- Creación / edición contextual (solo administrador; RLS lo refuerza) ---
+  const abrirNuevo = () => {
+    setEditing(null);
+    setFormOpen(true);
+  };
+  const abrirEditar = (r: RedRegistro) => {
+    setEditing(r);
+    setFormOpen(true);
+  };
+
+  const guardarRegistro = async (
+    payload: Record<string, unknown>,
+    id?: string,
+  ): Promise<boolean> => {
+    try {
+      if (id) {
+        const { error } = await supabase
+          .from("red_operativa")
+          .update(payload as never)
+          .eq("id", id);
+        if (error) throw error;
+        void registrarAuditoria({
+          data: {
+            accion: "editar_red",
+            modulo: "red-ips",
+            tabla: "red_operativa",
+            registroId: id,
+            detalles: { tipo_red: payload.tipo_red, grupo },
+          },
+        }).catch(() => {});
+        toast.success("Registro actualizado");
+      } else {
+        const { data, error } = await supabase
+          .from("red_operativa")
+          .insert(payload as never)
+          .select("id")
+          .single();
+        if (error) throw error;
+        void registrarAuditoria({
+          data: {
+            accion: "crear_red",
+            modulo: "red-ips",
+            tabla: "red_operativa",
+            registroId: (data as { id?: string } | null)?.id ?? null,
+            detalles: { tipo_red: payload.tipo_red, grupo },
+          },
+        }).catch(() => {});
+        toast.success("Registro creado");
+      }
+      qc.invalidateQueries({ queryKey: ["red-operativa"] });
+      return true;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo guardar. Verifique permisos.");
+      return false;
+    }
+  };
+
+  const eliminarRegistro = async () => {
+    if (!aEliminar) return;
+    try {
+      const { error } = await supabase.from("red_operativa").delete().eq("id", aEliminar.id);
+      if (error) throw error;
+      void registrarAuditoria({
+        data: {
+          accion: "eliminar_red",
+          modulo: "red-ips",
+          tabla: "red_operativa",
+          registroId: aEliminar.id,
+          detalles: { tipo_red: aEliminar.tipo_red, grupo },
+        },
+      }).catch(() => {});
+      toast.success("Registro eliminado");
+      qc.invalidateQueries({ queryKey: ["red-operativa"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo eliminar. Verifique permisos.");
+    } finally {
+      setAEliminar(null);
+    }
+  };
+
 
   const countCards = [
     { label: "IPS activas", value: conteos.ipsActivas, icon: Building2, color: "green" },
@@ -164,6 +286,15 @@ function RedIpsPage() {
             );
           })}
         </div>
+
+        {/* Acción de creación contextual (solo administrador) */}
+        {canEdit && (
+          <div className="mb-4 flex justify-end">
+            <Button onClick={abrirNuevo} className="rounded-full">
+              <Plus className="mr-1.5 h-4 w-4" /> Nuevo registro · {grupoCfg.label}
+            </Button>
+          </div>
+        )}
 
         <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
           <div className="min-w-0">
@@ -226,16 +357,19 @@ function RedIpsPage() {
                     grupo={grupoCfg}
                     canEdit={canEdit}
                     onView={setDetalle}
+                    onEdit={abrirEditar}
+                    onDelete={setAEliminar}
                   />
-
                 ))}
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2 py-14 text-center text-muted-foreground">
                 <Network className="h-10 w-10 opacity-40" />
                 <p className="max-w-sm text-sm">
-                  No hay registros en esta categoría. La gestión administrativa de la red se
-                  realiza desde Control de Mando → Históricos → RED/DISPONIBILIDAD.
+                  No hay registros en esta categoría.
+                  {canEdit
+                    ? " Usa «Nuevo registro» para agregar el primero."
+                    : " Solo los administradores pueden crear registros."}
                 </p>
               </div>
             )}
@@ -294,6 +428,7 @@ function RedIpsPage() {
                 <DetRow k="EAPB / aseguradoras" v={detalle.eapb_aseguradoras || ""} />
                 <DetRow k="Ubicación" v={ubicacion(detalle)} />
                 <DetRow k="Teléfono" v={detalle.telefono || detalle.contacto || ""} />
+                <DetRow k="Extensión" v={detalle.codigo_principal || ""} />
                 <DetRow k="Correo" v={detalle.correo || ""} />
                 <DetRow k="Contacto responsable" v={detalle.contacto_principal || ""} />
                 <DetRow k="Cargo del contacto" v={detalle.cargo_contacto || ""} />
@@ -318,6 +453,36 @@ function RedIpsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Formulario contextual de creación / edición (solo administrador) */}
+      {canEdit && (
+        <RedFormDialog
+          open={formOpen}
+          onOpenChange={setFormOpen}
+          grupo={grupo}
+          editing={editing}
+          especialidades={especialidadesOpts}
+          ipsOptions={ipsOpts}
+          onSubmit={guardarRegistro}
+        />
+      )}
+
+      {/* Confirmación de eliminación */}
+      <AlertDialog open={!!aEliminar} onOpenChange={(v) => !v && setAEliminar(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar este registro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se eliminará «{aEliminar?.entidad || aEliminar?.empresa_tep || "registro"}» de
+              RED/DISPONIBILIDAD. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={eliminarRegistro}>Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

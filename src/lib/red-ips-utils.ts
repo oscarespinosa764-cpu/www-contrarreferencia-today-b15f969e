@@ -3,6 +3,7 @@ import {
   Building2,
   Ambulance,
   Stethoscope,
+  BookUser,
   type LucideIcon,
 } from "lucide-react";
 
@@ -16,10 +17,19 @@ export type TipoRed =
   | "ips_aliada"
   | "ambulancia_autorizacion"
   | "jornada_especialidad"
-  | "codigo_tep";
+  | "codigo_tep"
+  // DIRECTORIO INTERNO (contactos institucionales, sedes, extensiones)
+  | "directorio_referencia"
+  | "sede"
+  | "directorio_contacto";
 
 // Pestañas principales (grupos) del módulo
-export type RedGrupo = "jornadas_tep" | "ips" | "ambulancias" | "especialidades_cedim";
+export type RedGrupo =
+  | "jornadas_tep"
+  | "ips"
+  | "ambulancias"
+  | "especialidades_cedim"
+  | "directorio_interno";
 
 export interface RelacionRed {
   nombre: string;
@@ -125,6 +135,14 @@ export const RED_GRUPOS: GrupoConfig[] = [
     tieneAmbito: false,
     buscarPlaceholder: "Buscar especialidad, profesional, servicio, sede…",
   },
+  {
+    key: "directorio_interno",
+    label: "DIRECTORIO INTERNO",
+    icon: BookUser,
+    tipos: ["directorio_referencia", "sede", "directorio_contacto"],
+    tieneAmbito: false,
+    buscarPlaceholder: "Buscar área, sede, extensión, correo, funcionario…",
+  },
 ];
 
 export const TIPO_RED_LABEL: Record<TipoRed, string> = {
@@ -135,6 +153,9 @@ export const TIPO_RED_LABEL: Record<TipoRed, string> = {
   ambulancia_autorizacion: "Ambulancia / autorización",
   jornada_especialidad: "Jornada de especialidad / IPS",
   codigo_tep: "Código TEP",
+  directorio_referencia: "Datos generales de referencia",
+  sede: "Sede CEDIM IPS",
+  directorio_contacto: "Directorio telefónico / correo",
 };
 
 export const JORNADAS = ["Mañana", "Tarde", "Noche", "Día completo", "Otro"];
