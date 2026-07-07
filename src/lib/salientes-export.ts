@@ -17,9 +17,34 @@ const INSTITUCION = "CENTRO DE IMAGENES DIAGNOSTICAS CEDIM I.P.S S.A.S";
 const NIT = "NIT: 900559103-5";
 const PIE = "SISTEMA DE REFERENCIA Y CONTRARREFERENCIA";
 const NAVY: [number, number, number] = [31, 56, 100];
+const LIGHT_BLUE: [number, number, number] = [221, 235, 247];
 
 const v = (x: unknown): string => (x === null || x === undefined ? "" : String(x).trim());
 const hoy = () => new Date().toISOString().slice(0, 10);
+
+// Contadores compartidos por el bloque de tarjetas superiores (Reporte General
+// y Entrega de Turno usan exactamente la misma fila resumen).
+function tarjetasResumen(p: {
+  activas: number;
+  especiales: number;
+  internas: number;
+  pendientes: number;
+  contadores?: Record<string, number>;
+}): [string, string][] {
+  const c = p.contadores ?? {};
+  return [
+    ["REMISIONES ACTIVAS", String(p.activas)],
+    ["PENDIENTES ACEPTACIÓN", String(c.acepPendiente ?? 0)],
+    ["ACEPTADO SIN AMB.", String(c.acepSinAmb ?? 0)],
+    ["ACEPTADO CON AMB.", String(c.acepConAmb ?? 0)],
+    ["PHD/PAD/O2/ESP.", String(p.especiales)],
+    ["REFERENCIAS INTERNAS", String(p.internas)],
+    ["PENDIENTES GENERALES", String(p.pendientes)],
+    ["DESISTIMIENTOS", String(c.desistimientos ?? 0)],
+    ["ALTA PRIORIDAD", String(c.altaPrioridad ?? 0)],
+    ["SIN SEG. RECIENTE", String(c.sinSeguimiento ?? 0)],
+  ];
+}
 
 const imgCache = new Map<string, string | null>();
 async function getImg(url: string): Promise<string | null> {
