@@ -271,13 +271,24 @@ function RemisionesPage() {
     try {
       await descargarReporteGeneralPDF({
         remisiones: remisiones ?? [],
+        activas: stats.activas,
         especiales: stats.especiales,
         internas: stats.internas,
         pendientes: stats.generales,
         usuario: miNombreExport(),
-        turno: turnoEntrega,
+        contadores: {
+          acepPendiente: stats.acepPendiente,
+          acepSinAmb: stats.acepPendiente,
+          acepConAmb: stats.acepCoordinada,
+          desistimientos: stats.desistIps + stats.desistGeneral,
+          altaPrioridad: count((r) => /ALTA|VITAL|URGENTE/i.test(r.prioridad || "")),
+          sinSeguimiento: count((r) => {
+            const upd = (r as unknown as Record<string, unknown>).evolucion_actualizada_at as string | undefined;
+            return !upd || Date.now() - new Date(upd).getTime() > 24 * 3600 * 1000;
+          }),
+        },
       });
-      auditarExport("exportar_reporte_general", { registros: remisiones?.length ?? 0, turno: turnoEntrega });
+      auditarExport("exportar_reporte_general", { registros: remisiones?.length ?? 0 });
       toast.success("Reporte general generado");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo generar el reporte. Intente nuevamente.");

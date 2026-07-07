@@ -17,9 +17,34 @@ const INSTITUCION = "CENTRO DE IMAGENES DIAGNOSTICAS CEDIM I.P.S S.A.S";
 const NIT = "NIT: 900559103-5";
 const PIE = "SISTEMA DE REFERENCIA Y CONTRARREFERENCIA";
 const NAVY: [number, number, number] = [31, 56, 100];
+const LIGHT_BLUE: [number, number, number] = [221, 235, 247];
 
 const v = (x: unknown): string => (x === null || x === undefined ? "" : String(x).trim());
 const hoy = () => new Date().toISOString().slice(0, 10);
+
+// Contadores compartidos por el bloque de tarjetas superiores (Reporte General
+// y Entrega de Turno usan exactamente la misma fila resumen).
+function tarjetasResumen(p: {
+  activas: number;
+  especiales: number;
+  internas: number;
+  pendientes: number;
+  contadores?: Record<string, number>;
+}): [string, string][] {
+  const c = p.contadores ?? {};
+  return [
+    ["REMISIONES ACTIVAS", String(p.activas)],
+    ["PENDIENTES ACEPTACIÓN", String(c.acepPendiente ?? 0)],
+    ["ACEPTADO SIN AMB.", String(c.acepSinAmb ?? 0)],
+    ["ACEPTADO CON AMB.", String(c.acepConAmb ?? 0)],
+    ["PHD/PAD/O2/ESP.", String(p.especiales)],
+    ["REFERENCIAS INTERNAS", String(p.internas)],
+    ["PENDIENTES GENERALES", String(p.pendientes)],
+    ["DESISTIMIENTOS", String(c.desistimientos ?? 0)],
+    ["ALTA PRIORIDAD", String(c.altaPrioridad ?? 0)],
+    ["SIN SEG. RECIENTE", String(c.sinSeguimiento ?? 0)],
+  ];
+}
 
 const imgCache = new Map<string, string | null>();
 async function getImg(url: string): Promise<string | null> {
@@ -103,80 +128,137 @@ export function descargarExcelCRUE(remisiones: Remision[]): void {
 }
 
 // ===========================================================================
-// REPORTE GENERAL — PDF operativo del turno
+// REPORTE GENERAL OPERATIVO — SALIENTES
+// ---------------------------------------------------------------------------
+// Legal landscape. Encabezado institucional SIN turno, fila de tarjetas resumen
+// (idéntica a Entrega de Turno) y tabla completa de REMISIONES ACTIVAS.
+// Se genera BAJO DEMANDA y se descarga. NO se guarda archivo permanente.
 // ===========================================================================
 export async function descargarReporteGeneralPDF(params: {
   remisiones: Remision[];
+  activas: number;
   especiales: number;
   internas: number;
   pendientes: number;
   usuario: string;
-  turno: string;
+  contadores?: Record<string, number>;
 }): Promise<void> {
   const { jsPDF } = await import("jspdf");
   const autoTable = (await import("jspdf-autotable")).default;
-  const doc = new jsPDF({ unit: "mm", format: "letter", orientation: "landscape" });
+  const doc = new jsPDF({ unit: "mm", format: "legal", orientation: "landscape" });
   const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
   const logo = await getImg((logoAsset as { url: string }).url);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const finalY = (): number => (doc as any).lastAutoTable?.finalY ?? 0;
 
-  if (logo) doc.addImage(logo, "PNG", 14, 8, 24, 16);
+  // ── Encabezado institucional (SIN turno) ────────────────────────────────
+  if (logo) doc.addImage(logo, "PNG", 12, 7, 24, 16);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
   doc.setTextColor(110);
-  doc.text(INSTITUCION, pageW / 2, 12, { align: "center" });
-  doc.text(NIT, pageW / 2, 16, { align: "center" });
-  doc.setTextColor(0);
+  doc.text(INSTITUCION, pageW / 2, 11, { align: "center" });
+  doc.text(NIT, pageW / 2, 15, { align: "center" });
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(15);
+  doc.setFontSize(14);
   doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
-  doc.text("REPORTE GENERAL OPERATIVO — SALIENTES", pageW / 2, 26, { align: "center" });
+  doc.text("REPORTE GENERAL OPERATIVO — SALIENTES", pageW / 2, 22, { align: "center" });
   doc.setTextColor(0);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.text(
-    `Turno: ${params.turno}   ·   Generado por: ${params.usuario}   ·   ${new Date().toLocaleString("es-CO")}`,
+    `Generado por: ${params.usuario}   ·   ${new Date().toLocaleString("es-CO")}`,
     pageW / 2,
-    32,
+    28,
     { align: "center" },
   );
 
-  doc.setFontSize(9);
-  doc.text(
-    `Remisiones activas: ${params.remisiones.length}   ·   PHD/Especiales: ${params.especiales}   ·   Ref. internas: ${params.internas}   ·   Pendientes: ${params.pendientes}`,
-    14,
-    40,
-  );
-
-  const body = params.remisiones.map((r) => [
-    fmtFechaHora(r.fecha_inicio),
-    v(r.paciente),
-    v(r.documento),
-    v(r.eapb || r.asegurador),
-    v(r.servicio),
-    v(r.prioridad),
-    v(r.estado),
-  ]);
-
+  // ── Tarjetas resumen (idénticas a Entrega de Turno) ─────────────────────
+  const cont = tarjetasResumen(params);
   autoTable(doc, {
-    startY: 44,
-    head: [["FECHA", "PACIENTE", "DOCUMENTO", "EAPB", "SERVICIO", "PRIORIDAD", "ESTADO"]],
-    body: body.length ? (body as never) : ([["—", "Sin remisiones activas", "", "", "", "", ""]] as never),
+    startY: 33,
     theme: "grid",
-    styles: { fontSize: 7.5, cellPadding: 1.5 },
-    headStyles: { fillColor: NAVY, textColor: [255, 255, 255], fontStyle: "bold", fontSize: 7.5 },
-    margin: { left: 14, right: 14 },
+    styles: { fontSize: 7, cellPadding: 1.2, halign: "center", lineColor: [120, 120, 120], lineWidth: 0.2 },
+    body: [
+      cont.map(([k]) => ({ content: k, styles: { fillColor: LIGHT_BLUE, textColor: NAVY, fontStyle: "bold" as const } })),
+      cont.map(([, val]) => ({ content: val, styles: { fontStyle: "bold" as const, fontSize: 10 } })),
+    ] as never,
+    margin: { left: 12, right: 12 },
+  });
+  let y = finalY() + 8; // separación visual antes de la sección
+
+  // ── Banda de sección REMISIONES ACTIVAS ─────────────────────────────────
+  doc.setFillColor(NAVY[0], NAVY[1], NAVY[2]);
+  doc.rect(8, y - 4, pageW - 16, 6, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.text("REMISIONES ACTIVAS", pageW / 2, y, { align: "center" });
+  doc.setTextColor(0);
+  y += 5;
+
+  const head = [[
+    "F. INICIO", "F. RADICADO", "T. TRÁMITE", "SERVICIO", "PACIENTE", "IDENT.", "EDAD",
+    "CIE-10", "ESP. TRAT.", "ESP. RECEP.", "REMISIÓN POR", "MOTIVO", "TIPO TRÁMITE",
+    "EAPB", "RÉGIMEN", "RADICACIÓN", "ESTADO", "IPS RECEPTORA", "TIPO AMB", "SOPORTES",
+  ]];
+  const body = (params.remisiones ?? []).map((r) => {
+    const rr = r as unknown as Record<string, unknown>;
+    return [
+      fmtFechaHora(r.fecha_inicio),
+      fmtFechaHora(rr.fecha_radicado as string),
+      fmtTranscurrido(r.fecha_inicio),
+      v(r.servicio),
+      v(r.paciente),
+      v(r.documento),
+      fmtEdad(r.edad),
+      v(r.cie10),
+      v(r.especialidades_tratantes),
+      v(r.especialidades_receptoras),
+      v(rr.remision_por),
+      v(rr.especificacion),
+      v(rr.tipo_tramite),
+      v(r.eapb || r.asegurador),
+      v(r.regimen),
+      v(r.codigo_radicacion),
+      v(r.estado),
+      v(rr.ips_receptora),
+      v(r.tipo_ambulancia),
+      v(rr.soportes),
+    ];
   });
 
-  const pageH = doc.internal.pageSize.getHeight();
-  doc.setDrawColor(180);
-  doc.line(14, pageH - 12, pageW - 14, pageH - 12);
-  doc.setFont("helvetica", "italic");
-  doc.setFontSize(7.5);
-  doc.setTextColor(90);
-  doc.text(PIE, pageW / 2, pageH - 8, { align: "center" });
-  doc.setTextColor(0);
+  autoTable(doc, {
+    startY: y,
+    head: head as never,
+    body: (body.length
+      ? body
+      : [[{ content: "Sin remisiones activas", colSpan: 20, styles: { halign: "center", textColor: [130, 130, 130], fontStyle: "italic" } }]]) as never,
+    theme: "grid",
+    styles: { fontSize: 5.6, cellPadding: 0.9, overflow: "linebreak", valign: "top", lineColor: [140, 140, 140], lineWidth: 0.15 },
+    headStyles: { fillColor: NAVY, textColor: [255, 255, 255], fontStyle: "bold", fontSize: 5.6, halign: "center" },
+    margin: { left: 8, right: 8 },
+    tableWidth: "auto",
+  });
 
-  doc.save(`Reporte_General_Turno_${hoy()}.pdf`);
+  // ── Pie en todas las páginas ────────────────────────────────────────────
+  const total = doc.getNumberOfPages();
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i);
+    doc.setDrawColor(180);
+    doc.line(12, pageH - 10, pageW - 12, pageH - 10);
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(7);
+    doc.setTextColor(90);
+    doc.text(PIE, pageW / 2, pageH - 6, { align: "center" });
+    doc.setFont("helvetica", "normal");
+    doc.text(`Página ${i} de ${total} · Generado: ${new Date().toLocaleString("es-CO")}`, pageW - 12, pageH - 6, {
+      align: "right",
+    });
+    doc.setTextColor(0);
+  }
+
+  doc.save(`Reporte_General_Operativo_Salientes_${hoy()}.pdf`);
 }
 
 // ===========================================================================
@@ -187,7 +269,7 @@ export async function descargarReporteGeneralPDF(params: {
 // remisiones activas con columnas agrupadas y secciones operativas de texto.
 // Se genera BAJO DEMANDA y se descarga. NO se guarda archivo permanente.
 // ===========================================================================
-const LIGHT_BLUE: [number, number, number] = [221, 235, 247];
+
 
 export async function descargarEntregaTurnoPDF(params: {
   turno: string;
@@ -231,31 +313,44 @@ export async function descargarEntregaTurnoPDF(params: {
     return yy + 5;
   };
 
-  // Sección de texto libre con placeholder cuando está vacía.
+  // Placeholder uniforme para cualquier sección sin registros: misma tipografía,
+  // misma alineación, misma altura mínima y mismo espaciado bajo la barra azul.
+  const PLACEHOLDER = "Sin registros para esta sección.";
+  const placeholderVacio = (yy: number): number => {
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(7.5);
+    doc.setTextColor(130);
+    doc.text(PLACEHOLDER, 10, yy + 3.5);
+    doc.setTextColor(0);
+    return yy + 9; // altura mínima uniforme del cuerpo vacío
+  };
+
+  // Sección de texto libre con placeholder uniforme cuando está vacía.
   const seccionTexto = (yy: number, titulo: string, contenido: string): number => {
     if (yy > pageH - 20) {
       doc.addPage();
       yy = 16;
     }
     if (titulo) yy = banda(yy, titulo);
-    const txt = (contenido || "").trim() || "Sin registros para esta sección.";
-    doc.setFont("helvetica", contenido ? "normal" : "italic");
+    const txt = (contenido || "").trim();
+    if (!txt) return placeholderVacio(yy) + 3;
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
-    doc.setTextColor(contenido ? 0 : 130);
-    const lines = doc.splitTextToSize(txt, pageW - 20);
-    doc.text(lines, 10, yy + 1);
     doc.setTextColor(0);
-    return yy + 4 * lines.length + 3;
+    const lines = doc.splitTextToSize(txt, pageW - 20);
+    doc.text(lines, 10, yy + 3.5);
+    return yy + 4 * lines.length + 5;
   };
 
   // Tabla genérica (PHD, internas, pendientes).
   const tablaGenerica = (yy: number, titulo: string, items: Record<string, unknown>[]): number => {
     yy = banda(yy, titulo);
-    if (!items || items.length === 0) return seccionTexto(yy - 5, "", "Sin registros para esta sección.");
+    if (!items || items.length === 0) return placeholderVacio(yy) + 3;
     const body = items.map((it) => [
       fmtFechaHora((it.fecha_inicio as string) ?? (it.created_at as string)),
       v(it.paciente ?? it.paciente_asunto),
       v(it.documento),
+
       v(it.servicio ?? it.tipo ?? it.asunto),
       v(it.estado ?? it.prioridad),
       v(it.observaciones ?? it.observacion_entrega ?? it.detalle),
@@ -325,7 +420,7 @@ export async function descargarEntregaTurnoPDF(params: {
     ] as never,
     margin: { left: 12, right: 12 },
   });
-  y = finalY() + 4;
+  y = finalY() + 10; // separación uniforme entre tarjetas y la sección Remisiones Activas
 
   // ── Matriz REMISIONES ACTIVAS ──────────────────────────────────────────
   y = banda(y, "REMISIONES ACTIVAS");
@@ -333,7 +428,7 @@ export async function descargarEntregaTurnoPDF(params: {
   const head = [[
     "CANT\nEVOL", "F. INICIO", "F. RADICADO", "T. TRÁMITE", "CAMA", "SERVICIO",
     "PACIENTE", "IDENT.", "EDAD", "CIE-10", "ESP. TRAT.", "ESP. RECEP.", "PRIORIDAD",
-    "REMISIÓN POR", "MOTIVO", "TIPO TRÁMITE", "RÉGIMEN", "RADICACIÓN", "ESTADO",
+    "REMISIÓN POR", "MOTIVO", "TIPO TRÁMITE", "EAPB", "RÉGIMEN", "RADICACIÓN", "ESTADO",
     "IPS RECEPTORA", "TIPO AMB", "SOPORTES", "CONTACTO", "OBSERVACIONES",
   ]];
   const bodyRem = rem.map((r) => {
@@ -357,6 +452,7 @@ export async function descargarEntregaTurnoPDF(params: {
       v(rr.remision_por),
       v(rr.especificacion),
       v(rr.tipo_tramite),
+      v(r.eapb || r.asegurador),
       v(r.regimen),
       v(r.codigo_radicacion),
       v(r.estado),
@@ -370,7 +466,9 @@ export async function descargarEntregaTurnoPDF(params: {
   autoTable(doc, {
     startY: y,
     head: head as never,
-    body: (bodyRem.length ? bodyRem : [["", "Sin remisiones activas", ...Array(22).fill("")]]) as never,
+    body: (bodyRem.length
+      ? bodyRem
+      : [[{ content: "Sin remisiones activas", colSpan: 25, styles: { halign: "center", textColor: [130, 130, 130], fontStyle: "italic" } }]]) as never,
     theme: "grid",
     styles: { fontSize: 5.3, cellPadding: 0.8, overflow: "linebreak", valign: "top", lineColor: [140, 140, 140], lineWidth: 0.15 },
     headStyles: { fillColor: NAVY, textColor: [255, 255, 255], fontStyle: "bold", fontSize: 5.3, halign: "center" },
