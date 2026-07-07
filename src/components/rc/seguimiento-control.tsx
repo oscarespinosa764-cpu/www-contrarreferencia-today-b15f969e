@@ -26,7 +26,7 @@ import {
   fechaCasoStr,
   fmtFechaHora,
   fmtMinutos,
-  nextCodigo,
+  
   type Caso,
 } from "@/lib/rc-utils";
 import type { Catalogos } from "@/lib/use-rc-data";
