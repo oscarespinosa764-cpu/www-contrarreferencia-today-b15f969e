@@ -77,7 +77,20 @@ type FormState = {
   vigencia_hasta: string;
   disponible_para_remisiones: boolean;
   observaciones: string;
+  // Directorios externos e interno CEDIM (campos aditivos)
+  telefonos_alternos: string;
+  correos_alternos: string;
+  indicativo: string;
+  cobertura: string;
+  opcion_menu: string;
+  tipo_recurso: string;
+  descripcion: string;
+  categoria: string;
+  subcategoria: string; // nombre del recurso
+  link: string; // url del recurso
+  orden_visualizacion: string;
 };
+
 
 const EMPTY: FormState = {
   tipo_red: "ips_departamental",
