@@ -231,7 +231,13 @@ export function RedFormDialog({
       tipo_red: tipoRed,
       estado: f.estado,
       ambito: cfg.tieneAmbito ? f.ambito : null,
-      entidad: (esEspecialidad ? f.medico || f.entidad : f.entidad).trim() || null,
+      entidad:
+        (esRef
+          ? "Datos generales de referencia"
+          : esEspecialidad
+            ? f.medico || f.entidad
+            : f.entidad
+        ).trim() || null,
       nit: f.nit.trim() || null,
       servicio_especialidad: f.servicio_especialidad.trim() || null,
       medico: esEspecialidad ? (f.medico || f.entidad).trim() || null : f.medico.trim() || null,
