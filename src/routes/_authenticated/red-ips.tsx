@@ -429,7 +429,6 @@ function RedIpsPage() {
                 <DetRow k="Ubicación" v={ubicacion(detalle)} />
                 <DetRow k="Teléfono" v={detalle.telefono || detalle.contacto || ""} />
                 <DetRow k="Extensión" v={detalle.codigo_principal || ""} />
-                <DetRow k="Horario" v={detalle.horario || ""} />
                 <DetRow k="Correo" v={detalle.correo || ""} />
                 <DetRow k="Contacto responsable" v={detalle.contacto_principal || ""} />
                 <DetRow k="Cargo del contacto" v={detalle.cargo_contacto || ""} />
