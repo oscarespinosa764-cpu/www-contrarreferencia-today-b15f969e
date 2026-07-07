@@ -224,7 +224,7 @@ export function RedFormDialog({
       setF({ ...EMPTY, tipo_red: presetTipo ?? defaultTipo(grupo) });
     }
 
-  }, [open, editing, grupo]);
+  }, [open, editing, grupo, presetTipo]);
 
   const inactivo = f.estado === "inactivo";
   const disponibleEff = inactivo ? false : f.disponible_para_remisiones;
@@ -239,6 +239,12 @@ export function RedFormDialog({
   const esRef = f.tipo_red === "directorio_referencia";
   const esSede = f.tipo_red === "sede";
   const esContacto = f.tipo_red === "directorio_contacto";
+  // Directorios externos
+  const esExterno = grupo === "directorios_externos";
+  const esEapb = f.tipo_red === "eapb_eps";
+  const esCrue = f.tipo_red === "crue";
+  const esLinea = f.tipo_red === "linea_emergencia";
+  const esRecurso = f.tipo_red === "recurso_referencia";
 
   const validar = (): string | null => {
     if (grupo === "jornadas_tep") {
@@ -251,9 +257,19 @@ export function RedFormDialog({
       }
       return null;
     }
+    if (esExterno) {
+      if (esRecurso) {
+        if (!f.subcategoria.trim()) return "Indica el nombre del recurso";
+        if (contieneCredencial(f)) return "No se permiten credenciales en recursos de referencia";
+        return null;
+      }
+      if (!f.entidad.trim()) return "Indica el nombre de la entidad";
+      return null;
+    }
     if (esDirectorio) {
+      if (esRef && !f.entidad.trim()) return "Indica el nombre de la institución";
       if (esSede && !f.entidad.trim()) return "Indica el nombre de la sede";
-      if (esContacto && !f.entidad.trim()) return "Indica el área / servicio";
+      if (esContacto && !f.entidad.trim()) return "Indica la dependencia / área";
       return null;
     }
     if (!f.entidad.trim())
@@ -263,6 +279,7 @@ export function RedFormDialog({
     if (!esEspecialidad && !f.ciudad.trim()) return "Indica la ciudad / municipio";
     return null;
   };
+
 
   const guardar = async () => {
     const err = validar();
