@@ -39,8 +39,11 @@ interface Props {
   editing: RedRegistro | null;
   especialidades: string[];
   ipsOptions: string[];
+  /** Subtipo preseleccionado (según la pestaña interna activa). */
+  presetTipo?: TipoRed;
   onSubmit: (payload: Record<string, unknown>, id?: string) => Promise<boolean>;
 }
+
 
 type FormState = {
   tipo_red: TipoRed;
