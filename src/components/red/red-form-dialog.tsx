@@ -239,6 +239,7 @@ export function RedFormDialog({
       tipo_ambulancia: f.tipo_ambulancia || null,
       tipo_apoyo: f.tipo_apoyo.trim() || null,
       cups: f.cups.trim() || null,
+      codigo_principal: f.codigo_principal.trim() || null,
       cups_descripcion: f.cups_descripcion.trim() || null,
       recorrido: f.recorrido.trim() || null,
       empresa_tep: f.empresa_tep.trim() || null,
