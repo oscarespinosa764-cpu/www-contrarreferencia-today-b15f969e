@@ -516,7 +516,7 @@ async function fetchHistoricosCasos(): Promise<HistoricoCaso[]> {
 
 const historicoFecha = (h: HistoricoCaso): string => v(h.fecha) || v(h.created_at);
 const historicoTexto = (h: HistoricoCaso): string =>
-  `${h.seccion ?? ""} ${h.tipo_caso ?? ""} ${h.fuente_hoja ?? ""} ${h.fuente_archivo ?? ""} ${h.detalle ?? ""}`.toUpperCase();
+  `${h.seccion ?? ""} ${h.tipo_caso ?? ""} ${h.fuente_hoja ?? ""} ${h.fuente_archivo ?? ""}`.toUpperCase();
 const esHistoricoPHD = (h: HistoricoCaso): boolean => /\b(PHD|PAD|O2|OX[IÍ]GENO|DOMICILI|ESPECIAL)\b/.test(historicoTexto(h));
 const esHistoricoInterna = (h: HistoricoCaso): boolean => /\b(REF\.?\s*INTERNA|REFERENCIA\s*INTERNA|INTERNA)\b/.test(historicoTexto(h));
 
