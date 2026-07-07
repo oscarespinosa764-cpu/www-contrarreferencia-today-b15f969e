@@ -59,6 +59,22 @@ export function AppHeader({ title, subtitle }: { title: string; subtitle?: strin
         <span className="rounded-full border border-vitalis-blue/30 bg-vitalis-blue/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-vitalis-blue">
           {turnoLabel ?? "—"}
         </span>
+        {isAdmin && (
+          <Button
+            variant={practica ? "default" : "outline"}
+            size="icon"
+            className={
+              practica
+                ? "h-9 w-9 rounded-full bg-amber-500 text-amber-950 hover:bg-amber-600"
+                : "h-9 w-9 rounded-full"
+            }
+            onClick={togglePractica}
+            aria-label="Modo práctica"
+            title={practica ? "Modo práctica activo" : "Activar modo práctica"}
+          >
+            <FlaskConical className="h-4 w-4" />
+          </Button>
+        )}
         <Button
           variant="outline"
           size="icon"
