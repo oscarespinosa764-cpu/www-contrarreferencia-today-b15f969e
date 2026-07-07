@@ -7,14 +7,21 @@ import { PREFIJO_CODIGO } from "@/lib/rc-utils";
 // Cálculo del siguiente código de gestión (entrantes).
 //
 // Reglas acordadas:
-//  • Consecutivo CONTINUO POR AÑO: no se reinicia cada mes; el mes visible
-//    en el código refleja el mes actual, pero el número sigue creciendo
-//    dentro del mismo año.
-//  • INCLUYE EL HISTORIAL: se revisan tanto los casos activos
-//    (casos_entrantes) como los subidos a historicos_casos, en ambos
-//    formatos de código:
-//      - Formato compacto:  PREFIJO + AAMM + NNN     (ej. N2607001)
-//      - Formato antiguo:   TIPO-AAAAMMDD-NNN        (ej. NEG-20260421-010)
+//  • Consecutivo CONTINUO POR AÑO: no se reinicia cada mes; el mes visible en
+//    el código refleja el mes actual, pero el número sigue creciendo dentro
+//    del mismo año.
+//  • INCLUYE EL HISTORIAL: el consecutivo cuenta tanto los casos activos
+//    (casos_entrantes) como los subidos a historicos_casos.
+//
+// Se usa un CONTEO de casos del año (no el "máximo número"): los códigos
+// históricos vienen en formatos y numeraciones heterogéneas y con datos
+// sucios (p. ej. "NEG-202605-8:13" o secuencias infladas), por lo que tomar
+// el máximo produciría números erróneos. Contar los casos del tipo en el año
+// y sumar 1 da un consecutivo estable y creciente.
+//
+// Formatos reconocidos por tipo:
+//   - Compacto (nuevo):  PREFIJO + AAMM + NNN     (ej. N2607001)
+//   - Antiguo (radicado): TIPO-AAAAMM(DD)-NNN     (ej. NEG-202607-227)
 // ---------------------------------------------------------------------------
 
 const inputSchema = z.object({
@@ -22,43 +29,6 @@ const inputSchema = z.object({
   yyyy: z.number().int(),
   mm: z.number().int().min(1).max(12),
 });
-
-function extraerSeqDelAnio(
-  code: string | null | undefined,
-  tipo: string,
-  prefijo: string,
-  yyyy: number,
-): number {
-  if (!code) return 0;
-  const c = String(code).trim().toUpperCase();
-  if (!c) return 0;
-
-  const yy = String(yyyy).slice(-2);
-  const yyyyStr = String(yyyy);
-
-  // ── Formato antiguo: TIPO-AAAAMM(DD)-NNN ──
-  if (c.includes("-")) {
-    const parts = c.split("-");
-    if (parts.length === 3 && parts[0] === tipo && parts[1].slice(0, 4) === yyyyStr) {
-      const n = parseInt(parts[2], 10);
-      return isNaN(n) ? 0 : n;
-    }
-    return 0;
-  }
-
-  // ── Formato compacto: PREFIJO + AAMM + NNN ──
-  if (c.startsWith(prefijo)) {
-    const rest = c.slice(prefijo.length);
-    // El carácter tras el prefijo debe ser dígito (evita confundir A vs AD, N vs ND/NR).
-    if (!/^\d/.test(rest)) return 0;
-    // Los dos primeros dígitos son el año (AA); luego mes (MM); luego consecutivo.
-    if (rest.slice(0, 2) !== yy) return 0;
-    const n = parseInt(rest.slice(4), 10);
-    return isNaN(n) ? 0 : n;
-  }
-
-  return 0;
-}
 
 export const siguienteCodigo = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -70,33 +40,24 @@ export const siguienteCodigo = createServerFn({ method: "POST" })
     const mmStr = String(mm).padStart(2, "0");
     const aamm = `${yy}${mmStr}`;
 
-    let maxSeq = 0;
-
-    // 1) Casos activos (incluye archivados: no se filtra por `archivado`).
-    const { data: activos, error: errActivos } = await context.supabase
+    // 1) Casos activos del año en formato compacto (PREFIJO + AA...).
+    //    El año va justo después del prefijo, por lo que "A26%" no colisiona
+    //    con "AD26%"/"AMP..." ni "N26%" con "ND26%"/"NR26%".
+    const { count: actCount, error: errActivos } = await context.supabase
       .from("casos_entrantes")
-      .select("codigo")
-      .not("codigo", "is", null)
-      .limit(10000);
+      .select("codigo", { count: "exact", head: true })
+      .like("codigo", `${prefijo}${yy}%`);
     if (errActivos) throw errActivos;
-    for (const row of activos ?? []) {
-      const n = extraerSeqDelAnio((row as { codigo: string | null }).codigo, tipo, prefijo, yyyy);
-      if (n > maxSeq) maxSeq = n;
-    }
 
-    // 2) Historial de entrantes (radicado guarda el código original).
-    const { data: histor, error: errHist } = await context.supabase
+    // 2) Casos del historial del año (radicado antiguo TIPO-AAAA...).
+    const { count: histCount, error: errHist } = await context.supabase
       .from("historicos_casos")
-      .select("radicado")
+      .select("radicado", { count: "exact", head: true })
       .eq("seccion", "entrante")
-      .not("radicado", "is", null)
-      .limit(20000);
+      .like("radicado", `${tipo}-${yyyy}%`);
     if (errHist) throw errHist;
-    for (const row of histor ?? []) {
-      const n = extraerSeqDelAnio((row as { radicado: string | null }).radicado, tipo, prefijo, yyyy);
-      if (n > maxSeq) maxSeq = n;
-    }
 
-    const seq = String(maxSeq + 1).padStart(3, "0");
+    const total = (actCount ?? 0) + (histCount ?? 0);
+    const seq = String(total + 1).padStart(3, "0");
     return { codigo: `${prefijo}${aamm}${seq}` };
   });
