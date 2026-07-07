@@ -118,6 +118,8 @@ function defaultTipo(grupo: RedGrupo): TipoRed {
       return "ambulancia_autorizacion";
     case "especialidades_cedim":
       return "especialista_interno";
+    case "directorio_interno":
+      return "directorio_contacto";
   }
 }
 
