@@ -61,6 +61,8 @@ export function ImportarRedDialog({
     setHojas({});
     setTotalFilas(0);
     setResumen(null);
+    setNota(null);
+
     if (inputRef.current) inputRef.current.value = "";
   };
 
