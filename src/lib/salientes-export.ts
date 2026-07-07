@@ -212,7 +212,7 @@ export async function descargarReporteGeneralPDF(params: {
 // remisiones activas con columnas agrupadas y secciones operativas de texto.
 // Se genera BAJO DEMANDA y se descarga. NO se guarda archivo permanente.
 // ===========================================================================
-const LIGHT_BLUE: [number, number, number] = [221, 235, 247];
+
 
 export async function descargarEntregaTurnoPDF(params: {
   turno: string;
