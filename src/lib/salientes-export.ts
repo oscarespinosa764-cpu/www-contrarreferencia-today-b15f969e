@@ -428,7 +428,7 @@ export async function descargarEntregaTurnoPDF(params: {
   const head = [[
     "CANT\nEVOL", "F. INICIO", "F. RADICADO", "T. TRÁMITE", "CAMA", "SERVICIO",
     "PACIENTE", "IDENT.", "EDAD", "CIE-10", "ESP. TRAT.", "ESP. RECEP.", "PRIORIDAD",
-    "REMISIÓN POR", "MOTIVO", "TIPO TRÁMITE", "RÉGIMEN", "RADICACIÓN", "ESTADO",
+    "REMISIÓN POR", "MOTIVO", "TIPO TRÁMITE", "EAPB", "RÉGIMEN", "RADICACIÓN", "ESTADO",
     "IPS RECEPTORA", "TIPO AMB", "SOPORTES", "CONTACTO", "OBSERVACIONES",
   ]];
   const bodyRem = rem.map((r) => {
