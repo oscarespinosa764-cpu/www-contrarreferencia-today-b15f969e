@@ -68,6 +68,7 @@ function RedIpsPage() {
   const qc = useQueryClient();
 
   const [grupo, setGrupo] = useState<RedGrupo>("jornadas_tep");
+  const [subKey, setSubKey] = useState<string>(""); // subsección activa (directorios)
   const [ambito, setAmbito] = useState("todos"); // todos | caqueta | nacional
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState("todos");
@@ -76,6 +77,7 @@ function RedIpsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<RedRegistro | null>(null);
   const [aEliminar, setAEliminar] = useState<RedRegistro | null>(null);
+
 
 
 
