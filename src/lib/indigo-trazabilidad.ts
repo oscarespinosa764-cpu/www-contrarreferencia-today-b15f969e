@@ -374,6 +374,13 @@ export function generarPlantillaCierreAdmision(ipsReceptora: string): string {
   return `SE CONFIRMA EGRESO DEL PACIENTE DE LA INSTITUCIÓN PARA TRASLADO HACIA ${ips}, POSTERIOR A ENTREGA DOCUMENTAL Y COORDINACIÓN DEL TRASLADO. SE CIERRA PROCESO DE REMISIÓN POR REMISIÓN EXITOSA.`;
 }
 
+// Cierre del caso por traslado efectivo: el paciente fue trasladado y recibido
+// en la IPS receptora, por lo que se cierra el proceso de forma exitosa.
+export function generarPlantillaCierreTraslado(ipsReceptora: string): string {
+  const ips = ph(ipsReceptora, "IPS RECEPTORA");
+  return `SE CONFIRMA TRASLADO EFECTIVO DEL PACIENTE Y RECEPCIÓN EN LA IPS ${ips}. SE VERIFICA CULMINACIÓN DEL TRASLADO SIN NOVEDADES. SE CIERRA EL PROCESO DE REMISIÓN POR TRASLADO EFECTIVO.`;
+}
+
 // ---------------------------------------------------------------------------
 // Cambio de asegurador a EAPB (se cierra por la aseguradora anterior y se
 // continúa el trámite por la nueva EAPB, con sus datos de plataforma/radicado).
