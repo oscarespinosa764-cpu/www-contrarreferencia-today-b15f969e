@@ -320,7 +320,9 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     setBusy(true);
     try {
       const ahora = new Date();
-      const codigo = nextCodigo(casos, tipo, ahora);
+      const { codigo } = await siguienteCodigo({
+        data: { tipo, yyyy: ahora.getFullYear(), mm: ahora.getMonth() + 1 },
+      });
 
       const esActivo = tipo === "ACEP" || tipo === "CRUE_ACEP";
       const unidadEff = isCrue ? unidadReq : unidad;
