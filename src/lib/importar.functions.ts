@@ -155,7 +155,7 @@ const inputSchema = z.object({
   filas: z
     .array(z.record(z.string(), z.unknown()))
     .min(1, "El archivo no contiene filas.")
-    .max(5000, "Máximo 5000 filas por importación."),
+    .max(50000, "Máximo 50000 filas por importación."),
 });
 
 export const importarMasivo = createServerFn({ method: "POST" })
