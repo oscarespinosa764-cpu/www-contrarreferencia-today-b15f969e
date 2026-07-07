@@ -1153,8 +1153,12 @@ export function RedFormDialog({
 
               {esContacto && (
                 <>
-                  <div className="space-y-1.5 sm:col-span-2">
-                    <Label>Área / servicio</Label>
+                  <div className="space-y-1.5">
+                    <Label>Sede</Label>
+                    <Input value={f.sede} onChange={(e) => set("sede", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Dependencia / área</Label>
                     <Input value={f.entidad} onChange={(e) => set("entidad", e.target.value)} />
                   </div>
                   <div className="space-y-1.5">
@@ -1176,6 +1180,10 @@ export function RedFormDialog({
                     />
                   </div>
                   <div className="space-y-1.5">
+                    <Label>Opción del menú telefónico (si aplica)</Label>
+                    <Input value={f.opcion_menu} onChange={(e) => set("opcion_menu", e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
                     <Label>Teléfono directo (si aplica)</Label>
                     <Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} />
                   </div>
@@ -1183,12 +1191,9 @@ export function RedFormDialog({
                     <Label>Correo institucional</Label>
                     <Input value={f.correo} onChange={(e) => set("correo", e.target.value)} />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>Sede asociada</Label>
-                    <Input value={f.sede} onChange={(e) => set("sede", e.target.value)} />
-                  </div>
                 </>
               )}
+
             </div>
           )}
 
