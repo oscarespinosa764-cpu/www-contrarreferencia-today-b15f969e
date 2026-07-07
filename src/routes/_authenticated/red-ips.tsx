@@ -292,6 +292,7 @@ function RedIpsPage() {
                 onClick={() => {
                   setGrupo(g.key);
                   setAmbito("todos");
+                  setSubKey(g.subsecciones?.[0]?.key ?? "");
                 }}
                 className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3.5 py-2 text-[11px] font-bold uppercase tracking-wide transition-colors ${
                   active
@@ -305,14 +306,40 @@ function RedIpsPage() {
           })}
         </div>
 
+        {/* Pestañas internas (subsecciones) para directorios */}
+        {grupoCfg.subsecciones && (
+          <div className="mb-4 flex flex-wrap gap-2">
+            {grupoCfg.subsecciones.map((s) => {
+              const active = (subActiva?.key ?? "") === s.key;
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => setSubKey(s.key)}
+                  className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors ${
+                    active
+                      ? "border-vitalis-blue bg-vitalis-blue/10 text-vitalis-blue"
+                      : "border-border bg-secondary text-muted-foreground hover:bg-accent"
+                  }`}
+                >
+                  {s.label}
+                  <span className="ml-1 opacity-70">({conteoSub[s.tipo] ?? 0})</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Acción de creación contextual (solo administrador) */}
         {canEdit && (
           <div className="mb-4 flex justify-end">
             <Button onClick={abrirNuevo} className="rounded-full">
-              <Plus className="mr-1.5 h-4 w-4" /> Nuevo registro · {grupoCfg.label}
+              <Plus className="mr-1.5 h-4 w-4" /> Nuevo registro ·{" "}
+              {subActiva ? subActiva.label : grupoCfg.label}
             </Button>
           </div>
         )}
+
 
         <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
           <div className="min-w-0">
