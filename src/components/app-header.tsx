@@ -24,8 +24,9 @@ function useThemeToggle() {
 }
 
 export function AppHeader({ title, subtitle }: { title: string; subtitle?: string }) {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAdmin } = useAuth();
   const { dark, toggle } = useThemeToggle();
+  const { active: practica, toggle: togglePractica } = usePractice();
 
   const { data: profile } = useQuery({
     queryKey: ["mi-perfil", user?.id],
