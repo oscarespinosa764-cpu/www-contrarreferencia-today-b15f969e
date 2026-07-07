@@ -481,7 +481,7 @@ export function SeguimientoDialog({
       T.NEGACIONES,
       ...(mostrarAmbulancia ? [T.AMBULANCIA] : []),
       ...(mostrarEntregaDocOpt ? [T.ENTREGA_DOC] : []),
-      ...(mostrarCierreOpt ? [T.CIERRE] : []),
+      ...(mostrarCierreOpt ? [T.CIERRE, T.TRASLADO] : []),
       T.CAMBIO_EAPB,
       T.CANCELACION,
       T.PERTINENCIA,
