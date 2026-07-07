@@ -48,6 +48,8 @@ export function ImportarRedDialog({
   const [hojas, setHojas] = useState<HojasData>({});
   const [totalFilas, setTotalFilas] = useState(0);
   const [resumen, setResumen] = useState<ResumenRed | null>(null);
+  const [nota, setNota] = useState<string | null>(null);
+
   const [validando, setValidando] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [exportando, setExportando] = useState(false);
