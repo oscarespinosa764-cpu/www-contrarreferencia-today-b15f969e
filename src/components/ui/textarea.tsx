@@ -9,8 +9,11 @@ export interface TextareaProps extends React.ComponentProps<"textarea"> {
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, uppercase, onChange, style, ...props }, ref) => {
+    // Por defecto, el texto se escribe en MAYÚSCULA (se puede desactivar con
+    // uppercase={false} en campos que lo requieran).
+    const forceUpper = uppercase ?? true;
     const handleChange: React.ChangeEventHandler<HTMLTextAreaElement> = (e) => {
-      if (uppercase) {
+      if (forceUpper) {
         const up = e.target.value.toUpperCase();
         if (up !== e.target.value) e.target.value = up;
       }
