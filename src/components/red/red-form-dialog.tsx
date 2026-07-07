@@ -96,6 +96,7 @@ const EMPTY: FormState = {
   tipo_ambulancia: "",
   tipo_apoyo: "",
   cups: "",
+  codigo_principal: "",
   cups_descripcion: "",
   recorrido: "",
   empresa_tep: "",
