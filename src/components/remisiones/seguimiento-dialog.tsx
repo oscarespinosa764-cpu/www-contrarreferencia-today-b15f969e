@@ -2886,6 +2886,13 @@ export function SeguimientoDialog({
             )}
           </div>
         </div>
+
+        {/* Pie fijo */}
+        <div className="shrink-0 border-t border-border/60 px-4 py-3 sm:px-6">
+          <Button className="w-full rounded-full" disabled={busy} onClick={guardar}>
+            {busy ? "Guardando…" : "Registrar seguimiento"}
+          </Button>
+        </div>
       </DialogContent>
 
 
