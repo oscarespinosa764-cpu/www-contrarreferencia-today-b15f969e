@@ -256,3 +256,29 @@ input[type="month"] {
 .no-scrollbar::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Edge */
 }
+
+/*
+ * Scroll interno de modales y paneles: funcional pero discreto.
+ * Estándar global reutilizable — usar la clase `modal-scroll` en cualquier
+ * contenedor con overflow para obtener una barra mínima y limpia.
+ */
+.modal-scroll {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: color-mix(in oklab, var(--muted-foreground) 30%, transparent) transparent;
+}
+.modal-scroll::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+.modal-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.modal-scroll::-webkit-scrollbar-thumb {
+  background-color: color-mix(in oklab, var(--muted-foreground) 28%, transparent);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.modal-scroll:hover::-webkit-scrollbar-thumb {
+  background-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent);
+}
