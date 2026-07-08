@@ -136,6 +136,8 @@ export function ReglasPanel() {
   return (
     <Panel
       title="Reglas operativas"
+      bodyMaxHeight={null}
+
       action={
         isAdmin && (
           <div className="flex flex-wrap items-center gap-2">
@@ -179,7 +181,12 @@ export function ReglasPanel() {
         />
       </div>
 
+      <div
+        className="scrollbar-invisible overflow-y-auto overflow-x-hidden pr-0.5"
+        style={{ maxHeight: "calc(100dvh - 22rem)" }}
+      >
       {isLoading ? (
+
         <p className="py-8 text-center text-sm text-muted-foreground">Cargando…</p>
       ) : reglasF.length > 0 ? (
         <div className="grid gap-3">
@@ -245,6 +252,9 @@ export function ReglasPanel() {
           {isAdmin ? " Usa «Crear reglas base» o «Nueva regla»." : ""}
         </p>
       )}
+      </div>
+
+
 
       <ReglaFormDialog open={formOpen} onOpenChange={setFormOpen} editing={editing} onSubmit={guardar} />
 
