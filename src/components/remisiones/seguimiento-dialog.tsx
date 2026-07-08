@@ -1717,16 +1717,16 @@ export function SeguimientoDialog({
           <div className="space-y-1.5">
             <Label className={labelCls}>Tipo de seguimiento</Label>
             <Select value={tipoSeg} onValueChange={setTipoSeg}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Seleccionar…" />
               </SelectTrigger>
-              <SelectContent className="max-w-[calc(100vw-2rem)]">
+              <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
                 {TIPOS_SEG.map((t) => (
                   <SelectItem
                     key={t}
                     value={t}
-                    className="whitespace-normal"
-                    title={t === T.PERTINENCIA ? REVISION_AUT_LABEL_COMPLETO : undefined}
+                    className="whitespace-normal [overflow-wrap:anywhere]"
+                    title={t === T.PERTINENCIA ? REVISION_AUT_LABEL_COMPLETO : t}
                   >
                     {t}
                   </SelectItem>
