@@ -272,7 +272,9 @@ export function AlertasPanel() {
             Sin avisos operativos. {isAdmin ? "Crea uno con «Nueva alerta manual» o define reglas." : ""}
           </p>
         )}
+        </div>
       </Panel>
+
 
       <AvisoFormDialog open={formOpen} onOpenChange={setFormOpen} editing={editing} onSubmit={guardar} />
     </div>
