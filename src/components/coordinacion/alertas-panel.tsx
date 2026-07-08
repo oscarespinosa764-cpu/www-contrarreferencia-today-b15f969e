@@ -156,6 +156,7 @@ export function AlertasPanel() {
 
       <Panel
         title={`Avisos operativos · ${lista.length}`}
+        bodyMaxHeight={null}
         action={
           isAdmin && (
             <Button
@@ -171,8 +172,8 @@ export function AlertasPanel() {
           )
         }
       >
-        <div className="mb-4 flex flex-wrap items-center justify-center gap-3">
-          <div className="relative min-w-[220px] flex-1 max-w-md">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
+          <div className="relative w-full min-w-0 sm:max-w-md sm:flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="rounded-full pl-9"
@@ -182,7 +183,7 @@ export function AlertasPanel() {
             />
           </div>
           <Select value={filtro} onValueChange={setFiltro}>
-            <SelectTrigger className="w-40 rounded-full">
+            <SelectTrigger className="w-full rounded-full sm:w-40">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -196,8 +197,13 @@ export function AlertasPanel() {
           </Select>
         </div>
 
+        <div
+          className="scrollbar-invisible overflow-y-auto overflow-x-hidden pr-0.5"
+          style={{ maxHeight: "calc(100dvh - 24rem)" }}
+        >
         {isLoading ? (
           <p className="py-8 text-center text-sm text-muted-foreground">Cargando…</p>
+
         ) : lista.length > 0 ? (
           <div className="grid gap-3">
             {lista.map((a) => {
