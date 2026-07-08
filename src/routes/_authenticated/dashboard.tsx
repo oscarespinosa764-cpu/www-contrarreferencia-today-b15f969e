@@ -116,7 +116,7 @@ function Dashboard() {
       </div>
 
       <SectionTitle>Referencias entrantes</SectionTitle>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
         <StatCard title="Casos aceptados" value={data?.casos.aceptados} caption="ACEP registradas" color="green" />
         <StatCard title="Casos negados" value={data?.casos.negados} caption="NEG registradas" color="red" />
         <StatCard title="Pendientes por ingreso" value={data?.casos.pendientesIngreso} caption="Aceptaciones activas sin ingreso" color="green" />
