@@ -252,6 +252,9 @@ export function ReglasPanel() {
           {isAdmin ? " Usa «Crear reglas base» o «Nueva regla»." : ""}
         </p>
       )}
+      </div>
+
+
 
       <ReglaFormDialog open={formOpen} onOpenChange={setFormOpen} editing={editing} onSubmit={guardar} />
 
