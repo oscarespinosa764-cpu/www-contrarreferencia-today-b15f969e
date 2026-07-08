@@ -2651,22 +2651,10 @@ export function SeguimientoDialog({
             </div>
           )}
 
-          {/* Estado de la solicitud */}
-          <div className="space-y-1.5">
-            <Label className={labelCls}>Estado de la solicitud</Label>
-            <Select value={estadoSolicitud} onValueChange={setEstadoSolicitud} disabled={estadoSolicAuto}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar…" />
-              </SelectTrigger>
-              <SelectContent>
-                {ESTADOS_SOLICITUD.map((e) => (
-                  <SelectItem key={e} value={e} className="whitespace-normal">
-                    {e}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* El campo "Estado de la solicitud" se eliminó del formulario: el estado se
+              gestiona automáticamente vía "Estado del caso (automático)". El valor técnico
+              interno se sigue guardando según el tipo de seguimiento. */}
+
 
           {/* Contacto y teléfono (solo CONTACTO TELEFÓNICO en salientes) */}
           {mostrarContacto && (
