@@ -178,6 +178,22 @@
     border-color: var(--color-border);
   }
 
+  /*
+   * Barras de desplazamiento invisibles en TODA la app (heredable).
+   * El scroll sigue 100% funcional (rueda, touchpad, teclado, táctil,
+   * programático); solo se oculta la barra. No usar overflow:hidden para esto.
+   */
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  *::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
