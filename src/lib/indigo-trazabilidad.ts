@@ -150,8 +150,7 @@ export type NotaInput = {
 
 /** Genera la nota aclaratoria, con placeholders visibles si faltan datos. */
 export function generarNotaAclaratoria(input: NotaInput): string {
-  const ph = (v: string | undefined, key: string) =>
-    v && v.trim() ? v.trim() : `[${key}]`;
+  const ph = (v: string | undefined, key: string) => (v && v.trim() ? v.trim() : `[${key}]`);
 
   if (input.motivo === "ninguno") return "";
 
@@ -190,15 +189,9 @@ export function generarNotaAclaratoria(input: NotaInput): string {
 // Plantillas de seguimiento de radicación en plataforma (sección 10) y especial 8.12.
 // ---------------------------------------------------------------------------
 
-export type RadicacionTipo =
-  | "con_codigo"
-  | "plataforma_restablecida"
-  | "sin_codigo";
+export type RadicacionTipo = "con_codigo" | "plataforma_restablecida" | "sin_codigo";
 
-export function generarPlantillaRadicacion(
-  tipo: RadicacionTipo,
-  codigo?: string,
-): string {
+export function generarPlantillaRadicacion(tipo: RadicacionTipo, codigo?: string): string {
   const cod = (codigo || "").trim() || "[CÓDIGO DE RADICACIÓN]";
   switch (tipo) {
     case "con_codigo":
@@ -376,9 +369,47 @@ export function generarPlantillaCierreAdmision(ipsReceptora: string): string {
 
 // Cierre del caso por traslado efectivo: el paciente fue trasladado y recibido
 // en la IPS receptora, por lo que se cierra el proceso de forma exitosa.
-export function generarPlantillaCierreTraslado(ipsReceptora: string): string {
-  const ips = ph(ipsReceptora, "IPS RECEPTORA");
-  return `SE CONFIRMA TRASLADO EFECTIVO DEL PACIENTE Y RECEPCIÓN EN LA IPS ${ips}. SE VERIFICA CULMINACIÓN DEL TRASLADO SIN NOVEDADES. SE CIERRA EL PROCESO DE REMISIÓN POR TRASLADO EFECTIVO.`;
+// Omite empresa / tipo de ambulancia cuando no existan (sin null/undefined,
+// sin guiones ni espacios duplicados).
+export function generarPlantillaCierreTraslado(i: {
+  ipsReceptora: string;
+  fecha?: string;
+  hora?: string;
+  empresa?: string;
+  tipoAmbulancia?: string;
+}): string {
+  const ips = ph(i.ipsReceptora, "IPS RECEPTORA");
+  let t = `SE CONFIRMA TRASLADO EFECTIVO DEL PACIENTE HACIA ${ips}`;
+  const fecha = (i.fecha || "").trim();
+  const hora = (i.hora || "").trim();
+  if (fecha || hora) {
+    t += ` REALIZADO EL ${fecha || "[FECHA]"}`;
+    if (hora) t += ` A LAS ${hora}`;
+  }
+  const empresa = (i.empresa || "").trim();
+  const tipoAmb = (i.tipoAmbulancia || "").trim();
+  if (empresa) {
+    t += ` MEDIANTE ${empresa.toUpperCase()}`;
+    if (tipoAmb) t += ` EN AMBULANCIA TIPO ${tipoAmb.toUpperCase()}`;
+  } else if (tipoAmb) {
+    t += ` EN AMBULANCIA TIPO ${tipoAmb.toUpperCase()}`;
+  }
+  t +=
+    ". SE CIERRA EL TRÁMITE DE REMISIÓN POR TRASLADO EFECTIVO Y SE DEJA TRAZABILIDAD DEL PROCESO.";
+  return t;
+}
+
+// Superación de tope SOAT: se cierra la gestión con la aseguradora/SOAT
+// anterior y se da continuidad al mismo trámite con la nueva EAPB/ERP.
+export function generarPlantillaSuperacionTope(i: {
+  aseguradoraAnterior: string;
+  nuevaEapb: string;
+  radicacion: string;
+}): string {
+  const ant = ph(i.aseguradoraAnterior, "ASEGURADORA/SOAT ANTERIOR");
+  const nueva = ph(i.nuevaEapb, "NUEVA EAPB/ERP");
+  const rad = (i.radicacion || "").trim() || "NO APLICA";
+  return `SE CIERRA LA GESTIÓN DEL TRÁMITE DE REMISIÓN CON ${ant} POR SUPERACIÓN DE TOPE SOAT. SE ACTUALIZA EL RESPONSABLE DEL ASEGURAMIENTO EN SALUD A ${nueva} Y SE DA CONTINUIDAD AL TRÁMITE DE REMISIÓN CON DICHA ENTIDAD. RADICACIÓN: ${rad}. SE DEJA TRAZABILIDAD DEL CAMBIO DE RESPONSABLE Y DE LA CONTINUIDAD DEL PROCESO.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -528,11 +559,7 @@ export function appendNota(texto: string, observaciones?: string | null): string
 }
 
 // --- Estado del caso normalizado (tolerante a tildes/variaciones). ---
-export type EstadoCasoNorm =
-  | "pendiente"
-  | "aceptado_sin_amb"
-  | "aceptado_con_amb"
-  | "otro";
+export type EstadoCasoNorm = "pendiente" | "aceptado_sin_amb" | "aceptado_con_amb" | "otro";
 
 export function normEstadoCaso(v: string | null | undefined): EstadoCasoNorm {
   const s = (v || "")
@@ -574,7 +601,8 @@ export function generarPlantillaEvolucionDiaria(i: EvolucionDiariaInput): string
   if (plataformaCaida) {
     canal = "POR CORREO ELECTRÓNICO A LA EAPB";
   } else if (i.tienePlataforma) {
-    if (i.enviadoCorreo && i.enviadoPlataforma) canal = "POR CORREO ELECTRÓNICO Y PLATAFORMA DE LA EAPB";
+    if (i.enviadoCorreo && i.enviadoPlataforma)
+      canal = "POR CORREO ELECTRÓNICO Y PLATAFORMA DE LA EAPB";
     else if (i.enviadoCorreo) canal = "POR CORREO ELECTRÓNICO A LA EAPB";
     else if (i.enviadoPlataforma) canal = "MEDIANTE LA PLATAFORMA DE LA EAPB";
     else canal = "A LA EAPB";
@@ -594,7 +622,8 @@ export function generarPlantillaEvolucionDiaria(i: EvolucionDiariaInput): string
   }
 
   if (plataformaCaida) {
-    base += " SE DEJA TRAZABILIDAD DE QUE LA PLATAFORMA DE LA EAPB PRESENTA FALLA O NO DISPONIBILIDAD AL MOMENTO DEL SEGUIMIENTO.";
+    base +=
+      " SE DEJA TRAZABILIDAD DE QUE LA PLATAFORMA DE LA EAPB PRESENTA FALLA O NO DISPONIBILIDAD AL MOMENTO DEL SEGUIMIENTO.";
   }
 
   // Nota de canal pendiente (solo cuando la EAPB tiene plataforma).
@@ -662,7 +691,8 @@ export function generarPlantillaCorreoSeg(asunto: string, estadoSolicitud: strin
     asunto,
     "ASUNTO",
   )}.`;
-  if (estadoSolicitud.trim()) t += ` ESTADO DE LA SOLICITUD: ${estadoSolicitud.trim().toUpperCase()}.`;
+  if (estadoSolicitud.trim())
+    t += ` ESTADO DE LA SOLICITUD: ${estadoSolicitud.trim().toUpperCase()}.`;
   return t;
 }
 
@@ -671,7 +701,8 @@ export function generarPlantillaPlataformaSeg(asunto: string, estadoSolicitud: s
     asunto,
     "ASUNTO",
   )}.`;
-  if (estadoSolicitud.trim()) t += ` ESTADO DE LA SOLICITUD: ${estadoSolicitud.trim().toUpperCase()}.`;
+  if (estadoSolicitud.trim())
+    t += ` ESTADO DE LA SOLICITUD: ${estadoSolicitud.trim().toUpperCase()}.`;
   return t;
 }
 
@@ -767,7 +798,8 @@ export function generarPlantillaTelefonico(i: TelefonicoInput): string {
   if (i.nombre.trim()) t += `, ATENDIDO POR ${i.nombre.trim().toUpperCase()}`;
   if (i.telefono.trim()) t += ` (TELÉFONO ${i.telefono.trim()})`;
   t += ", CON EL FIN DE REALIZAR SEGUIMIENTO AL PROCESO DE REMISIÓN.";
-  if (i.estadoSolicitud.trim()) t += ` ESTADO DE LA SOLICITUD: ${i.estadoSolicitud.trim().toUpperCase()}.`;
+  if (i.estadoSolicitud.trim())
+    t += ` ESTADO DE LA SOLICITUD: ${i.estadoSolicitud.trim().toUpperCase()}.`;
   return t;
 }
 
@@ -806,63 +838,95 @@ export function generarPlantillaNegaciones(grupos: NegacionGrupo[]): string {
 // --- 13. CANCELACIÓN DE TRÁMITE DE REMISIÓN (unificada) ---
 export type CancelacionTipo =
   | "desistimiento_general"
-  | "cambio_erp"
-  | "administrativo";
+  | "superacion_tope_soat"
+  | "aval_integral"
+  | "continuidad_integral"
+  | "mejoria_alta";
 
 export const CANCELACION_TIPOS: { value: CancelacionTipo; label: string }[] = [
   {
     value: "desistimiento_general",
-    label: "CANCELACIÓN POR NO ACEPTACIÓN DE FAMILIAR/PACIENTE - FIRMA DE DESISTIMIENTO GENERAL",
+    label: "CANCELACIÓN POR FIRMA DE DESISTIMIENTO DE TRASLADO GENERAL",
   },
   {
-    value: "cambio_erp",
-    label: "CANCELACIÓN DE TRÁMITE POR SUPERACIÓN DE TOPE - CAMBIO DE ERP",
+    value: "superacion_tope_soat",
+    label: "CANCELACIÓN POR SUPERACIÓN DE TOPE SOAT",
   },
-  { value: "administrativo", label: "CANCELACIÓN DE TRÁMITE ADMINISTRATIVO" },
+  { value: "aval_integral", label: "CANCELACIÓN POR AVAL PARA MANEJO INTEGRAL" },
+  {
+    value: "continuidad_integral",
+    label: "CANCELACIÓN POR CONTINUIDAD DE MANEJO INTEGRAL",
+  },
+  { value: "mejoria_alta", label: "CANCELACIÓN POR MEJORÍA CLÍNICA - ALTA MÉDICA" },
 ];
 
-export const CANCELACION_GESTION = ["SOLICITUD DE CANCELACIÓN AL CHAT DEL ÁREA"];
+/** Cancelaciones que cierran el caso al guardar (todas menos superación de tope). */
+export const CANCELACION_CIERRA: Record<CancelacionTipo, boolean> = {
+  desistimiento_general: true,
+  superacion_tope_soat: false,
+  aval_integral: true,
+  continuidad_integral: true,
+  mejoria_alta: true,
+};
 
-export const SERVICIO_CANCELACION = [
-  "URGENCIAS",
-  "HOSPITALIZACIÓN",
-  "QUIRÓFANO",
-  "UCI",
-  "FACTURACIÓN / AUTORIZACIONES",
+/** Estado final estructurado por tipo de cancelación que cierra el caso. */
+export const CANCELACION_ESTADO_FINAL: Record<CancelacionTipo, string> = {
+  desistimiento_general: "CERRADO POR CANCELACION - DESISTIMIENTO DE TRASLADO GENERAL",
+  superacion_tope_soat: "",
+  aval_integral: "CERRADO POR CANCELACION - AVAL PARA MANEJO INTEGRAL",
+  continuidad_integral: "CERRADO POR CANCELACION - CONTINUIDAD DE MANEJO INTEGRAL",
+  mejoria_alta: "CERRADO POR CANCELACION - MEJORIA CLINICA / ALTA MEDICA",
+};
+
+/** Parentesco / relación de la persona que firma el desistimiento. */
+export const PARENTESCO_OPCIONES = [
+  "PACIENTE",
+  "MADRE",
+  "PADRE",
+  "CÓNYUGE",
+  "HIJO/A",
+  "FAMILIAR",
+  "ACUDIENTE",
+  "REPRESENTANTE LEGAL",
+  "OTRO",
 ];
 
 export type CancelacionInput = {
   tipo: CancelacionTipo;
-  gestion?: string;
-  servicio?: string;
-  funcionario?: string;
-  cargo?: string;
-  nuevoRadicado?: string;
+  /** Desistimiento de traslado general. */
+  nombrePersona?: string;
+  parentesco?: string;
+  /** Superación de tope SOAT (cambio de responsable). */
+  aseguradoraAnterior?: string;
+  nuevaEapb?: string;
+  radicacion?: string;
 };
 
 export function generarPlantillaCancelacionRemision(i: CancelacionInput): string {
-  if (i.tipo === "desistimiento_general") {
-    return "SE REALIZA CANCELACIÓN DEL TRÁMITE DE REMISIÓN POR NO ACEPTACIÓN DEL FAMILIAR/PACIENTE, QUIENES FIRMAN DESISTIMIENTO GENERAL. ENTIENDEN LOS RIESGOS Y COMPLICACIONES ASOCIADOS A LA NO REMISIÓN Y ACEPTAN LA RESPONSABILIDAD. SE DEJA TRAZABILIDAD DEL PROCESO.";
+  switch (i.tipo) {
+    case "desistimiento_general":
+      return `SE CANCELA EL TRÁMITE DE REMISIÓN POR FIRMA DE DESISTIMIENTO DE TRASLADO GENERAL, SUSCRITO POR ${ph(
+        i.nombrePersona,
+        "NOMBRE DE LA PERSONA",
+      )}, EN CALIDAD DE ${ph(
+        i.parentesco,
+        "PARENTESCO/RELACIÓN",
+      )}. SE INFORMA SOBRE LOS RIESGOS Y POSIBLES COMPLICACIONES ASOCIADAS A LA NO REALIZACIÓN DEL TRASLADO. SE DEJA TRAZABILIDAD DEL PROCESO Y SE CIERRA EL CASO.`;
+    case "superacion_tope_soat":
+      return generarPlantillaSuperacionTope({
+        aseguradoraAnterior: i.aseguradoraAnterior ?? "",
+        nuevaEapb: i.nuevaEapb ?? "",
+        radicacion: i.radicacion ?? "",
+      });
+    case "aval_integral":
+      return "SE CANCELA EL TRÁMITE DE REMISIÓN POR AVAL PARA CONTINUIDAD DE MANEJO INTEGRAL EN LA INSTITUCIÓN. SE DEJA TRAZABILIDAD DE LA GESTIÓN REALIZADA Y SE CIERRA EL CASO.";
+    case "continuidad_integral":
+      return "SE CANCELA EL TRÁMITE DE REMISIÓN POR CONTINUIDAD DE MANEJO INTEGRAL DEL PACIENTE EN LA INSTITUCIÓN. SE DEJA TRAZABILIDAD DE LA DECISIÓN Y SE CIERRA EL CASO.";
+    case "mejoria_alta":
+      return "SE CANCELA EL TRÁMITE DE REMISIÓN POR MEJORÍA CLÍNICA Y ALTA MÉDICA. SE DEJA TRAZABILIDAD DE LA EVOLUCIÓN DEL CASO Y SE CIERRA EL PROCESO DE REMISIÓN.";
+    default:
+      return "SE CANCELA EL TRÁMITE DE REMISIÓN. SE DEJA TRAZABILIDAD DEL PROCESO.";
   }
-  if (i.tipo === "cambio_erp") {
-    let t =
-      "SE REALIZA CANCELACIÓN DEL TRÁMITE DE REMISIÓN POR SUPERACIÓN DE TOPE Y CAMBIO DE ERP, PARA DAR CONTINUIDAD AL PROCESO POR LA NUEVA ENTIDAD RESPONSABLE DEL PAGO.";
-    if ((i.nuevoRadicado || "").trim()) {
-      t += ` SE RADICA NUEVAMENTE EL CASO ANTE LA NUEVA EAPB CON NÚMERO DE RADICADO ${i.nuevoRadicado!.trim()}.`;
-    }
-    return t;
-  }
-  // administrativo
-  if (i.gestion === "SOLICITUD DE CANCELACIÓN AL CHAT DEL ÁREA") {
-    return `SE REALIZA SOLICITUD DE CANCELACIÓN DEL TRÁMITE ADMINISTRATIVO DE REMISIÓN AL CHAT DEL ÁREA DE ${ph(
-      i.servicio,
-      "SERVICIO",
-    )}, CON EL FUNCIONARIO ${ph(i.funcionario, "NOMBRE DEL FUNCIONARIO")} (${ph(
-      i.cargo,
-      "CARGO",
-    )}), DEBIDO A QUE EL PACIENTE YA CUENTA CON AUTORIZACIÓN DE ESTANCIA PARA MANEJO EN LA INSTITUCIÓN. SE DEJA TRAZABILIDAD DEL PROCESO.`;
-  }
-  return "SE REALIZA CANCELACIÓN DEL TRÁMITE ADMINISTRATIVO DE REMISIÓN, DEBIDO A QUE EL PACIENTE YA CUENTA CON AUTORIZACIÓN DE ESTANCIA PARA MANEJO EN LA INSTITUCIÓN. SE DEJA TRAZABILIDAD DEL PROCESO.";
 }
 
 // --- 14. OTRO ---
@@ -871,7 +935,8 @@ export function generarPlantillaOtroSeg(cual: string, estadoSolicitud: string): 
     cual,
     "CUÁL",
   )}.`;
-  if (estadoSolicitud.trim()) t += ` ESTADO DE LA SOLICITUD: ${estadoSolicitud.trim().toUpperCase()}.`;
+  if (estadoSolicitud.trim())
+    t += ` ESTADO DE LA SOLICITUD: ${estadoSolicitud.trim().toUpperCase()}.`;
   return t;
 }
 
@@ -882,34 +947,42 @@ export function generarPlantillaNuevoRadicado(anterior: string, nuevo: string): 
   return `SE DEJA TRAZABILIDAD DE LA ASIGNACIÓN DE UN NUEVO NÚMERO DE RADICADO PARA EL TRÁMITE DE REMISIÓN. RADICADO ANTERIOR: ${a}. NUEVO RADICADO: ${n}.`;
 }
 
-// --- 16. REVISIÓN AUTORIZACIÓN ESTANCIA HOSPITALARIA PARA CANCELACIÓN ---
+// --- 16. REVISIÓN AUTORIZACIÓN ESTANCIA HOSPITALARIA (seguimiento de trazabilidad) ---
+export type AutorizacionEstanciaOpcion = "CON_AUT_CON_NOTA" | "CON_AUT_SIN_NOTA" | "SIN_AUT" | "";
+
+export const AUTORIZACION_ESTANCIA_OPCIONES: {
+  value: Exclude<AutorizacionEstanciaOpcion, "">;
+  label: string;
+}[] = [
+  {
+    value: "CON_AUT_CON_NOTA",
+    label: "CUENTA CON AUTORIZACIÓN Y NOTA DE ACERCAMIENTO DE AUTORIZACIONES (FACTURACIÓN)",
+  },
+  {
+    value: "CON_AUT_SIN_NOTA",
+    label: "CUENTA CON AUTORIZACIÓN SIN NOTA DE ACERCAMIENTO DE AUTORIZACIONES (FACTURACIÓN)",
+  },
+  { value: "SIN_AUT", label: "NO CUENTA CON AUTORIZACIÓN" },
+];
+
 export type RevisionAutInput = {
-  /** true = cuenta con autorización · false = no cuenta · null = sin definir */
-  cuentaAutorizacion: boolean | null;
-  /** Solo aplica si cuenta con autorización: true = con nota · false = sin nota */
-  cuentaNota: boolean | null;
-  funcionario?: string;
-  cargo?: string;
+  opcion: AutorizacionEstanciaOpcion;
+  /** Servicio actual del caso (Urgencias, UCI, Hospitalización, etc.). */
+  servicio?: string;
 };
 
 export function generarPlantillaRevisionAutorizacion(i: RevisionAutInput): string {
-  const base =
-    "SE REALIZA REVISIÓN DE AUTORIZACIÓN DE ESTANCIA HOSPITALARIA PARA CANCELACIÓN DEL TRÁMITE DE REMISIÓN.";
-  if (i.cuentaAutorizacion === false) {
-    return `${base} SE IDENTIFICA QUE EL CASO NO CUENTA CON AUTORIZACIÓN DE ESTANCIA HOSPITALARIA.`;
+  const serv = ph(i.servicio, "SERVICIO");
+  switch (i.opcion) {
+    case "CON_AUT_CON_NOTA":
+      return `SE REVISA AUTORIZACIÓN DE ESTANCIA HOSPITALARIA Y/O SERVICIOS. SE EVIDENCIA AUTORIZACIÓN VIGENTE Y NOTA DE ACERCAMIENTO DEL ÁREA DE AUTORIZACIONES (FACTURACIÓN). DESDE REFERENCIA SE REALIZA ACERCAMIENTO AL SERVICIO ${serv} PARA VALIDAR LA CONTINUIDAD DEL MANEJO INTEGRAL Y DEFINIR LA PERTINENCIA DE CANCELACIÓN DEL TRÁMITE DE REMISIÓN.`;
+    case "CON_AUT_SIN_NOTA":
+      return "SE REVISA AUTORIZACIÓN DE ESTANCIA HOSPITALARIA Y/O SERVICIOS. SE EVIDENCIA AUTORIZACIÓN VIGENTE, SIN NOTA DE ACERCAMIENTO DEL ÁREA DE AUTORIZACIONES (FACTURACIÓN). DESDE REFERENCIA SE REALIZA ACERCAMIENTO CON EL ÁREA CORRESPONDIENTE PARA SOLICITAR LA GESTIÓN, INFORMACIÓN AL SERVICIO Y TRAZABILIDAD DEL PROCESO.";
+    case "SIN_AUT":
+      return "SE REVISA AUTORIZACIÓN DE ESTANCIA HOSPITALARIA Y/O SERVICIOS. NO SE EVIDENCIA AUTORIZACIÓN VIGENTE EN EL SISTEMA. DESDE REFERENCIA SE REALIZA ACERCAMIENTO CON EL ÁREA DE AUTORIZACIONES (FACTURACIÓN) PARA CONOCER EL ESTADO DE LA SOLICITUD Y DAR CONTINUIDAD A LA TRAZABILIDAD DEL CASO.";
+    default:
+      return "SE REALIZA REVISIÓN DE AUTORIZACIÓN DE ESTANCIA HOSPITALARIA PARA CANCELACIÓN DEL TRÁMITE DE REMISIÓN.";
   }
-  if (i.cuentaAutorizacion === true) {
-    if (i.cuentaNota === true) {
-      return `${base} SE IDENTIFICA QUE EL CASO CUENTA CON AUTORIZACIÓN Y CON NOTA DE TRAZABILIDAD POR PARTE DE AUTORIZACIONES PARA LA CANCELACIÓN DEL TRÁMITE.`;
-    }
-    if (i.cuentaNota === false) {
-      return `${base} SE IDENTIFICA QUE EL CASO CUENTA CON AUTORIZACIÓN, PERO NO CUENTA CON NOTA DE TRAZABILIDAD DE CANCELACIÓN DEL TRÁMITE. SE REALIZA VALIDACIÓN CON ${ph(
-        i.funcionario,
-        "NOMBRE FUNCIONARIO",
-      )}, CARGO ${ph(i.cargo, "CARGO")}.`;
-    }
-  }
-  return base;
 }
 
 // ---------------------------------------------------------------------------
@@ -946,7 +1019,10 @@ export type RadicaFlags = {
  * Determina si la EAPB genera radicado para el tipo de solicitud especial.
  * El tipo de solicitud puede ser combinado (p.ej. "PHD + OXIGENO DOMICILIARIO").
  */
-export function phdGeneraCodigo(tipoSolicitud: string, flags: RadicaFlags | null | undefined): boolean {
+export function phdGeneraCodigo(
+  tipoSolicitud: string,
+  flags: RadicaFlags | null | undefined,
+): boolean {
   if (!flags) return false;
   const s = (tipoSolicitud || "")
     .normalize("NFD")
@@ -1017,4 +1093,3 @@ export function generarPlantillaPendienteCumplimiento(
   if (obs) t += `\n\nOBSERVACIONES: ${obs}`;
   return t;
 }
-
