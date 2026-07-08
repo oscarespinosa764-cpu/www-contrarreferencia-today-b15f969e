@@ -485,7 +485,10 @@ export function SeguimientoDialog({
       T.NEGACIONES,
       ...(mostrarAmbulancia ? [T.AMBULANCIA] : []),
       ...(mostrarEntregaDocOpt ? [T.ENTREGA_DOC] : []),
-      ...(mostrarCierreOpt ? [T.CIERRE, T.TRASLADO] : []),
+      ...(mostrarCierreOpt ? [T.CIERRE] : []),
+      // CIERRE POR TRASLADO EFECTIVO: siempre visible en el selector; se deshabilita
+      // cuando el caso aún no completó la cadena (aceptación → ambulancia → entrega).
+      T.TRASLADO,
       T.CAMBIO_EAPB,
       T.CANCELACION,
       T.PERTINENCIA,
@@ -1633,6 +1636,17 @@ export function SeguimientoDialog({
 
         {/* Cuerpo desplazable (único con scroll vertical, barra invisible) */}
         <div className="min-w-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-4 py-4 scrollbar-invisible sm:px-6">
+          {/* Aviso de caso cerrado: modo consulta, sin nuevos seguimientos */}
+          {casoCerrado && (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm font-semibold text-destructive">
+              ESTE CASO SE ENCUENTRA CERRADO Y NO ADMITE NUEVOS SEGUIMIENTOS.
+              {estadoActual ? (
+                <span className="mt-0.5 block text-[11px] font-normal opacity-80">
+                  Estado actual: {estadoActual}
+                </span>
+              ) : null}
+            </div>
+          )}
           {/* Número de radicado (solo módulos con Índigo) */}
           {usaIndigo && (
             <div className="space-y-1.5">
@@ -1765,16 +1779,26 @@ export function SeguimientoDialog({
                     <SelectValue placeholder="Seleccionar…" />
                   </SelectTrigger>
                   <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
-                    {TIPOS_SEG.map((t) => (
-                      <SelectItem
-                        key={t}
-                        value={t}
-                        className="whitespace-normal [overflow-wrap:anywhere]"
-                        title={t === T.PERTINENCIA ? REVISION_AUT_LABEL_COMPLETO : t}
-                      >
-                        {t}
-                      </SelectItem>
-                    ))}
+                    {TIPOS_SEG.map((t) => {
+                      const trasladoBloqueado = t === T.TRASLADO && !mostrarCierreOpt;
+                      return (
+                        <SelectItem
+                          key={t}
+                          value={t}
+                          disabled={trasladoBloqueado}
+                          className="whitespace-normal [overflow-wrap:anywhere]"
+                          title={t === T.PERTINENCIA ? REVISION_AUT_LABEL_COMPLETO : t}
+                        >
+                          {t}
+                          {trasladoBloqueado && (
+                            <span className="mt-0.5 block text-[10px] font-normal normal-case text-muted-foreground">
+                              Disponible después de registrar aceptación, ambulancia coordinada y
+                              entrega documental.
+                            </span>
+                          )}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
@@ -2995,8 +3019,16 @@ export function SeguimientoDialog({
 
         {/* Pie fijo */}
         <div className="shrink-0 border-t border-border/60 px-4 py-3 sm:px-6">
-          <Button className="w-full rounded-full" disabled={busy} onClick={guardar}>
-            {busy ? "Guardando…" : "Registrar seguimiento"}
+          <Button
+            className="w-full rounded-full"
+            disabled={busy || casoCerrado}
+            onClick={guardar}
+          >
+            {casoCerrado
+              ? "Caso cerrado · solo consulta"
+              : busy
+                ? "Guardando…"
+                : "Registrar seguimiento"}
           </Button>
         </div>
       </DialogContent>
