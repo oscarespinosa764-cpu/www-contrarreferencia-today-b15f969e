@@ -134,7 +134,10 @@ export function Panel({
         </div>
       )}
       {bodyMaxHeight ? (
-        <div className="overflow-y-auto pr-1" style={{ maxHeight: bodyMaxHeight }}>
+        <div
+          className="modal-scroll overflow-y-auto overflow-x-hidden pr-1"
+          style={{ maxHeight: bodyMaxHeight }}
+        >
           {children}
         </div>
       ) : (
