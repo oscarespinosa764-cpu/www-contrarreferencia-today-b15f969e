@@ -136,6 +136,8 @@ export function ReglasPanel() {
   return (
     <Panel
       title="Reglas operativas"
+      bodyMaxHeight={null}
+
       action={
         isAdmin && (
           <div className="flex flex-wrap items-center gap-2">
