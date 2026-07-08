@@ -1532,13 +1532,37 @@ export function SeguimientoDialog({
 
 
     try {
+      // Auditoría: solo metadatos estructurados, sin PHI ni plantilla completa.
+      const auditDetalles: Record<string, unknown> = { tipo_seguimiento: tipoSeg };
+      if (esCancelacion) {
+        auditDetalles.subtipo_cancelacion = cancelTipo;
+        auditDetalles.cierra = cancelacionCierra;
+        auditDetalles.estado_anterior = estadoActual ?? null;
+        auditDetalles.estado_nuevo = esSuperacionTope
+          ? EST.PENDIENTE_ACEPT
+          : cancelacionCierra
+            ? CANCELACION_ESTADO_FINAL[cancelTipo]
+            : estadoDestino;
+        if (esSuperacionTope) {
+          auditDetalles.responsable_anterior = responsableAnterior || null;
+          auditDetalles.responsable_nuevo = cancelNuevaEapb.trim() || null;
+          auditDetalles.radicado_anterior = radicadoReal || null;
+          auditDetalles.radicado_nuevo = cancelGeneraCodigo ? cancelNuevoRadicado.trim() || null : "NO APLICA";
+        }
+      }
+      if (esTraslado) {
+        auditDetalles.estado_anterior = estadoActual ?? null;
+        auditDetalles.estado_nuevo = EST.CERRADO_TRASLADO;
+        auditDetalles.cierra = true;
+      }
       await registrarAuditoria({
         data: {
           accion: esRadicado ? "radicacion_en_plataforma" : "crear_seguimiento",
           modulo: moduloAuditoria,
           tabla: tabla ?? "seguimientos",
           registroId: casoId,
-          detalles: { tipo_seguimiento: tipoSeg },
+          resultado: "exito",
+          detalles: auditDetalles,
         },
       });
     } catch {
