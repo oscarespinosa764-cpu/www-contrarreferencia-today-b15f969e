@@ -1636,6 +1636,17 @@ export function SeguimientoDialog({
 
         {/* Cuerpo desplazable (único con scroll vertical, barra invisible) */}
         <div className="min-w-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-4 py-4 scrollbar-invisible sm:px-6">
+          {/* Aviso de caso cerrado: modo consulta, sin nuevos seguimientos */}
+          {casoCerrado && (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm font-semibold text-destructive">
+              ESTE CASO SE ENCUENTRA CERRADO Y NO ADMITE NUEVOS SEGUIMIENTOS.
+              {estadoActual ? (
+                <span className="mt-0.5 block text-[11px] font-normal opacity-80">
+                  Estado actual: {estadoActual}
+                </span>
+              ) : null}
+            </div>
+          )}
           {/* Número de radicado (solo módulos con Índigo) */}
           {usaIndigo && (
             <div className="space-y-1.5">
