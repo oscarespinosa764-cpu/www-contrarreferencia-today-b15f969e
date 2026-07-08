@@ -487,7 +487,7 @@ function RemisionesPage() {
       </div>
 
       {/* Tarjetas de estado */}
-      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
         <StatCard title="Remisiones activas" value={stats.activas} caption="Hacia otras IPS" color="blue" />
         <StatCard title="Pendientes aceptación" value={stats.pendientes} caption="Esperando respuesta" color="amber" />
         <StatCard title="PHD / PAD / O2 / Especiales" value={stats.especiales} caption="Activos especiales" color="sky" />
