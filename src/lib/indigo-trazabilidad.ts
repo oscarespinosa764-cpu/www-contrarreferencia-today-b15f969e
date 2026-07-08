@@ -150,8 +150,7 @@ export type NotaInput = {
 
 /** Genera la nota aclaratoria, con placeholders visibles si faltan datos. */
 export function generarNotaAclaratoria(input: NotaInput): string {
-  const ph = (v: string | undefined, key: string) =>
-    v && v.trim() ? v.trim() : `[${key}]`;
+  const ph = (v: string | undefined, key: string) => (v && v.trim() ? v.trim() : `[${key}]`);
 
   if (input.motivo === "ninguno") return "";
 
@@ -190,15 +189,9 @@ export function generarNotaAclaratoria(input: NotaInput): string {
 // Plantillas de seguimiento de radicación en plataforma (sección 10) y especial 8.12.
 // ---------------------------------------------------------------------------
 
-export type RadicacionTipo =
-  | "con_codigo"
-  | "plataforma_restablecida"
-  | "sin_codigo";
+export type RadicacionTipo = "con_codigo" | "plataforma_restablecida" | "sin_codigo";
 
-export function generarPlantillaRadicacion(
-  tipo: RadicacionTipo,
-  codigo?: string,
-): string {
+export function generarPlantillaRadicacion(tipo: RadicacionTipo, codigo?: string): string {
   const cod = (codigo || "").trim() || "[CÓDIGO DE RADICACIÓN]";
   switch (tipo) {
     case "con_codigo":
@@ -401,7 +394,8 @@ export function generarPlantillaCierreTraslado(i: {
   } else if (tipoAmb) {
     t += ` EN AMBULANCIA TIPO ${tipoAmb.toUpperCase()}`;
   }
-  t += ". SE CIERRA EL TRÁMITE DE REMISIÓN POR TRASLADO EFECTIVO Y SE DEJA TRAZABILIDAD DEL PROCESO.";
+  t +=
+    ". SE CIERRA EL TRÁMITE DE REMISIÓN POR TRASLADO EFECTIVO Y SE DEJA TRAZABILIDAD DEL PROCESO.";
   return t;
 }
 
@@ -565,11 +559,7 @@ export function appendNota(texto: string, observaciones?: string | null): string
 }
 
 // --- Estado del caso normalizado (tolerante a tildes/variaciones). ---
-export type EstadoCasoNorm =
-  | "pendiente"
-  | "aceptado_sin_amb"
-  | "aceptado_con_amb"
-  | "otro";
+export type EstadoCasoNorm = "pendiente" | "aceptado_sin_amb" | "aceptado_con_amb" | "otro";
 
 export function normEstadoCaso(v: string | null | undefined): EstadoCasoNorm {
   const s = (v || "")
@@ -611,7 +601,8 @@ export function generarPlantillaEvolucionDiaria(i: EvolucionDiariaInput): string
   if (plataformaCaida) {
     canal = "POR CORREO ELECTRÓNICO A LA EAPB";
   } else if (i.tienePlataforma) {
-    if (i.enviadoCorreo && i.enviadoPlataforma) canal = "POR CORREO ELECTRÓNICO Y PLATAFORMA DE LA EAPB";
+    if (i.enviadoCorreo && i.enviadoPlataforma)
+      canal = "POR CORREO ELECTRÓNICO Y PLATAFORMA DE LA EAPB";
     else if (i.enviadoCorreo) canal = "POR CORREO ELECTRÓNICO A LA EAPB";
     else if (i.enviadoPlataforma) canal = "MEDIANTE LA PLATAFORMA DE LA EAPB";
     else canal = "A LA EAPB";
@@ -631,7 +622,8 @@ export function generarPlantillaEvolucionDiaria(i: EvolucionDiariaInput): string
   }
 
   if (plataformaCaida) {
-    base += " SE DEJA TRAZABILIDAD DE QUE LA PLATAFORMA DE LA EAPB PRESENTA FALLA O NO DISPONIBILIDAD AL MOMENTO DEL SEGUIMIENTO.";
+    base +=
+      " SE DEJA TRAZABILIDAD DE QUE LA PLATAFORMA DE LA EAPB PRESENTA FALLA O NO DISPONIBILIDAD AL MOMENTO DEL SEGUIMIENTO.";
   }
 
   // Nota de canal pendiente (solo cuando la EAPB tiene plataforma).
@@ -699,7 +691,8 @@ export function generarPlantillaCorreoSeg(asunto: string, estadoSolicitud: strin
     asunto,
     "ASUNTO",
   )}.`;
-  if (estadoSolicitud.trim()) t += ` ESTADO DE LA SOLICITUD: ${estadoSolicitud.trim().toUpperCase()}.`;
+  if (estadoSolicitud.trim())
+    t += ` ESTADO DE LA SOLICITUD: ${estadoSolicitud.trim().toUpperCase()}.`;
   return t;
 }
 
@@ -708,7 +701,8 @@ export function generarPlantillaPlataformaSeg(asunto: string, estadoSolicitud: s
     asunto,
     "ASUNTO",
   )}.`;
-  if (estadoSolicitud.trim()) t += ` ESTADO DE LA SOLICITUD: ${estadoSolicitud.trim().toUpperCase()}.`;
+  if (estadoSolicitud.trim())
+    t += ` ESTADO DE LA SOLICITUD: ${estadoSolicitud.trim().toUpperCase()}.`;
   return t;
 }
 
@@ -804,7 +798,8 @@ export function generarPlantillaTelefonico(i: TelefonicoInput): string {
   if (i.nombre.trim()) t += `, ATENDIDO POR ${i.nombre.trim().toUpperCase()}`;
   if (i.telefono.trim()) t += ` (TELÉFONO ${i.telefono.trim()})`;
   t += ", CON EL FIN DE REALIZAR SEGUIMIENTO AL PROCESO DE REMISIÓN.";
-  if (i.estadoSolicitud.trim()) t += ` ESTADO DE LA SOLICITUD: ${i.estadoSolicitud.trim().toUpperCase()}.`;
+  if (i.estadoSolicitud.trim())
+    t += ` ESTADO DE LA SOLICITUD: ${i.estadoSolicitud.trim().toUpperCase()}.`;
   return t;
 }
 
@@ -940,7 +935,8 @@ export function generarPlantillaOtroSeg(cual: string, estadoSolicitud: string): 
     cual,
     "CUÁL",
   )}.`;
-  if (estadoSolicitud.trim()) t += ` ESTADO DE LA SOLICITUD: ${estadoSolicitud.trim().toUpperCase()}.`;
+  if (estadoSolicitud.trim())
+    t += ` ESTADO DE LA SOLICITUD: ${estadoSolicitud.trim().toUpperCase()}.`;
   return t;
 }
 
@@ -952,11 +948,7 @@ export function generarPlantillaNuevoRadicado(anterior: string, nuevo: string): 
 }
 
 // --- 16. REVISIÓN AUTORIZACIÓN ESTANCIA HOSPITALARIA (seguimiento de trazabilidad) ---
-export type AutorizacionEstanciaOpcion =
-  | "CON_AUT_CON_NOTA"
-  | "CON_AUT_SIN_NOTA"
-  | "SIN_AUT"
-  | "";
+export type AutorizacionEstanciaOpcion = "CON_AUT_CON_NOTA" | "CON_AUT_SIN_NOTA" | "SIN_AUT" | "";
 
 export const AUTORIZACION_ESTANCIA_OPCIONES: {
   value: Exclude<AutorizacionEstanciaOpcion, "">;
@@ -1027,7 +1019,10 @@ export type RadicaFlags = {
  * Determina si la EAPB genera radicado para el tipo de solicitud especial.
  * El tipo de solicitud puede ser combinado (p.ej. "PHD + OXIGENO DOMICILIARIO").
  */
-export function phdGeneraCodigo(tipoSolicitud: string, flags: RadicaFlags | null | undefined): boolean {
+export function phdGeneraCodigo(
+  tipoSolicitud: string,
+  flags: RadicaFlags | null | undefined,
+): boolean {
   if (!flags) return false;
   const s = (tipoSolicitud || "")
     .normalize("NFD")
@@ -1098,4 +1093,3 @@ export function generarPlantillaPendienteCumplimiento(
   if (obs) t += `\n\nOBSERVACIONES: ${obs}`;
   return t;
 }
-

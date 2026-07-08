@@ -8,7 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { DictationTextarea } from "@/components/voz/dictation-textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AutoComplete } from "@/components/rc/autocomplete";
 import {
@@ -73,9 +79,6 @@ import {
 } from "@/lib/indigo-trazabilidad";
 import { EntregaDocumentalDialog } from "@/components/remisiones/entrega-documental-dialog";
 
-
-
-
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -126,13 +129,7 @@ const EST = {
 } as const;
 
 // --- Tipos de seguimiento PHD/PAD/O2/Especiales (reutiliza lógica saliente) ---
-const TIPOS_PHD_BASE = [
-  T.EVOLUCION,
-  T.CORREO,
-  T.PLATAFORMA,
-  T.FISICO,
-  T.OTRO,
-] as const;
+const TIPOS_PHD_BASE = [T.EVOLUCION, T.CORREO, T.PLATAFORMA, T.FISICO, T.OTRO] as const;
 
 // --- Referencia interna ---
 const TI = {
@@ -148,7 +145,6 @@ const TP = {
   COMPLETO: "CUMPLIMIENTO COMPLETO",
 } as const;
 const TIPOS_PENDIENTE = [TP.PARCIAL, TP.COMPLETO];
-
 
 function splitComma(v?: string | null): string[] {
   return (v ?? "")
@@ -218,7 +214,6 @@ export function SeguimientoDialog({
   const [busyEvo, setBusyEvo] = useState(false);
   const [entregaOpen, setEntregaOpen] = useState(false);
   const [cierreEgreso, setCierreEgreso] = useState<"si" | "no" | "">("");
-
 
   // Radicado
   const [radicado, setRadicado] = useState("");
@@ -409,16 +404,14 @@ export function SeguimientoDialog({
   const ipsOptions = useMemo(() => {
     const out: { label: string; ips: string; sede: string }[] = [];
     for (const row of ipsCat) {
-      const sedes = [
-        ...(row.extra1 ?? "").split(";"),
-        ...(row.extra2 ?? "").split(";"),
-      ]
+      const sedes = [...(row.extra1 ?? "").split(";"), ...(row.extra2 ?? "").split(";")]
         .map((s) => s.trim())
         .filter(Boolean);
       if (sedes.length === 0) {
         out.push({ label: row.valor, ips: row.valor, sede: "" });
       } else {
-        for (const sede of sedes) out.push({ label: `${row.valor} — ${sede}`, ips: row.valor, sede });
+        for (const sede of sedes)
+          out.push({ label: `${row.valor} — ${sede}`, ips: row.valor, sede });
       }
     }
     return out;
@@ -523,8 +516,6 @@ export function SeguimientoDialog({
           ? TIPOS_PENDIENTE
           : [];
 
-
-
   // Inicializar al abrir.
   useEffect(() => {
     if (!open) return;
@@ -543,7 +534,11 @@ export function SeguimientoDialog({
     if (open && caso) {
       setIpsReceptora(caso.ips_receptora ?? "");
       setPlataformaFuncSeg(
-        caso.plataforma_funcionando === false ? "NO" : caso.plataforma_funcionando === true ? "SI" : "",
+        caso.plataforma_funcionando === false
+          ? "NO"
+          : caso.plataforma_funcionando === true
+            ? "SI"
+            : "",
       );
     }
   }, [open, caso]);
@@ -562,7 +557,8 @@ export function SeguimientoDialog({
     }
     if (!usaIndigo || !tipoSeg) return;
     // Estado de la solicitud automático según el tipo (interno, ya no visible).
-    if (tipoSeg === T.RADICADO || tipoSeg === T.CANCELACION || tipoSeg === T.CAMBIO_EAPB) setEstadoSolicitud("No aplica");
+    if (tipoSeg === T.RADICADO || tipoSeg === T.CANCELACION || tipoSeg === T.CAMBIO_EAPB)
+      setEstadoSolicitud("No aplica");
     else if (tipoSeg === T.ACEPTACION || tipoSeg === T.AMBULANCIA) setEstadoSolicitud("Sí acepta");
     else if (tipoSeg === T.NEGACIONES) setEstadoSolicitud("No acepta");
     else setEstadoSolicitud("");
@@ -580,14 +576,16 @@ export function SeguimientoDialog({
     if (tipoSeg === T.ACEPTACION) e = EST.ACEPTADO_SIN;
     else if (tipoSeg === T.AMBULANCIA) e = EST.ACEPTADO_CON;
     else if (tipoSeg === T.ENTREGA_DOC) e = EST.PENDIENTE_EGRESO;
-    else if (tipoSeg === T.CIERRE) e = cierreEgreso === "si" ? EST.CERRADO_EXITOSO : (estadoActual ?? EST.PENDIENTE_ACEPT);
+    else if (tipoSeg === T.CIERRE)
+      e = cierreEgreso === "si" ? EST.CERRADO_EXITOSO : (estadoActual ?? EST.PENDIENTE_ACEPT);
     else if (tipoSeg === T.TRASLADO) e = EST.CERRADO_TRASLADO;
     else if (tipoSeg === T.CANCELACION) {
       // Superación de tope SOAT: continúa el caso → vuelve a PENDIENTE ACEPTACIÓN.
       // Las demás cancelaciones cierran con su estado final estructurado.
-      e = cancelTipo === "superacion_tope_soat"
-        ? EST.PENDIENTE_ACEPT
-        : CANCELACION_ESTADO_FINAL[cancelTipo] || (estadoActual ?? EST.PENDIENTE_ACEPT);
+      e =
+        cancelTipo === "superacion_tope_soat"
+          ? EST.PENDIENTE_ACEPT
+          : CANCELACION_ESTADO_FINAL[cancelTipo] || (estadoActual ?? EST.PENDIENTE_ACEPT);
     } else if (tipoSeg === T.NOVEDADES && novPaciente) {
       if (novDesistTipo === "GENERAL") e = EST.DESIST_GENERAL;
       else if (novDesistTipo === "IPS_AMB") {
@@ -597,7 +595,18 @@ export function SeguimientoDialog({
     }
     return e;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [esSaliente, estadoActual, estadoCaso, tipoSeg, cancelTipo, cierreEgreso, novPaciente, novDesistTipo, novDesistIps, novDesistAmb]);
+  }, [
+    esSaliente,
+    estadoActual,
+    estadoCaso,
+    tipoSeg,
+    cancelTipo,
+    cierreEgreso,
+    novPaciente,
+    novDesistTipo,
+    novDesistIps,
+    novDesistAmb,
+  ]);
 
   const esEvolucionSal = usaIndigo && tipoSeg === T.EVOLUCION;
   const esRadicado = usaIndigo && tipoSeg === T.RADICADO;
@@ -631,9 +640,7 @@ export function SeguimientoDialog({
   // Responsable anterior (para la fotografía histórica del cambio).
   const responsableAnterior = caso?.asegurador || caso?.eapb || "";
   // Radicación resultante para la nueva EAPB: código si genera, si no NO APLICA.
-  const cancelRadicacionFinal = cancelGeneraCodigo
-    ? cancelNuevoRadicado.trim()
-    : "NO APLICA";
+  const cancelRadicacionFinal = cancelGeneraCodigo ? cancelNuevoRadicado.trim() : "NO APLICA";
   // Casilla "Ambulancia" solo disponible tras coordinar ambulancia (o pendiente egreso).
   const novAmbDisponible = faseAceptadoCon || facePendienteEgreso;
 
@@ -670,8 +677,7 @@ export function SeguimientoDialog({
     PARCIAL: { chip: "bg-status-amber/15 text-status-amber", dot: "bg-status-amber" },
     PENDIENTE: { chip: "bg-muted text-muted-foreground", dot: "bg-muted-foreground" },
   };
-  const toggleEvoEsp = (esp: string) =>
-    setEvoEsp((prev) => ({ ...prev, [esp]: !prev[esp] }));
+  const toggleEvoEsp = (esp: string) => setEvoEsp((prev) => ({ ...prev, [esp]: !prev[esp] }));
 
   // Autollenar/limpiar el motivo automático "PLATAFORMA NO FUNCIONAL".
   // Solo aplica al Caso B: se envió por CORREO, falta plataforma y la plataforma NO funciona.
@@ -695,7 +701,11 @@ export function SeguimientoDialog({
 
   // Motivo de negación resuelto (texto personalizado cuando se elige "OTRO").
   const negMotivoResuelto =
-    negMotivo === "OTRO" ? (negCual.trim() ? `OTRO MOTIVO: ${negCual.trim().toUpperCase()}` : "") : negMotivo;
+    negMotivo === "OTRO"
+      ? negCual.trim()
+        ? `OTRO MOTIVO: ${negCual.trim().toUpperCase()}`
+        : ""
+      : negMotivo;
 
   // Grupo de negación actual (no guardado) para incluirlo en la vista previa.
   const negGruposPreview = useMemo(() => {
@@ -993,7 +1003,8 @@ export function SeguimientoDialog({
   const quitarIpsNeg = (v: string) => setNegIpsCurrent((p) => p.filter((x) => x !== v));
   const agregarGrupoNeg = () => {
     if (!negMotivo) return toast.error("Selecciona el motivo de negación");
-    if (negMotivo === "OTRO" && !negCual.trim()) return toast.error("Indica cuál es el motivo (campo CUÁL)");
+    if (negMotivo === "OTRO" && !negCual.trim())
+      return toast.error("Indica cuál es el motivo (campo CUÁL)");
     if (negIpsCurrent.length === 0) return toast.error("Agrega al menos una IPS al motivo");
     setNegGrupos((p) => [...p, { motivo: negMotivoResuelto, ips: negIpsCurrent }]);
     setNegMotivo("");
@@ -1094,19 +1105,17 @@ export function SeguimientoDialog({
           estado_evolucion: evoEstadoSal,
           motivo_pendiente: evoRequiereMotivo ? evoMotivoPend.trim() : null,
           // Trazabilidad por especialidades tratantes (Parte 9).
-          especialidades_evolucionadas:
-            especialidadesList.length > 0 ? evoEspEvolucionadas : null,
-          especialidades_pendientes:
-            especialidadesList.length > 0 ? evoEspPendientes : null,
-          estado_evolucion_especialidades:
-            especialidadesList.length > 0 ? evoEspEstado : null,
-          medio_evolucion: evoCorreo && evoPlataforma
-            ? "CORREO Y PLATAFORMA"
-            : evoPlataforma
-              ? "PLATAFORMA"
-              : evoCorreo
-                ? "CORREO"
-                : null,
+          especialidades_evolucionadas: especialidadesList.length > 0 ? evoEspEvolucionadas : null,
+          especialidades_pendientes: especialidadesList.length > 0 ? evoEspPendientes : null,
+          estado_evolucion_especialidades: especialidadesList.length > 0 ? evoEspEstado : null,
+          medio_evolucion:
+            evoCorreo && evoPlataforma
+              ? "CORREO Y PLATAFORMA"
+              : evoPlataforma
+                ? "PLATAFORMA"
+                : evoCorreo
+                  ? "CORREO"
+                  : null,
         };
       case T.CORREO:
       case T.PLATAFORMA:
@@ -1145,7 +1154,8 @@ export function SeguimientoDialog({
           cierra: cancelacionCierra,
           estado_final: cancelacionCierra ? CANCELACION_ESTADO_FINAL[cancelTipo] || null : null,
           // Desistimiento de traslado general
-          nombre_persona: cancelTipo === "desistimiento_general" ? cancelNombrePersona.trim() || null : null,
+          nombre_persona:
+            cancelTipo === "desistimiento_general" ? cancelNombrePersona.trim() || null : null,
           parentesco: cancelTipo === "desistimiento_general" ? cancelParentesco || null : null,
           // Superación de tope SOAT (fotografía histórica del cambio de responsable)
           responsable_anterior: esSuperacionTope ? responsableAnterior || null : null,
@@ -1159,7 +1169,10 @@ export function SeguimientoDialog({
           servicio: revServicio || caso?.servicio || null,
         };
       case T.CIERRE:
-        return { egreso: cierreEgreso || null, ips_receptora: caso?.ips_receptora ?? ipsReceptora ?? null };
+        return {
+          egreso: cierreEgreso || null,
+          ips_receptora: caso?.ips_receptora ?? ipsReceptora ?? null,
+        };
       case T.TRASLADO:
         return {
           traslado_efectivo: true,
@@ -1281,7 +1294,8 @@ export function SeguimientoDialog({
             return toast.error("Indica el parentesco / relación de la persona");
         }
         if (esSuperacionTope) {
-          if (!cancelNuevaEapb.trim()) return toast.error("Selecciona la nueva EAPB/ERP responsable");
+          if (!cancelNuevaEapb.trim())
+            return toast.error("Selecciona la nueva EAPB/ERP responsable");
           if (cancelGeneraCodigo && !cancelNuevoRadicado.trim())
             return toast.error("Ingresa el código de radicación de la nueva EAPB/ERP");
         }
@@ -1386,7 +1400,8 @@ export function SeguimientoDialog({
       radicado: radicadoSeg || null,
       tipo_seguimiento: tipoSegFinal,
       detalle: detalle || null,
-      estado_solicitud: nuevoRadicadoMode || !mostrarEstadoSolicitud ? null : estadoSolicitud || null,
+      estado_solicitud:
+        nuevoRadicadoMode || !mostrarEstadoSolicitud ? null : estadoSolicitud || null,
       nombre_contacto: mostrarContacto ? nombreContacto.trim() || null : null,
       telefono: mostrarContacto ? telefono.trim() || null : null,
       plantilla_indigo: indigoTexto.trim() || null,
@@ -1450,7 +1465,9 @@ export function SeguimientoDialog({
         update.asegurador = cancelNuevaEapb.trim();
         update.eapb_tiene_plataforma = cancelTienePlataforma;
         update.eapb_genera_codigo = cancelGeneraCodigo;
-        update.plataforma_funcionando = cancelTienePlataforma ? cancelPlataformaFunc === "SI" : null;
+        update.plataforma_funcionando = cancelTienePlataforma
+          ? cancelPlataformaFunc === "SI"
+          : null;
         // Radicación: código nuevo si la EAPB genera, si no NO APLICA.
         update.codigo_radicacion = cancelGeneraCodigo ? cancelNuevoRadicado.trim() : "NO APLICA";
       }
@@ -1460,8 +1477,11 @@ export function SeguimientoDialog({
         update.asegurador = cambioEapb.trim();
         update.eapb_tiene_plataforma = cambioTienePlataforma;
         update.eapb_genera_codigo = cambioGeneraCodigo;
-        update.plataforma_funcionando = cambioTienePlataforma ? cambioPlataformaFunc === "SI" : null;
-        if (cambioGeneraCodigo && cambioRadicado.trim()) update.codigo_radicacion = cambioRadicado.trim();
+        update.plataforma_funcionando = cambioTienePlataforma
+          ? cambioPlataformaFunc === "SI"
+          : null;
+        if (cambioGeneraCodigo && cambioRadicado.trim())
+          update.codigo_radicacion = cambioRadicado.trim();
       }
       // Salientes: estado automático según la cadena secuencial.
       if (esSaliente) {
@@ -1523,7 +1543,6 @@ export function SeguimientoDialog({
       }
     }
 
-
     try {
       // Auditoría: solo metadatos estructurados, sin PHI ni plantilla completa.
       const auditDetalles: Record<string, unknown> = { tipo_seguimiento: tipoSeg };
@@ -1540,7 +1559,9 @@ export function SeguimientoDialog({
           auditDetalles.responsable_anterior = responsableAnterior || null;
           auditDetalles.responsable_nuevo = cancelNuevaEapb.trim() || null;
           auditDetalles.radicado_anterior = radicadoReal || null;
-          auditDetalles.radicado_nuevo = cancelGeneraCodigo ? cancelNuevoRadicado.trim() || null : "NO APLICA";
+          auditDetalles.radicado_nuevo = cancelGeneraCodigo
+            ? cancelNuevoRadicado.trim() || null
+            : "NO APLICA";
         }
       }
       if (esTraslado) {
@@ -1598,850 +1619,980 @@ export function SeguimientoDialog({
   };
 
   const sectionCls = "space-y-2 rounded-lg border border-border/60 bg-muted/30 p-3";
-  const labelCls =
-    "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
+  const labelCls = "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] min-w-0 flex-col gap-0 overflow-hidden p-0 sm:max-w-[56rem]">
         {/* Encabezado fijo */}
         <DialogHeader className="shrink-0 border-b border-border/60 px-4 py-3 pr-10 text-left sm:px-6">
-          <DialogTitle className="break-words text-base leading-snug">Seguimiento · {paciente}</DialogTitle>
+          <DialogTitle className="break-words text-base leading-snug">
+            Seguimiento · {paciente}
+          </DialogTitle>
         </DialogHeader>
 
         {/* Cuerpo desplazable (único con scroll vertical, barra invisible) */}
         <div className="min-w-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-4 py-4 scrollbar-invisible sm:px-6">
           {/* Número de radicado (solo módulos con Índigo) */}
           {usaIndigo && (
-          <div className="space-y-1.5">
-            <Label className={labelCls}>Número de radicado</Label>
-            {radicadoReal && false ? null : null}
-            {radicadoReal ? (
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {radicadosLista.map((rad) => (
-                    <span
-                      key={rad}
-                      className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2.5 py-1 text-xs font-medium"
-                    >
-                      {rad}
-                    </span>
-                  ))}
-                  {esSaliente && generaCodigo && !nuevoRadicadoMode && (
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="outline"
-                      className="h-7 w-7 rounded-full"
-                      aria-label="Agregar nuevo radicado"
-                      title="Agregar nuevo número de radicado"
-                      onClick={() => setNuevoRadicadoMode(true)}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-                {nuevoRadicadoMode && (
-                  <div className="space-y-1.5 rounded-lg border border-primary/30 bg-primary/5 p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <Label className={labelCls}>Agregar nuevo número de radicado *</Label>
+            <div className="space-y-1.5">
+              <Label className={labelCls}>Número de radicado</Label>
+              {radicadoReal && false ? null : null}
+              {radicadoReal ? (
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {radicadosLista.map((rad) => (
+                      <span
+                        key={rad}
+                        className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2.5 py-1 text-xs font-medium"
+                      >
+                        {rad}
+                      </span>
+                    ))}
+                    {esSaliente && generaCodigo && !nuevoRadicadoMode && (
                       <Button
                         type="button"
                         size="icon"
-                        variant="ghost"
-                        className="h-6 w-6"
-                        aria-label="Cancelar"
-                        onClick={() => {
-                          setNuevoRadicadoMode(false);
-                          setNuevoRadicado("");
-                        }}
+                        variant="outline"
+                        className="h-7 w-7 rounded-full"
+                        aria-label="Agregar nuevo radicado"
+                        title="Agregar nuevo número de radicado"
+                        onClick={() => setNuevoRadicadoMode(true)}
                       >
-                        <X className="h-4 w-4" />
+                        <Plus className="h-4 w-4" />
                       </Button>
-                    </div>
-                    <Input
-                      value={nuevoRadicado}
-                      onChange={(e) => setNuevoRadicado(e.target.value)}
-                      placeholder="Nuevo número de radicado"
-                    />
-                    <p className="text-[10px] text-muted-foreground">
-                      Indica abajo, en observaciones, por qué se agrega un nuevo radicado.
-                    </p>
+                    )}
                   </div>
-                )}
-              </div>
-            ) : !esSaliente ? (
-              <Input
-                value={radicado}
-                onChange={(e) => setRadicado(e.target.value)}
-                placeholder="Ej. 2026-000123"
-              />
-            ) : !generaCodigo ? (
-              <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-medium text-muted-foreground">
-                NO APLICA
-              </div>
-            ) : esRadicado ? (
-              <div className="rounded-md border border-dashed border-border px-3 py-2 text-xs italic text-muted-foreground">
-                Ingresa el radicado en el bloque "RADICADO DE CASO" más abajo.
-              </div>
-            ) : (
-              <div className="rounded-md border border-dashed border-border px-3 py-2 text-xs italic text-muted-foreground">
-                Pendiente de radicación. Selecciona "RADICADO DE CASO" para registrarlo.
-              </div>
-            )}
-          </div>
+                  {nuevoRadicadoMode && (
+                    <div className="space-y-1.5 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <Label className={labelCls}>Agregar nuevo número de radicado *</Label>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          aria-label="Cancelar"
+                          onClick={() => {
+                            setNuevoRadicadoMode(false);
+                            setNuevoRadicado("");
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <Input
+                        value={nuevoRadicado}
+                        onChange={(e) => setNuevoRadicado(e.target.value)}
+                        placeholder="Nuevo número de radicado"
+                      />
+                      <p className="text-[10px] text-muted-foreground">
+                        Indica abajo, en observaciones, por qué se agrega un nuevo radicado.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : !esSaliente ? (
+                <Input
+                  value={radicado}
+                  onChange={(e) => setRadicado(e.target.value)}
+                  placeholder="Ej. 2026-000123"
+                />
+              ) : !generaCodigo ? (
+                <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-medium text-muted-foreground">
+                  NO APLICA
+                </div>
+              ) : esRadicado ? (
+                <div className="rounded-md border border-dashed border-border px-3 py-2 text-xs italic text-muted-foreground">
+                  Ingresa el radicado en el bloque "RADICADO DE CASO" más abajo.
+                </div>
+              ) : (
+                <div className="rounded-md border border-dashed border-border px-3 py-2 text-xs italic text-muted-foreground">
+                  Pendiente de radicación. Selecciona "RADICADO DE CASO" para registrarlo.
+                </div>
+              )}
+            </div>
           )}
 
           {!nuevoRadicadoMode && (
-          <>
-          {/* Estado del caso */}
-          {esSaliente ? (
-            <div className="space-y-1.5">
-              <Label className={labelCls}>Estado del caso (automático)</Label>
-              <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-semibold text-foreground">
-                {estadoDestino || EST.PENDIENTE_ACEPT}
-              </div>
-              <p className="text-[10px] text-muted-foreground">
-                El estado se actualiza automáticamente según la cadena de seguimiento.
-              </p>
-            </div>
-          ) : (
-            estadoOpciones && estadoOpciones.length > 0 && (
+            <>
+              {/* Estado del caso */}
+              {esSaliente ? (
+                <div className="space-y-1.5">
+                  <Label className={labelCls}>Estado del caso (automático)</Label>
+                  <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-semibold text-foreground">
+                    {estadoDestino || EST.PENDIENTE_ACEPT}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    El estado se actualiza automáticamente según la cadena de seguimiento.
+                  </p>
+                </div>
+              ) : (
+                estadoOpciones &&
+                estadoOpciones.length > 0 && (
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Estado del caso</Label>
+                    <Select
+                      value={estadoCaso}
+                      onValueChange={setEstadoCaso}
+                      disabled={!estadoCasoEditable}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar estado…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {estadoOpciones.map((e) => (
+                          <SelectItem key={e} value={e} className="whitespace-normal">
+                            {e}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {!estadoCasoEditable && (
+                      <p className="text-[10px] text-muted-foreground">
+                        Este tipo de seguimiento no modifica el estado del caso.
+                      </p>
+                    )}
+                  </div>
+                )
+              )}
+
+              {/* Tipo de seguimiento */}
               <div className="space-y-1.5">
-                <Label className={labelCls}>Estado del caso</Label>
-                <Select value={estadoCaso} onValueChange={setEstadoCaso} disabled={!estadoCasoEditable}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar estado…" />
+                <Label className={labelCls}>Tipo de seguimiento</Label>
+                <Select value={tipoSeg} onValueChange={setTipoSeg}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Seleccionar…" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {estadoOpciones.map((e) => (
-                      <SelectItem key={e} value={e} className="whitespace-normal">
-                        {e}
+                  <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
+                    {TIPOS_SEG.map((t) => (
+                      <SelectItem
+                        key={t}
+                        value={t}
+                        className="whitespace-normal [overflow-wrap:anywhere]"
+                        title={t === T.PERTINENCIA ? REVISION_AUT_LABEL_COMPLETO : t}
+                      >
+                        {t}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {!estadoCasoEditable && (
+              </div>
+
+              {/* ======= Campos por tipo (salientes) ======= */}
+
+              {/* RADICADO DE CASO */}
+              {esRadicado && (
+                <div className={sectionCls}>
+                  <p className={labelCls}>Radicado de caso · Trazabilidad Índigo</p>
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Número de radicado *</Label>
+                    <Input
+                      value={radicado}
+                      onChange={(e) => setRadicado(e.target.value)}
+                      placeholder="Ingresa el número de radicado"
+                    />
+                  </div>
                   <p className="text-[10px] text-muted-foreground">
-                    Este tipo de seguimiento no modifica el estado del caso.
+                    Estado del caso → PENDIENTE DE ACEPTACIÓN · Estado de solicitud → NO APLICA.
                   </p>
-                )}
-              </div>
-            )
-          )}
-
-          {/* Tipo de seguimiento */}
-          <div className="space-y-1.5">
-            <Label className={labelCls}>Tipo de seguimiento</Label>
-            <Select value={tipoSeg} onValueChange={setTipoSeg}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Seleccionar…" />
-              </SelectTrigger>
-              <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
-                {TIPOS_SEG.map((t) => (
-                  <SelectItem
-                    key={t}
-                    value={t}
-                    className="whitespace-normal [overflow-wrap:anywhere]"
-                    title={t === T.PERTINENCIA ? REVISION_AUT_LABEL_COMPLETO : t}
-                  >
-                    {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* ======= Campos por tipo (salientes) ======= */}
-
-          {/* RADICADO DE CASO */}
-          {esRadicado && (
-            <div className={sectionCls}>
-              <p className={labelCls}>Radicado de caso · Trazabilidad Índigo</p>
-              <div className="space-y-1.5">
-                <Label className={labelCls}>Número de radicado *</Label>
-                <Input
-                  value={radicado}
-                  onChange={(e) => setRadicado(e.target.value)}
-                  placeholder="Ingresa el número de radicado"
-                />
-              </div>
-              <p className="text-[10px] text-muted-foreground">
-                Estado del caso → PENDIENTE DE ACEPTACIÓN · Estado de solicitud → NO APLICA.
-              </p>
-            </div>
-          )}
-
-          {/* EVOLUCIÓN DIARIA (salientes v2) */}
-          {esEvolucionSal && (
-            <div className={sectionCls}>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className={labelCls}>Evolución diaria</p>
-                <span
-                  className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${evoMetaSal.chip}`}
-                >
-                  <span className={`h-2 w-2 rounded-full ${evoMetaSal.dot}`} />
-                  {evoMetaSal.label.toUpperCase()}
-                </span>
-              </div>
-
-              {tienePlataforma && (
-                <div className="space-y-1.5">
-                  <Label className={labelCls}>¿Plataforma EAPB funcionando?</Label>
-                  <Select
-                    value={plataformaFuncSeg}
-                    onValueChange={(v) => setPlataformaFuncSeg(v as "SI" | "NO")}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="SI">Sí</SelectItem>
-                      <SelectItem value="NO">No</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               )}
 
-              <div className="space-y-1.5">
-                <label className="flex items-center gap-2 text-sm">
-                  <Checkbox checked={evoCorreo} onCheckedChange={(v) => setEvoCorreo(!!v)} />
-                  EAPB CORREO
-                </label>
-                {tienePlataforma && (
-                  <label className="flex items-center gap-2 text-sm">
-                    <Checkbox checked={evoPlataforma} onCheckedChange={(v) => setEvoPlataforma(!!v)} />
-                    EAPB PLATAFORMA
-                  </label>
-                )}
-              </div>
+              {/* EVOLUCIÓN DIARIA (salientes v2) */}
+              {esEvolucionSal && (
+                <div className={sectionCls}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className={labelCls}>Evolución diaria</p>
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${evoMetaSal.chip}`}
+                    >
+                      <span className={`h-2 w-2 rounded-full ${evoMetaSal.dot}`} />
+                      {evoMetaSal.label.toUpperCase()}
+                    </span>
+                  </div>
 
-              {evoRequiereMotivo && (
-                <div className="space-y-1.5">
-                  <Label className={labelCls}>
-                    Motivo del pendiente ({evoCorreo ? "falta plataforma" : "falta correo"})
-                  </Label>
-                  <DictationTextarea
-                    dictationKey="salientes.seguimiento.motivo_pendiente"
-                    value={evoMotivoPend}
-                    onChange={(e) => setEvoMotivoPend(e.target.value)}
-                    rows={2}
-                    placeholder="¿Por qué queda pendiente el otro canal?"
+                  {tienePlataforma && (
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>¿Plataforma EAPB funcionando?</Label>
+                      <Select
+                        value={plataformaFuncSeg}
+                        onValueChange={(v) => setPlataformaFuncSeg(v as "SI" | "NO")}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="SI">Sí</SelectItem>
+                          <SelectItem value="NO">No</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-2 text-sm">
+                      <Checkbox checked={evoCorreo} onCheckedChange={(v) => setEvoCorreo(!!v)} />
+                      EAPB CORREO
+                    </label>
+                    {tienePlataforma && (
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={evoPlataforma}
+                          onCheckedChange={(v) => setEvoPlataforma(!!v)}
+                        />
+                        EAPB PLATAFORMA
+                      </label>
+                    )}
+                  </div>
+
+                  {evoRequiereMotivo && (
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>
+                        Motivo del pendiente ({evoCorreo ? "falta plataforma" : "falta correo"})
+                      </Label>
+                      <DictationTextarea
+                        dictationKey="salientes.seguimiento.motivo_pendiente"
+                        value={evoMotivoPend}
+                        onChange={(e) => setEvoMotivoPend(e.target.value)}
+                        rows={2}
+                        placeholder="¿Por qué queda pendiente el otro canal?"
+                      />
+                    </div>
+                  )}
+
+                  {/* Especialidades tratantes (Parte 9) */}
+                  <div className="space-y-2 rounded-lg border border-border/60 bg-background/40 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className={labelCls}>Especialidades tratantes</p>
+                      {especialidadesList.length > 0 && (
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${evoEspMeta[evoEspEstado].chip}`}
+                        >
+                          <span
+                            className={`h-2 w-2 rounded-full ${evoEspMeta[evoEspEstado].dot}`}
+                          />
+                          EVOLUCIÓN {evoEspEstado}
+                        </span>
+                      )}
+                    </div>
+                    {especialidadesList.length === 0 ? (
+                      <p className="text-xs italic text-muted-foreground">
+                        No hay especialidades tratantes registradas para este caso. Puedes continuar
+                        con la observación manual.
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-[11px] text-muted-foreground">
+                          Marca las especialidades que ya fueron evolucionadas en este seguimiento.
+                        </p>
+                        <div className="space-y-1.5">
+                          {especialidadesList.map((esp) => (
+                            <label
+                              key={esp}
+                              className="flex items-center justify-between gap-2 rounded-md border border-border/50 px-2 py-1.5 text-sm"
+                            >
+                              <span className="flex items-center gap-2">
+                                <Checkbox
+                                  checked={!!evoEsp[esp]}
+                                  onCheckedChange={() => toggleEvoEsp(esp)}
+                                />
+                                {esp}
+                              </span>
+                              <span
+                                className={`text-[10px] font-bold ${
+                                  evoEsp[esp] ? "text-status-green" : "text-muted-foreground"
+                                }`}
+                              >
+                                {evoEsp[esp] ? "EVOLUCIONADA" : "PENDIENTE"}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                        {evoEspEstado === "PARCIAL" && (
+                          <p className="text-[11px] text-status-amber">
+                            Pendiente: {evoEspPendientes.join(", ")}.
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* FÍSICO O PRESENCIAL */}
+              {esFisico && (
+                <div className={sectionCls}>
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Acercamiento con</Label>
+                    <Select
+                      value={acercamiento}
+                      onValueChange={(v) => setAcercamiento(v as AcercamientoTipo)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ACERCAMIENTO_OPCIONES.map((a) => (
+                          <SelectItem key={a} value={a}>
+                            {a}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {acercamiento === "FAMILIAR" && (
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label className={labelCls}>Nombre y apellido</Label>
+                        <Input value={fisNombre} onChange={(e) => setFisNombre(e.target.value)} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className={labelCls}>Parentesco</Label>
+                        <Input
+                          value={fisParentesco}
+                          onChange={(e) => setFisParentesco(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {acercamiento === "SERVICIO" && (
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        <Label className={labelCls}>Servicio</Label>
+                        <Select value={fisServicio} onValueChange={setFisServicio}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar…" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SERVICIO_OPCIONES.map((s) => (
+                              <SelectItem key={s} value={s} className="whitespace-normal">
+                                {s}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label className={labelCls}>Nombre del funcionario</Label>
+                          <Input
+                            value={fisFuncionario}
+                            onChange={(e) => setFisFuncionario(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className={labelCls}>Cargo del funcionario</Label>
+                          <Input value={fisCargo} onChange={(e) => setFisCargo(e.target.value)} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {acercamiento === "OTRO" && (
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        <Label className={labelCls}>¿Con quién se realizó el acercamiento?</Label>
+                        <Input
+                          value={fisConQuien}
+                          onChange={(e) => setFisConQuien(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className={labelCls}>Nombre y apellido</Label>
+                        <Input value={fisNombre} onChange={(e) => setFisNombre(e.target.value)} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ACEPTACIÓN DE IPS RECEPTORA */}
+              {esSaliente && tipoSeg === T.ACEPTACION && (
+                <div className={sectionCls}>
+                  <Label className={labelCls}>IPS receptora</Label>
+                  <AutoComplete
+                    value={ipsReceptora}
+                    options={ipsLabels}
+                    placeholder="Escribe para buscar IPS…"
+                    minChars={2}
+                    onChange={(v) => {
+                      setIpsReceptora(v);
+                      setIpsReceptoraSede("");
+                    }}
+                    onPick={(label) => {
+                      const opt = ipsOptions.find((o) => o.label === label);
+                      if (opt) {
+                        setIpsReceptora(opt.ips);
+                        setIpsReceptoraSede(opt.sede);
+                      }
+                    }}
+                  />
+                  {ipsReceptoraSede && (
+                    <p className="text-[11px] text-muted-foreground">Sede: {ipsReceptoraSede}</p>
+                  )}
+                  <p className="text-[10px] text-muted-foreground">
+                    Estado de solicitud → SÍ ACEPTA.
+                  </p>
+                </div>
+              )}
+
+              {/* TRAZABILIDAD DE NEGACIONES */}
+              {esSaliente && tipoSeg === T.NEGACIONES && (
+                <div className={sectionCls}>
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Motivo de negación</Label>
+                    <Select value={negMotivo} onValueChange={setNegMotivo}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar…" />
+                      </SelectTrigger>
+                      <SelectContent className="max-w-[calc(100vw-2rem)]">
+                        {NEGACION_MOTIVOS.map((m) => (
+                          <SelectItem key={m} value={m} className="whitespace-normal">
+                            {m}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {negMotivo === "OTRO" && (
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>¿Cuál? *</Label>
+                      <Input
+                        value={negCual}
+                        onChange={(e) => setNegCual(e.target.value)}
+                        placeholder="Escribe el motivo de negación"
+                      />
+                    </div>
+                  )}
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>IPS</Label>
+                    <div className="flex items-end gap-2">
+                      <div className="flex-1">
+                        <AutoComplete
+                          value={negIpsInput}
+                          options={ipsLabels}
+                          placeholder="Escribe para buscar IPS…"
+                          minChars={2}
+                          onChange={setNegIpsInput}
+                          onPick={setNegIpsInput}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-9 shrink-0"
+                        onClick={agregarIpsNeg}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {negIpsCurrent.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {negIpsCurrent.map((ips) => (
+                          <span
+                            key={ips}
+                            className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px]"
+                          >
+                            {ips}
+                            <button type="button" onClick={() => quitarIpsNeg(ips)}>
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full rounded-full"
+                    onClick={agregarGrupoNeg}
+                  >
+                    Agregar negación
+                  </Button>
+                  {negGrupos.length > 0 && (
+                    <div className="space-y-1.5 pt-1">
+                      {negGrupos.map((g, i) => (
+                        <div
+                          key={`${g.motivo}-${i}`}
+                          className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs"
+                        >
+                          <span className="break-words">
+                            {g.motivo} — {g.ips.length} IPS
+                          </span>
+                          <button type="button" onClick={() => quitarGrupoNeg(i)}>
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-[10px] text-muted-foreground">
+                    Estado de solicitud → NO ACEPTA.
+                  </p>
+                </div>
+              )}
+
+              {/* AMBULANCIA COORDINADA */}
+              {esSaliente && tipoSeg === T.AMBULANCIA && (
+                <div className={sectionCls}>
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Quién informa</Label>
+                    <Select
+                      value={ambVariante}
+                      onValueChange={(v) => setAmbVariante(v as AmbulanciaVariante)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="max-w-[calc(100vw-2rem)]">
+                        {AMBULANCIA_VARIANTES.map((s) => (
+                          <SelectItem key={s.value} value={s.value} className="whitespace-normal">
+                            {s.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Empresa de ambulancia</Label>
+                    <AutoComplete
+                      value={empresaAmb}
+                      options={empresasTep}
+                      placeholder="Escribe para buscar empresa…"
+                      minChars={2}
+                      onChange={setEmpresaAmb}
+                      onPick={setEmpresaAmb}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Fecha del traslado</Label>
+                      <Input
+                        value={fechaTraslado}
+                        inputMode="numeric"
+                        onChange={(e) => setFechaTraslado(maskFechaInput(e.target.value))}
+                        placeholder="DD/MM/AAAA"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Hora del traslado</Label>
+                      <Input
+                        value={horaTraslado}
+                        inputMode="numeric"
+                        onChange={(e) => setHoraTraslado(maskHoraInput(e.target.value))}
+                        placeholder="HH:MM"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ENTREGA DE DOCUMENTACIÓN AMBULANCIA (fase final) */}
+              {esSaliente && esEntregaDoc && (
+                <div className={sectionCls}>
+                  <div className="rounded-md border border-dashed p-3">
+                    <p className="mb-2 text-xs text-muted-foreground">
+                      Fase final: la ambulancia llegó por el paciente. Registre origen documental,
+                      genere portada y QR de firma para el tripulante y, tras la firma, la plantilla
+                      Índigo corta y el checklist firmado.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => setEntregaOpen(true)}
+                    >
+                      Abrir · Entrega documental / Firma por QR
+                    </Button>
+                  </div>
+                  <EntregaDocumentalDialog
+                    open={entregaOpen}
+                    onOpenChange={setEntregaOpen}
+                    casoId={casoId}
+                    tipoCaso={tipoCaso}
+                    paciente={paciente}
+                    documento={documento}
+                    tipoDocumento={caso?.tipo_documento}
+                    cie10={caso?.cie10}
+                    ipsReceptora={caso?.ips_receptora ?? ipsReceptora}
+                    empresaTraslado={empresaAmb}
+                    especialidad={especialidadesList.join(", ")}
+                    entidadPago={caso?.eapb}
+                    tipoAmbulancia={caso?.tipo_ambulancia}
                   />
                 </div>
               )}
 
-              {/* Especialidades tratantes (Parte 9) */}
-              <div className="space-y-2 rounded-lg border border-border/60 bg-background/40 p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className={labelCls}>Especialidades tratantes</p>
-                  {especialidadesList.length > 0 && (
-                    <span
-                      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${evoEspMeta[evoEspEstado].chip}`}
+              {/* CIERRE POR EGRESOS (REMISIÓN) */}
+              {esSaliente && esCierre && (
+                <div className={sectionCls}>
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>¿Paciente ya egresó de la institución?</Label>
+                    <Select
+                      value={cierreEgreso}
+                      onValueChange={(v) => setCierreEgreso(v as "si" | "no")}
                     >
-                      <span className={`h-2 w-2 rounded-full ${evoEspMeta[evoEspEstado].dot}`} />
-                      EVOLUCIÓN {evoEspEstado}
-                    </span>
-                  )}
-                </div>
-                {especialidadesList.length === 0 ? (
-                  <p className="text-xs italic text-muted-foreground">
-                    No hay especialidades tratantes registradas para este caso. Puedes continuar con la observación manual.
-                  </p>
-                ) : (
-                  <>
-                    <p className="text-[11px] text-muted-foreground">
-                      Marca las especialidades que ya fueron evolucionadas en este seguimiento.
-                    </p>
-                    <div className="space-y-1.5">
-                      {especialidadesList.map((esp) => (
-                        <label
-                          key={esp}
-                          className="flex items-center justify-between gap-2 rounded-md border border-border/50 px-2 py-1.5 text-sm"
-                        >
-                          <span className="flex items-center gap-2">
-                            <Checkbox
-                              checked={!!evoEsp[esp]}
-                              onCheckedChange={() => toggleEvoEsp(esp)}
-                            />
-                            {esp}
-                          </span>
-                          <span
-                            className={`text-[10px] font-bold ${
-                              evoEsp[esp] ? "text-status-green" : "text-muted-foreground"
-                            }`}
-                          >
-                            {evoEsp[esp] ? "EVOLUCIONADA" : "PENDIENTE"}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                    {evoEspEstado === "PARCIAL" && (
-                      <p className="text-[11px] text-status-amber">
-                        Pendiente: {evoEspPendientes.join(", ")}.
-                      </p>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-
-
-          {/* FÍSICO O PRESENCIAL */}
-          {esFisico && (
-            <div className={sectionCls}>
-              <div className="space-y-1.5">
-                <Label className={labelCls}>Acercamiento con</Label>
-                <Select value={acercamiento} onValueChange={(v) => setAcercamiento(v as AcercamientoTipo)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ACERCAMIENTO_OPCIONES.map((a) => (
-                      <SelectItem key={a} value={a}>
-                        {a}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {acercamiento === "FAMILIAR" && (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label className={labelCls}>Nombre y apellido</Label>
-                    <Input value={fisNombre} onChange={(e) => setFisNombre(e.target.value)} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className={labelCls}>Parentesco</Label>
-                    <Input value={fisParentesco} onChange={(e) => setFisParentesco(e.target.value)} />
-                  </div>
-                </div>
-              )}
-              {acercamiento === "SERVICIO" && (
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Label className={labelCls}>Servicio</Label>
-                    <Select value={fisServicio} onValueChange={setFisServicio}>
                       <SelectTrigger>
                         <SelectValue placeholder="Seleccionar…" />
                       </SelectTrigger>
                       <SelectContent>
-                        {SERVICIO_OPCIONES.map((s) => (
-                          <SelectItem key={s} value={s} className="whitespace-normal">
-                            {s}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="si">SÍ</SelectItem>
+                        <SelectItem value="no">NO</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label className={labelCls}>Nombre del funcionario</Label>
-                      <Input value={fisFuncionario} onChange={(e) => setFisFuncionario(e.target.value)} />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className={labelCls}>Cargo del funcionario</Label>
-                      <Input value={fisCargo} onChange={(e) => setFisCargo(e.target.value)} />
-                    </div>
-                  </div>
-                </div>
-              )}
-              {acercamiento === "OTRO" && (
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Label className={labelCls}>¿Con quién se realizó el acercamiento?</Label>
-                    <Input value={fisConQuien} onChange={(e) => setFisConQuien(e.target.value)} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className={labelCls}>Nombre y apellido</Label>
-                    <Input value={fisNombre} onChange={(e) => setFisNombre(e.target.value)} />
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ACEPTACIÓN DE IPS RECEPTORA */}
-          {esSaliente && tipoSeg === T.ACEPTACION && (
-            <div className={sectionCls}>
-              <Label className={labelCls}>IPS receptora</Label>
-              <AutoComplete
-                value={ipsReceptora}
-                options={ipsLabels}
-                placeholder="Escribe para buscar IPS…"
-                minChars={2}
-                onChange={(v) => {
-                  setIpsReceptora(v);
-                  setIpsReceptoraSede("");
-                }}
-                onPick={(label) => {
-                  const opt = ipsOptions.find((o) => o.label === label);
-                  if (opt) {
-                    setIpsReceptora(opt.ips);
-                    setIpsReceptoraSede(opt.sede);
-                  }
-                }}
-              />
-              {ipsReceptoraSede && (
-                <p className="text-[11px] text-muted-foreground">Sede: {ipsReceptoraSede}</p>
-              )}
-              <p className="text-[10px] text-muted-foreground">Estado de solicitud → SÍ ACEPTA.</p>
-            </div>
-          )}
-
-          {/* TRAZABILIDAD DE NEGACIONES */}
-          {esSaliente && tipoSeg === T.NEGACIONES && (
-            <div className={sectionCls}>
-              <div className="space-y-1.5">
-                <Label className={labelCls}>Motivo de negación</Label>
-                <Select value={negMotivo} onValueChange={setNegMotivo}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar…" />
-                  </SelectTrigger>
-                  <SelectContent className="max-w-[calc(100vw-2rem)]">
-                    {NEGACION_MOTIVOS.map((m) => (
-                      <SelectItem key={m} value={m} className="whitespace-normal">
-                        {m}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {negMotivo === "OTRO" && (
-                <div className="space-y-1.5">
-                  <Label className={labelCls}>¿Cuál? *</Label>
-                  <Input
-                    value={negCual}
-                    onChange={(e) => setNegCual(e.target.value)}
-                    placeholder="Escribe el motivo de negación"
-                  />
-                </div>
-              )}
-              <div className="space-y-1.5">
-                <Label className={labelCls}>IPS</Label>
-                <div className="flex items-end gap-2">
-                  <div className="flex-1">
-                    <AutoComplete
-                      value={negIpsInput}
-                      options={ipsLabels}
-                      placeholder="Escribe para buscar IPS…"
-                      minChars={2}
-                      onChange={setNegIpsInput}
-                      onPick={setNegIpsInput}
-                    />
-                  </div>
-                  <Button type="button" variant="outline" size="sm" className="h-9 shrink-0" onClick={agregarIpsNeg}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-                {negIpsCurrent.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {negIpsCurrent.map((ips) => (
-                      <span
-                        key={ips}
-                        className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px]"
-                      >
-                        {ips}
-                        <button type="button" onClick={() => quitarIpsNeg(ips)}>
-                          <X className="h-3 w-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <Button type="button" variant="outline" size="sm" className="w-full rounded-full" onClick={agregarGrupoNeg}>
-                Agregar negación
-              </Button>
-              {negGrupos.length > 0 && (
-                <div className="space-y-1.5 pt-1">
-                  {negGrupos.map((g, i) => (
-                    <div
-                      key={`${g.motivo}-${i}`}
-                      className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs"
-                    >
-                      <span className="break-words">
-                        {g.motivo} — {g.ips.length} IPS
-                      </span>
-                      <button type="button" onClick={() => quitarGrupoNeg(i)}>
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <p className="text-[10px] text-muted-foreground">Estado de solicitud → NO ACEPTA.</p>
-            </div>
-          )}
-
-          {/* AMBULANCIA COORDINADA */}
-          {esSaliente && tipoSeg === T.AMBULANCIA && (
-            <div className={sectionCls}>
-              <div className="space-y-1.5">
-                <Label className={labelCls}>Quién informa</Label>
-                <Select value={ambVariante} onValueChange={(v) => setAmbVariante(v as AmbulanciaVariante)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="max-w-[calc(100vw-2rem)]">
-                    {AMBULANCIA_VARIANTES.map((s) => (
-                      <SelectItem key={s.value} value={s.value} className="whitespace-normal">
-                        {s.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className={labelCls}>Empresa de ambulancia</Label>
-                <AutoComplete
-                  value={empresaAmb}
-                  options={empresasTep}
-                  placeholder="Escribe para buscar empresa…"
-                  minChars={2}
-                  onChange={setEmpresaAmb}
-                  onPick={setEmpresaAmb}
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label className={labelCls}>Fecha del traslado</Label>
-                  <Input
-                    value={fechaTraslado}
-                    inputMode="numeric"
-                    onChange={(e) => setFechaTraslado(maskFechaInput(e.target.value))}
-                    placeholder="DD/MM/AAAA"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className={labelCls}>Hora del traslado</Label>
-                  <Input
-                    value={horaTraslado}
-                    inputMode="numeric"
-                    onChange={(e) => setHoraTraslado(maskHoraInput(e.target.value))}
-                    placeholder="HH:MM"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ENTREGA DE DOCUMENTACIÓN AMBULANCIA (fase final) */}
-          {esSaliente && esEntregaDoc && (
-            <div className={sectionCls}>
-              <div className="rounded-md border border-dashed p-3">
-                <p className="mb-2 text-xs text-muted-foreground">
-                  Fase final: la ambulancia llegó por el paciente. Registre origen documental,
-                  genere portada y QR de firma para el tripulante y, tras la firma, la plantilla
-                  Índigo corta y el checklist firmado.
-                </p>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => setEntregaOpen(true)}
-                >
-                  Abrir · Entrega documental / Firma por QR
-                </Button>
-              </div>
-              <EntregaDocumentalDialog
-                open={entregaOpen}
-                onOpenChange={setEntregaOpen}
-                casoId={casoId}
-                tipoCaso={tipoCaso}
-                paciente={paciente}
-                documento={documento}
-                tipoDocumento={caso?.tipo_documento}
-                cie10={caso?.cie10}
-                ipsReceptora={caso?.ips_receptora ?? ipsReceptora}
-                empresaTraslado={empresaAmb}
-                especialidad={especialidadesList.join(", ")}
-                entidadPago={caso?.eapb}
-                tipoAmbulancia={caso?.tipo_ambulancia}
-              />
-
-            </div>
-          )}
-
-          {/* CIERRE POR EGRESOS (REMISIÓN) */}
-          {esSaliente && esCierre && (
-            <div className={sectionCls}>
-              <div className="space-y-1.5">
-                <Label className={labelCls}>¿Paciente ya egresó de la institución?</Label>
-                <Select value={cierreEgreso} onValueChange={(v) => setCierreEgreso(v as "si" | "no")}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="si">SÍ</SelectItem>
-                    <SelectItem value="no">NO</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {cierreEgreso === "no" && (
-                <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-                  El caso NO se cerrará. Se guardará la observación registrada como seguimiento.
-                </p>
-              )}
-              {cierreEgreso === "si" && (
-                <p className="rounded-md border border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
-                  Al guardar se generará la plantilla de cierre, se cerrará el caso y pasará al
-                  historial.
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* CIERRE DE CASO POR TRASLADO EFECTIVO */}
-          {esSaliente && esTraslado && (
-            <div className={sectionCls}>
-              <p className={labelCls}>Cierre por traslado efectivo</p>
-              <div className="space-y-1.5">
-                <Label className={labelCls}>IPS receptora</Label>
-                <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-medium text-muted-foreground [overflow-wrap:anywhere]">
-                  {caso?.ips_receptora || ipsReceptora || "—"}
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label className={labelCls}>Fecha efectiva del traslado</Label>
-                  <Input
-                    value={trasFecha}
-                    inputMode="numeric"
-                    onChange={(e) => setTrasFecha(maskFechaInput(e.target.value))}
-                    placeholder="DD/MM/AAAA"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className={labelCls}>Hora efectiva del traslado</Label>
-                  <Input
-                    value={trasHora}
-                    inputMode="numeric"
-                    onChange={(e) => setTrasHora(maskHoraInput(e.target.value))}
-                    placeholder="HH:MM"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label className={labelCls}>Empresa de traslado</Label>
-                  <AutoComplete
-                    value={trasEmpresa || caso?.prestador_traslado || ""}
-                    options={empresasTep}
-                    placeholder="Escribe para buscar empresa…"
-                    minChars={2}
-                    onChange={setTrasEmpresa}
-                    onPick={setTrasEmpresa}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className={labelCls}>Tipo de ambulancia</Label>
-                  <Input
-                    value={trasTipoAmb || caso?.tipo_ambulancia || ""}
-                    onChange={(e) => setTrasTipoAmb(e.target.value)}
-                    placeholder="Ej. TAB / TAM"
-                  />
-                </div>
-              </div>
-              <label className="flex items-start gap-2 rounded-md border border-border/60 bg-background/40 p-3 text-sm">
-                <Checkbox
-                  checked={trasConfirma}
-                  onCheckedChange={(v) => setTrasConfirma(!!v)}
-                  className="mt-0.5"
-                />
-                <span className="font-semibold">EL PACIENTE FUE TRASLADADO EFECTIVAMENTE.</span>
-              </label>
-              <p className="rounded-md border border-amber-200 bg-amber-50/60 p-3 text-xs leading-relaxed text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
-                Al guardar se generará la plantilla de cierre, el caso pasará al estado{" "}
-                <strong>CERRADO POR TRASLADO EFECTIVO</strong> y se moverá al historial.
-              </p>
-            </div>
-          )}
-
-
-          {/* NOVEDADES (Parte 12) */}
-          {esSaliente && esNovedades && (
-            <div className={sectionCls}>
-
-              <p className={labelCls}>Tipo de novedad</p>
-              <div className="flex flex-col gap-2">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={novPaciente}
-                    onChange={(e) => setNovPaciente(e.target.checked)}
-                  />
-                  Paciente/Familiar
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={novIps}
-                    onChange={(e) => setNovIps(e.target.checked)}
-                  />
-                  IPS Receptora
-                </label>
-                {novAmbDisponible && (
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={novAmbulancia}
-                      onChange={(e) => setNovAmbulancia(e.target.checked)}
-                    />
-                    Ambulancia
-                  </label>
-                )}
-              </div>
-
-              {novPaciente && (
-                <div className="space-y-2 rounded-md border border-dashed p-3">
-                  <Label className={labelCls}>¿El paciente/familiar firmó desistimiento?</Label>
-                  <Select
-                    value={novDesistTipo}
-                    onValueChange={(v) => setNovDesistTipo(v as "IPS_AMB" | "GENERAL")}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="IPS_AMB">DESISTIMIENTO IPS / AMBULANCIA</SelectItem>
-                      <SelectItem value="GENERAL">DESISTIMIENTO GENERAL</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {novDesistTipo === "IPS_AMB" && (
-                    <div className="flex flex-col gap-2 pt-1">
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={novDesistIps}
-                          onChange={(e) => setNovDesistIps(e.target.checked)}
-                        />
-                        IPS
-                      </label>
-                      {novAmbDisponible && (
-                        <label className="flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={novDesistAmb}
-                            onChange={(e) => setNovDesistAmb(e.target.checked)}
-                          />
-                          AMBULANCIA
-                        </label>
-                      )}
-                    </div>
+                  {cierreEgreso === "no" && (
+                    <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                      El caso NO se cerrará. Se guardará la observación registrada como seguimiento.
+                    </p>
                   )}
-                  {novDesistTipo === "GENERAL" && (
-                    <p className="rounded-md border border-amber-200 bg-amber-50/60 p-2 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
-                      Al guardar, el caso se cerrará como DESISTIMIENTO GENERAL y pasará al historial.
+                  {cierreEgreso === "si" && (
+                    <p className="rounded-md border border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
+                      Al guardar se generará la plantilla de cierre, se cerrará el caso y pasará al
+                      historial.
                     </p>
                   )}
                 </div>
               )}
-              <p className="text-[10px] text-muted-foreground">
-                Registra la novedad en observaciones. El estado del caso solo cambia si se marca un
-                desistimiento.
-              </p>
-            </div>
-          )}
 
-
-
-
-          {/* CANCELACIÓN DE TRÁMITE DE REMISIÓN */}
-          {esSaliente && tipoSeg === T.CANCELACION && (
-            <div className={sectionCls}>
-              <div className="space-y-1.5">
-                <Label className={labelCls}>Tipo de cancelación</Label>
-                <Select value={cancelTipo} onValueChange={(v) => setCancelTipo(v as CancelacionTipo)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
-                    {CANCELACION_TIPOS.map((s) => (
-                      <SelectItem
-                        key={s.value}
-                        value={s.value}
-                        className="whitespace-normal [overflow-wrap:anywhere]"
-                        title={s.label}
-                      >
-                        {s.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Desistimiento de traslado general: nombre + parentesco */}
-              {cancelTipo === "desistimiento_general" && (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {/* CIERRE DE CASO POR TRASLADO EFECTIVO */}
+              {esSaliente && esTraslado && (
+                <div className={sectionCls}>
+                  <p className={labelCls}>Cierre por traslado efectivo</p>
                   <div className="space-y-1.5">
-                    <Label className={labelCls}>Nombre de la persona *</Label>
-                    <Input
-                      value={cancelNombrePersona}
-                      onChange={(e) => setCancelNombrePersona(e.target.value)}
-                      placeholder="Nombre y apellido"
-                    />
+                    <Label className={labelCls}>IPS receptora</Label>
+                    <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-medium text-muted-foreground [overflow-wrap:anywhere]">
+                      {caso?.ips_receptora || ipsReceptora || "—"}
+                    </div>
                   </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Fecha efectiva del traslado</Label>
+                      <Input
+                        value={trasFecha}
+                        inputMode="numeric"
+                        onChange={(e) => setTrasFecha(maskFechaInput(e.target.value))}
+                        placeholder="DD/MM/AAAA"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Hora efectiva del traslado</Label>
+                      <Input
+                        value={trasHora}
+                        inputMode="numeric"
+                        onChange={(e) => setTrasHora(maskHoraInput(e.target.value))}
+                        placeholder="HH:MM"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Empresa de traslado</Label>
+                      <AutoComplete
+                        value={trasEmpresa || caso?.prestador_traslado || ""}
+                        options={empresasTep}
+                        placeholder="Escribe para buscar empresa…"
+                        minChars={2}
+                        onChange={setTrasEmpresa}
+                        onPick={setTrasEmpresa}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Tipo de ambulancia</Label>
+                      <Input
+                        value={trasTipoAmb || caso?.tipo_ambulancia || ""}
+                        onChange={(e) => setTrasTipoAmb(e.target.value)}
+                        placeholder="Ej. TAB / TAM"
+                      />
+                    </div>
+                  </div>
+                  <label className="flex items-start gap-2 rounded-md border border-border/60 bg-background/40 p-3 text-sm">
+                    <Checkbox
+                      checked={trasConfirma}
+                      onCheckedChange={(v) => setTrasConfirma(!!v)}
+                      className="mt-0.5"
+                    />
+                    <span className="font-semibold">EL PACIENTE FUE TRASLADADO EFECTIVAMENTE.</span>
+                  </label>
+                  <p className="rounded-md border border-amber-200 bg-amber-50/60 p-3 text-xs leading-relaxed text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
+                    Al guardar se generará la plantilla de cierre, el caso pasará al estado{" "}
+                    <strong>CERRADO POR TRASLADO EFECTIVO</strong> y se moverá al historial.
+                  </p>
+                </div>
+              )}
+
+              {/* NOVEDADES (Parte 12) */}
+              {esSaliente && esNovedades && (
+                <div className={sectionCls}>
+                  <p className={labelCls}>Tipo de novedad</p>
+                  <div className="flex flex-col gap-2">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={novPaciente}
+                        onChange={(e) => setNovPaciente(e.target.checked)}
+                      />
+                      Paciente/Familiar
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={novIps}
+                        onChange={(e) => setNovIps(e.target.checked)}
+                      />
+                      IPS Receptora
+                    </label>
+                    {novAmbDisponible && (
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={novAmbulancia}
+                          onChange={(e) => setNovAmbulancia(e.target.checked)}
+                        />
+                        Ambulancia
+                      </label>
+                    )}
+                  </div>
+
+                  {novPaciente && (
+                    <div className="space-y-2 rounded-md border border-dashed p-3">
+                      <Label className={labelCls}>¿El paciente/familiar firmó desistimiento?</Label>
+                      <Select
+                        value={novDesistTipo}
+                        onValueChange={(v) => setNovDesistTipo(v as "IPS_AMB" | "GENERAL")}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="IPS_AMB">DESISTIMIENTO IPS / AMBULANCIA</SelectItem>
+                          <SelectItem value="GENERAL">DESISTIMIENTO GENERAL</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {novDesistTipo === "IPS_AMB" && (
+                        <div className="flex flex-col gap-2 pt-1">
+                          <label className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={novDesistIps}
+                              onChange={(e) => setNovDesistIps(e.target.checked)}
+                            />
+                            IPS
+                          </label>
+                          {novAmbDisponible && (
+                            <label className="flex items-center gap-2 text-sm">
+                              <input
+                                type="checkbox"
+                                checked={novDesistAmb}
+                                onChange={(e) => setNovDesistAmb(e.target.checked)}
+                              />
+                              AMBULANCIA
+                            </label>
+                          )}
+                        </div>
+                      )}
+                      {novDesistTipo === "GENERAL" && (
+                        <p className="rounded-md border border-amber-200 bg-amber-50/60 p-2 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
+                          Al guardar, el caso se cerrará como DESISTIMIENTO GENERAL y pasará al
+                          historial.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  <p className="text-[10px] text-muted-foreground">
+                    Registra la novedad en observaciones. El estado del caso solo cambia si se marca
+                    un desistimiento.
+                  </p>
+                </div>
+              )}
+
+              {/* CANCELACIÓN DE TRÁMITE DE REMISIÓN */}
+              {esSaliente && tipoSeg === T.CANCELACION && (
+                <div className={sectionCls}>
                   <div className="space-y-1.5">
-                    <Label className={labelCls}>Parentesco / relación *</Label>
-                    <Select value={cancelParentesco} onValueChange={setCancelParentesco}>
+                    <Label className={labelCls}>Tipo de cancelación</Label>
+                    <Select
+                      value={cancelTipo}
+                      onValueChange={(v) => setCancelTipo(v as CancelacionTipo)}
+                    >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Seleccionar…" />
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
-                        {PARENTESCO_OPCIONES.map((p) => (
-                          <SelectItem key={p} value={p} className="whitespace-normal [overflow-wrap:anywhere]">
-                            {p}
+                        {CANCELACION_TIPOS.map((s) => (
+                          <SelectItem
+                            key={s.value}
+                            value={s.value}
+                            className="whitespace-normal [overflow-wrap:anywhere]"
+                            title={s.label}
+                          >
+                            {s.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {/* Desistimiento de traslado general: nombre + parentesco */}
+                  {cancelTipo === "desistimiento_general" && (
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label className={labelCls}>Nombre de la persona *</Label>
+                        <Input
+                          value={cancelNombrePersona}
+                          onChange={(e) => setCancelNombrePersona(e.target.value)}
+                          placeholder="Nombre y apellido"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className={labelCls}>Parentesco / relación *</Label>
+                        <Select value={cancelParentesco} onValueChange={setCancelParentesco}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Seleccionar…" />
+                          </SelectTrigger>
+                          <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
+                            {PARENTESCO_OPCIONES.map((p) => (
+                              <SelectItem
+                                key={p}
+                                value={p}
+                                className="whitespace-normal [overflow-wrap:anywhere]"
+                              >
+                                {p}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Superación de tope SOAT: cambio de responsable (mantiene el caso activo) */}
+                  {esSuperacionTope && (
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        <Label className={labelCls}>Responsable anterior</Label>
+                        <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-medium text-muted-foreground [overflow-wrap:anywhere]">
+                          {responsableAnterior || "—"}
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className={labelCls}>Nueva EAPB/ERP responsable *</Label>
+                        <AutoComplete
+                          value={cancelNuevaEapb}
+                          options={eapbOptions}
+                          placeholder="Escribe para buscar la nueva EAPB/ERP…"
+                          onChange={(v) => {
+                            setCancelNuevaEapb(v);
+                            setCancelNuevoRadicado("");
+                          }}
+                          onPick={(v) => {
+                            setCancelNuevaEapb(v);
+                            setCancelNuevoRadicado("");
+                          }}
+                        />
+                        {cancelEapbActual && (
+                          <p className="text-[10px] text-muted-foreground">
+                            {cancelTipoEntidad || "SIN TIPO"} ·{" "}
+                            {cancelTienePlataforma ? "Tiene plataforma" : "Sin plataforma"} ·{" "}
+                            {cancelGeneraCodigo ? "Genera código" : "No genera código"}
+                          </p>
+                        )}
+                      </div>
+                      {cancelTienePlataforma && (
+                        <div className="space-y-1.5">
+                          <Label className={labelCls}>
+                            ¿La plataforma se encuentra funcionando?
+                          </Label>
+                          <Select
+                            value={cancelPlataformaFunc}
+                            onValueChange={(v) => setCancelPlataformaFunc(v as "SI" | "NO")}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Seleccionar…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="SI">SÍ</SelectItem>
+                              <SelectItem value="NO">NO</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      {cancelGeneraCodigo ? (
+                        <div className="space-y-1.5">
+                          <Label className={labelCls}>Código de radicación *</Label>
+                          <Input
+                            value={cancelNuevoRadicado}
+                            onChange={(e) => setCancelNuevoRadicado(e.target.value)}
+                            placeholder="Código de radicación de la nueva EAPB/ERP"
+                          />
+                        </div>
+                      ) : cancelNuevaEapb.trim() ? (
+                        <div className="space-y-1.5">
+                          <Label className={labelCls}>Código de radicación</Label>
+                          <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-medium text-muted-foreground">
+                            NO APLICA
+                          </div>
+                        </div>
+                      ) : null}
+                      <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                        El caso NO se cierra: se cambia el responsable a la nueva EAPB/ERP, se
+                        conserva la trazabilidad anterior y el caso continúa activo en PENDIENTE
+                        ACEPTACIÓN.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Cancelaciones que cierran el caso */}
+                  {esCancelacion && cancelacionCierra && (
+                    <p className="rounded-md border border-amber-200 bg-amber-50/60 p-3 text-xs leading-relaxed text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
+                      Al guardar, el caso se cerrará como{" "}
+                      <strong>{CANCELACION_ESTADO_FINAL[cancelTipo]}</strong> y pasará al historial.
+                    </p>
+                  )}
                 </div>
               )}
 
-              {/* Superación de tope SOAT: cambio de responsable (mantiene el caso activo) */}
-              {esSuperacionTope && (
-                <div className="space-y-3">
+              {/* CAMBIO DE ASEGURADOR A EAPB */}
+              {esSaliente && esCambioEapb && (
+                <div className={sectionCls}>
                   <div className="space-y-1.5">
-                    <Label className={labelCls}>Responsable anterior</Label>
-                    <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-medium text-muted-foreground [overflow-wrap:anywhere]">
-                      {responsableAnterior || "—"}
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className={labelCls}>Nueva EAPB/ERP responsable *</Label>
+                    <Label className={labelCls}>EAPB *</Label>
                     <AutoComplete
-                      value={cancelNuevaEapb}
+                      value={cambioEapb}
                       options={eapbOptions}
-                      placeholder="Escribe para buscar la nueva EAPB/ERP…"
+                      placeholder="Escribe para buscar la nueva EAPB…"
                       onChange={(v) => {
-                        setCancelNuevaEapb(v);
-                        setCancelNuevoRadicado("");
+                        setCambioEapb(v);
+                        setCambioPlataformaFunc("");
+                        setCambioRadicado("");
                       }}
                       onPick={(v) => {
-                        setCancelNuevaEapb(v);
-                        setCancelNuevoRadicado("");
+                        setCambioEapb(v);
+                        setCambioPlataformaFunc("");
+                        setCambioRadicado("");
                       }}
                     />
-                    {cancelEapbActual && (
+                    {cambioEapbActual && (
                       <p className="text-[10px] text-muted-foreground">
-                        {cancelTipoEntidad || "SIN TIPO"} ·{" "}
-                        {cancelTienePlataforma ? "Tiene plataforma" : "Sin plataforma"} ·{" "}
-                        {cancelGeneraCodigo ? "Genera código" : "No genera código"}
+                        {cambioTipoEntidad || "SIN TIPO"} ·{" "}
+                        {cambioTienePlataforma ? "Tiene plataforma" : "Sin plataforma"} ·{" "}
+                        {cambioGeneraCodigo ? "Genera código" : "No genera código"}
                       </p>
                     )}
                   </div>
-                  {cancelTienePlataforma && (
+
+                  {cambioTienePlataforma && (
                     <div className="space-y-1.5">
-                      <Label className={labelCls}>¿La plataforma se encuentra funcionando?</Label>
+                      <Label className={labelCls}>¿La plataforma se encuentra funcionando? *</Label>
                       <Select
-                        value={cancelPlataformaFunc}
-                        onValueChange={(v) => setCancelPlataformaFunc(v as "SI" | "NO")}
+                        value={cambioPlataformaFunc}
+                        onValueChange={(v) => setCambioPlataformaFunc(v as "SI" | "NO")}
                       >
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger>
                           <SelectValue placeholder="Seleccionar…" />
                         </SelectTrigger>
                         <SelectContent>
@@ -2451,260 +2602,183 @@ export function SeguimientoDialog({
                       </Select>
                     </div>
                   )}
-                  {cancelGeneraCodigo ? (
+
+                  {cambioGeneraCodigo && (
                     <div className="space-y-1.5">
-                      <Label className={labelCls}>Código de radicación *</Label>
+                      <Label className={labelCls}>Número de radicado de la nueva EAPB *</Label>
                       <Input
-                        value={cancelNuevoRadicado}
-                        onChange={(e) => setCancelNuevoRadicado(e.target.value)}
-                        placeholder="Código de radicación de la nueva EAPB/ERP"
+                        value={cambioRadicado}
+                        onChange={(e) => setCambioRadicado(e.target.value)}
+                        placeholder="Número de radicado"
                       />
                     </div>
-                  ) : cancelNuevaEapb.trim() ? (
-                    <div className="space-y-1.5">
-                      <Label className={labelCls}>Código de radicación</Label>
-                      <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-medium text-muted-foreground">
-                        NO APLICA
-                      </div>
-                    </div>
-                  ) : null}
+                  )}
+
                   <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-                    El caso NO se cierra: se cambia el responsable a la nueva EAPB/ERP, se conserva la
-                    trazabilidad anterior y el caso continúa activo en PENDIENTE ACEPTACIÓN.
+                    Al guardar se actualizará la aseguradora del caso con la nueva EAPB y sus datos
+                    de plataforma/radicado. Estado de solicitud → NO APLICA.
                   </p>
                 </div>
               )}
 
-              {/* Cancelaciones que cierran el caso */}
-              {esCancelacion && cancelacionCierra && (
-                <p className="rounded-md border border-amber-200 bg-amber-50/60 p-3 text-xs leading-relaxed text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
-                  Al guardar, el caso se cerrará como{" "}
-                  <strong>{CANCELACION_ESTADO_FINAL[cancelTipo]}</strong> y pasará al historial.
-                </p>
-              )}
-            </div>
-          )}
-
-
-          {/* CAMBIO DE ASEGURADOR A EAPB */}
-          {esSaliente && esCambioEapb && (
-            <div className={sectionCls}>
-              <div className="space-y-1.5">
-                <Label className={labelCls}>EAPB *</Label>
-                <AutoComplete
-                  value={cambioEapb}
-                  options={eapbOptions}
-                  placeholder="Escribe para buscar la nueva EAPB…"
-                  onChange={(v) => {
-                    setCambioEapb(v);
-                    setCambioPlataformaFunc("");
-                    setCambioRadicado("");
-                  }}
-                  onPick={(v) => {
-                    setCambioEapb(v);
-                    setCambioPlataformaFunc("");
-                    setCambioRadicado("");
-                  }}
-                />
-                {cambioEapbActual && (
-                  <p className="text-[10px] text-muted-foreground">
-                    {cambioTipoEntidad || "SIN TIPO"} ·{" "}
-                    {cambioTienePlataforma ? "Tiene plataforma" : "Sin plataforma"} ·{" "}
-                    {cambioGeneraCodigo ? "Genera código" : "No genera código"}
-                  </p>
-                )}
-              </div>
-
-              {cambioTienePlataforma && (
-                <div className="space-y-1.5">
-                  <Label className={labelCls}>¿La plataforma se encuentra funcionando? *</Label>
-                  <Select
-                    value={cambioPlataformaFunc}
-                    onValueChange={(v) => setCambioPlataformaFunc(v as "SI" | "NO")}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="SI">SÍ</SelectItem>
-                      <SelectItem value="NO">NO</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {cambioGeneraCodigo && (
-                <div className="space-y-1.5">
-                  <Label className={labelCls}>Número de radicado de la nueva EAPB *</Label>
+              {/* OTRO */}
+              {esSaliente && tipoSeg === T.OTRO && (
+                <div className={sectionCls}>
+                  <Label className={labelCls}>¿Cuál? *</Label>
                   <Input
-                    value={cambioRadicado}
-                    onChange={(e) => setCambioRadicado(e.target.value)}
-                    placeholder="Número de radicado"
+                    value={otroCual}
+                    onChange={(e) => setOtroCual(e.target.value)}
+                    placeholder="Indica el tipo de seguimiento realizado"
                   />
                 </div>
               )}
 
-              <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-                Al guardar se actualizará la aseguradora del caso con la nueva EAPB y sus datos de
-                plataforma/radicado. Estado de solicitud → NO APLICA.
-              </p>
-            </div>
-          )}
-
-
-          {/* OTRO */}
-          {esSaliente && tipoSeg === T.OTRO && (
-            <div className={sectionCls}>
-              <Label className={labelCls}>¿Cuál? *</Label>
-              <Input
-                value={otroCual}
-                onChange={(e) => setOtroCual(e.target.value)}
-                placeholder="Indica el tipo de seguimiento realizado"
-              />
-            </div>
-          )}
-
-          {/* REVISIÓN AUTORIZACIÓN ESTANCIA (CANCELACIÓN) — seguimiento de trazabilidad */}
-          {esSaliente && tipoSeg === T.PERTINENCIA && (
-            <div className={sectionCls}>
-              <p className="text-[10px] text-muted-foreground [overflow-wrap:anywhere]">
-                {REVISION_AUT_LABEL_COMPLETO}
-              </p>
-              <div className="space-y-1.5">
-                <Label className={labelCls}>Estado de autorización de estancia</Label>
-                <Select value={revOpcion} onValueChange={(v) => setRevOpcion(v as AutorizacionEstanciaOpcion)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Seleccionar…" />
-                  </SelectTrigger>
-                  <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
-                    {AUTORIZACION_ESTANCIA_OPCIONES.map((o) => (
-                      <SelectItem
-                        key={o.value}
-                        value={o.value}
-                        className="whitespace-normal [overflow-wrap:anywhere]"
-                        title={o.label}
-                      >
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {/* Opción 1: Referencia hace acercamiento al servicio actual del caso */}
-              {revOpcion === "CON_AUT_CON_NOTA" && (
-                <div className="space-y-1.5">
-                  <Label className={labelCls}>Servicio actual del paciente *</Label>
-                  <Select
-                    value={revServicio || caso?.servicio || ""}
-                    onValueChange={setRevServicio}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Seleccionar…" />
-                    </SelectTrigger>
-                    <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
-                      {SERVICIO_OPCIONES.map((s) => (
-                        <SelectItem key={s} value={s} className="whitespace-normal [overflow-wrap:anywhere]">
-                          {s}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-                Este seguimiento deja trazabilidad de la revisión y NO cierra el caso. El cierre se
-                realiza mediante una causal de cancelación (aval / continuidad de manejo integral,
-                etc.).
-              </p>
-            </div>
-          )}
-
-
-          {/* CONTACTO TELEFÓNICO · destinatario */}
-          {esTelefono && (
-            <div className={sectionCls}>
-              <Label className={labelCls}>Contacto realizado con</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {CONTACTO_DESTINOS.map((d) => {
-                  const active = contactoDestino === d.value;
-                  return (
-                    <button
-                      key={d.value}
-                      type="button"
-                      onClick={() => setContactoDestino(d.value)}
-                      className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
-                        active
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-muted/40 text-foreground hover:border-primary/50"
-                      }`}
+              {/* REVISIÓN AUTORIZACIÓN ESTANCIA (CANCELACIÓN) — seguimiento de trazabilidad */}
+              {esSaliente && tipoSeg === T.PERTINENCIA && (
+                <div className={sectionCls}>
+                  <p className="text-[10px] text-muted-foreground [overflow-wrap:anywhere]">
+                    {REVISION_AUT_LABEL_COMPLETO}
+                  </p>
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Estado de autorización de estancia</Label>
+                    <Select
+                      value={revOpcion}
+                      onValueChange={(v) => setRevOpcion(v as AutorizacionEstanciaOpcion)}
                     >
-                      {d.label}
-                    </button>
-                  );
-                })}
-              </div>
-              {contactoDestino === "IPS" && (
-                <div className="space-y-1.5 pt-1">
-                  <Label className={labelCls}>Nombre de la IPS</Label>
-                  <AutoComplete
-                    value={contactoIps}
-                    options={ipsLabels}
-                    placeholder="Escribe para buscar IPS…"
-                    minChars={2}
-                    onChange={setContactoIps}
-                    onPick={(label) => {
-                      const opt = ipsOptions.find((o) => o.label === label);
-                      setContactoIps(opt ? opt.ips : label);
-                    }}
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Seleccionar…" />
+                      </SelectTrigger>
+                      <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
+                        {AUTORIZACION_ESTANCIA_OPCIONES.map((o) => (
+                          <SelectItem
+                            key={o.value}
+                            value={o.value}
+                            className="whitespace-normal [overflow-wrap:anywhere]"
+                            title={o.label}
+                          >
+                            {o.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {/* Opción 1: Referencia hace acercamiento al servicio actual del caso */}
+                  {revOpcion === "CON_AUT_CON_NOTA" && (
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Servicio actual del paciente *</Label>
+                      <Select
+                        value={revServicio || caso?.servicio || ""}
+                        onValueChange={setRevServicio}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Seleccionar…" />
+                        </SelectTrigger>
+                        <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
+                          {SERVICIO_OPCIONES.map((s) => (
+                            <SelectItem
+                              key={s}
+                              value={s}
+                              className="whitespace-normal [overflow-wrap:anywhere]"
+                            >
+                              {s}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                    Este seguimiento deja trazabilidad de la revisión y NO cierra el caso. El cierre
+                    se realiza mediante una causal de cancelación (aval / continuidad de manejo
+                    integral, etc.).
+                  </p>
+                </div>
+              )}
+
+              {/* CONTACTO TELEFÓNICO · destinatario */}
+              {esTelefono && (
+                <div className={sectionCls}>
+                  <Label className={labelCls}>Contacto realizado con</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {CONTACTO_DESTINOS.map((d) => {
+                      const active = contactoDestino === d.value;
+                      return (
+                        <button
+                          key={d.value}
+                          type="button"
+                          onClick={() => setContactoDestino(d.value)}
+                          className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+                            active
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-muted/40 text-foreground hover:border-primary/50"
+                          }`}
+                        >
+                          {d.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {contactoDestino === "IPS" && (
+                    <div className="space-y-1.5 pt-1">
+                      <Label className={labelCls}>Nombre de la IPS</Label>
+                      <AutoComplete
+                        value={contactoIps}
+                        options={ipsLabels}
+                        placeholder="Escribe para buscar IPS…"
+                        minChars={2}
+                        onChange={setContactoIps}
+                        onPick={(label) => {
+                          const opt = ipsOptions.find((o) => o.label === label);
+                          setContactoIps(opt ? opt.ips : label);
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ASUNTO (correo electrónico / plataforma web) */}
+              {esSaliente && (tipoSeg === T.CORREO || tipoSeg === T.PLATAFORMA) && (
+                <div className="space-y-1.5">
+                  <Label className={labelCls}>Asunto</Label>
+                  <Input
+                    value={asunto}
+                    onChange={(e) => setAsunto(e.target.value)}
+                    placeholder="Asunto del seguimiento"
+                    maxLength={200}
                   />
                 </div>
               )}
-            </div>
-          )}
 
-          {/* ASUNTO (correo electrónico / plataforma web) */}
-          {esSaliente && (tipoSeg === T.CORREO || tipoSeg === T.PLATAFORMA) && (
-            <div className="space-y-1.5">
-              <Label className={labelCls}>Asunto</Label>
-              <Input
-                value={asunto}
-                onChange={(e) => setAsunto(e.target.value)}
-                placeholder="Asunto del seguimiento"
-                maxLength={200}
-              />
-            </div>
-          )}
-
-          {/* El campo "Estado de la solicitud" se eliminó del formulario: el estado se
+              {/* El campo "Estado de la solicitud" se eliminó del formulario: el estado se
               gestiona automáticamente vía "Estado del caso (automático)". El valor técnico
               interno se sigue guardando según el tipo de seguimiento. */}
 
-
-          {/* Contacto y teléfono (solo CONTACTO TELEFÓNICO en salientes) */}
-          {mostrarContacto && (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label className={labelCls}>Nombre de contacto</Label>
-                <Input
-                  value={nombreContacto}
-                  onChange={(e) => setNombreContacto(e.target.value)}
-                  placeholder="Nombre del contacto"
-                  maxLength={120}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className={labelCls}>Teléfono</Label>
-                <Input
-                  value={telefono}
-                  onChange={(e) => setTelefono(e.target.value)}
-                  placeholder="Teléfono"
-                  inputMode="tel"
-                  maxLength={30}
-                />
-              </div>
-            </div>
-          )}
-          </>
+              {/* Contacto y teléfono (solo CONTACTO TELEFÓNICO en salientes) */}
+              {mostrarContacto && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Nombre de contacto</Label>
+                    <Input
+                      value={nombreContacto}
+                      onChange={(e) => setNombreContacto(e.target.value)}
+                      placeholder="Nombre del contacto"
+                      maxLength={120}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Teléfono</Label>
+                    <Input
+                      value={telefono}
+                      onChange={(e) => setTelefono(e.target.value)}
+                      placeholder="Teléfono"
+                      inputMode="tel"
+                      maxLength={30}
+                    />
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {/* Observaciones */}
@@ -2724,7 +2798,12 @@ export function SeguimientoDialog({
                 onUsar={(texto) => setDetalle((d) => (d.trim() ? `${d}\n${texto}` : texto))}
               />
             </div>
-            <DictationTextarea dictationKey={`${dictPrefix}.seguimiento.observaciones`} value={detalle} onChange={(e) => setDetalle(e.target.value)} rows={3} />
+            <DictationTextarea
+              dictationKey={`${dictPrefix}.seguimiento.observaciones`}
+              value={detalle}
+              onChange={(e) => setDetalle(e.target.value)}
+              rows={3}
+            />
           </div>
 
           {/* Plantilla Índigo */}
@@ -2766,8 +2845,6 @@ export function SeguimientoDialog({
               />
             </div>
           )}
-
-
 
           {/* Evolución diaria por especialidad (solo módulos legacy) */}
           {mostrarEvolucionLegacy && (
@@ -2829,7 +2906,8 @@ export function SeguimientoDialog({
                   {requiereMotivoLegacy && (
                     <div className="space-y-1.5 pt-1">
                       <Label className="text-[11px] font-semibold uppercase tracking-wide text-status-amber">
-                        Motivo del pendiente {faltanLegacy.length ? `(falta ${faltanLegacy.join(", ")})` : ""}
+                        Motivo del pendiente{" "}
+                        {faltanLegacy.length ? `(falta ${faltanLegacy.join(", ")})` : ""}
                       </Label>
                       <Textarea
                         value={motivoEvo}
@@ -2861,7 +2939,9 @@ export function SeguimientoDialog({
                       <span className="text-xs font-semibold text-foreground">
                         {h.tipo_seguimiento || "Seguimiento"}
                       </span>
-                      <span className="text-[11px] text-muted-foreground">{fmtFechaHora(h.created_at)}</span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {fmtFechaHora(h.created_at)}
+                      </span>
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-2">
                       {h.estado_solicitud && (
@@ -2869,7 +2949,9 @@ export function SeguimientoDialog({
                           {h.estado_solicitud}
                         </span>
                       )}
-                      <span className="text-[11px] text-muted-foreground">{h.nombre_usuario || "—"}</span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {h.nombre_usuario || "—"}
+                      </span>
                       <Button
                         type="button"
                         size="sm"
@@ -2894,7 +2976,9 @@ export function SeguimientoDialog({
                             {medio ? ` · ${medio}` : ""}
                           </p>
                           {evol.length > 0 && (
-                            <p className="text-muted-foreground">Evolucionadas: {evol.join(", ")}</p>
+                            <p className="text-muted-foreground">
+                              Evolucionadas: {evol.join(", ")}
+                            </p>
                           )}
                           {pend.length > 0 && (
                             <p className="text-status-amber">Pendientes: {pend.join(", ")}</p>
@@ -2916,7 +3000,6 @@ export function SeguimientoDialog({
           </Button>
         </div>
       </DialogContent>
-
 
       {/* Detalle de un seguimiento */}
       <Dialog open={!!verDetalle} onOpenChange={(v) => !v && setVerDetalle(null)}>
