@@ -225,8 +225,8 @@ export function BorradoSeguroDialog({
 
   return (
     <Dialog open={open} onOpenChange={cerrar}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-2xl flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="shrink-0 space-y-1.5 border-b border-border px-6 pb-4 pt-6 text-left">
           <DialogTitle className="flex items-center gap-2 text-status-red">
             <Trash2 className="h-5 w-5" /> Zona de borrado seguro
           </DialogTitle>
@@ -235,6 +235,9 @@ export function BorradoSeguroDialog({
             únicamente los datos transaccionales seleccionados. Esta acción no se puede deshacer.
           </DialogDescription>
         </DialogHeader>
+
+        <div className="modal-scroll flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-6 py-4">
+
 
         {ES_PRODUCCION && (
           <div className="flex items-center gap-2 rounded-xl border border-status-red/40 bg-status-red/10 px-3 py-2 text-xs font-bold text-status-red">
@@ -290,7 +293,7 @@ export function BorradoSeguroDialog({
           </div>
         </div>
 
-        <div className="max-h-[42vh] overflow-y-auto pr-1">
+        <div className="pr-0.5">
           <Accordion type="multiple" className="w-full space-y-1.5">
             {modulosFiltrados.map(({ mod, subgrupos }) => {
               const Icono = ICONO_MODULO[mod.id] ?? Archive;
@@ -431,8 +434,9 @@ export function BorradoSeguroDialog({
             autoComplete="off"
           />
         </div>
+        </div>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0 border-t border-border px-6 py-4">
           <Button variant="ghost" onClick={() => cerrar(false)} disabled={cargando}>
             Cancelar
           </Button>

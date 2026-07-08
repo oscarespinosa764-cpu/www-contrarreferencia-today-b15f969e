@@ -250,6 +250,7 @@ export function DictadoPanel() {
   return (
     <Panel
       title="Dictado por voz"
+      bodyMaxHeight={null}
       action={
         isAdmin && (
           <Button
