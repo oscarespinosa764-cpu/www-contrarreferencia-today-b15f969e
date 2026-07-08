@@ -2179,13 +2179,68 @@ export function SeguimientoDialog({
           {esSaliente && esTraslado && (
             <div className={sectionCls}>
               <p className={labelCls}>Cierre por traslado efectivo</p>
+              <div className="space-y-1.5">
+                <Label className={labelCls}>IPS receptora</Label>
+                <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-medium text-muted-foreground [overflow-wrap:anywhere]">
+                  {caso?.ips_receptora || ipsReceptora || "—"}
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className={labelCls}>Fecha efectiva del traslado</Label>
+                  <Input
+                    value={trasFecha}
+                    inputMode="numeric"
+                    onChange={(e) => setTrasFecha(maskFechaInput(e.target.value))}
+                    placeholder="DD/MM/AAAA"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className={labelCls}>Hora efectiva del traslado</Label>
+                  <Input
+                    value={trasHora}
+                    inputMode="numeric"
+                    onChange={(e) => setTrasHora(maskHoraInput(e.target.value))}
+                    placeholder="HH:MM"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className={labelCls}>Empresa de traslado</Label>
+                  <AutoComplete
+                    value={trasEmpresa || caso?.prestador_traslado || ""}
+                    options={empresasTep}
+                    placeholder="Escribe para buscar empresa…"
+                    minChars={2}
+                    onChange={setTrasEmpresa}
+                    onPick={setTrasEmpresa}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className={labelCls}>Tipo de ambulancia</Label>
+                  <Input
+                    value={trasTipoAmb || caso?.tipo_ambulancia || ""}
+                    onChange={(e) => setTrasTipoAmb(e.target.value)}
+                    placeholder="Ej. TAB / TAM"
+                  />
+                </div>
+              </div>
+              <label className="flex items-start gap-2 rounded-md border border-border/60 bg-background/40 p-3 text-sm">
+                <Checkbox
+                  checked={trasConfirma}
+                  onCheckedChange={(v) => setTrasConfirma(!!v)}
+                  className="mt-0.5"
+                />
+                <span className="font-semibold">EL PACIENTE FUE TRASLADADO EFECTIVAMENTE.</span>
+              </label>
               <p className="rounded-md border border-amber-200 bg-amber-50/60 p-3 text-xs leading-relaxed text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
-                Se confirma que el paciente fue trasladado y recibido en la IPS receptora. Al
-                guardar se generará la plantilla de cierre, el caso pasará al estado{" "}
+                Al guardar se generará la plantilla de cierre, el caso pasará al estado{" "}
                 <strong>CERRADO POR TRASLADO EFECTIVO</strong> y se moverá al historial.
               </p>
             </div>
           )}
+
 
           {/* NOVEDADES (Parte 12) */}
           {esSaliente && esNovedades && (
