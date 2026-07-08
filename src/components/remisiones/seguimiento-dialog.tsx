@@ -32,12 +32,14 @@ import { Copy, RotateCcw, Plus, X, Eye } from "lucide-react";
 import {
   ACERCAMIENTO_OPCIONES,
   AMBULANCIA_VARIANTES,
-  CANCELACION_GESTION,
+  AUTORIZACION_ESTANCIA_OPCIONES,
+  CANCELACION_CIERRA,
+  CANCELACION_ESTADO_FINAL,
   CANCELACION_TIPOS,
   CONTACTO_DESTINOS,
   NEGACION_MOTIVOS,
+  PARENTESCO_OPCIONES,
   REVISION_AUT_LABEL_COMPLETO,
-  SERVICIO_CANCELACION,
   SERVICIO_OPCIONES,
   appendNota,
   esTramiteAdministrativo,
@@ -65,6 +67,7 @@ import {
   generarPlantillaTelefonico,
   type AcercamientoTipo,
   type AmbulanciaVariante,
+  type AutorizacionEstanciaOpcion,
   type CancelacionTipo,
   type ContactoDestino,
   type NegacionGrupo,
@@ -263,10 +266,12 @@ export function SeguimientoDialog({
 
   // Cancelación
   const [cancelTipo, setCancelTipo] = useState<CancelacionTipo>("desistimiento_general");
-  const [cancelGestion, setCancelGestion] = useState("");
-  const [cancelServicio, setCancelServicio] = useState("");
-  const [cancelFuncionario, setCancelFuncionario] = useState("");
-  const [cancelCargo, setCancelCargo] = useState("");
+  // Desistimiento de traslado general
+  const [cancelNombrePersona, setCancelNombrePersona] = useState("");
+  const [cancelParentesco, setCancelParentesco] = useState("");
+  // Superación de tope SOAT (cambio de responsable, mantiene el caso activo)
+  const [cancelNuevaEapb, setCancelNuevaEapb] = useState("");
+  const [cancelPlataformaFunc, setCancelPlataformaFunc] = useState<"" | "SI" | "NO">("");
   const [cancelNuevoRadicado, setCancelNuevoRadicado] = useState("");
 
   // Cambio de asegurador a EAPB
@@ -293,11 +298,16 @@ export function SeguimientoDialog({
   const [riInformoAmb, setRiInformoAmb] = useState(false);
   const [riInformoServ, setRiInformoServ] = useState(false);
 
-  // Revisión autorización estancia hospitalaria (antes pertinencia médica)
-  const [revAutoriza, setRevAutoriza] = useState<"" | "SI" | "NO">("");
-  const [revNota, setRevNota] = useState<"" | "SI" | "NO">("");
-  const [revFuncionario, setRevFuncionario] = useState("");
-  const [revCargo, setRevCargo] = useState("");
+  // Revisión autorización estancia hospitalaria (seguimiento de trazabilidad)
+  const [revOpcion, setRevOpcion] = useState<AutorizacionEstanciaOpcion>("");
+  const [revServicio, setRevServicio] = useState("");
+
+  // Cierre por traslado efectivo
+  const [trasFecha, setTrasFecha] = useState("");
+  const [trasHora, setTrasHora] = useState("");
+  const [trasEmpresa, setTrasEmpresa] = useState("");
+  const [trasTipoAmb, setTrasTipoAmb] = useState("");
+  const [trasConfirma, setTrasConfirma] = useState(false);
 
   // Asunto (correo / plataforma web)
   const [asunto, setAsunto] = useState("");
@@ -325,12 +335,13 @@ export function SeguimientoDialog({
       const { data } = await supabase
         .from((tabla ?? "remisiones") as "remisiones")
         .select(
-          "eapb, tipo_tramite, eapb_tiene_plataforma, eapb_genera_codigo, plataforma_funcionando, ips_receptora, codigo_radicacion, tipo_documento, cie10, tipo_ambulancia",
+          "eapb, asegurador, tipo_tramite, eapb_tiene_plataforma, eapb_genera_codigo, plataforma_funcionando, ips_receptora, codigo_radicacion, tipo_documento, cie10, tipo_ambulancia, servicio, prestador_traslado",
         )
         .eq("id", casoId)
         .maybeSingle();
       return data as {
         eapb: string | null;
+        asegurador: string | null;
         tipo_tramite: string | null;
         eapb_tiene_plataforma: boolean | null;
         eapb_genera_codigo: boolean | null;
@@ -340,6 +351,8 @@ export function SeguimientoDialog({
         tipo_documento: string | null;
         cie10: string | null;
         tipo_ambulancia: string | null;
+        servicio: string | null;
+        prestador_traslado: string | null;
       } | null;
     },
   });
@@ -551,13 +564,17 @@ export function SeguimientoDialog({
       setNovDesistAmb(false);
     }
     if (!usaIndigo || !tipoSeg) return;
-    // Estado de la solicitud automático según el tipo.
+    // Estado de la solicitud automático según el tipo (interno, ya no visible).
     if (tipoSeg === T.RADICADO || tipoSeg === T.CANCELACION || tipoSeg === T.CAMBIO_EAPB) setEstadoSolicitud("No aplica");
     else if (tipoSeg === T.ACEPTACION || tipoSeg === T.AMBULANCIA) setEstadoSolicitud("Sí acepta");
     else if (tipoSeg === T.NEGACIONES) setEstadoSolicitud("No acepta");
     else setEstadoSolicitud("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipoSeg]);
+
+  // ¿La cancelación seleccionada cierra el caso? (todas menos superación de tope SOAT)
+  const cancelacionCierra = CANCELACION_CIERRA[cancelTipo];
+  const esSuperacionTope = tipoSeg === T.CANCELACION && cancelTipo === "superacion_tope_soat";
 
   // Estado destino automático de la cadena secuencial (salientes).
   const estadoDestino = useMemo(() => {
@@ -568,7 +585,13 @@ export function SeguimientoDialog({
     else if (tipoSeg === T.ENTREGA_DOC) e = EST.PENDIENTE_EGRESO;
     else if (tipoSeg === T.CIERRE) e = cierreEgreso === "si" ? EST.CERRADO_EXITOSO : (estadoActual ?? EST.PENDIENTE_ACEPT);
     else if (tipoSeg === T.TRASLADO) e = EST.CERRADO_TRASLADO;
-    else if (tipoSeg === T.NOVEDADES && novPaciente) {
+    else if (tipoSeg === T.CANCELACION) {
+      // Superación de tope SOAT: continúa el caso → vuelve a PENDIENTE ACEPTACIÓN.
+      // Las demás cancelaciones cierran con su estado final estructurado.
+      e = cancelTipo === "superacion_tope_soat"
+        ? EST.PENDIENTE_ACEPT
+        : CANCELACION_ESTADO_FINAL[cancelTipo] || (estadoActual ?? EST.PENDIENTE_ACEPT);
+    } else if (tipoSeg === T.NOVEDADES && novPaciente) {
       if (novDesistTipo === "GENERAL") e = EST.DESIST_GENERAL;
       else if (novDesistTipo === "IPS_AMB") {
         if (novDesistIps) e = EST.DESIST_IPS;
@@ -577,7 +600,7 @@ export function SeguimientoDialog({
     }
     return e;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [esSaliente, estadoActual, estadoCaso, tipoSeg, cierreEgreso, novPaciente, novDesistTipo, novDesistIps, novDesistAmb]);
+  }, [esSaliente, estadoActual, estadoCaso, tipoSeg, cancelTipo, cierreEgreso, novPaciente, novDesistTipo, novDesistIps, novDesistAmb]);
 
   const esEvolucionSal = usaIndigo && tipoSeg === T.EVOLUCION;
   const esRadicado = usaIndigo && tipoSeg === T.RADICADO;
@@ -587,6 +610,7 @@ export function SeguimientoDialog({
   const esCierre = usaIndigo && tipoSeg === T.CIERRE;
   const esTraslado = usaIndigo && tipoSeg === T.TRASLADO;
   const esCambioEapb = usaIndigo && tipoSeg === T.CAMBIO_EAPB;
+  const esCancelacion = usaIndigo && tipoSeg === T.CANCELACION;
   const esNovedades = usaIndigo && tipoSeg === T.NOVEDADES;
 
   // --- Cambio de asegurador: EAPB seleccionada y sus flags (extra1=plataforma, extra2=código, extra3=tipo). ---
@@ -598,6 +622,21 @@ export function SeguimientoDialog({
   const cambioTienePlataforma = (cambioEapbActual?.extra1 ?? "").toUpperCase() === "SI";
   const cambioGeneraCodigo = (cambioEapbActual?.extra2 ?? "").toUpperCase() === "SI";
   const cambioTipoEntidad = (cambioEapbActual?.extra3 ?? "").toUpperCase();
+
+  // --- Superación de tope SOAT: nueva EAPB/ERP responsable y sus flags (reutiliza catálogo EAPB). ---
+  const cancelEapbActual = useMemo(
+    () => eapbCat.find((e) => e.valor === cancelNuevaEapb) ?? null,
+    [eapbCat, cancelNuevaEapb],
+  );
+  const cancelTienePlataforma = (cancelEapbActual?.extra1 ?? "").toUpperCase() === "SI";
+  const cancelGeneraCodigo = (cancelEapbActual?.extra2 ?? "").toUpperCase() === "SI";
+  const cancelTipoEntidad = (cancelEapbActual?.extra3 ?? "").toUpperCase();
+  // Responsable anterior (para la fotografía histórica del cambio).
+  const responsableAnterior = caso?.asegurador || caso?.eapb || "";
+  // Radicación resultante para la nueva EAPB: código si genera, si no NO APLICA.
+  const cancelRadicacionFinal = cancelGeneraCodigo
+    ? cancelNuevoRadicado.trim()
+    : "NO APLICA";
   // Casilla "Ambulancia" solo disponible tras coordinar ambulancia (o pendiente egreso).
   const novAmbDisponible = faseAceptadoCon || facePendienteEgreso;
 
@@ -770,26 +809,30 @@ export function SeguimientoDialog({
       case T.CANCELACION:
         base = generarPlantillaCancelacionRemision({
           tipo: cancelTipo,
-          gestion: cancelGestion,
-          servicio: cancelServicio,
-          funcionario: cancelFuncionario,
-          cargo: cancelCargo,
-          nuevoRadicado: cancelNuevoRadicado,
+          nombrePersona: cancelNombrePersona,
+          parentesco: cancelParentesco,
+          aseguradoraAnterior: responsableAnterior,
+          nuevaEapb: cancelNuevaEapb,
+          radicacion: cancelRadicacionFinal,
         });
         break;
       case T.PERTINENCIA:
         base = generarPlantillaRevisionAutorizacion({
-          cuentaAutorizacion: revAutoriza === "SI" ? true : revAutoriza === "NO" ? false : null,
-          cuentaNota: revNota === "SI" ? true : revNota === "NO" ? false : null,
-          funcionario: revFuncionario,
-          cargo: revCargo,
+          opcion: revOpcion,
+          servicio: revServicio || caso?.servicio || "",
         });
         break;
       case T.CIERRE:
         base = generarPlantillaCierreAdmision(caso?.ips_receptora ?? ipsReceptora);
         break;
       case T.TRASLADO:
-        base = generarPlantillaCierreTraslado(caso?.ips_receptora ?? ipsReceptora);
+        base = generarPlantillaCierreTraslado({
+          ipsReceptora: caso?.ips_receptora ?? ipsReceptora,
+          fecha: trasFecha,
+          hora: trasHora,
+          empresa: trasEmpresa || caso?.prestador_traslado || "",
+          tipoAmbulancia: trasTipoAmb || caso?.tipo_ambulancia || "",
+        });
         break;
       case T.CAMBIO_EAPB:
         base = generarPlantillaCambioAsegurador({
@@ -871,20 +914,23 @@ export function SeguimientoDialog({
     fechaTraslado,
     horaTraslado,
     cancelTipo,
-    cancelGestion,
-    cancelServicio,
-    cancelFuncionario,
-    cancelCargo,
+    cancelNombrePersona,
+    cancelParentesco,
+    cancelNuevaEapb,
+    cancelRadicacionFinal,
+    responsableAnterior,
     cancelNuevoRadicado,
     cambioEapb,
     cambioTienePlataforma,
     cambioGeneraCodigo,
     cambioPlataformaFunc,
     cambioRadicado,
-    revAutoriza,
-    revNota,
-    revFuncionario,
-    revCargo,
+    revOpcion,
+    revServicio,
+    trasFecha,
+    trasHora,
+    trasEmpresa,
+    trasTipoAmb,
     otroCual,
     novPaciente,
     novIps,
@@ -1103,23 +1149,33 @@ export function SeguimientoDialog({
       case T.CANCELACION:
         return {
           tipo: cancelTipo,
-          gestion: cancelGestion || null,
-          servicio: cancelServicio || null,
-          funcionario: cancelFuncionario.trim() || null,
-          cargo: cancelCargo.trim() || null,
-          nuevo_radicado: cancelNuevoRadicado.trim() || null,
+          cierra: cancelacionCierra,
+          estado_final: cancelacionCierra ? CANCELACION_ESTADO_FINAL[cancelTipo] || null : null,
+          // Desistimiento de traslado general
+          nombre_persona: cancelTipo === "desistimiento_general" ? cancelNombrePersona.trim() || null : null,
+          parentesco: cancelTipo === "desistimiento_general" ? cancelParentesco || null : null,
+          // Superación de tope SOAT (fotografía histórica del cambio de responsable)
+          responsable_anterior: esSuperacionTope ? responsableAnterior || null : null,
+          nueva_eapb: esSuperacionTope ? cancelNuevaEapb.trim() || null : null,
+          radicado_anterior: esSuperacionTope ? radicadoReal || null : null,
+          radicacion_nueva: esSuperacionTope ? cancelRadicacionFinal || null : null,
         };
       case T.PERTINENCIA:
         return {
-          cuenta_autorizacion: revAutoriza || null,
-          cuenta_nota: revAutoriza === "SI" ? revNota || null : null,
-          funcionario: revFuncionario.trim() || null,
-          cargo: revCargo.trim() || null,
+          autorizacion_estancia: revOpcion || null,
+          servicio: revServicio || caso?.servicio || null,
         };
       case T.CIERRE:
         return { egreso: cierreEgreso || null, ips_receptora: caso?.ips_receptora ?? ipsReceptora ?? null };
       case T.TRASLADO:
-        return { traslado_efectivo: true, ips_receptora: caso?.ips_receptora ?? ipsReceptora ?? null };
+        return {
+          traslado_efectivo: true,
+          ips_receptora: caso?.ips_receptora ?? ipsReceptora ?? null,
+          fecha: trasFecha.trim() || null,
+          hora: trasHora.trim() || null,
+          empresa: trasEmpresa.trim() || caso?.prestador_traslado || null,
+          tipo_ambulancia: trasTipoAmb.trim() || caso?.tipo_ambulancia || null,
+        };
       case T.CAMBIO_EAPB:
         return {
           nueva_eapb: cambioEapb.trim() || null,
@@ -1162,10 +1218,11 @@ export function SeguimientoDialog({
     setEmpresaAmb("");
     setFechaTraslado("");
     setHoraTraslado("");
-    setCancelGestion("");
-    setCancelServicio("");
-    setCancelFuncionario("");
-    setCancelCargo("");
+    setCancelTipo("desistimiento_general");
+    setCancelNombrePersona("");
+    setCancelParentesco("");
+    setCancelNuevaEapb("");
+    setCancelPlataformaFunc("");
     setCancelNuevoRadicado("");
     setCambioEapb("");
     setCambioPlataformaFunc("");
@@ -1180,10 +1237,13 @@ export function SeguimientoDialog({
     setAsunto("");
     setContactoDestino("");
     setContactoIps("");
-    setRevAutoriza("");
-    setRevNota("");
-    setRevFuncionario("");
-    setRevCargo("");
+    setRevOpcion("");
+    setRevServicio("");
+    setTrasFecha("");
+    setTrasHora("");
+    setTrasEmpresa("");
+    setTrasTipoAmb("");
+    setTrasConfirma(false);
     setNuevoRadicadoMode(false);
     setNuevoRadicado("");
     setRiFuncionario("");
@@ -1215,11 +1275,32 @@ export function SeguimientoDialog({
       if (usaIndigo && tipoSeg === T.OTRO && !otroCual.trim())
         return toast.error("Indica en el campo CUÁL");
       if (usaIndigo && tipoSeg === T.PERTINENCIA) {
-        if (!revAutoriza) return toast.error("Indica el estado de autorización de estancia");
-        if (revAutoriza === "SI" && !revNota)
-          return toast.error("Indica la trazabilidad de autorizaciones");
-        if (revAutoriza === "SI" && revNota === "NO" && !revFuncionario.trim())
-          return toast.error("Indica el nombre del funcionario");
+        if (!revOpcion) return toast.error("Indica el estado de autorización de estancia");
+        if (revOpcion === "CON_AUT_CON_NOTA" && !(revServicio || caso?.servicio || "").trim())
+          return toast.error("Indica el servicio actual del paciente");
+      }
+      // Cancelación de trámite de remisión.
+      if (esCancelacion) {
+        if (cancelTipo === "desistimiento_general") {
+          if (!cancelNombrePersona.trim())
+            return toast.error("Indica el nombre de la persona que firma el desistimiento");
+          if (!cancelParentesco)
+            return toast.error("Indica el parentesco / relación de la persona");
+        }
+        if (esSuperacionTope) {
+          if (!cancelNuevaEapb.trim()) return toast.error("Selecciona la nueva EAPB/ERP responsable");
+          if (cancelGeneraCodigo && !cancelNuevoRadicado.trim())
+            return toast.error("Ingresa el código de radicación de la nueva EAPB/ERP");
+        }
+      }
+      // Cierre por traslado efectivo.
+      if (esTraslado) {
+        if (trasFecha.trim() && !isFechaValida(trasFecha))
+          return toast.error("Fecha del traslado inválida (DD/MM/AAAA)");
+        if (trasHora.trim() && !isHoraValida(trasHora))
+          return toast.error("Hora del traslado inválida (HH:MM)");
+        if (!trasConfirma)
+          return toast.error("Confirma que el paciente fue trasladado efectivamente");
       }
       if (usaIndigo && tipoSeg === T.NEGACIONES && negGruposPreview.length === 0)
         return toast.error("Agrega al menos un motivo de negación con su IPS");
@@ -1267,6 +1348,25 @@ export function SeguimientoDialog({
       }
       if (requiereMotivoLegacy && mostrarEvolucionLegacy && !motivoEvo.trim())
         return toast.error("Indica el motivo de la evolución pendiente");
+
+      // Confirmaciones previas para acciones que cierran el caso.
+      if (esTraslado) {
+        if (
+          !window.confirm(
+            "¿CONFIRMA EL CIERRE DEL CASO POR TRASLADO EFECTIVO?\n\nEl caso será retirado de los casos activos y trasladado al historial. Toda la trazabilidad será conservada.",
+          )
+        )
+          return;
+      }
+      if (esCancelacion && cancelacionCierra) {
+        const label = CANCELACION_TIPOS.find((c) => c.value === cancelTipo)?.label ?? "";
+        if (
+          !window.confirm(
+            `¿CONFIRMA LA CANCELACIÓN Y CIERRE DEL CASO?\n\n${label}\n\nEl caso será retirado de los casos activos y trasladado al historial. Toda la trazabilidad será conservada.`,
+          )
+        )
+          return;
+      }
     }
 
     setBusy(true);
@@ -1322,6 +1422,8 @@ export function SeguimientoDialog({
         eapb_tiene_plataforma?: boolean;
         eapb_genera_codigo?: boolean;
         plataforma_funcionando?: boolean | null;
+        prestador_traslado?: string;
+        tipo_ambulancia?: string;
       } = {};
       // Evolución diaria salientes v2: refleja estado en la tarjeta.
       if (esEvolucionSal) {
@@ -1343,8 +1445,22 @@ export function SeguimientoDialog({
       if (esRadicado && radicado.trim()) update.codigo_radicacion = radicado.trim();
       if (nuevoRadicadoMode && nuevoRadicado.trim())
         update.codigo_radicacion = [...radicadosLista, nuevoRadicado.trim()].join(" · ");
-      if (esSaliente && tipoSeg === T.CANCELACION && cancelNuevoRadicado.trim())
-        update.codigo_radicacion = cancelNuevoRadicado.trim();
+      // Cierre por traslado efectivo: refleja empresa/tipo de ambulancia usados.
+      if (esSaliente && esTraslado) {
+        if (trasEmpresa.trim()) update.prestador_traslado = trasEmpresa.trim();
+        if (trasTipoAmb.trim()) update.tipo_ambulancia = trasTipoAmb.trim();
+      }
+      // Cancelación por SUPERACIÓN DE TOPE SOAT: NO cierra el caso. Cambia el
+      // responsable del aseguramiento a la nueva EAPB/ERP y continúa activo.
+      if (esSaliente && esSuperacionTope && cancelNuevaEapb.trim()) {
+        update.eapb = cancelNuevaEapb.trim();
+        update.asegurador = cancelNuevaEapb.trim();
+        update.eapb_tiene_plataforma = cancelTienePlataforma;
+        update.eapb_genera_codigo = cancelGeneraCodigo;
+        update.plataforma_funcionando = cancelTienePlataforma ? cancelPlataformaFunc === "SI" : null;
+        // Radicación: código nuevo si la EAPB genera, si no NO APLICA.
+        update.codigo_radicacion = cancelGeneraCodigo ? cancelNuevoRadicado.trim() : "NO APLICA";
+      }
       // Cambio de asegurador a EAPB: actualiza la aseguradora del caso y sus flags.
       if (esSaliente && esCambioEapb && cambioEapb.trim()) {
         update.eapb = cambioEapb.trim();
@@ -1357,9 +1473,17 @@ export function SeguimientoDialog({
       // Salientes: estado automático según la cadena secuencial.
       if (esSaliente) {
         if (estadoDestino && estadoDestino !== (estadoActual ?? "")) update.estado = estadoDestino;
-        // Cierre por egresos (remisión exitosa), traslado efectivo o
-        // desistimiento general → cierra el caso y lo archiva (pasa a histórico).
-        if (
+        // Cancelaciones que cierran el caso (todas menos superación de tope SOAT).
+        if (esCancelacion && cancelacionCierra) {
+          update.estado = CANCELACION_ESTADO_FINAL[cancelTipo] || estadoDestino;
+          update.archivado = true;
+        } else if (esCancelacion && esSuperacionTope) {
+          // Superación de tope: continúa activo, vuelve a PENDIENTE ACEPTACIÓN.
+          update.estado = EST.PENDIENTE_ACEPT;
+          update.archivado = false;
+        } else if (
+          // Cierre por egresos (remisión exitosa), traslado efectivo o
+          // desistimiento general → cierra el caso y lo archiva (pasa a histórico).
           (esCierre && cierreEgreso === "si") ||
           esTraslado ||
           estadoDestino === EST.CERRADO_EXITOSO ||
@@ -2170,68 +2294,118 @@ export function SeguimientoDialog({
                 </Select>
               </div>
 
-              {cancelTipo === "administrativo" && (
-                <div className="space-y-3">
+              {/* Desistimiento de traslado general: nombre + parentesco */}
+              {cancelTipo === "desistimiento_general" && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label className={labelCls}>Motivo / gestión administrativa</Label>
-                    <Select value={cancelGestion} onValueChange={setCancelGestion}>
-                      <SelectTrigger>
+                    <Label className={labelCls}>Nombre de la persona *</Label>
+                    <Input
+                      value={cancelNombrePersona}
+                      onChange={(e) => setCancelNombrePersona(e.target.value)}
+                      placeholder="Nombre y apellido"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Parentesco / relación *</Label>
+                    <Select value={cancelParentesco} onValueChange={setCancelParentesco}>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Seleccionar…" />
                       </SelectTrigger>
-                      <SelectContent className="max-w-[calc(100vw-2rem)]">
-                        {CANCELACION_GESTION.map((g) => (
-                          <SelectItem key={g} value={g} className="whitespace-normal">
-                            {g}
+                      <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
+                        {PARENTESCO_OPCIONES.map((p) => (
+                          <SelectItem key={p} value={p} className="whitespace-normal [overflow-wrap:anywhere]">
+                            {p}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                  {cancelGestion === "SOLICITUD DE CANCELACIÓN AL CHAT DEL ÁREA" && (
-                    <>
-                      <div className="space-y-1.5">
-                        <Label className={labelCls}>Servicio</Label>
-                        <Select value={cancelServicio} onValueChange={setCancelServicio}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Seleccionar…" />
-                          </SelectTrigger>
-                          <SelectContent className="max-w-[calc(100vw-2rem)]">
-                            {SERVICIO_CANCELACION.map((s) => (
-                              <SelectItem key={s} value={s} className="whitespace-normal">
-                                {s}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div className="space-y-1.5">
-                          <Label className={labelCls}>Nombre del funcionario</Label>
-                          <Input value={cancelFuncionario} onChange={(e) => setCancelFuncionario(e.target.value)} />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className={labelCls}>Cargo del funcionario</Label>
-                          <Input value={cancelCargo} onChange={(e) => setCancelCargo(e.target.value)} />
-                        </div>
-                      </div>
-                    </>
-                  )}
                 </div>
               )}
 
-              {cancelTipo === "cambio_erp" && (esSoatCaso || !generaCodigo) && (
-                <div className="space-y-1.5">
-                  <Label className={labelCls}>Nuevo radicado (si la nueva EAPB genera código)</Label>
-                  <Input
-                    value={cancelNuevoRadicado}
-                    onChange={(e) => setCancelNuevoRadicado(e.target.value)}
-                    placeholder="Número de radicado nuevo"
-                  />
+              {/* Superación de tope SOAT: cambio de responsable (mantiene el caso activo) */}
+              {esSuperacionTope && (
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Responsable anterior</Label>
+                    <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-medium text-muted-foreground [overflow-wrap:anywhere]">
+                      {responsableAnterior || "—"}
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Nueva EAPB/ERP responsable *</Label>
+                    <AutoComplete
+                      value={cancelNuevaEapb}
+                      options={eapbOptions}
+                      placeholder="Escribe para buscar la nueva EAPB/ERP…"
+                      onChange={(v) => {
+                        setCancelNuevaEapb(v);
+                        setCancelNuevoRadicado("");
+                      }}
+                      onPick={(v) => {
+                        setCancelNuevaEapb(v);
+                        setCancelNuevoRadicado("");
+                      }}
+                    />
+                    {cancelEapbActual && (
+                      <p className="text-[10px] text-muted-foreground">
+                        {cancelTipoEntidad || "SIN TIPO"} ·{" "}
+                        {cancelTienePlataforma ? "Tiene plataforma" : "Sin plataforma"} ·{" "}
+                        {cancelGeneraCodigo ? "Genera código" : "No genera código"}
+                      </p>
+                    )}
+                  </div>
+                  {cancelTienePlataforma && (
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>¿La plataforma se encuentra funcionando?</Label>
+                      <Select
+                        value={cancelPlataformaFunc}
+                        onValueChange={(v) => setCancelPlataformaFunc(v as "SI" | "NO")}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Seleccionar…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="SI">SÍ</SelectItem>
+                          <SelectItem value="NO">NO</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {cancelGeneraCodigo ? (
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Código de radicación *</Label>
+                      <Input
+                        value={cancelNuevoRadicado}
+                        onChange={(e) => setCancelNuevoRadicado(e.target.value)}
+                        placeholder="Código de radicación de la nueva EAPB/ERP"
+                      />
+                    </div>
+                  ) : cancelNuevaEapb.trim() ? (
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Código de radicación</Label>
+                      <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-medium text-muted-foreground">
+                        NO APLICA
+                      </div>
+                    </div>
+                  ) : null}
+                  <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                    El caso NO se cierra: se cambia el responsable a la nueva EAPB/ERP, se conserva la
+                    trazabilidad anterior y el caso continúa activo en PENDIENTE ACEPTACIÓN.
+                  </p>
                 </div>
               )}
-              <p className="text-[10px] text-muted-foreground">Estado de solicitud → NO APLICA.</p>
+
+              {/* Cancelaciones que cierran el caso */}
+              {esCancelacion && cancelacionCierra && (
+                <p className="rounded-md border border-amber-200 bg-amber-50/60 p-3 text-xs leading-relaxed text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
+                  Al guardar, el caso se cerrará como{" "}
+                  <strong>{CANCELACION_ESTADO_FINAL[cancelTipo]}</strong> y pasará al historial.
+                </p>
+              )}
             </div>
           )}
+
 
           {/* CAMBIO DE ASEGURADOR A EAPB */}
           {esSaliente && esCambioEapb && (
@@ -2311,58 +2485,61 @@ export function SeguimientoDialog({
             </div>
           )}
 
-          {/* REVISIÓN AUTORIZACIÓN ESTANCIA HOSPITALARIA (CANCELACIÓN) */}
+          {/* REVISIÓN AUTORIZACIÓN ESTANCIA (CANCELACIÓN) — seguimiento de trazabilidad */}
           {esSaliente && tipoSeg === T.PERTINENCIA && (
             <div className={sectionCls}>
-              <p className="text-[10px] text-muted-foreground">{REVISION_AUT_LABEL_COMPLETO}</p>
+              <p className="text-[10px] text-muted-foreground [overflow-wrap:anywhere]">
+                {REVISION_AUT_LABEL_COMPLETO}
+              </p>
               <div className="space-y-1.5">
                 <Label className={labelCls}>Estado de autorización de estancia</Label>
-                <Select value={revAutoriza} onValueChange={(v) => setRevAutoriza(v as "SI" | "NO")}>
-                  <SelectTrigger>
+                <Select value={revOpcion} onValueChange={(v) => setRevOpcion(v as AutorizacionEstanciaOpcion)}>
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Seleccionar…" />
                   </SelectTrigger>
-                  <SelectContent className="max-w-[calc(100vw-2rem)]">
-                    <SelectItem value="SI" className="whitespace-normal">
-                      CUENTA CON AUTORIZACIÓN
-                    </SelectItem>
-                    <SelectItem value="NO" className="whitespace-normal">
-                      NO CUENTA CON AUTORIZACIÓN
-                    </SelectItem>
+                  <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
+                    {AUTORIZACION_ESTANCIA_OPCIONES.map((o) => (
+                      <SelectItem
+                        key={o.value}
+                        value={o.value}
+                        className="whitespace-normal [overflow-wrap:anywhere]"
+                        title={o.label}
+                      >
+                        {o.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-              {revAutoriza === "SI" && (
+              {/* Opción 1: Referencia hace acercamiento al servicio actual del caso */}
+              {revOpcion === "CON_AUT_CON_NOTA" && (
                 <div className="space-y-1.5">
-                  <Label className={labelCls}>Trazabilidad de autorizaciones</Label>
-                  <Select value={revNota} onValueChange={(v) => setRevNota(v as "SI" | "NO")}>
-                    <SelectTrigger>
+                  <Label className={labelCls}>Servicio actual del paciente *</Label>
+                  <Select
+                    value={revServicio || caso?.servicio || ""}
+                    onValueChange={setRevServicio}
+                  >
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Seleccionar…" />
                     </SelectTrigger>
-                    <SelectContent className="max-w-[calc(100vw-2rem)]">
-                      <SelectItem value="SI" className="whitespace-normal">
-                        CUENTA CON NOTA DE TRAZABILIDAD DE CANCELACIÓN
-                      </SelectItem>
-                      <SelectItem value="NO" className="whitespace-normal">
-                        NO CUENTA CON NOTA DE TRAZABILIDAD DE CANCELACIÓN
-                      </SelectItem>
+                    <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
+                      {SERVICIO_OPCIONES.map((s) => (
+                        <SelectItem key={s} value={s} className="whitespace-normal [overflow-wrap:anywhere]">
+                          {s}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
               )}
-              {revAutoriza === "SI" && revNota === "NO" && (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label className={labelCls}>Nombre del funcionario</Label>
-                    <Input value={revFuncionario} onChange={(e) => setRevFuncionario(e.target.value)} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className={labelCls}>Cargo</Label>
-                    <Input value={revCargo} onChange={(e) => setRevCargo(e.target.value)} />
-                  </div>
-                </div>
-              )}
+              <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                Este seguimiento deja trazabilidad de la revisión y NO cierra el caso. El cierre se
+                realiza mediante una causal de cancelación (aval / continuidad de manejo integral,
+                etc.).
+              </p>
             </div>
           )}
+
 
           {/* CONTACTO TELEFÓNICO · destinatario */}
           {esTelefono && (
