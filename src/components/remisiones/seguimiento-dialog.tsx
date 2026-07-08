@@ -43,7 +43,6 @@ import {
   SERVICIO_OPCIONES,
   appendNota,
   esTramiteAdministrativo,
-  esTramiteSoat,
   generarPlantillaAceptacionIps,
   generarPlantillaAmbulancia,
   generarPlantillaCambioAsegurador,
@@ -442,7 +441,6 @@ export function SeguimientoDialog({
   // --- Flags derivados del caso ---
   const generaCodigo = caso?.eapb_genera_codigo === true;
   const tienePlataforma = caso?.eapb_tiene_plataforma === true;
-  const esSoatCaso = esTramiteSoat(caso?.tipo_tramite ?? "");
   const esAdminCaso = esTramiteAdministrativo(caso?.tipo_tramite ?? "");
 
   const radicadoReal =
