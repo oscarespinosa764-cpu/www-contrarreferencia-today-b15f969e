@@ -124,6 +124,7 @@ export function AlertasPanel() {
     <div className="space-y-4">
       <Panel
         title="Programación de notificaciones"
+        bodyMaxHeight={null}
         action={
           <ProgramarAlertasDialog
             trigger={
@@ -134,7 +135,7 @@ export function AlertasPanel() {
           />
         }
       >
-        <div className="flex items-center justify-center gap-2 py-2 text-sm">
+        <div className="flex flex-col items-center gap-1.5 text-sm">
           {cfg?.config.activo ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-status-green/15 px-3 py-1 font-semibold text-status-green">
               <CheckCircle2 className="h-4 w-4" /> Alertas automáticas activas · cada {cfg.config.frecuencia} min
@@ -144,13 +145,14 @@ export function AlertasPanel() {
               <BellRing className="h-4 w-4" /> Alertas automáticas desactivadas
             </span>
           )}
+          <p className="text-center text-[11px] leading-snug text-muted-foreground">
+            {isAdmin
+              ? "Programar configura los canales de correo, Telegram y webhook/WhatsApp. No crea avisos."
+              : "Solo coordinación (ADMIN) puede modificar la programación."}
+          </p>
         </div>
-        <p className="text-center text-[11px] text-muted-foreground">
-          {isAdmin
-            ? "Programar configura los canales de correo, Telegram y webhook/WhatsApp. No crea avisos."
-            : "Solo coordinación (ADMIN) puede modificar la programación."}
-        </p>
       </Panel>
+
 
       <Panel
         title={`Avisos operativos · ${lista.length}`}
