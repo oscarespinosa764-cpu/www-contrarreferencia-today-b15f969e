@@ -150,7 +150,6 @@ const TP = {
 } as const;
 const TIPOS_PENDIENTE = [TP.PARCIAL, TP.COMPLETO];
 
-const ESTADOS_SOLICITUD = ["Sí acepta", "No acepta", "Pendiente", "No aplica"];
 
 function splitComma(v?: string | null): string[] {
   return (v ?? "")
