@@ -485,7 +485,10 @@ export function SeguimientoDialog({
       T.NEGACIONES,
       ...(mostrarAmbulancia ? [T.AMBULANCIA] : []),
       ...(mostrarEntregaDocOpt ? [T.ENTREGA_DOC] : []),
-      ...(mostrarCierreOpt ? [T.CIERRE, T.TRASLADO] : []),
+      ...(mostrarCierreOpt ? [T.CIERRE] : []),
+      // CIERRE POR TRASLADO EFECTIVO: siempre visible en el selector; se deshabilita
+      // cuando el caso aún no completó la cadena (aceptación → ambulancia → entrega).
+      T.TRASLADO,
       T.CAMBIO_EAPB,
       T.CANCELACION,
       T.PERTINENCIA,
