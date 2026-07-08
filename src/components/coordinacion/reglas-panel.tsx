@@ -181,7 +181,12 @@ export function ReglasPanel() {
         />
       </div>
 
+      <div
+        className="scrollbar-invisible overflow-y-auto overflow-x-hidden pr-0.5"
+        style={{ maxHeight: "calc(100dvh - 22rem)" }}
+      >
       {isLoading ? (
+
         <p className="py-8 text-center text-sm text-muted-foreground">Cargando…</p>
       ) : reglasF.length > 0 ? (
         <div className="grid gap-3">
