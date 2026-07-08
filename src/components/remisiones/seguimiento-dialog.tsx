@@ -977,12 +977,8 @@ export function SeguimientoDialog({
   const mostrarContacto = usaIndigo ? esTelefono : false;
   // Estado del caso editable salvo en FÍSICO/PRESENCIAL.
   const estadoCasoEditable = !esFisico;
-  // Estado de solicitud automático (no editable) en ciertos tipos.
-  const estadoSolicAuto =
-    usaIndigo &&
-    [T.RADICADO, T.CANCELACION, T.CAMBIO_EAPB, T.ACEPTACION, T.AMBULANCIA, T.NEGACIONES, T.EVOLUCION].includes(
-      tipoSeg as never,
-    );
+  // El "Estado de la solicitud" ya no se muestra al usuario; se mantiene el valor
+  // técnico interno (estadoSolicitud) que se define automáticamente por tipo.
   const mostrarIndigo = !!tipoSeg || nuevoRadicadoMode;
   // Estado de la solicitud solo aplica a módulos con Índigo.
   const mostrarEstadoSolicitud = usaIndigo;
