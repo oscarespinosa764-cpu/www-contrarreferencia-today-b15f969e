@@ -2338,12 +2338,17 @@ export function SeguimientoDialog({
               <div className="space-y-1.5">
                 <Label className={labelCls}>Tipo de cancelación</Label>
                 <Select value={cancelTipo} onValueChange={(v) => setCancelTipo(v as CancelacionTipo)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="max-w-[calc(100vw-2rem)]">
+                  <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
                     {CANCELACION_TIPOS.map((s) => (
-                      <SelectItem key={s.value} value={s.value} className="whitespace-normal">
+                      <SelectItem
+                        key={s.value}
+                        value={s.value}
+                        className="whitespace-normal [overflow-wrap:anywhere]"
+                        title={s.label}
+                      >
                         {s.label}
                       </SelectItem>
                     ))}
