@@ -2745,9 +2745,7 @@ export function SeguimientoDialog({
             </div>
           )}
 
-          <Button className="w-full rounded-full" disabled={busy} onClick={guardar}>
-            {busy ? "Guardando…" : "Registrar seguimiento"}
-          </Button>
+
 
           {/* Evolución diaria por especialidad (solo módulos legacy) */}
           {mostrarEvolucionLegacy && (
