@@ -1768,16 +1768,26 @@ export function SeguimientoDialog({
                     <SelectValue placeholder="Seleccionar…" />
                   </SelectTrigger>
                   <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
-                    {TIPOS_SEG.map((t) => (
-                      <SelectItem
-                        key={t}
-                        value={t}
-                        className="whitespace-normal [overflow-wrap:anywhere]"
-                        title={t === T.PERTINENCIA ? REVISION_AUT_LABEL_COMPLETO : t}
-                      >
-                        {t}
-                      </SelectItem>
-                    ))}
+                    {TIPOS_SEG.map((t) => {
+                      const trasladoBloqueado = t === T.TRASLADO && !mostrarCierreOpt;
+                      return (
+                        <SelectItem
+                          key={t}
+                          value={t}
+                          disabled={trasladoBloqueado}
+                          className="whitespace-normal [overflow-wrap:anywhere]"
+                          title={t === T.PERTINENCIA ? REVISION_AUT_LABEL_COMPLETO : t}
+                        >
+                          {t}
+                          {trasladoBloqueado && (
+                            <span className="mt-0.5 block text-[10px] font-normal normal-case text-muted-foreground">
+                              Disponible después de registrar aceptación, ambulancia coordinada y
+                              entrega documental.
+                            </span>
+                          )}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
