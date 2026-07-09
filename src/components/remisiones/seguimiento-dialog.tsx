@@ -279,9 +279,14 @@ export function SeguimientoDialog({
   const [novPaciente, setNovPaciente] = useState(false);
   const [novIps, setNovIps] = useState(false);
   const [novAmbulancia, setNovAmbulancia] = useState(false);
-  const [novDesistTipo, setNovDesistTipo] = useState<"" | "IPS_AMB" | "GENERAL">("");
+  const [novDesistTipo, setNovDesistTipo] = useState<"" | "NO" | "IPS" | "AMB" | "GENERAL">("");
   const [novDesistIps, setNovDesistIps] = useState(false);
   const [novDesistAmb, setNovDesistAmb] = useState(false);
+  // Novedad de la IPS receptora (desistimiento hacia IPS / cancela / posterga).
+  const [novIpsTipo, setNovIpsTipo] = useState<"" | "DESIST_IPS" | "CANCELA" | "POSTERGA">("");
+  const [novIpsMotivo, setNovIpsMotivo] = useState("");
+  const [novIpsFecha, setNovIpsFecha] = useState("");
+  const [novIpsHora, setNovIpsHora] = useState("");
 
   // Referencia interna
   const [riFuncionario, setRiFuncionario] = useState("");
@@ -472,6 +477,20 @@ export function SeguimientoDialog({
   const mostrarEntregaDocOpt = faseAceptadoCon;
   // Cierre por egreso: disponible una vez el caso está aceptado (con ambulancia) o pendiente de egreso.
   const mostrarCierreOpt = faseAceptadoCon || facePendienteEgreso;
+  // CIERRE POR TRASLADO EFECTIVO: solo tras completar la entrega documental
+  // (estado PENDIENTE EGRESO). Antes de esa etapa NO debe aparecer (ni en gris).
+  const mostrarTrasladoOpt = facePendienteEgreso;
+
+  // ¿El responsable actual es una aseguradora/póliza (SOAT, ARL, póliza
+  // estudiantil, etc.) y NO una EPS/EAPB? Se consulta el tipo de trámite y el
+  // asegurador real del caso, no solo el texto libre. Solo en ese caso aplica
+  // el CAMBIO DE ASEGURADOR A EAPB.
+  const responsableTxt = `${caso?.tipo_tramite ?? ""} ${caso?.asegurador ?? ""} ${caso?.eapb ?? ""}`;
+  const esAseguradoraNoEapb =
+    /soat|arl|p[oó]liza|aseguradora|prepagada|particular|riesgos\s+laborales/i.test(
+      responsableTxt,
+    ) && !/\beps\b|\beapb\b/i.test(responsableTxt);
+  const mostrarCambioEapb = usaIndigo && esAseguradoraNoEapb;
 
   const TIPOS_SALIENTES = useMemo(() => {
     const arr = [
@@ -486,10 +505,9 @@ export function SeguimientoDialog({
       ...(mostrarAmbulancia ? [T.AMBULANCIA] : []),
       ...(mostrarEntregaDocOpt ? [T.ENTREGA_DOC] : []),
       ...(mostrarCierreOpt ? [T.CIERRE] : []),
-      // CIERRE POR TRASLADO EFECTIVO: siempre visible en el selector; se deshabilita
-      // cuando el caso aún no completó la cadena (aceptación → ambulancia → entrega).
-      T.TRASLADO,
-      T.CAMBIO_EAPB,
+      // CIERRE POR TRASLADO EFECTIVO: oculto hasta completar la entrega documental.
+      ...(mostrarTrasladoOpt ? [T.TRASLADO] : []),
+      ...(mostrarCambioEapb ? [T.CAMBIO_EAPB] : []),
       T.CANCELACION,
       T.PERTINENCIA,
       T.NOVEDADES,
@@ -502,6 +520,8 @@ export function SeguimientoDialog({
     mostrarAmbulancia,
     mostrarEntregaDocOpt,
     mostrarCierreOpt,
+    mostrarTrasladoOpt,
+    mostrarCambioEapb,
   ]);
 
   // Tipos para PHD/PAD/O2/Especiales (subconjunto saliente).
@@ -557,6 +577,10 @@ export function SeguimientoDialog({
       setNovDesistTipo("");
       setNovDesistIps(false);
       setNovDesistAmb(false);
+      setNovIpsTipo("");
+      setNovIpsMotivo("");
+      setNovIpsFecha("");
+      setNovIpsHora("");
     }
     if (!usaIndigo || !tipoSeg) return;
     // Estado de la solicitud automático según el tipo (interno, ya no visible).
@@ -590,11 +614,14 @@ export function SeguimientoDialog({
           ? EST.PENDIENTE_ACEPT
           : CANCELACION_ESTADO_FINAL[cancelTipo] || (estadoActual ?? EST.PENDIENTE_ACEPT);
     } else if (tipoSeg === T.NOVEDADES && novPaciente) {
+      // Desistimiento del paciente/familiar: NO no cambia el estado.
       if (novDesistTipo === "GENERAL") e = EST.DESIST_GENERAL;
-      else if (novDesistTipo === "IPS_AMB") {
-        if (novDesistIps) e = EST.DESIST_IPS;
-        else if (novDesistAmb) e = EST.ACEPTADO_SIN;
-      }
+      else if (novDesistTipo === "IPS") e = EST.PENDIENTE_ACEPT;
+      else if (novDesistTipo === "AMB") e = EST.ACEPTADO_SIN;
+    } else if (tipoSeg === T.NOVEDADES && novIps) {
+      // Novedad de la IPS receptora: desistimiento hacia IPS o cancelación
+      // regresan el caso a PENDIENTE ACEPTACIÓN; postergar mantiene el estado.
+      if (novIpsTipo === "DESIST_IPS" || novIpsTipo === "CANCELA") e = EST.PENDIENTE_ACEPT;
     }
     return e;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -607,8 +634,8 @@ export function SeguimientoDialog({
     cierreEgreso,
     novPaciente,
     novDesistTipo,
-    novDesistIps,
-    novDesistAmb,
+    novIps,
+    novIpsTipo,
   ]);
 
   const esEvolucionSal = usaIndigo && tipoSeg === T.EVOLUCION;
@@ -860,15 +887,24 @@ export function SeguimientoDialog({
         base = generarPlantillaOtroSeg(otroCual, estadoSolicitud);
         break;
       case T.NOVEDADES: {
+        const ipsNov = ipsReceptora.trim() || "[IPS]";
+        const fhNov = [novIpsFecha.trim(), novIpsHora.trim()].filter(Boolean).join(" A LAS ");
         if (novPaciente && novDesistTipo === "GENERAL") {
           base =
-            "SE REGISTRA DESISTIMIENTO GENERAL DE LA REMISIÓN POR PARTE DE PACIENTE/FAMILIAR. SE CIERRA PROCESO SEGÚN TRAZABILIDAD REGISTRADA.";
-        } else if (novPaciente && novDesistTipo === "IPS_AMB" && novDesistIps) {
+            "SE REGISTRA DESISTIMIENTO GENERAL DEL PROCESO DE REMISIÓN POR PARTE DEL PACIENTE/FAMILIAR. SE CIERRA EL CASO Y SE DEJA TRAZABILIDAD DE LA GESTIÓN.";
+        } else if (novPaciente && novDesistTipo === "IPS") {
           base =
-            "SE REGISTRA DESISTIMIENTO DE IPS POR PARTE DE PACIENTE/FAMILIAR. SE DEJA TRAZABILIDAD Y SE CONTINÚA GESTIÓN PARA NUEVA ACEPTACIÓN SEGÚN CORRESPONDA.";
-        } else if (novPaciente && novDesistTipo === "IPS_AMB" && novDesistAmb) {
+            "SE REGISTRA DESISTIMIENTO DE LA IPS POR PARTE DEL PACIENTE/FAMILIAR. SE DEJA SIN EFECTO LA ACEPTACIÓN ACTUAL PARA LA CONTINUIDAD DEL TRÁMITE Y EL CASO RETORNA A PENDIENTE DE ACEPTACIÓN.";
+        } else if (novPaciente && novDesistTipo === "AMB") {
           base =
-            "SE REGISTRA DESISTIMIENTO DE AMBULANCIA POR PARTE DE PACIENTE/FAMILIAR. SE DEJA TRAZABILIDAD Y QUEDA PENDIENTE NUEVA COORDINACIÓN DE TRASLADO.";
+            "SE REGISTRA DESISTIMIENTO DE LA AMBULANCIA POR PARTE DEL PACIENTE/FAMILIAR. SE CONSERVA LA ACEPTACIÓN DE LA IPS Y EL CASO RETORNA A PENDIENTE DE COORDINACIÓN DE AMBULANCIA.";
+        } else if (novIps && novIpsTipo === "DESIST_IPS") {
+          base =
+            "SE REGISTRA QUE EL PACIENTE/FAMILIAR FIRMA DESISTIMIENTO HACIA LA IPS RECEPTORA. SE MARCA LA ACEPTACIÓN ACTUAL COMO DESISTIDA, SE CONSERVA LA TRAZABILIDAD Y EL CASO RETORNA A PENDIENTE DE ACEPTACIÓN.";
+        } else if (novIps && novIpsTipo === "CANCELA") {
+          base = `LA IPS RECEPTORA ${ipsNov} CANCELA LA ACEPTACIÓN DEL PACIENTE. EL CASO RETORNA A PENDIENTE DE ACEPTACIÓN PARA CONTINUAR LA GESTIÓN CON LA RED. MOTIVO: ${novIpsMotivo.trim() || "[MOTIVO]"}.`;
+        } else if (novIps && novIpsTipo === "POSTERGA") {
+          base = `LA IPS RECEPTORA ${ipsNov} POSTERGA LA ACEPTACIÓN HASTA EL ${fhNov || "[FECHA] A LAS [HORA]"}. SE MANTIENE LA TRAZABILIDAD DEL CASO Y SE REALIZARÁ NUEVO SEGUIMIENTO SEGÚN LA FECHA INDICADA.`;
         } else {
           const tipos = [
             novPaciente ? "PACIENTE/FAMILIAR" : "",
@@ -1195,6 +1231,28 @@ export function SeguimientoDialog({
         };
       case T.OTRO:
         return { cual: otroCual.trim() };
+      case T.NOVEDADES:
+        return {
+          origen: [
+            novPaciente ? "PACIENTE/FAMILIAR" : "",
+            novIps ? "IPS RECEPTORA" : "",
+            novAmbulancia ? "AMBULANCIA" : "",
+          ]
+            .filter(Boolean)
+            .join(", "),
+          desistimiento_paciente: novPaciente ? novDesistTipo || null : null,
+          novedad_ips: novIps ? novIpsTipo || null : null,
+          motivo_ips: novIps && novIpsTipo === "CANCELA" ? novIpsMotivo.trim() || null : null,
+          postergacion:
+            novIps && novIpsTipo === "POSTERGA"
+              ? { fecha: novIpsFecha.trim() || null, hora: novIpsHora.trim() || null }
+              : null,
+          subestado:
+            novIps && novIpsTipo === "POSTERGA"
+              ? `ACEPTACIÓN POSTERGADA HASTA ${novIpsFecha.trim()} ${novIpsHora.trim()}`.trim()
+              : null,
+          ips_receptora: ipsReceptora.trim() || null,
+        };
       default:
         return null;
     }
@@ -1243,6 +1301,10 @@ export function SeguimientoDialog({
     setNovDesistTipo("");
     setNovDesistIps(false);
     setNovDesistAmb(false);
+    setNovIpsTipo("");
+    setNovIpsMotivo("");
+    setNovIpsFecha("");
+    setNovIpsHora("");
     setAsunto("");
     setContactoDestino("");
     setContactoIps("");
@@ -1352,8 +1414,13 @@ export function SeguimientoDialog({
       if (esNovedades) {
         if (!novPaciente && !novIps && !novAmbulancia)
           return toast.error("Selecciona al menos un tipo de novedad");
-        if (novPaciente && novDesistTipo === "IPS_AMB" && !novDesistIps && !novDesistAmb)
-          return toast.error("Marca al menos IPS o AMBULANCIA en el desistimiento");
+        if (novPaciente && !novDesistTipo)
+          return toast.error("Indica si el paciente/familiar firmó desistimiento");
+        if (novIps && !novIpsTipo) return toast.error("Selecciona la novedad de la IPS receptora");
+        if (novIps && novIpsTipo === "CANCELA" && !novIpsMotivo.trim())
+          return toast.error("Indica el motivo de la cancelación de la IPS");
+        if (novIps && novIpsTipo === "POSTERGA" && (!novIpsFecha.trim() || !novIpsHora.trim()))
+          return toast.error("Indica la fecha y hora de postergación");
         if (!detalle.trim()) return toast.error("Registra la observación de la novedad");
       }
       if (requiereMotivoLegacy && mostrarEvolucionLegacy && !motivoEvo.trim())
@@ -1779,26 +1846,16 @@ export function SeguimientoDialog({
                     <SelectValue placeholder="Seleccionar…" />
                   </SelectTrigger>
                   <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
-                    {TIPOS_SEG.map((t) => {
-                      const trasladoBloqueado = t === T.TRASLADO && !mostrarCierreOpt;
-                      return (
-                        <SelectItem
-                          key={t}
-                          value={t}
-                          disabled={trasladoBloqueado}
-                          className="whitespace-normal [overflow-wrap:anywhere]"
-                          title={t === T.PERTINENCIA ? REVISION_AUT_LABEL_COMPLETO : t}
-                        >
-                          {t}
-                          {trasladoBloqueado && (
-                            <span className="mt-0.5 block text-[10px] font-normal normal-case text-muted-foreground">
-                              Disponible después de registrar aceptación, ambulancia coordinada y
-                              entrega documental.
-                            </span>
-                          )}
-                        </SelectItem>
-                      );
-                    })}
+                    {TIPOS_SEG.map((t) => (
+                      <SelectItem
+                        key={t}
+                        value={t}
+                        className="whitespace-normal [overflow-wrap:anywhere]"
+                        title={t === T.PERTINENCIA ? REVISION_AUT_LABEL_COMPLETO : t}
+                      >
+                        {t}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -2387,42 +2444,116 @@ export function SeguimientoDialog({
                       <Label className={labelCls}>¿El paciente/familiar firmó desistimiento?</Label>
                       <Select
                         value={novDesistTipo}
-                        onValueChange={(v) => setNovDesistTipo(v as "IPS_AMB" | "GENERAL")}
+                        onValueChange={(v) =>
+                          setNovDesistTipo(v as "NO" | "IPS" | "AMB" | "GENERAL")
+                        }
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full">
                           <SelectValue placeholder="Seleccionar…" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="IPS_AMB">DESISTIMIENTO IPS / AMBULANCIA</SelectItem>
+                          <SelectItem value="NO">NO</SelectItem>
+                          <SelectItem value="IPS">DESISTIMIENTO IPS</SelectItem>
+                          <SelectItem value="AMB">DESISTIMIENTO AMBULANCIA</SelectItem>
                           <SelectItem value="GENERAL">DESISTIMIENTO GENERAL</SelectItem>
                         </SelectContent>
                       </Select>
-                      {novDesistTipo === "IPS_AMB" && (
-                        <div className="flex flex-col gap-2 pt-1">
-                          <label className="flex items-center gap-2 text-sm">
-                            <input
-                              type="checkbox"
-                              checked={novDesistIps}
-                              onChange={(e) => setNovDesistIps(e.target.checked)}
-                            />
-                            IPS
-                          </label>
-                          {novAmbDisponible && (
-                            <label className="flex items-center gap-2 text-sm">
-                              <input
-                                type="checkbox"
-                                checked={novDesistAmb}
-                                onChange={(e) => setNovDesistAmb(e.target.checked)}
-                              />
-                              AMBULANCIA
-                            </label>
-                          )}
-                        </div>
+                      {novDesistTipo === "IPS" && (
+                        <p className="rounded-md border border-amber-200 bg-amber-50/60 p-2 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
+                          Se dejará sin efecto la aceptación actual y el caso retornará a PENDIENTE
+                          ACEPTACIÓN.
+                        </p>
+                      )}
+                      {novDesistTipo === "AMB" && (
+                        <p className="rounded-md border border-amber-200 bg-amber-50/60 p-2 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
+                          Se conserva la aceptación de la IPS y el caso retornará a pendiente de
+                          coordinación de ambulancia.
+                        </p>
                       )}
                       {novDesistTipo === "GENERAL" && (
                         <p className="rounded-md border border-amber-200 bg-amber-50/60 p-2 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
                           Al guardar, el caso se cerrará como DESISTIMIENTO GENERAL y pasará al
                           historial.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {novIps && (
+                    <div className="space-y-2 rounded-md border border-dashed p-3">
+                      <Label className={labelCls}>¿Cuál es la novedad?</Label>
+                      <Select
+                        value={novIpsTipo}
+                        onValueChange={(v) =>
+                          setNovIpsTipo(v as "DESIST_IPS" | "CANCELA" | "POSTERGA")
+                        }
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Seleccionar…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem
+                            value="DESIST_IPS"
+                            className="whitespace-normal [overflow-wrap:anywhere]"
+                          >
+                            PACIENTE/FAMILIAR FIRMA DESISTIMIENTO HACIA IPS
+                          </SelectItem>
+                          <SelectItem
+                            value="CANCELA"
+                            className="whitespace-normal [overflow-wrap:anywhere]"
+                          >
+                            IPS RECEPTORA CANCELA ACEPTACIÓN
+                          </SelectItem>
+                          <SelectItem
+                            value="POSTERGA"
+                            className="whitespace-normal [overflow-wrap:anywhere]"
+                          >
+                            IPS RECEPTORA POSTERGA LA ACEPTACIÓN
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {novIpsTipo === "CANCELA" && (
+                        <div className="space-y-1.5 pt-1">
+                          <Label className={labelCls}>Motivo de cancelación *</Label>
+                          <Input
+                            value={novIpsMotivo}
+                            onChange={(e) => setNovIpsMotivo(e.target.value)}
+                            placeholder="Motivo indicado por la IPS receptora"
+                          />
+                        </div>
+                      )}
+                      {novIpsTipo === "POSTERGA" && (
+                        <div className="grid grid-cols-1 gap-3 pt-1 sm:grid-cols-2">
+                          <div className="space-y-1.5">
+                            <Label className={labelCls}>Fecha de postergación *</Label>
+                            <Input
+                              value={novIpsFecha}
+                              onChange={(e) => setNovIpsFecha(maskFechaInput(e.target.value))}
+                              placeholder="DD/MM/AAAA"
+                              inputMode="numeric"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className={labelCls}>Hora de postergación *</Label>
+                            <Input
+                              value={novIpsHora}
+                              onChange={(e) => setNovIpsHora(maskHoraInput(e.target.value))}
+                              placeholder="HH:MM"
+                              inputMode="numeric"
+                            />
+                          </div>
+                        </div>
+                      )}
+                      {(novIpsTipo === "DESIST_IPS" || novIpsTipo === "CANCELA") && (
+                        <p className="rounded-md border border-amber-200 bg-amber-50/60 p-2 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
+                          Se conserva la trazabilidad de la aceptación y el caso retornará a
+                          PENDIENTE ACEPTACIÓN.
+                        </p>
+                      )}
+                      {novIpsTipo === "POSTERGA" && (
+                        <p className="rounded-md border border-sky-200 bg-sky-50/60 p-2 text-xs text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-400">
+                          El caso se mantiene activo con subestado ACEPTACIÓN POSTERGADA. No se
+                          reinicia la cadena.
                         </p>
                       )}
                     </div>
