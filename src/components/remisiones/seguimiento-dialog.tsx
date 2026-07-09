@@ -1301,6 +1301,10 @@ export function SeguimientoDialog({
     setNovDesistTipo("");
     setNovDesistIps(false);
     setNovDesistAmb(false);
+    setNovIpsTipo("");
+    setNovIpsMotivo("");
+    setNovIpsFecha("");
+    setNovIpsHora("");
     setAsunto("");
     setContactoDestino("");
     setContactoIps("");
