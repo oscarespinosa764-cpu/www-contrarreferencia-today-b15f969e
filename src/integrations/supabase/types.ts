@@ -1722,6 +1722,72 @@ export type Database = {
           },
         ]
       }
+      shift_monthly_exceptions: {
+        Row: {
+          counts: Json | null
+          created_at: string
+          id: string
+          month: number
+          reason: string
+          request_type: string | null
+          review_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reviewed_by_name: string | null
+          status: string
+          updated_at: string
+          usage_status: string
+          used_at: string | null
+          used_request_id: string | null
+          user_id: string
+          user_name: string | null
+          user_role: string | null
+          year: number
+        }
+        Insert: {
+          counts?: Json | null
+          created_at?: string
+          id?: string
+          month: number
+          reason: string
+          request_type?: string | null
+          review_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewed_by_name?: string | null
+          status?: string
+          updated_at?: string
+          usage_status?: string
+          used_at?: string | null
+          used_request_id?: string | null
+          user_id: string
+          user_name?: string | null
+          user_role?: string | null
+          year: number
+        }
+        Update: {
+          counts?: Json | null
+          created_at?: string
+          id?: string
+          month?: number
+          reason?: string
+          request_type?: string | null
+          review_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewed_by_name?: string | null
+          status?: string
+          updated_at?: string
+          usage_status?: string
+          used_at?: string | null
+          used_request_id?: string | null
+          user_id?: string
+          user_name?: string | null
+          user_role?: string | null
+          year?: number
+        }
+        Relationships: []
+      }
       shift_request_audit: {
         Row: {
           action: string
@@ -1810,25 +1876,35 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           created_at: string
+          cuadro_applied: boolean
           end_date: string | null
           end_time: string | null
           id: string
+          is_limit_exempt: boolean
+          monthly_exception_id: string | null
           observations: string | null
+          original_end_time: string | null
           original_shift_code: string | null
           original_shift_date: string | null
+          original_shift_name: string | null
+          original_start_time: string | null
           other_reason: string | null
           out_of_rule_justification: string | null
           paid: boolean | null
+          pending_minutes: number | null
           reason_detail: string | null
           reason_recoverable: boolean
           reason_type: string | null
+          recovery_status: string | null
           register_absenteeism: boolean
           rejected_at: string | null
           rejected_by: string | null
           rejection_reason: string | null
           replacement_name: string | null
           replacement_role: string | null
+          replacement_user_id: string | null
           request_type: string
+          requested_minutes: number | null
           requested_shift_code: string | null
           requested_shift_date: string | null
           requester_id: string
@@ -1841,13 +1917,18 @@ export type Database = {
           requires_replacement: boolean
           response_observation: string | null
           return_date: string | null
+          return_fractioned: boolean
           return_person_id: string | null
           return_person_name: string | null
           return_person_role: string | null
+          return_receiver_id: string | null
           return_shift_code: string | null
+          returned_minutes: number
           start_date: string | null
           start_time: string | null
           status: string
+          support_metadata: Json | null
+          support_path: string | null
           swap_partner_name: string | null
           swap_user_id: string | null
           updated_at: string
@@ -1858,25 +1939,35 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string
+          cuadro_applied?: boolean
           end_date?: string | null
           end_time?: string | null
           id?: string
+          is_limit_exempt?: boolean
+          monthly_exception_id?: string | null
           observations?: string | null
+          original_end_time?: string | null
           original_shift_code?: string | null
           original_shift_date?: string | null
+          original_shift_name?: string | null
+          original_start_time?: string | null
           other_reason?: string | null
           out_of_rule_justification?: string | null
           paid?: boolean | null
+          pending_minutes?: number | null
           reason_detail?: string | null
           reason_recoverable?: boolean
           reason_type?: string | null
+          recovery_status?: string | null
           register_absenteeism?: boolean
           rejected_at?: string | null
           rejected_by?: string | null
           rejection_reason?: string | null
           replacement_name?: string | null
           replacement_role?: string | null
+          replacement_user_id?: string | null
           request_type?: string
+          requested_minutes?: number | null
           requested_shift_code?: string | null
           requested_shift_date?: string | null
           requester_id: string
@@ -1889,13 +1980,18 @@ export type Database = {
           requires_replacement?: boolean
           response_observation?: string | null
           return_date?: string | null
+          return_fractioned?: boolean
           return_person_id?: string | null
           return_person_name?: string | null
           return_person_role?: string | null
+          return_receiver_id?: string | null
           return_shift_code?: string | null
+          returned_minutes?: number
           start_date?: string | null
           start_time?: string | null
           status?: string
+          support_metadata?: Json | null
+          support_path?: string | null
           swap_partner_name?: string | null
           swap_user_id?: string | null
           updated_at?: string
@@ -1906,25 +2002,35 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string
+          cuadro_applied?: boolean
           end_date?: string | null
           end_time?: string | null
           id?: string
+          is_limit_exempt?: boolean
+          monthly_exception_id?: string | null
           observations?: string | null
+          original_end_time?: string | null
           original_shift_code?: string | null
           original_shift_date?: string | null
+          original_shift_name?: string | null
+          original_start_time?: string | null
           other_reason?: string | null
           out_of_rule_justification?: string | null
           paid?: boolean | null
+          pending_minutes?: number | null
           reason_detail?: string | null
           reason_recoverable?: boolean
           reason_type?: string | null
+          recovery_status?: string | null
           register_absenteeism?: boolean
           rejected_at?: string | null
           rejected_by?: string | null
           rejection_reason?: string | null
           replacement_name?: string | null
           replacement_role?: string | null
+          replacement_user_id?: string | null
           request_type?: string
+          requested_minutes?: number | null
           requested_shift_code?: string | null
           requested_shift_date?: string | null
           requester_id?: string
@@ -1937,19 +2043,101 @@ export type Database = {
           requires_replacement?: boolean
           response_observation?: string | null
           return_date?: string | null
+          return_fractioned?: boolean
           return_person_id?: string | null
           return_person_name?: string | null
           return_person_role?: string | null
+          return_receiver_id?: string | null
           return_shift_code?: string | null
+          returned_minutes?: number
           start_date?: string | null
           start_time?: string | null
           status?: string
+          support_metadata?: Json | null
+          support_path?: string | null
           swap_partner_name?: string | null
           swap_user_id?: string | null
           updated_at?: string
           will_recover_time?: boolean
         }
         Relationships: []
+      }
+      shift_return_fragments: {
+        Row: {
+          created_at: string
+          end_time: string | null
+          fragment_no: number
+          id: string
+          minutes: number
+          notes: string | null
+          receiver_id: string | null
+          receiver_name: string | null
+          receiver_role: string | null
+          request_id: string
+          return_date: string | null
+          shift_code: string | null
+          start_time: string | null
+          updated_at: string
+          verification_notes: string | null
+          verification_result: string
+          verified_at: string | null
+          verified_by: string | null
+          verified_by_name: string | null
+          verified_minutes: number
+        }
+        Insert: {
+          created_at?: string
+          end_time?: string | null
+          fragment_no?: number
+          id?: string
+          minutes?: number
+          notes?: string | null
+          receiver_id?: string | null
+          receiver_name?: string | null
+          receiver_role?: string | null
+          request_id: string
+          return_date?: string | null
+          shift_code?: string | null
+          start_time?: string | null
+          updated_at?: string
+          verification_notes?: string | null
+          verification_result?: string
+          verified_at?: string | null
+          verified_by?: string | null
+          verified_by_name?: string | null
+          verified_minutes?: number
+        }
+        Update: {
+          created_at?: string
+          end_time?: string | null
+          fragment_no?: number
+          id?: string
+          minutes?: number
+          notes?: string | null
+          receiver_id?: string | null
+          receiver_name?: string | null
+          receiver_role?: string | null
+          request_id?: string
+          return_date?: string | null
+          shift_code?: string | null
+          start_time?: string | null
+          updated_at?: string
+          verification_notes?: string | null
+          verification_result?: string
+          verified_at?: string | null
+          verified_by?: string | null
+          verified_by_name?: string | null
+          verified_minutes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_return_fragments_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "shift_requests"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shift_schedule_days: {
         Row: {
