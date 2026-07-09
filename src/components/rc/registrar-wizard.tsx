@@ -27,10 +27,8 @@ import {
 import { toast } from "sonner";
 import {
   MOTIVOS_NEG,
-  MOTIVO_NEG_LABEL,
   MOTIVO_NEG_CATALOGO,
   DOC_SUBTIPOS,
-  DOC_SUBTIPO_LABEL,
   DOCS_EPS,
   DOCS_SOAT,
   RED_SUBTIPOS,
