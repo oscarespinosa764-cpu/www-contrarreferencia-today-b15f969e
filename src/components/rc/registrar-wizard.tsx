@@ -270,13 +270,30 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     setAdresAbierta(false);
   };
 
-  // ── Lógica de campos según el motivo de negación ──
-  const mNeg = motivoNeg.toUpperCase();
-  const negEspecialidad = mNeg.includes("RECURSO HUMANO");
-  const negUnidad = mNeg.includes("DISPONIBILIDAD DE UNIDAD");
-  const negCamas = mNeg.includes("SOBREOCUPAC") || mNeg.includes("CAMAS");
-  const negComplejidad = mNeg.includes("COMPLEJIDAD");
-  const negDetalleOpcional = mNeg.includes("RED NO CONTRATADA") || mNeg.includes("AFILIACI");
+  // ── Lógica de campos según el motivo de negación (por valor interno) ──
+  const negEspecialidad = motivoNeg === "NO_RECURSO_HUMANO";
+  const negUnidad = motivoNeg === "NO_DISPONIBILIDAD_UNIDAD";
+  const negCamas = motivoNeg === "SOBREOCUPACION";
+  const negComplejidad = motivoNeg === "NIVEL_COMPLEJIDAD";
+  const negDoc = motivoNeg === "SOLICITUD_DOCUMENTACION";
+  const negRed = motivoNeg === "RED_NO_CONTRATADA";
+  const negArl = motivoNeg === "ARL_DIRECTO";
+  // Documentos disponibles según el subtipo de solicitud de documentación.
+  const docItems: DocItem[] =
+    docSubtipo === "DOCUMENTACION_EPS"
+      ? DOCS_EPS
+      : docSubtipo === "DOCUMENTACION_SOAT_ADRES_POLIZA"
+        ? DOCS_SOAT
+        : [];
+  const docSeleccionados = docItems.filter((d) => docChecks[d.id]).map((d) => d.texto);
+  const todasMarcadas = docItems.length > 0 && docItems.every((d) => docChecks[d.id]);
+  const toggleTodas = () => {
+    if (todasMarcadas) {
+      setDocChecks({});
+    } else {
+      setDocChecks(Object.fromEntries(docItems.map((d) => [d.id, true])));
+    }
+  };
 
   // ── Catálogo médico ⇄ especialidad (bidireccional) ──
   // Construye el mapa nombre→especialidad a partir del catálogo de médicos
