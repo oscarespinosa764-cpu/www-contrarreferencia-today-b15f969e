@@ -994,21 +994,51 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
 
           {tipo === "NEG" && (
             <div className="rounded-2xl border border-status-red/30 bg-status-red/5 p-3 space-y-3">
+              {/* Entidad responsable (clasificación explícita, controla ARL) */}
+              <div className="space-y-1.5">
+                <Label className="text-[11px] text-muted-foreground">Entidad responsable</Label>
+                <div className="flex flex-wrap gap-2">
+                  {ENTIDAD_TIPOS.map((e) => (
+                    <button
+                      key={e.value}
+                      type="button"
+                      onClick={() => {
+                        setEntidadTipo(e.value);
+                        if (e.value !== "ARL" && motivoNeg === "ARL_DIRECTO") setMotivoNeg("");
+                      }}
+                      className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                        entidadTipo === e.value
+                          ? "border-status-red bg-status-red/15 text-status-red"
+                          : "border-border text-foreground hover:border-status-red/40"
+                      }`}
+                    >
+                      {e.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <Label className="text-xs font-bold uppercase tracking-wide text-status-red">
                 Motivo de negación
               </Label>
               <div className="flex flex-wrap gap-2">
-                {catalogos.motivosNeg.map((m) => (
+                {MOTIVOS_NEG.filter((m) => !m.soloEntidad || m.soloEntidad === entidadTipo).map((m) => (
                   <button
-                    key={m}
+                    key={m.value}
                     type="button"
                     onClick={() => {
-                      setMotivoNeg(m);
+                      setMotivoNeg(m.value);
                       setComplejidad("");
+                      setComplejidadSub("");
                       setEspecialidad("");
                       setUnidad("");
-                      const up = m.toUpperCase();
-                      if (up.includes("SOBREOCUPAC") || up.includes("CAMAS")) {
+                      setDocSubtipo("");
+                      setDocChecks({});
+                      setRedSubtipo("");
+                      setEspPrincipal("");
+                      setEspsExtra([newDyn()]);
+                      setMedico("");
+                      if (m.value === "SOBREOCUPACION") {
                         const now = new Date();
                         const p = (n: number) => String(n).padStart(2, "0");
                         setFechaRec(`${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`);
@@ -1019,29 +1049,136 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                       }
                     }}
                     className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
-                      motivoNeg === m
+                      motivoNeg === m.value
                         ? "border-status-red bg-status-red/15 text-status-red"
                         : "border-border text-foreground hover:border-status-red/40"
                     }`}
                   >
-                    {m}
+                    {m.label}
                   </button>
                 ))}
               </div>
 
-              {/* RED NO CONTRATADA / AFILIACIÓN DE OFICIO → detalle opcional */}
-              {negDetalleOpcional && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="negdet" className="text-[11px] text-muted-foreground">
-                    Detalles (opcional)
-                  </Label>
-                  <Textarea
-                    id="negdet"
-                    rows={3}
-                    value={detalle}
-                    onChange={(e) => setDetalle(e.target.value)}
-                    placeholder="Nota adicional que se incluirá en el texto…"
-                  />
+              {/* SOLICITUD DE DOCUMENTACIÓN */}
+              {negDoc && (
+                <div className="space-y-3 rounded-xl border border-border bg-card/50 p-3">
+                  <div className="flex flex-wrap gap-2">
+                    {DOC_SUBTIPOS.map((d) => (
+                      <button
+                        key={d.value}
+                        type="button"
+                        onClick={() => {
+                          setDocSubtipo(d.value);
+                          setDocChecks({});
+                        }}
+                        className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                          docSubtipo === d.value
+                            ? "border-status-red bg-status-red/15 text-status-red"
+                            : "border-border text-foreground hover:border-status-red/40"
+                        }`}
+                      >
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {(docSubtipo === "DOCUMENTACION_EPS" || docSubtipo === "DOCUMENTACION_SOAT_ADRES_POLIZA") && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <Label className="text-[11px] font-bold uppercase text-muted-foreground">
+                          Documentos requeridos
+                        </Label>
+                        <Button type="button" size="sm" variant="outline" className="h-7 rounded-full text-[11px]" onClick={toggleTodas}>
+                          {todasMarcadas ? "Desmarcar todas" : "Marcar todas"}
+                        </Button>
+                      </div>
+                      <div className="grid gap-1.5 sm:grid-cols-2">
+                        {docItems.map((d) => (
+                          <label
+                            key={d.id}
+                            className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-card p-2 text-xs"
+                          >
+                            <Checkbox
+                              checked={!!docChecks[d.id]}
+                              onCheckedChange={(v) =>
+                                setDocChecks((prev) => ({ ...prev, [d.id]: v === true }))
+                              }
+                              className="mt-0.5 shrink-0"
+                            />
+                            <span className="min-w-0 break-words">{d.texto}</span>
+                          </label>
+                        ))}
+                      </div>
+                      {docSeleccionados.length === 0 && (
+                        <p className="text-[11px] font-semibold text-status-red">
+                          SELECCIONE AL MENOS UN DOCUMENTO REQUERIDO.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* RED NO CONTRATADA → dos subtipos */}
+              {negRed && (
+                <div className="space-y-3 rounded-xl border border-border bg-card/50 p-3">
+                  <div className="grid gap-2">
+                    {RED_SUBTIPOS.map((r) => (
+                      <button
+                        key={r.value}
+                        type="button"
+                        onClick={() => setRedSubtipo(r.value)}
+                        className={`rounded-lg border px-3 py-2 text-left text-xs font-semibold transition ${
+                          redSubtipo === r.value
+                            ? "border-status-red bg-status-red/15 text-status-red"
+                            : "border-border text-foreground hover:border-status-red/40"
+                        }`}
+                      >
+                        {r.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {redSubtipo === "SERVICIO" && (
+                    <AutoComplete
+                      label="Servicio o especialidad solicitada"
+                      value={especialidad}
+                      onChange={setEspecialidad}
+                      options={catalogos.especialidades}
+                      placeholder="Escribe la especialidad…"
+                    />
+                  )}
+
+                  {redSubtipo === "CONJUNTO" && (
+                    <div className="space-y-3">
+                      <AutoComplete
+                        label="Médico o profesional que revisa"
+                        value={medico}
+                        onChange={setMedico}
+                        onPick={onPickMedico}
+                        options={medicoOptions}
+                      />
+                      <AutoComplete
+                        label="Especialidad del profesional que revisa"
+                        value={especialidad}
+                        onChange={setEspecialidad}
+                        options={catalogos.especialidades}
+                      />
+                      <AutoComplete
+                        label="Especialidad principal disponible o contratada"
+                        value={espPrincipal}
+                        onChange={setEspPrincipal}
+                        options={catalogos.especialidades}
+                        required
+                      />
+                      <DynEspecialidades
+                        label="Especialidades adicionales requeridas fuera de la red"
+                        items={espsExtra}
+                        setItems={setEspsExtra}
+                        options={catalogos.especialidades}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1104,7 +1241,8 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                         type="button"
                         onClick={() => {
                           setComplejidad(c);
-                          if (c !== "MAYOR COMPLEJIDAD") setEspecialidad("");
+                          setComplejidadSub("");
+                          setEspecialidad("");
                         }}
                         className={`rounded-lg border px-3 py-1.5 text-xs transition ${
                           complejidad === c
@@ -1117,19 +1255,46 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                     ))}
                   </div>
                   {complejidad === "MAYOR COMPLEJIDAD" && (
-                    <AutoComplete
-                      label="Especialidad requerida"
-                      value={especialidad}
-                      onChange={setEspecialidad}
-                      options={catalogos.especialidades}
-                      required
-                      placeholder="Escribe la especialidad…"
-                    />
+                    <div className="space-y-2 pt-1">
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {[
+                          { v: "CON_ESP" as ComplejidadSub, l: "CON ESPECIALIDAD FALTANTE" },
+                          { v: "SIN_ESP" as ComplejidadSub, l: "SIN ESPECIALIDAD FALTANTE" },
+                        ].map((o) => (
+                          <button
+                            key={o.v}
+                            type="button"
+                            onClick={() => {
+                              setComplejidadSub(o.v);
+                              if (o.v !== "CON_ESP") setEspecialidad("");
+                            }}
+                            className={`rounded-lg border px-3 py-1.5 text-xs transition ${
+                              complejidadSub === o.v
+                                ? "border-status-red bg-status-red/10 font-semibold text-status-red"
+                                : "border-border text-muted-foreground hover:border-status-red/40"
+                            }`}
+                          >
+                            {o.l}
+                          </button>
+                        ))}
+                      </div>
+                      {complejidadSub === "CON_ESP" && (
+                        <AutoComplete
+                          label="Especialidad requerida"
+                          value={especialidad}
+                          onChange={setEspecialidad}
+                          options={catalogos.especialidades}
+                          required
+                          placeholder="Escribe la especialidad…"
+                        />
+                      )}
+                    </div>
                   )}
                 </div>
               )}
             </div>
           )}
+
 
 
           {isCrue && (
