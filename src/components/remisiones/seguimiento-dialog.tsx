@@ -884,7 +884,7 @@ export function SeguimientoDialog({
         break;
       case T.NOVEDADES: {
         const ipsNov = ipsReceptora.trim() || "[IPS]";
-        const fhNov = fmtFechaHora(novIpsFecha, novIpsHora);
+        const fhNov = [novIpsFecha.trim(), novIpsHora.trim()].filter(Boolean).join(" A LAS ");
         if (novPaciente && novDesistTipo === "GENERAL") {
           base =
             "SE REGISTRA DESISTIMIENTO GENERAL DEL PROCESO DE REMISIÓN POR PARTE DEL PACIENTE/FAMILIAR. SE CIERRA EL CASO Y SE DEJA TRAZABILIDAD DE LA GESTIÓN.";
