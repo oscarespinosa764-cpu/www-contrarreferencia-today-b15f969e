@@ -83,6 +83,11 @@ export function MiTurnoPanel() {
       </div>
 
       <div>
+        <h3 className="mb-2 text-sm font-semibold">Mi consumo mensual</h3>
+        <ControlMensualPanel soloUsuario />
+      </div>
+
+      <div>
         <h3 className="mb-2 text-sm font-semibold">Mis solicitudes</h3>
         {requests.length === 0 ? (
           <p className="text-sm text-muted-foreground">Aún no tienes solicitudes.</p>
