@@ -23,7 +23,7 @@ import { toast } from "sonner";
 import { SignaturePad, type SignaturePadHandle } from "./signature-pad";
 import { minutosEntreHoras } from "@/lib/cuadro-turno-utils";
 import {
-  useShiftTypes, describeTurno, buscarTurnoProgramado, formatHora12,
+  useShiftTypes, describeTurno, buscarTurnoProgramado,
   minutosAHoras, esExento, LIMITE_MENSUAL, type ReturnFragment, type ShiftTypeRow,
 } from "@/lib/solicitudes-utils";
 import { subirSoporte, eliminarSoporte, type SoporteMetadata } from "@/lib/soportes-utils";
