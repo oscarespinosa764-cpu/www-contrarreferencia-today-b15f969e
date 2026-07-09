@@ -860,13 +860,19 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 onClick={() => {
                   setTipo("ACEP");
                   setCrueOpen(false);
-                  // limpia estado de negación y de CRUE
                   setMotivoNeg("");
                   setComplejidad("");
+                  setComplejidadSub("");
+                  setDocSubtipo("");
+                  setDocChecks({});
+                  setRedSubtipo("");
                   setCodigoCrue("");
                   setContactoIps("");
                   setUnidadReq("");
-                  setMotivosCrue(["", "", ""]);
+                  setNombreFuncionario("");
+                  setCargoFuncionario("");
+                  setEspsCrue([newDyn()]);
+                  setMotivosCrueDyn([newDyn()]);
                   setFechaRec("");
                   setHoraRec("");
                 }}
@@ -879,15 +885,22 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 onClick={() => {
                   setTipo("NEG");
                   setCrueOpen(false);
-                  // limpia estado de aceptación y de CRUE
                   setMedico("");
                   setEspecialidad("");
                   setUnidad("");
-                  setAseguramiento("EPS");
+                  setMotivoNeg("");
+                  setComplejidad("");
+                  setComplejidadSub("");
+                  setDocSubtipo("");
+                  setDocChecks({});
+                  setRedSubtipo("");
+                  setEspPrincipal("");
+                  setEspsExtra([newDyn()]);
                   setCodigoCrue("");
                   setContactoIps("");
                   setUnidadReq("");
-                  setMotivosCrue(["", "", ""]);
+                  setNombreFuncionario("");
+                  setCargoFuncionario("");
                 }}
               />
               <TipoCard
@@ -896,14 +909,17 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 accent="amber"
                 active={isCrue || crueOpen}
                 onClick={() => {
-                  // CRUE es excluyente: abre panel CRUE y limpia aceptación/negación
                   setCrueOpen(true);
                   setTipo("");
                   setMedico("");
                   setUnidad("");
-                  setAseguramiento("EPS");
+                  setEspecialidad("");
                   setMotivoNeg("");
                   setComplejidad("");
+                  setComplejidadSub("");
+                  setDocSubtipo("");
+                  setDocChecks({});
+                  setRedSubtipo("");
                   setFechaRec("");
                   setHoraRec("");
                 }}
@@ -917,9 +933,9 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                     type="button"
                     onClick={() => {
                       setTipo(t.value);
-                      // al cambiar de subtipo CRUE, limpia la unidad requerida
                       setUnidadReq("");
-                      setMotivosCrue(["", "", ""]);
+                      setEspsCrue([newDyn()]);
+                      setMotivosCrueDyn([newDyn()]);
                     }}
                     className={`rounded-xl border-2 px-3 py-2 text-left text-xs font-bold uppercase transition ${
                       tipo === t.value
