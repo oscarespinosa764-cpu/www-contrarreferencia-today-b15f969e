@@ -1231,6 +1231,28 @@ export function SeguimientoDialog({
         };
       case T.OTRO:
         return { cual: otroCual.trim() };
+      case T.NOVEDADES:
+        return {
+          origen: [
+            novPaciente ? "PACIENTE/FAMILIAR" : "",
+            novIps ? "IPS RECEPTORA" : "",
+            novAmbulancia ? "AMBULANCIA" : "",
+          ]
+            .filter(Boolean)
+            .join(", "),
+          desistimiento_paciente: novPaciente ? novDesistTipo || null : null,
+          novedad_ips: novIps ? novIpsTipo || null : null,
+          motivo_ips: novIps && novIpsTipo === "CANCELA" ? novIpsMotivo.trim() || null : null,
+          postergacion:
+            novIps && novIpsTipo === "POSTERGA"
+              ? { fecha: novIpsFecha.trim() || null, hora: novIpsHora.trim() || null }
+              : null,
+          subestado:
+            novIps && novIpsTipo === "POSTERGA"
+              ? `ACEPTACIÓN POSTERGADA HASTA ${novIpsFecha.trim()} ${novIpsHora.trim()}`.trim()
+              : null,
+          ips_receptora: ipsReceptora.trim() || null,
+        };
       default:
         return null;
     }
