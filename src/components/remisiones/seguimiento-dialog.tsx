@@ -610,11 +610,14 @@ export function SeguimientoDialog({
           ? EST.PENDIENTE_ACEPT
           : CANCELACION_ESTADO_FINAL[cancelTipo] || (estadoActual ?? EST.PENDIENTE_ACEPT);
     } else if (tipoSeg === T.NOVEDADES && novPaciente) {
+      // Desistimiento del paciente/familiar: NO no cambia el estado.
       if (novDesistTipo === "GENERAL") e = EST.DESIST_GENERAL;
-      else if (novDesistTipo === "IPS_AMB") {
-        if (novDesistIps) e = EST.DESIST_IPS;
-        else if (novDesistAmb) e = EST.ACEPTADO_SIN;
-      }
+      else if (novDesistTipo === "IPS") e = EST.PENDIENTE_ACEPT;
+      else if (novDesistTipo === "AMB") e = EST.ACEPTADO_SIN;
+    } else if (tipoSeg === T.NOVEDADES && novIps) {
+      // Novedad de la IPS receptora: desistimiento hacia IPS o cancelación
+      // regresan el caso a PENDIENTE ACEPTACIÓN; postergar mantiene el estado.
+      if (novIpsTipo === "DESIST_IPS" || novIpsTipo === "CANCELA") e = EST.PENDIENTE_ACEPT;
     }
     return e;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -627,8 +630,8 @@ export function SeguimientoDialog({
     cierreEgreso,
     novPaciente,
     novDesistTipo,
-    novDesistIps,
-    novDesistAmb,
+    novIps,
+    novIpsTipo,
   ]);
 
   const esEvolucionSal = usaIndigo && tipoSeg === T.EVOLUCION;
