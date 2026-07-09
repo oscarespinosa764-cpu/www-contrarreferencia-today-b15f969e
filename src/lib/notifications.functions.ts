@@ -307,16 +307,16 @@ export const sendManualNotification = createServerFn({ method: "POST" })
 /* ------------------------------------------------------------------ */
 export const dispatchEventNotification = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: {
-    alert_type: string;
-    module?: string;
-    reference_id?: string;
-    vars: PlantillaVars;
-    dedup_minutes?: number;
-  }) => d)
+  .inputValidator((d: unknown) => dispatchInputSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { userId } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Solo un miembro ACTIVO puede disparar eventos (rol real desde BD).
+    const { data: activo } = await (supabaseAdmin as any).rpc("is_active_member", {
+      _user_id: userId,
+    });
+    if (!activo) return { ok: false, status: "skipped", reason: "Usuario no activo." };
 
     const { data: canales } = await (supabaseAdmin as any)
       .from("notification_channels")
@@ -328,10 +328,19 @@ export const dispatchEventNotification = createServerFn({ method: "POST" })
     if (lista.length === 0) return { ok: false, status: "skipped", reason: "Sin canales activos." };
 
     const win = data.dedup_minutes ?? 30;
+    // Cada valor del cliente se sanea; el cliente nunca controla el texto final.
+    const raw = data.vars ?? {};
     const vars: PlantillaVars = {
-      ...data.vars,
-      tipo_alerta: data.vars.tipo_alerta || labelAlerta(data.alert_type),
-      fecha_hora: data.vars.fecha_hora || new Date().toLocaleString("es-CO"),
+      tipo_alerta: sanitizarVarNotif(raw.tipo_alerta) || labelAlerta(data.alert_type),
+      modulo: sanitizarVarNotif(raw.modulo),
+      paciente_iniciales: sanitizarVarNotif(raw.paciente_iniciales),
+      documento_enmascarado: sanitizarVarNotif(raw.documento_enmascarado),
+      codigo: sanitizarVarNotif(raw.codigo),
+      estado: sanitizarVarNotif(raw.estado),
+      accion: sanitizarVarNotif(raw.accion),
+      usuario: sanitizarVarNotif(raw.usuario),
+      funcionario: sanitizarVarNotif(raw.funcionario),
+      fecha_hora: sanitizarVarNotif(raw.fecha_hora) || new Date().toLocaleString("es-CO"),
     };
 
     let algunoOk = false;
