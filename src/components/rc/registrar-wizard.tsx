@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   ArrowLeft,
   ArrowRight,
@@ -20,8 +21,33 @@ import {
   XCircle,
   Siren,
   ExternalLink,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  MOTIVOS_NEG,
+  MOTIVO_NEG_LABEL,
+  MOTIVO_NEG_CATALOGO,
+  DOC_SUBTIPOS,
+  DOC_SUBTIPO_LABEL,
+  DOCS_EPS,
+  DOCS_SOAT,
+  RED_SUBTIPOS,
+  plantillaDocEps,
+  plantillaDocSoat,
+  plantillaArlDirecto,
+  plantillaRedConjunto,
+  plantillaMayorConEsp,
+  plantillaMayorSinEsp,
+  plantillaCrueBase,
+  type MotivoNeg,
+  type EntidadTipo,
+  type DocSubtipo,
+  type RedSubtipo,
+  type ComplejidadSub,
+  type DocItem,
+} from "@/lib/neg-crue";
 import {
   buscarAcepActivo,
   buscarAcepReciente,
