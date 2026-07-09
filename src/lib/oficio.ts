@@ -132,7 +132,8 @@ function formatearCuerpoHTML(texto: string): string {
 
 /** HTML del oficio institucional, con estilos en línea, apto para correo. */
 export function buildOficioHTML(tipo: string, codigo: string, mensaje: string): string {
-  const titulo = tituloOficio(tipo);
+  const titulo = escapeHtml(tituloOficio(tipo));
+  const codigoSeguro = escapeHtml(codigo);
   const ic = iconoCfg(tipo);
   const cuerpo = formatearCuerpoHTML(mensaje);
 
