@@ -528,7 +528,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
           }
         } else {
           // NO RECURSO HUMANO / NO DISPONIBILIDAD DE UNIDAD / SOBREOCUPACIÓN → catálogo.
-          const catName = MOTIVO_NEG_CATALOGO[motivoNeg] || "";
+          const catName = MOTIVO_NEG_CATALOGO[motivoNeg as MotivoNeg] || "";
           metadata.especialidades = especialidad.trim() ? [especialidad.trim()] : [];
           mensaje = buildMensaje(plantillas, catalogos.medicos, rr, {
             tipo: "NEG",
