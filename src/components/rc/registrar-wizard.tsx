@@ -372,7 +372,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     setCodigoCrue("");
     setContactoIps("");
     setUnidadReq("");
-    setMotivosCrue(["", "", ""]);
+    
     setFechaRec("");
     setHoraRec("");
     setEsReconsultante(false);
