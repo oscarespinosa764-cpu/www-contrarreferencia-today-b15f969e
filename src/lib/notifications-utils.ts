@@ -91,6 +91,29 @@ export interface PlantillaVars {
   funcionario?: string;
 }
 
+/**
+ * Sanea un valor de variable recibido del cliente para notificaciones por evento.
+ * Defensa contra inyección en canales externos (Telegram/Slack/webhook):
+ * - elimina caracteres de control;
+ * - elimina ángulos y marcas Markdown (evita etiquetas mrkdwn de Slack);
+ * - neutraliza menciones masivas (@channel/@everyone/@here);
+ * - reemplaza URLs arbitrarias por un marcador;
+ * - normaliza espacios y limita la longitud.
+ * El cliente NUNCA controla el mensaje final: solo aporta valores acotados.
+ */
+export function sanitizarVarNotif(v?: string | null): string {
+  if (!v) return "";
+  return String(v)
+    .replace(/[\u0000-\u001F\u007F]/g, " ")
+    .replace(/[<>]/g, "")
+    .replace(/[*_`~|]/g, "")
+    .replace(/@(channel|everyone|here)/gi, "canal")
+    .replace(/https?:\/\/\S+/gi, "[enlace]")
+    .replace(/\s{2,}/g, " ")
+    .trim()
+    .slice(0, 200);
+}
+
 // Solo se permiten estos placeholders (nada de datos clínicos completos).
 const PLACEHOLDERS_PERMITIDOS = [
   "tipo_alerta", "modulo", "paciente_iniciales", "documento_enmascarado",
