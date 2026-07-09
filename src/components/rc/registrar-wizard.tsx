@@ -130,7 +130,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const [codigoCrue, setCodigoCrue] = useState("");
   const [contactoIps, setContactoIps] = useState("");
   const [unidadReq, setUnidadReq] = useState("");
-  const [unidadReqUnused, setUnidadReqUnused] = useState<string[]>([]);
+  
   // Negación — recontacto (sobreocupación)
   const [fechaRec, setFechaRec] = useState("");
   const [horaRec, setHoraRec] = useState("");
