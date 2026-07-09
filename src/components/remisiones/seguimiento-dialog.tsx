@@ -577,6 +577,10 @@ export function SeguimientoDialog({
       setNovDesistTipo("");
       setNovDesistIps(false);
       setNovDesistAmb(false);
+      setNovIpsTipo("");
+      setNovIpsMotivo("");
+      setNovIpsFecha("");
+      setNovIpsHora("");
     }
     if (!usaIndigo || !tipoSeg) return;
     // Estado de la solicitud automático según el tipo (interno, ya no visible).
