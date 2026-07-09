@@ -1419,7 +1419,7 @@ function DynEspecialidades({
 }: {
   label: string;
   items: DynItem[];
-  setItems: React.Dispatch<React.SetStateAction<DynItem[]>>;
+  setItems: Dispatch<SetStateAction<DynItem[]>>;
   options: string[];
 }) {
   const setVal = (id: string, val: string) =>
@@ -1472,7 +1472,7 @@ function DynMotivos({
 }: {
   label: string;
   items: DynItem[];
-  setItems: React.Dispatch<React.SetStateAction<DynItem[]>>;
+  setItems: Dispatch<SetStateAction<DynItem[]>>;
 }) {
   const setVal = (id: string, val: string) =>
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, val } : it)));
