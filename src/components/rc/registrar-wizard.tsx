@@ -1410,6 +1410,110 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   );
 }
 
+// Lista dinámica de especialidades (autocomplete + agregar/eliminar).
+function DynEspecialidades({
+  label,
+  items,
+  setItems,
+  options,
+}: {
+  label: string;
+  items: DynItem[];
+  setItems: React.Dispatch<React.SetStateAction<DynItem[]>>;
+  options: string[];
+}) {
+  const setVal = (id: string, val: string) =>
+    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, val } : it)));
+  const remove = (id: string) => setItems((prev) => prev.filter((it) => it.id !== id));
+  return (
+    <div className="space-y-2">
+      <Label className="text-[11px] text-muted-foreground">{label}</Label>
+      {items.map((it, idx) => (
+        <div key={it.id} className="flex items-end gap-2">
+          <div className="min-w-0 flex-1">
+            <AutoComplete
+              value={it.val}
+              onChange={(v) => setVal(it.id, v)}
+              options={options}
+              placeholder="Escribe la especialidad…"
+            />
+          </div>
+          {idx > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0 rounded-full text-status-red"
+              onClick={() => remove(it.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      ))}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-7 rounded-full text-[11px]"
+        onClick={() => setItems((prev) => [...prev, newDyn()])}
+      >
+        <Plus className="mr-1 h-3.5 w-3.5" /> Agregar especialidad
+      </Button>
+    </div>
+  );
+}
+
+// Lista dinámica de motivos (texto libre + agregar/eliminar).
+function DynMotivos({
+  label,
+  items,
+  setItems,
+}: {
+  label: string;
+  items: DynItem[];
+  setItems: React.Dispatch<React.SetStateAction<DynItem[]>>;
+}) {
+  const setVal = (id: string, val: string) =>
+    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, val } : it)));
+  const remove = (id: string) => setItems((prev) => prev.filter((it) => it.id !== id));
+  return (
+    <div className="space-y-2">
+      <Label className="text-[11px] text-muted-foreground">{label}</Label>
+      {items.map((it, idx) => (
+        <div key={it.id} className="flex items-center gap-2">
+          <Input
+            className="min-w-0 flex-1"
+            placeholder={`Motivo ${idx + 1}`}
+            value={it.val}
+            onChange={(e) => setVal(it.id, e.target.value)}
+          />
+          {idx > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0 rounded-full text-status-red"
+              onClick={() => remove(it.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      ))}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-7 rounded-full text-[11px]"
+        onClick={() => setItems((prev) => [...prev, newDyn()])}
+      >
+        <Plus className="mr-1 h-3.5 w-3.5" /> Agregar motivo
+      </Button>
+    </div>
+  );
+}
+
 function TipoCard({
   label,
   desc,
