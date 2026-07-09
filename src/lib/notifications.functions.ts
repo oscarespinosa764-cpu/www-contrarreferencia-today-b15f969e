@@ -1,12 +1,45 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   renderPlantilla,
   plantillaPorCanal,
   labelAlerta,
   sanitizarMensajeManual,
+  sanitizarVarNotif,
+  TIPOS_ALERTA,
   type PlantillaVars,
 } from "./notifications-utils";
+
+// Allowlist cerrada de tipos de evento (reutiliza el catálogo existente).
+const ALERT_TYPES = new Set(TIPOS_ALERTA.map((t) => t.value));
+
+// Cada valor de variable es opcional y acotado; el cliente no envía el texto final.
+const varStr = z.string().max(300).optional();
+const dispatchInputSchema = z.object({
+  alert_type: z
+    .string()
+    .max(60)
+    .refine((v) => ALERT_TYPES.has(v), { message: "Tipo de evento no permitido" }),
+  module: z.string().max(80).optional(),
+  reference_id: z.string().max(100).optional(),
+  dedup_minutes: z.number().int().min(1).max(1440).optional(),
+  vars: z
+    .object({
+      tipo_alerta: varStr,
+      modulo: varStr,
+      paciente_iniciales: varStr,
+      documento_enmascarado: varStr,
+      codigo: varStr,
+      estado: varStr,
+      accion: varStr,
+      fecha_hora: varStr,
+      usuario: varStr,
+      funcionario: varStr,
+    })
+    .partial()
+    .default({}),
+});
 
 const SAFE_COLS =
   "id, channel_type, enabled, display_name, destination_label, destination_id, token_configured, config_status, allowed_alert_types, message_template, settings, last_test_at, last_success_at, last_error_at, last_error_message, updated_at, updated_by";
