@@ -1384,8 +1384,13 @@ export function SeguimientoDialog({
       if (esNovedades) {
         if (!novPaciente && !novIps && !novAmbulancia)
           return toast.error("Selecciona al menos un tipo de novedad");
-        if (novPaciente && novDesistTipo === "IPS_AMB" && !novDesistIps && !novDesistAmb)
-          return toast.error("Marca al menos IPS o AMBULANCIA en el desistimiento");
+        if (novPaciente && !novDesistTipo)
+          return toast.error("Indica si el paciente/familiar firmó desistimiento");
+        if (novIps && !novIpsTipo) return toast.error("Selecciona la novedad de la IPS receptora");
+        if (novIps && novIpsTipo === "CANCELA" && !novIpsMotivo.trim())
+          return toast.error("Indica el motivo de la cancelación de la IPS");
+        if (novIps && novIpsTipo === "POSTERGA" && (!novIpsFecha.trim() || !novIpsHora.trim()))
+          return toast.error("Indica la fecha y hora de postergación");
         if (!detalle.trim()) return toast.error("Registra la observación de la novedad");
       }
       if (requiereMotivoLegacy && mostrarEvolucionLegacy && !motivoEvo.trim())
