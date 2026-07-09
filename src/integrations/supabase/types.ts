@@ -2569,6 +2569,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      shift_monthly_usage: {
+        Args: { _month: number; _user_id: string; _year: number }
+        Returns: {
+          aprobadas: number
+          coberturas: number
+          exentos: number
+          pendientes: number
+          solicitudes: number
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "operativa" | "temporal"
