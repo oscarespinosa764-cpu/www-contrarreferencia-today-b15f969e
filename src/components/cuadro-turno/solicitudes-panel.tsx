@@ -23,7 +23,10 @@ import {
 } from "@/lib/cuadro-turno-utils";
 import { generarSolicitudPDF } from "@/lib/solicitud-pdf";
 import { getFirmaDataUrlById, getFirmaDataUrlByUser } from "@/lib/firmas-utils";
-import { FileDown } from "lucide-react";
+import { aplicarCoberturaCuadro, crearAlertaVerificacion } from "@/lib/cuadro-aplicar";
+import { getSoporteSignedUrl } from "@/lib/soportes-utils";
+import { minutosAHoras } from "@/lib/solicitudes-utils";
+import { FileDown, Paperclip } from "lucide-react";
 
 export function SolicitudesPanel() {
   const { user } = useAuth();
