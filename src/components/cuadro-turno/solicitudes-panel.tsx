@@ -151,8 +151,32 @@ function RevisionDialog({
       const { error } = await supabase.from("shift_requests").update({
         status: "APROBADA", approved_by: adminId, approved_at: new Date().toISOString(),
         approval_observation: obs || null, register_absenteeism: registrarAus,
+        cuadro_applied: true,
       }).eq("id", request.id);
       if (error) throw error;
+
+      // Cambio efectivo del cuadro (best-effort, conserva la programación original)
+      await aplicarCoberturaCuadro(request, adminId);
+
+      // Alerta(s) de verificación por cada fracción de devolución programada
+      if (request.will_recover_time) {
+        const { data: frags } = await supabase
+          .from("shift_return_fragments")
+          .select("return_date, start_time, end_time, minutes, receiver_name")
+          .eq("request_id", request.id)
+          .eq("verification_result", "PENDIENTE");
+        for (const f of frags ?? []) {
+          await crearAlertaVerificacion({
+            requesterName: request.requester_name,
+            receiverName: f.receiver_name,
+            fecha: f.return_date,
+            horaInicial: f.start_time,
+            horaFinal: f.end_time,
+            minutos: f.minutes ?? 0,
+            createdBy: adminId,
+          });
+        }
+      }
 
       // Alimentar TH-FR-48 si corresponde
       if (registrarAus) {
@@ -170,6 +194,7 @@ function RevisionDialog({
           reason: request.reason_type === "Otro" ? request.other_reason : request.reason_type,
           origin: "solicitud_aprobada", approved_by: adminId, approved_at: new Date().toISOString(),
           created_by: adminId,
+          status: request.will_recover_time ? "pendiente_verificacion" : "activo",
         });
       }
 
