@@ -121,6 +121,7 @@ export type Database = {
           id: string
           ips: string | null
           medico: string | null
+          metadata: Json | null
           nombres: string | null
           regimen: string | null
           texto_ia: string | null
@@ -147,6 +148,7 @@ export type Database = {
           id?: string
           ips?: string | null
           medico?: string | null
+          metadata?: Json | null
           nombres?: string | null
           regimen?: string | null
           texto_ia?: string | null
@@ -173,6 +175,7 @@ export type Database = {
           id?: string
           ips?: string | null
           medico?: string | null
+          metadata?: Json | null
           nombres?: string | null
           regimen?: string | null
           texto_ia?: string | null
