@@ -883,15 +883,24 @@ export function SeguimientoDialog({
         base = generarPlantillaOtroSeg(otroCual, estadoSolicitud);
         break;
       case T.NOVEDADES: {
+        const ipsNov = ipsReceptora.trim() || "[IPS]";
+        const fhNov = fmtFechaHora(novIpsFecha, novIpsHora);
         if (novPaciente && novDesistTipo === "GENERAL") {
           base =
-            "SE REGISTRA DESISTIMIENTO GENERAL DE LA REMISIÓN POR PARTE DE PACIENTE/FAMILIAR. SE CIERRA PROCESO SEGÚN TRAZABILIDAD REGISTRADA.";
-        } else if (novPaciente && novDesistTipo === "IPS_AMB" && novDesistIps) {
+            "SE REGISTRA DESISTIMIENTO GENERAL DEL PROCESO DE REMISIÓN POR PARTE DEL PACIENTE/FAMILIAR. SE CIERRA EL CASO Y SE DEJA TRAZABILIDAD DE LA GESTIÓN.";
+        } else if (novPaciente && novDesistTipo === "IPS") {
           base =
-            "SE REGISTRA DESISTIMIENTO DE IPS POR PARTE DE PACIENTE/FAMILIAR. SE DEJA TRAZABILIDAD Y SE CONTINÚA GESTIÓN PARA NUEVA ACEPTACIÓN SEGÚN CORRESPONDA.";
-        } else if (novPaciente && novDesistTipo === "IPS_AMB" && novDesistAmb) {
+            "SE REGISTRA DESISTIMIENTO DE LA IPS POR PARTE DEL PACIENTE/FAMILIAR. SE DEJA SIN EFECTO LA ACEPTACIÓN ACTUAL PARA LA CONTINUIDAD DEL TRÁMITE Y EL CASO RETORNA A PENDIENTE DE ACEPTACIÓN.";
+        } else if (novPaciente && novDesistTipo === "AMB") {
           base =
-            "SE REGISTRA DESISTIMIENTO DE AMBULANCIA POR PARTE DE PACIENTE/FAMILIAR. SE DEJA TRAZABILIDAD Y QUEDA PENDIENTE NUEVA COORDINACIÓN DE TRASLADO.";
+            "SE REGISTRA DESISTIMIENTO DE LA AMBULANCIA POR PARTE DEL PACIENTE/FAMILIAR. SE CONSERVA LA ACEPTACIÓN DE LA IPS Y EL CASO RETORNA A PENDIENTE DE COORDINACIÓN DE AMBULANCIA.";
+        } else if (novIps && novIpsTipo === "DESIST_IPS") {
+          base =
+            "SE REGISTRA QUE EL PACIENTE/FAMILIAR FIRMA DESISTIMIENTO HACIA LA IPS RECEPTORA. SE MARCA LA ACEPTACIÓN ACTUAL COMO DESISTIDA, SE CONSERVA LA TRAZABILIDAD Y EL CASO RETORNA A PENDIENTE DE ACEPTACIÓN.";
+        } else if (novIps && novIpsTipo === "CANCELA") {
+          base = `LA IPS RECEPTORA ${ipsNov} CANCELA LA ACEPTACIÓN DEL PACIENTE. EL CASO RETORNA A PENDIENTE DE ACEPTACIÓN PARA CONTINUAR LA GESTIÓN CON LA RED. MOTIVO: ${novIpsMotivo.trim() || "[MOTIVO]"}.`;
+        } else if (novIps && novIpsTipo === "POSTERGA") {
+          base = `LA IPS RECEPTORA ${ipsNov} POSTERGA LA ACEPTACIÓN HASTA EL ${fhNov || "[FECHA] A LAS [HORA]"}. SE MANTIENE LA TRAZABILIDAD DEL CASO Y SE REALIZARÁ NUEVO SEGUIMIENTO SEGÚN LA FECHA INDICADA.`;
         } else {
           const tipos = [
             novPaciente ? "PACIENTE/FAMILIAR" : "",
