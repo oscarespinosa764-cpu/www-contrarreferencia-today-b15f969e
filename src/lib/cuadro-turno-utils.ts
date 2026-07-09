@@ -4,11 +4,34 @@
 // ============================================================================
 
 export const MESES = [
-  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
 ] as const;
 
-export const MESES_ABBR = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"] as const;
+export const MESES_ABBR = [
+  "ENE",
+  "FEB",
+  "MAR",
+  "ABR",
+  "MAY",
+  "JUN",
+  "JUL",
+  "AGO",
+  "SEP",
+  "OCT",
+  "NOV",
+  "DIC",
+] as const;
 
 /** Iniciales de días de la semana (Lun=0 estilo institucional usa L M X J V S D). */
 export const DOW_LETRA = ["D", "L", "M", "X", "J", "V", "S"] as const; // index = getDay()
@@ -145,6 +168,22 @@ export interface ShiftRequest {
   return_person_role?: string | null;
   return_date?: string | null;
   return_shift_code?: string | null;
+  // Solicitudes y Ausentismo (ampliación aditiva)
+  original_shift_name?: string | null;
+  original_start_time?: string | null;
+  original_end_time?: string | null;
+  requested_minutes?: number | null;
+  returned_minutes?: number | null;
+  pending_minutes?: number | null;
+  recovery_status?: string | null;
+  return_fractioned?: boolean | null;
+  replacement_user_id?: string | null;
+  return_receiver_id?: string | null;
+  is_limit_exempt?: boolean | null;
+  monthly_exception_id?: string | null;
+  support_path?: string | null;
+  support_metadata?: Record<string, unknown> | null;
+  cuadro_applied?: boolean | null;
   approved_by?: string | null;
   approval_observation: string | null;
   rejection_reason: string | null;
@@ -223,8 +262,17 @@ export function eventoNombre(code: string | null): string {
 
 /** Motivos que por defecto alimentan el Control de ausentismo TH-FR-48. */
 const MOTIVOS_AUSENTISMO = new Set([
-  "Cita médica", "Estudio", "Actividad personal", "Matrimonio", "Calamidad",
-  "Compensatorio", "Licencia", "Incapacidad", "Llegada tarde", "Ausencia", "Salida",
+  "Cita médica",
+  "Estudio",
+  "Actividad personal",
+  "Matrimonio",
+  "Calamidad",
+  "Compensatorio",
+  "Licencia",
+  "Incapacidad",
+  "Llegada tarde",
+  "Ausencia",
+  "Salida",
 ]);
 
 export function defaultRegistrarAusentismo(motivo: string | null): boolean {
@@ -314,14 +362,20 @@ export function resumenSolicitud(r: ShiftRequest): string {
     `Motivo: ${motivo}`,
   ];
   if (r.request_type === "cambio_turno") {
-    lineas.push(`Turno original: ${r.original_shift_code || "—"} (${fmtFecha(r.original_shift_date)})`);
-    lineas.push(`Turno solicitado: ${r.requested_shift_code || "—"} (${fmtFecha(r.requested_shift_date)})`);
+    lineas.push(
+      `Turno original: ${r.original_shift_code || "—"} (${fmtFecha(r.original_shift_date)})`,
+    );
+    lineas.push(
+      `Turno solicitado: ${r.requested_shift_code || "—"} (${fmtFecha(r.requested_shift_date)})`,
+    );
     if (r.swap_partner_name) lineas.push(`Cambia con: ${r.swap_partner_name}`);
   } else {
     lineas.push(`Desde: ${fmtFecha(r.start_date)}${r.start_time ? " " + r.start_time : ""}`);
     lineas.push(`Hasta: ${fmtFecha(r.end_date)}${r.end_time ? " " + r.end_time : ""}`);
   }
-  lineas.push(`Requiere reemplazo: ${r.requires_replacement ? "Sí" : "No"}${r.replacement_name ? ` (${r.replacement_name})` : ""}`);
+  lineas.push(
+    `Requiere reemplazo: ${r.requires_replacement ? "Sí" : "No"}${r.replacement_name ? ` (${r.replacement_name})` : ""}`,
+  );
   lineas.push(`Recupera tiempo: ${r.will_recover_time ? "Sí" : "No"}`);
   if (r.reason_detail) lineas.push(`Detalle: ${r.reason_detail}`);
   return lineas.join("\n");

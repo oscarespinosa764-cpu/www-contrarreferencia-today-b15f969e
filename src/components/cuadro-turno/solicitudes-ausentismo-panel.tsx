@@ -12,6 +12,8 @@ import { AusentismoPanel } from "./ausentismo-panel";
 import { HistorialCambiosPanel } from "./historial-cambios-panel";
 import { MiTurnoPanel } from "./mi-turno-panel";
 import { SolicitudFormDialog } from "./solicitud-form-dialog";
+import { PendientesVerificacionPanel } from "./pendientes-verificacion-panel";
+import { ControlMensualPanel } from "./control-mensual-panel";
 
 interface AuditRow {
   id: string;
@@ -46,7 +48,9 @@ function HistorialResumen() {
         .order("created_at", { ascending: false })
         .limit(300);
       const set = new Set<string>();
-      (data ?? []).forEach((r: any) => r.requester_name && set.add(r.requester_name));
+      (data ?? []).forEach(
+        (r: { requester_name: string | null }) => r.requester_name && set.add(r.requester_name),
+      );
       return Array.from(set);
     },
   });
@@ -75,7 +79,9 @@ function HistorialResumen() {
                 <li key={a.id} className="rounded-md border px-2 py-1.5 text-xs">
                   <span className="font-medium">{a.shift_requests?.requester_name ?? "—"}</span>
                   <span className="text-muted-foreground"> · {a.action}</span>
-                  <span className="block text-[10px] text-muted-foreground">{fmtFechaHora(a.created_at)}</span>
+                  <span className="block text-[10px] text-muted-foreground">
+                    {fmtFechaHora(a.created_at)}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -91,7 +97,10 @@ function HistorialResumen() {
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {solicitantes.map((n) => (
-                <span key={n} className="rounded-full border bg-secondary px-2.5 py-0.5 text-[11px] font-medium text-secondary-foreground">
+                <span
+                  key={n}
+                  className="rounded-full border bg-secondary px-2.5 py-0.5 text-[11px] font-medium text-secondary-foreground"
+                >
                   {n}
                 </span>
               ))}
@@ -102,7 +111,9 @@ function HistorialResumen() {
 
       <Dialog open={verTodo} onOpenChange={setVerTodo}>
         <DialogContent className="max-w-4xl">
-          <DialogHeader><DialogTitle>Actividad completa de cambios</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Actividad completa de cambios</DialogTitle>
+          </DialogHeader>
           <div className="max-h-[70vh] overflow-y-auto">
             <HistorialCambiosPanel />
           </div>
@@ -115,7 +126,6 @@ function HistorialResumen() {
 export function SolicitudesAusentismoPanel({ isAdmin }: { isAdmin: boolean }) {
   const [sub, setSub] = useState("solicitudes");
   const [openSolicitud, setOpenSolicitud] = useState(false);
-  
 
   if (!isAdmin) {
     // El equipo operativo gestiona sus propias solicitudes.
@@ -126,6 +136,7 @@ export function SolicitudesAusentismoPanel({ isAdmin }: { isAdmin: boolean }) {
     <Tabs value={sub} onValueChange={setSub} className="space-y-4">
       <TabsList>
         <TabsTrigger value="solicitudes">Solicitudes y cambios</TabsTrigger>
+        <TabsTrigger value="pendientes">Pendientes de verificación</TabsTrigger>
         <TabsTrigger value="ausentismo">Control de ausentismo</TabsTrigger>
       </TabsList>
       <TabsContent value="solicitudes" className="space-y-4">
@@ -135,7 +146,11 @@ export function SolicitudesAusentismoPanel({ isAdmin }: { isAdmin: boolean }) {
           </Button>
         </div>
         <HistorialResumen />
+        <ControlMensualPanel />
         <SolicitudesPanel />
+      </TabsContent>
+      <TabsContent value="pendientes">
+        <PendientesVerificacionPanel />
       </TabsContent>
       <TabsContent value="ausentismo">
         <AusentismoPanel />
