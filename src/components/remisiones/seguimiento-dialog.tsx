@@ -472,6 +472,20 @@ export function SeguimientoDialog({
   const mostrarEntregaDocOpt = faseAceptadoCon;
   // Cierre por egreso: disponible una vez el caso está aceptado (con ambulancia) o pendiente de egreso.
   const mostrarCierreOpt = faseAceptadoCon || facePendienteEgreso;
+  // CIERRE POR TRASLADO EFECTIVO: solo tras completar la entrega documental
+  // (estado PENDIENTE EGRESO). Antes de esa etapa NO debe aparecer (ni en gris).
+  const mostrarTrasladoOpt = facePendienteEgreso;
+
+  // ¿El responsable actual es una aseguradora/póliza (SOAT, ARL, póliza
+  // estudiantil, etc.) y NO una EPS/EAPB? Se consulta el tipo de trámite y el
+  // asegurador real del caso, no solo el texto libre. Solo en ese caso aplica
+  // el CAMBIO DE ASEGURADOR A EAPB.
+  const responsableTxt = `${caso?.tipo_tramite ?? ""} ${caso?.asegurador ?? ""} ${caso?.eapb ?? ""}`;
+  const esAseguradoraNoEapb =
+    /soat|arl|p[oó]liza|aseguradora|prepagada|particular|riesgos\s+laborales/i.test(
+      responsableTxt,
+    ) && !/\beps\b|\beapb\b/i.test(responsableTxt);
+  const mostrarCambioEapb = usaIndigo && esAseguradoraNoEapb;
 
   const TIPOS_SALIENTES = useMemo(() => {
     const arr = [
@@ -486,10 +500,9 @@ export function SeguimientoDialog({
       ...(mostrarAmbulancia ? [T.AMBULANCIA] : []),
       ...(mostrarEntregaDocOpt ? [T.ENTREGA_DOC] : []),
       ...(mostrarCierreOpt ? [T.CIERRE] : []),
-      // CIERRE POR TRASLADO EFECTIVO: siempre visible en el selector; se deshabilita
-      // cuando el caso aún no completó la cadena (aceptación → ambulancia → entrega).
-      T.TRASLADO,
-      T.CAMBIO_EAPB,
+      // CIERRE POR TRASLADO EFECTIVO: oculto hasta completar la entrega documental.
+      ...(mostrarTrasladoOpt ? [T.TRASLADO] : []),
+      ...(mostrarCambioEapb ? [T.CAMBIO_EAPB] : []),
       T.CANCELACION,
       T.PERTINENCIA,
       T.NOVEDADES,
@@ -502,6 +515,8 @@ export function SeguimientoDialog({
     mostrarAmbulancia,
     mostrarEntregaDocOpt,
     mostrarCierreOpt,
+    mostrarTrasladoOpt,
+    mostrarCambioEapb,
   ]);
 
   // Tipos para PHD/PAD/O2/Especiales (subconjunto saliente).
