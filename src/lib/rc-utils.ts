@@ -236,6 +236,8 @@ export interface BuildMsgData {
   motivosCrue?: string[] | null;
   eapb?: string;
   regimen?: string;
+  nombreFuncionario?: string;
+  cargoFuncionario?: string;
 }
 
 export interface BuildMsgResult {
@@ -339,7 +341,13 @@ export function buildMensaje(
     .replace(/\{\{CONTACTO_IPS\}\}/g, data.contactoIps || "")
     .replace(/\{\{MOTIVO_1\}\}/g, (data.motivosCrue && data.motivosCrue[0]) || "")
     .replace(/\{\{MOTIVO_2\}\}/g, (data.motivosCrue && data.motivosCrue[1]) || "")
-    .replace(/\{\{MOTIVO_3\}\}/g, (data.motivosCrue && data.motivosCrue[2]) || "");
+    .replace(/\{\{MOTIVO_3\}\}/g, (data.motivosCrue && data.motivosCrue[2]) || "")
+    .replace(/\{\{NOMBRE_FUNCIONARIO\}\}/g, data.nombreFuncionario || "")
+    .replace(/\{\{CARGO_FUNCIONARIO\}\}/g, data.cargoFuncionario || "")
+    .replace(
+      /\{\{MOTIVOS_LISTA\}\}/g,
+      (data.motivosCrue || []).filter(Boolean).map((m) => `• ${m}`).join("\n"),
+    );
 
   return procesarBloques(out);
 }

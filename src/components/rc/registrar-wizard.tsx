@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode, type Dispatch, type SetStateAction } from "react";
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { siguienteCodigo } from "@/lib/codigo.functions";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   ArrowLeft,
   ArrowRight,
@@ -20,8 +21,31 @@ import {
   XCircle,
   Siren,
   ExternalLink,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  MOTIVOS_NEG,
+  MOTIVO_NEG_CATALOGO,
+  DOC_SUBTIPOS,
+  DOCS_EPS,
+  DOCS_SOAT,
+  RED_SUBTIPOS,
+  plantillaDocEps,
+  plantillaDocSoat,
+  plantillaArlDirecto,
+  plantillaRedConjunto,
+  plantillaMayorConEsp,
+  plantillaMayorSinEsp,
+  plantillaCrueBase,
+  type MotivoNeg,
+  type EntidadTipo,
+  type DocSubtipo,
+  type RedSubtipo,
+  type ComplejidadSub,
+  type DocItem,
+} from "@/lib/neg-crue";
 import {
   buscarAcepActivo,
   buscarAcepReciente,
@@ -50,6 +74,21 @@ const CRUE_TIPOS: { value: Tipo; label: string }[] = [
 const UNIDADES_CRUE = ["URGENCIAS", "UCI"];
 
 const COMPLEJIDADES = ["MAYOR COMPLEJIDAD", "MENOR COMPLEJIDAD"];
+
+const ENTIDAD_TIPOS: { value: EntidadTipo; label: string }[] = [
+  { value: "EPS", label: "EPS" },
+  { value: "SOAT-ADRES", label: "SOAT / ADRES" },
+  { value: "ARL", label: "ARL" },
+];
+
+// Elemento de lista dinámica (especialidades / motivos) con id estable.
+interface DynItem {
+  id: string;
+  val: string;
+}
+let __dynSeq = 0;
+const newDyn = (val = ""): DynItem => ({ id: `d${++__dynSeq}`, val });
+const dynValues = (items: DynItem[]) => items.map((i) => i.val.trim()).filter(Boolean);
 
 interface Props {
   casos: Caso[];
@@ -82,17 +121,32 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const [especialidad, setEspecialidad] = useState("");
   const [unidad, setUnidad] = useState("");
   const [aseguramiento, setAseguramiento] = useState("EPS");
-  const [motivoNeg, setMotivoNeg] = useState("");
+  const [motivoNeg, setMotivoNeg] = useState<MotivoNeg | "">("");
   const [complejidad, setComplejidad] = useState("");
   const [detalle, setDetalle] = useState("");
   // CRUE
   const [codigoCrue, setCodigoCrue] = useState("");
   const [contactoIps, setContactoIps] = useState("");
   const [unidadReq, setUnidadReq] = useState("");
-  const [motivosCrue, setMotivosCrue] = useState<string[]>(["", "", ""]);
+  
   // Negación — recontacto (sobreocupación)
   const [fechaRec, setFechaRec] = useState("");
   const [horaRec, setHoraRec] = useState("");
+
+  // ── Negación: entidad responsable + submotivos dinámicos ──
+  const [entidadTipo, setEntidadTipo] = useState<EntidadTipo>("EPS");
+  const [docSubtipo, setDocSubtipo] = useState<DocSubtipo | "">("");
+  const [docChecks, setDocChecks] = useState<Record<string, boolean>>({});
+  const [redSubtipo, setRedSubtipo] = useState<RedSubtipo | "">("");
+  const [complejidadSub, setComplejidadSub] = useState<ComplejidadSub | "">("");
+  // Red no contratada — manejo conjunto
+  const [espPrincipal, setEspPrincipal] = useState("");
+  const [espsExtra, setEspsExtra] = useState<DynItem[]>([newDyn()]);
+  // CRUE — funcionario + listas dinámicas
+  const [nombreFuncionario, setNombreFuncionario] = useState("");
+  const [cargoFuncionario, setCargoFuncionario] = useState("");
+  const [espsCrue, setEspsCrue] = useState<DynItem[]>([newDyn()]);
+  const [motivosCrueDyn, setMotivosCrueDyn] = useState<DynItem[]>([newDyn()]);
 
   // Paciente reconsultante (autollenado) y ventana ADRES
   const [esReconsultante, setEsReconsultante] = useState(false);
@@ -214,13 +268,30 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     setAdresAbierta(false);
   };
 
-  // ── Lógica de campos según el motivo de negación ──
-  const mNeg = motivoNeg.toUpperCase();
-  const negEspecialidad = mNeg.includes("RECURSO HUMANO");
-  const negUnidad = mNeg.includes("DISPONIBILIDAD DE UNIDAD");
-  const negCamas = mNeg.includes("SOBREOCUPAC") || mNeg.includes("CAMAS");
-  const negComplejidad = mNeg.includes("COMPLEJIDAD");
-  const negDetalleOpcional = mNeg.includes("RED NO CONTRATADA") || mNeg.includes("AFILIACI");
+  // ── Lógica de campos según el motivo de negación (por valor interno) ──
+  const negEspecialidad = motivoNeg === "NO_RECURSO_HUMANO";
+  const negUnidad = motivoNeg === "NO_DISPONIBILIDAD_UNIDAD";
+  const negCamas = motivoNeg === "SOBREOCUPACION";
+  const negComplejidad = motivoNeg === "NIVEL_COMPLEJIDAD";
+  const negDoc = motivoNeg === "SOLICITUD_DOCUMENTACION";
+  const negRed = motivoNeg === "RED_NO_CONTRATADA";
+  const negArl = motivoNeg === "ARL_DIRECTO";
+  // Documentos disponibles según el subtipo de solicitud de documentación.
+  const docItems: DocItem[] =
+    docSubtipo === "DOCUMENTACION_EPS"
+      ? DOCS_EPS
+      : docSubtipo === "DOCUMENTACION_SOAT_ADRES_POLIZA"
+        ? DOCS_SOAT
+        : [];
+  const docSeleccionados = docItems.filter((d) => docChecks[d.id]).map((d) => d.texto);
+  const todasMarcadas = docItems.length > 0 && docItems.every((d) => docChecks[d.id]);
+  const toggleTodas = () => {
+    if (todasMarcadas) {
+      setDocChecks({});
+    } else {
+      setDocChecks(Object.fromEntries(docItems.map((d) => [d.id, true])));
+    }
+  };
 
   // ── Catálogo médico ⇄ especialidad (bidireccional) ──
   // Construye el mapa nombre→especialidad a partir del catálogo de médicos
@@ -299,23 +370,49 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     setCodigoCrue("");
     setContactoIps("");
     setUnidadReq("");
-    setMotivosCrue(["", "", ""]);
+    
     setFechaRec("");
     setHoraRec("");
     setEsReconsultante(false);
+    setEntidadTipo("EPS");
+    setDocSubtipo("");
+    setDocChecks({});
+    setRedSubtipo("");
+    setComplejidadSub("");
+    setEspPrincipal("");
+    setEspsExtra([newDyn()]);
+    setNombreFuncionario("");
+    setCargoFuncionario("");
+    setEspsCrue([newDyn()]);
+    setMotivosCrueDyn([newDyn()]);
     cerrarAdres();
     setResultado(null);
   };
 
   const guardar = async () => {
     if (!tipo) return toast.error("Selecciona el tipo de caso");
-    if (tipo === "NEG" && !motivoNeg) return toast.error("Selecciona el motivo de negación");
-    if (tipo === "NEG" && negComplejidad && !complejidad) return toast.error("Selecciona la complejidad");
-    if (tipo === "NEG" && negEspecialidad && !especialidad.trim())
-      return toast.error("Indica la especialidad requerida");
-    if (tipo === "NEG" && negUnidad && !unidad.trim()) return toast.error("Indica la unidad requerida");
-    if (tipo === "NEG" && negComplejidad && complejidad === "MAYOR COMPLEJIDAD" && !especialidad.trim())
-      return toast.error("Indica la especialidad requerida");
+    if (tipo === "NEG") {
+      if (!motivoNeg) return toast.error("Selecciona el motivo de negación");
+      if (negDoc && !docSubtipo) return toast.error("Selecciona el tipo de documentación");
+      if (negDoc && (docSubtipo === "DOCUMENTACION_EPS" || docSubtipo === "DOCUMENTACION_SOAT_ADRES_POLIZA") && docSeleccionados.length === 0)
+        return toast.error("SELECCIONE AL MENOS UN DOCUMENTO REQUERIDO.");
+      if (negRed && !redSubtipo) return toast.error("Selecciona el subtipo de red no contratada");
+      if (negRed && redSubtipo === "CONJUNTO" && !espPrincipal.trim())
+        return toast.error("Indica la especialidad principal disponible");
+      if (negRed && redSubtipo === "CONJUNTO" && dynValues(espsExtra).length === 0)
+        return toast.error("Indica al menos una especialidad fuera de la red");
+      if (negEspecialidad && !especialidad.trim()) return toast.error("Indica la especialidad requerida");
+      if (negUnidad && !unidad.trim()) return toast.error("Indica la unidad requerida");
+      if (negComplejidad && !complejidad) return toast.error("Selecciona la complejidad");
+      if (negComplejidad && complejidad === "MAYOR COMPLEJIDAD" && !complejidadSub)
+        return toast.error("Indica si hay especialidad faltante");
+      if (negComplejidad && complejidad === "MAYOR COMPLEJIDAD" && complejidadSub === "CON_ESP" && !especialidad.trim())
+        return toast.error("Indica la especialidad requerida");
+    }
+    if (isCrue) {
+      if (!nombreFuncionario.trim()) return toast.error("Indica el nombre del funcionario");
+      if (!cargoFuncionario.trim()) return toast.error("Indica el cargo del funcionario");
+    }
     if (tipo === "CRUE_ACEP" && !unidadReq) return toast.error("Selecciona la unidad requerida (URGENCIAS o UCI)");
 
     setBusy(true);
@@ -324,6 +421,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
       const { codigo } = await siguienteCodigo({
         data: { tipo, yyyy: ahora.getFullYear(), mm: ahora.getMonth() + 1 },
       });
+      const fecha = fmtFechaHora(ahora);
 
       const esActivo = tipo === "ACEP" || tipo === "CRUE_ACEP";
       const unidadEff = isCrue ? unidadReq : unidad;
@@ -337,18 +435,150 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
         fechaVenceStr = fmtFechaHora(venceD);
       }
 
-      const motivoNegFull =
-        motivoNeg === "POR NIVEL DE COMPLEJIDAD" && complejidad
-          ? `POR NIVEL DE COMPLEJIDAD - ${complejidad}`
-          : motivoNeg;
+      const obs = detalle.trim();
+      const espsExtraVals = dynValues(espsExtra);
+      const espsCrueVals = dynValues(espsCrue);
+      const motivosCrueVals = dynValues(motivosCrueDyn);
+      const rr = { codigo, fecha, fechaVence: fechaVenceStr, hrsReserva: String(hrs || "") };
 
-      const negCamasSel = tipo === "NEG" && negCamas;
+      let mensaje = "";
+      let metadata: Record<string, unknown> | null = null;
+      let especialidadCol = especialidad;
 
-      const mensaje = buildMensaje(
-        plantillas,
-        catalogos.medicos,
-        { codigo, fecha: fmtFechaHora(ahora), fechaVence: fechaVenceStr, hrsReserva: String(hrs || "") },
-        {
+      if (tipo === "NEG") {
+        metadata = {
+          tipo_caso: "NEG",
+          entidad_tipo: entidadTipo,
+          motivo_negacion: motivoNeg,
+          observaciones: obs || null,
+        };
+        if (negDoc) {
+          metadata.tipo_documentacion = docSubtipo;
+          if (docSubtipo === "DOCUMENTACION_EPS") {
+            metadata.documentos_solicitados = docSeleccionados;
+            mensaje = plantillaDocEps(docSeleccionados, obs);
+          } else if (docSubtipo === "DOCUMENTACION_SOAT_ADRES_POLIZA") {
+            metadata.documentos_solicitados = docSeleccionados;
+            mensaje = plantillaDocSoat(docSeleccionados, obs);
+          } else {
+            // AFILIACIÓN DE OFICIO → reutiliza la plantilla existente del catálogo.
+            metadata.subtipo_negacion = "AFILIACION_OFICIO";
+            mensaje = buildMensaje(plantillas, catalogos.medicos, rr, {
+              tipo: "NEG",
+              documento,
+              ips,
+              motivoNeg: "POR SOLICITUD DE AFILIACIÓN DE OFICIO",
+              detalle: obs,
+              eapb,
+              regimen,
+            });
+          }
+        } else if (negArl) {
+          mensaje = plantillaArlDirecto(codigo, obs);
+        } else if (negRed) {
+          metadata.subtipo_negacion = redSubtipo;
+          if (redSubtipo === "CONJUNTO") {
+            metadata.especialidades = espsExtraVals;
+            metadata.especialidad_principal = espPrincipal.trim() || null;
+            especialidadCol = espsExtraVals.join(", ");
+            mensaje = plantillaRedConjunto({
+              codigo,
+              ips,
+              profesional: medico,
+              espProfesional: especialidad,
+              espPrincipal,
+              especialidadesExtra: espsExtraVals,
+              obs,
+            });
+          } else {
+            // RED NO CONTRATADA — servicio/especialidad → plantilla existente.
+            metadata.especialidades = especialidad.trim() ? [especialidad.trim()] : [];
+            mensaje = buildMensaje(plantillas, catalogos.medicos, rr, {
+              tipo: "NEG",
+              documento,
+              ips,
+              especialidad,
+              motivoNeg: "RED NO CONTRATADA",
+              detalle: obs,
+              eapb,
+              regimen,
+            });
+          }
+        } else if (negComplejidad) {
+          if (complejidad === "MAYOR COMPLEJIDAD" && complejidadSub === "CON_ESP") {
+            metadata.subtipo_negacion = "MAYOR_CON_ESPECIALIDAD";
+            metadata.especialidades = especialidad.trim() ? [especialidad.trim()] : [];
+            mensaje = plantillaMayorConEsp(codigo, especialidad, obs);
+          } else if (complejidad === "MAYOR COMPLEJIDAD" && complejidadSub === "SIN_ESP") {
+            metadata.subtipo_negacion = "MAYOR_SIN_ESPECIALIDAD";
+            mensaje = plantillaMayorSinEsp(codigo, obs);
+          } else {
+            metadata.subtipo_negacion = "MENOR_COMPLEJIDAD";
+            mensaje = buildMensaje(plantillas, catalogos.medicos, rr, {
+              tipo: "NEG",
+              documento,
+              ips,
+              motivoNeg: "POR NIVEL DE COMPLEJIDAD - MENOR COMPLEJIDAD",
+              detalle: obs,
+              eapb,
+              regimen,
+            });
+          }
+        } else {
+          // NO RECURSO HUMANO / NO DISPONIBILIDAD DE UNIDAD / SOBREOCUPACIÓN → catálogo.
+          const catName = MOTIVO_NEG_CATALOGO[motivoNeg as MotivoNeg] || "";
+          metadata.especialidades = especialidad.trim() ? [especialidad.trim()] : [];
+          mensaje = buildMensaje(plantillas, catalogos.medicos, rr, {
+            tipo: "NEG",
+            documento,
+            ips,
+            especialidad,
+            unidad,
+            motivoNeg: catName,
+            detalle: obs,
+            eapb,
+            regimen,
+            fechaRecontacto: negCamas ? fechaRec : undefined,
+            horaRecontacto: negCamas ? horaRec : undefined,
+          });
+        }
+      } else if (isCrue) {
+        const subtipoLabel = CRUE_TIPOS.find((t) => t.value === tipo)?.label || "CASO CRUE";
+        const cierre =
+          tipo === "CRUE_ACEP"
+            ? "Se acepta el direccionamiento y se dispone de la unidad requerida para la continuidad del manejo del paciente."
+            : tipo === "CRUE_NR"
+              ? "Se informa que en el momento el caso no requiere direccionamiento."
+              : "Se informa que no es posible aceptar el direccionamiento por los motivos indicados. Sugerimos canalizar la remisión a través de la EAPB y su red prestadora.";
+        especialidadCol = espsCrueVals.join(", ");
+        mensaje = plantillaCrueBase({
+          subtipoLabel,
+          codigo,
+          codigoCrue,
+          ips: contactoIps,
+          nombreFuncionario,
+          cargoFuncionario,
+          unidad: unidadEff,
+          especialidades: espsCrueVals,
+          motivos: tipo === "CRUE_NEG" ? motivosCrueVals : [],
+          obs,
+          cierre,
+        });
+        metadata = {
+          crue_subtipo: tipo,
+          codigo_crue: codigoCrue.trim() || null,
+          ips_nombre: contactoIps.trim() || null,
+          nombre_funcionario: nombreFuncionario.trim(),
+          cargo_funcionario: cargoFuncionario.trim(),
+          unidad_requerida: tipo === "CRUE_ACEP" ? unidadReq || null : null,
+          unidad_solicitada: tipo === "CRUE_NEG" ? unidadReq || null : null,
+          especialidades_requeridas: espsCrueVals,
+          motivos_negacion_direccionamiento: tipo === "CRUE_NEG" ? motivosCrueVals : [],
+          observaciones: obs || null,
+        };
+      } else {
+        // ACEPTACIÓN → plantilla del catálogo (comportamiento actual).
+        mensaje = buildMensaje(plantillas, catalogos.medicos, rr, {
           tipo,
           documento,
           ips,
@@ -356,17 +586,11 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
           especialidad,
           unidad: unidadEff,
           aseguramiento,
-          detalle,
-          motivoNeg: motivoNegFull,
-          codigoCrue,
-          contactoIps,
+          detalle: obs,
           eapb,
           regimen,
-          fechaRecontacto: negCamasSel ? fechaRec : undefined,
-          horaRecontacto: negCamasSel ? horaRec : undefined,
-          motivosCrue: isCrue ? motivosCrue.filter(Boolean) : null,
-        },
-      );
+        });
+      }
 
       const { error } = await supabase.from("casos_entrantes").insert({
         codigo,
@@ -376,17 +600,18 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
         apellidos: apellidos.trim() || null,
         eapb: eapb || null,
         regimen: regimen || null,
-        ips: ips || null,
+        ips: (isCrue ? contactoIps : ips) || null,
         medico: medico || null,
-        especialidad: especialidad || null,
+        especialidad: especialidadCol || null,
         unidad: unidadEff || null,
-        aseguramiento: tipo === "ACEP" ? aseguramiento : null,
-        detalle: detalle || null,
+        aseguramiento: tipo === "ACEP" ? aseguramiento : tipo === "NEG" ? entidadTipo : null,
+        detalle: obs || null,
         estado: esActivo ? "ACTIVO" : "REGISTRADO",
         fecha: ahora.toISOString().slice(0, 10),
         fecha_vence: fechaVenceISO,
         hrs_reserva: hrs ? String(hrs) : null,
         texto_ia: mensaje || null,
+        metadata: metadata as never,
         created_by: user?.id,
       });
       if (error) throw error;
@@ -633,13 +858,19 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 onClick={() => {
                   setTipo("ACEP");
                   setCrueOpen(false);
-                  // limpia estado de negación y de CRUE
                   setMotivoNeg("");
                   setComplejidad("");
+                  setComplejidadSub("");
+                  setDocSubtipo("");
+                  setDocChecks({});
+                  setRedSubtipo("");
                   setCodigoCrue("");
                   setContactoIps("");
                   setUnidadReq("");
-                  setMotivosCrue(["", "", ""]);
+                  setNombreFuncionario("");
+                  setCargoFuncionario("");
+                  setEspsCrue([newDyn()]);
+                  setMotivosCrueDyn([newDyn()]);
                   setFechaRec("");
                   setHoraRec("");
                 }}
@@ -652,15 +883,22 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 onClick={() => {
                   setTipo("NEG");
                   setCrueOpen(false);
-                  // limpia estado de aceptación y de CRUE
                   setMedico("");
                   setEspecialidad("");
                   setUnidad("");
-                  setAseguramiento("EPS");
+                  setMotivoNeg("");
+                  setComplejidad("");
+                  setComplejidadSub("");
+                  setDocSubtipo("");
+                  setDocChecks({});
+                  setRedSubtipo("");
+                  setEspPrincipal("");
+                  setEspsExtra([newDyn()]);
                   setCodigoCrue("");
                   setContactoIps("");
                   setUnidadReq("");
-                  setMotivosCrue(["", "", ""]);
+                  setNombreFuncionario("");
+                  setCargoFuncionario("");
                 }}
               />
               <TipoCard
@@ -669,14 +907,17 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 accent="amber"
                 active={isCrue || crueOpen}
                 onClick={() => {
-                  // CRUE es excluyente: abre panel CRUE y limpia aceptación/negación
                   setCrueOpen(true);
                   setTipo("");
                   setMedico("");
                   setUnidad("");
-                  setAseguramiento("EPS");
+                  setEspecialidad("");
                   setMotivoNeg("");
                   setComplejidad("");
+                  setComplejidadSub("");
+                  setDocSubtipo("");
+                  setDocChecks({});
+                  setRedSubtipo("");
                   setFechaRec("");
                   setHoraRec("");
                 }}
@@ -690,9 +931,9 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                     type="button"
                     onClick={() => {
                       setTipo(t.value);
-                      // al cambiar de subtipo CRUE, limpia la unidad requerida
                       setUnidadReq("");
-                      setMotivosCrue(["", "", ""]);
+                      setEspsCrue([newDyn()]);
+                      setMotivosCrueDyn([newDyn()]);
                     }}
                     className={`rounded-xl border-2 px-3 py-2 text-left text-xs font-bold uppercase transition ${
                       tipo === t.value
@@ -751,21 +992,51 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
 
           {tipo === "NEG" && (
             <div className="rounded-2xl border border-status-red/30 bg-status-red/5 p-3 space-y-3">
+              {/* Entidad responsable (clasificación explícita, controla ARL) */}
+              <div className="space-y-1.5">
+                <Label className="text-[11px] text-muted-foreground">Entidad responsable</Label>
+                <div className="flex flex-wrap gap-2">
+                  {ENTIDAD_TIPOS.map((e) => (
+                    <button
+                      key={e.value}
+                      type="button"
+                      onClick={() => {
+                        setEntidadTipo(e.value);
+                        if (e.value !== "ARL" && motivoNeg === "ARL_DIRECTO") setMotivoNeg("");
+                      }}
+                      className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                        entidadTipo === e.value
+                          ? "border-status-red bg-status-red/15 text-status-red"
+                          : "border-border text-foreground hover:border-status-red/40"
+                      }`}
+                    >
+                      {e.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <Label className="text-xs font-bold uppercase tracking-wide text-status-red">
                 Motivo de negación
               </Label>
               <div className="flex flex-wrap gap-2">
-                {catalogos.motivosNeg.map((m) => (
+                {MOTIVOS_NEG.filter((m) => !m.soloEntidad || m.soloEntidad === entidadTipo).map((m) => (
                   <button
-                    key={m}
+                    key={m.value}
                     type="button"
                     onClick={() => {
-                      setMotivoNeg(m);
+                      setMotivoNeg(m.value);
                       setComplejidad("");
+                      setComplejidadSub("");
                       setEspecialidad("");
                       setUnidad("");
-                      const up = m.toUpperCase();
-                      if (up.includes("SOBREOCUPAC") || up.includes("CAMAS")) {
+                      setDocSubtipo("");
+                      setDocChecks({});
+                      setRedSubtipo("");
+                      setEspPrincipal("");
+                      setEspsExtra([newDyn()]);
+                      setMedico("");
+                      if (m.value === "SOBREOCUPACION") {
                         const now = new Date();
                         const p = (n: number) => String(n).padStart(2, "0");
                         setFechaRec(`${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`);
@@ -776,29 +1047,136 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                       }
                     }}
                     className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
-                      motivoNeg === m
+                      motivoNeg === m.value
                         ? "border-status-red bg-status-red/15 text-status-red"
                         : "border-border text-foreground hover:border-status-red/40"
                     }`}
                   >
-                    {m}
+                    {m.label}
                   </button>
                 ))}
               </div>
 
-              {/* RED NO CONTRATADA / AFILIACIÓN DE OFICIO → detalle opcional */}
-              {negDetalleOpcional && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="negdet" className="text-[11px] text-muted-foreground">
-                    Detalles (opcional)
-                  </Label>
-                  <Textarea
-                    id="negdet"
-                    rows={3}
-                    value={detalle}
-                    onChange={(e) => setDetalle(e.target.value)}
-                    placeholder="Nota adicional que se incluirá en el texto…"
-                  />
+              {/* SOLICITUD DE DOCUMENTACIÓN */}
+              {negDoc && (
+                <div className="space-y-3 rounded-xl border border-border bg-card/50 p-3">
+                  <div className="flex flex-wrap gap-2">
+                    {DOC_SUBTIPOS.map((d) => (
+                      <button
+                        key={d.value}
+                        type="button"
+                        onClick={() => {
+                          setDocSubtipo(d.value);
+                          setDocChecks({});
+                        }}
+                        className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                          docSubtipo === d.value
+                            ? "border-status-red bg-status-red/15 text-status-red"
+                            : "border-border text-foreground hover:border-status-red/40"
+                        }`}
+                      >
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {(docSubtipo === "DOCUMENTACION_EPS" || docSubtipo === "DOCUMENTACION_SOAT_ADRES_POLIZA") && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <Label className="text-[11px] font-bold uppercase text-muted-foreground">
+                          Documentos requeridos
+                        </Label>
+                        <Button type="button" size="sm" variant="outline" className="h-7 rounded-full text-[11px]" onClick={toggleTodas}>
+                          {todasMarcadas ? "Desmarcar todas" : "Marcar todas"}
+                        </Button>
+                      </div>
+                      <div className="grid gap-1.5 sm:grid-cols-2">
+                        {docItems.map((d) => (
+                          <label
+                            key={d.id}
+                            className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-card p-2 text-xs"
+                          >
+                            <Checkbox
+                              checked={!!docChecks[d.id]}
+                              onCheckedChange={(v) =>
+                                setDocChecks((prev) => ({ ...prev, [d.id]: v === true }))
+                              }
+                              className="mt-0.5 shrink-0"
+                            />
+                            <span className="min-w-0 break-words">{d.texto}</span>
+                          </label>
+                        ))}
+                      </div>
+                      {docSeleccionados.length === 0 && (
+                        <p className="text-[11px] font-semibold text-status-red">
+                          SELECCIONE AL MENOS UN DOCUMENTO REQUERIDO.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* RED NO CONTRATADA → dos subtipos */}
+              {negRed && (
+                <div className="space-y-3 rounded-xl border border-border bg-card/50 p-3">
+                  <div className="grid gap-2">
+                    {RED_SUBTIPOS.map((r) => (
+                      <button
+                        key={r.value}
+                        type="button"
+                        onClick={() => setRedSubtipo(r.value)}
+                        className={`rounded-lg border px-3 py-2 text-left text-xs font-semibold transition ${
+                          redSubtipo === r.value
+                            ? "border-status-red bg-status-red/15 text-status-red"
+                            : "border-border text-foreground hover:border-status-red/40"
+                        }`}
+                      >
+                        {r.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {redSubtipo === "SERVICIO" && (
+                    <AutoComplete
+                      label="Servicio o especialidad solicitada"
+                      value={especialidad}
+                      onChange={setEspecialidad}
+                      options={catalogos.especialidades}
+                      placeholder="Escribe la especialidad…"
+                    />
+                  )}
+
+                  {redSubtipo === "CONJUNTO" && (
+                    <div className="space-y-3">
+                      <AutoComplete
+                        label="Médico o profesional que revisa"
+                        value={medico}
+                        onChange={setMedico}
+                        onPick={onPickMedico}
+                        options={medicoOptions}
+                      />
+                      <AutoComplete
+                        label="Especialidad del profesional que revisa"
+                        value={especialidad}
+                        onChange={setEspecialidad}
+                        options={catalogos.especialidades}
+                      />
+                      <AutoComplete
+                        label="Especialidad principal disponible o contratada"
+                        value={espPrincipal}
+                        onChange={setEspPrincipal}
+                        options={catalogos.especialidades}
+                        required
+                      />
+                      <DynEspecialidades
+                        label="Especialidades adicionales requeridas fuera de la red"
+                        items={espsExtra}
+                        setItems={setEspsExtra}
+                        options={catalogos.especialidades}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -861,7 +1239,8 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                         type="button"
                         onClick={() => {
                           setComplejidad(c);
-                          if (c !== "MAYOR COMPLEJIDAD") setEspecialidad("");
+                          setComplejidadSub("");
+                          setEspecialidad("");
                         }}
                         className={`rounded-lg border px-3 py-1.5 text-xs transition ${
                           complejidad === c
@@ -874,14 +1253,40 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                     ))}
                   </div>
                   {complejidad === "MAYOR COMPLEJIDAD" && (
-                    <AutoComplete
-                      label="Especialidad requerida"
-                      value={especialidad}
-                      onChange={setEspecialidad}
-                      options={catalogos.especialidades}
-                      required
-                      placeholder="Escribe la especialidad…"
-                    />
+                    <div className="space-y-2 pt-1">
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {[
+                          { v: "CON_ESP" as ComplejidadSub, l: "CON ESPECIALIDAD FALTANTE" },
+                          { v: "SIN_ESP" as ComplejidadSub, l: "SIN ESPECIALIDAD FALTANTE" },
+                        ].map((o) => (
+                          <button
+                            key={o.v}
+                            type="button"
+                            onClick={() => {
+                              setComplejidadSub(o.v);
+                              if (o.v !== "CON_ESP") setEspecialidad("");
+                            }}
+                            className={`rounded-lg border px-3 py-1.5 text-xs transition ${
+                              complejidadSub === o.v
+                                ? "border-status-red bg-status-red/10 font-semibold text-status-red"
+                                : "border-border text-muted-foreground hover:border-status-red/40"
+                            }`}
+                          >
+                            {o.l}
+                          </button>
+                        ))}
+                      </div>
+                      {complejidadSub === "CON_ESP" && (
+                        <AutoComplete
+                          label="Especialidad requerida"
+                          value={especialidad}
+                          onChange={setEspecialidad}
+                          options={catalogos.especialidades}
+                          required
+                          placeholder="Escribe la especialidad…"
+                        />
+                      )}
+                    </div>
                   )}
                 </div>
               )}
@@ -889,15 +1294,35 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
           )}
 
 
+
           {isCrue && (
             <div className="grid gap-4 sm:grid-cols-2">
+              {/* Fila 1 — Código CRUE · IPS */}
               <div className="space-y-2">
                 <Label htmlFor="codcrue">Código CRUE</Label>
                 <Input id="codcrue" value={codigoCrue} onChange={(e) => setCodigoCrue(e.target.value)} />
               </div>
-              <AutoComplete label="Contacto / IPS" value={contactoIps} onChange={setContactoIps} options={catalogos.ips} minChars={2} />
+              <AutoComplete label="IPS" value={contactoIps} onChange={setContactoIps} options={catalogos.ips} minChars={2} />
 
-              {/* ACEPTACIÓN DIRECCIONAMIENTO → unidad obligatoria (solo URGENCIAS/UCI) */}
+              {/* Fila 2 — Nombre funcionario · Cargo funcionario */}
+              <AutoComplete
+                label="Nombre funcionario"
+                value={nombreFuncionario}
+                onChange={setNombreFuncionario}
+                onPick={(v) => {
+                  setNombreFuncionario(v);
+                  const p = catalogos.profesionales.find((x) => x.nombre === v);
+                  if (p && p.cargo) setCargoFuncionario(p.cargo);
+                }}
+                options={catalogos.profesionales.map((p) => p.nombre)}
+                required
+              />
+              <div className="space-y-2">
+                <Label htmlFor="cargofun">Cargo funcionario</Label>
+                <Input id="cargofun" value={cargoFuncionario} onChange={(e) => setCargoFuncionario(e.target.value)} />
+              </div>
+
+              {/* ACEPTACIÓN DIRECCIONAMIENTO → unidad requerida (URGENCIAS/UCI) */}
               {tipo === "CRUE_ACEP" && (
                 <div className="space-y-2 sm:col-span-2">
                   <Label>Unidad requerida</Label>
@@ -916,7 +1341,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 </div>
               )}
 
-              {/* NEGACIÓN DIRECCIONAMIENTO → unidad opcional (solo URGENCIAS/UCI) */}
+              {/* NEGACIÓN DIRECCIONAMIENTO → unidad solicitada (opcional) */}
               {tipo === "CRUE_NEG" && (
                 <div className="space-y-2 sm:col-span-2">
                   <Label>Unidad solicitada (opcional)</Label>
@@ -935,36 +1360,38 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 </div>
               )}
 
-              {/* Especialidad requerida: aplica para aceptación y negación de direccionamiento */}
+              {/* Especialidad(es) requerida(s): aceptación y negación de direccionamiento */}
               {tipo !== "CRUE_NR" && (
-                <AutoComplete label="Especialidad requerida" value={especialidad} onChange={setEspecialidad} options={catalogos.especialidades} />
+                <div className="sm:col-span-2">
+                  <DynEspecialidades
+                    label="Especialidad requerida"
+                    items={espsCrue}
+                    setItems={setEspsCrue}
+                    options={catalogos.especialidades}
+                  />
+                </div>
               )}
 
+              {/* Motivos de negación del direccionamiento (dinámicos) */}
               {tipo === "CRUE_NEG" && (
-                <div className="space-y-2 sm:col-span-2">
-                  <Label>Motivos de negación del direccionamiento (hasta 3)</Label>
-                  {[0, 1, 2].map((i) => (
-                    <Input
-                      key={i}
-                      className="mt-1"
-                      placeholder={`Motivo ${i + 1}`}
-                      value={motivosCrue[i]}
-                      onChange={(e) =>
-                        setMotivosCrue((prev) => prev.map((m, idx) => (idx === i ? e.target.value : m)))
-                      }
-                    />
-                  ))}
+                <div className="sm:col-span-2">
+                  <DynMotivos
+                    label="Motivo de negación del direccionamiento"
+                    items={motivosCrueDyn}
+                    setItems={setMotivosCrueDyn}
+                  />
                 </div>
               )}
             </div>
           )}
 
-          {(tipo === "ACEP" || isCrue) && (
+          {(tipo === "ACEP" || tipo === "NEG" || isCrue) && (
             <div className="space-y-2">
               <Label htmlFor="det">Observaciones / Detalle</Label>
               <Textarea id="det" rows={3} value={detalle} onChange={(e) => setDetalle(e.target.value)} placeholder="Información adicional…" />
             </div>
           )}
+
 
           <div className="flex justify-between">
             <Button type="button" variant="ghost" className="rounded-full" onClick={() => setStep(2)}>
@@ -977,6 +1404,110 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
           </div>
         </section>
       )}
+    </div>
+  );
+}
+
+// Lista dinámica de especialidades (autocomplete + agregar/eliminar).
+function DynEspecialidades({
+  label,
+  items,
+  setItems,
+  options,
+}: {
+  label: string;
+  items: DynItem[];
+  setItems: Dispatch<SetStateAction<DynItem[]>>;
+  options: string[];
+}) {
+  const setVal = (id: string, val: string) =>
+    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, val } : it)));
+  const remove = (id: string) => setItems((prev) => prev.filter((it) => it.id !== id));
+  return (
+    <div className="space-y-2">
+      <Label className="text-[11px] text-muted-foreground">{label}</Label>
+      {items.map((it, idx) => (
+        <div key={it.id} className="flex items-end gap-2">
+          <div className="min-w-0 flex-1">
+            <AutoComplete
+              value={it.val}
+              onChange={(v) => setVal(it.id, v)}
+              options={options}
+              placeholder="Escribe la especialidad…"
+            />
+          </div>
+          {idx > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0 rounded-full text-status-red"
+              onClick={() => remove(it.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      ))}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-7 rounded-full text-[11px]"
+        onClick={() => setItems((prev) => [...prev, newDyn()])}
+      >
+        <Plus className="mr-1 h-3.5 w-3.5" /> Agregar especialidad
+      </Button>
+    </div>
+  );
+}
+
+// Lista dinámica de motivos (texto libre + agregar/eliminar).
+function DynMotivos({
+  label,
+  items,
+  setItems,
+}: {
+  label: string;
+  items: DynItem[];
+  setItems: Dispatch<SetStateAction<DynItem[]>>;
+}) {
+  const setVal = (id: string, val: string) =>
+    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, val } : it)));
+  const remove = (id: string) => setItems((prev) => prev.filter((it) => it.id !== id));
+  return (
+    <div className="space-y-2">
+      <Label className="text-[11px] text-muted-foreground">{label}</Label>
+      {items.map((it, idx) => (
+        <div key={it.id} className="flex items-center gap-2">
+          <Input
+            className="min-w-0 flex-1"
+            placeholder={`Motivo ${idx + 1}`}
+            value={it.val}
+            onChange={(e) => setVal(it.id, e.target.value)}
+          />
+          {idx > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0 rounded-full text-status-red"
+              onClick={() => remove(it.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      ))}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-7 rounded-full text-[11px]"
+        onClick={() => setItems((prev) => [...prev, newDyn()])}
+      >
+        <Plus className="mr-1 h-3.5 w-3.5" /> Agregar motivo
+      </Button>
     </div>
   );
 }

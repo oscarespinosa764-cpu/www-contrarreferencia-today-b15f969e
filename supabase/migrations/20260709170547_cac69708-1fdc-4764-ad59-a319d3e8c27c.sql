@@ -1,0 +1,1 @@
+ALTER TABLE public.casos_entrantes ADD COLUMN IF NOT EXISTS metadata jsonb;
