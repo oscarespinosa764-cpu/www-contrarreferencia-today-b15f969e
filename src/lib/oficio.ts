@@ -173,7 +173,7 @@ export function buildOficioHTML(tipo: string, codigo: string, mensaje: string): 
     `</td>`,
     `<td style="vertical-align:middle">`,
     `<div style="font-size:27px;font-weight:800;color:${MAIN};line-height:1.15">${titulo}</div>`,
-    `<div style="font-size:13px;color:${MUTED};margin-top:4px">Código de gestión: <strong style="color:${TEAL}">${codigo}</strong></div>`,
+    `<div style="font-size:13px;color:${MUTED};margin-top:4px">Código de gestión: <strong style="color:${TEAL}">${codigoSeguro}</strong></div>`,
     `</td>`,
     `</tr></table>`,
 
