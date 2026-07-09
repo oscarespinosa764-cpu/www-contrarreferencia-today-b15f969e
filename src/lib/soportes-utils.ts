@@ -7,19 +7,14 @@
 import { supabase } from "@/lib/backend-client";
 
 export const SOPORTE_EXT = ["pdf", "jpg", "jpeg", "png", "webp"] as const;
-export const SOPORTE_MIME = [
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-] as const;
+export const SOPORTE_MIME = ["application/pdf", "image/jpeg", "image/png", "image/webp"] as const;
 export const SOPORTE_MAX_BYTES = 8 * 1024 * 1024; // 8 MB
 
 export interface SoporteMetadata {
-  nombre: string;   // nombre sanitizado
+  nombre: string; // nombre sanitizado
   mime: string;
   size: number;
-  path: string;     // ruta privada
+  path: string; // ruta privada
   uploaded_at: string;
   uploaded_by: string;
 }
@@ -31,7 +26,9 @@ function sanitizeNombre(name: string): string {
 /** Firma "mágica" mínima para detectar el tipo real del archivo. */
 async function detectMimeReal(file: File): Promise<string | null> {
   const buf = new Uint8Array(await file.slice(0, 12).arrayBuffer());
-  const hex = Array.from(buf).map((b) => b.toString(16).padStart(2, "0")).join("");
+  const hex = Array.from(buf)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
   // PDF: 25 50 44 46 ("%PDF")
   if (hex.startsWith("25504446")) return "application/pdf";
   // JPEG: FF D8 FF
@@ -91,9 +88,7 @@ export async function subirSoporte(params: {
 /** URL firmada temporal para ver el soporte (solo dueño/admin por RLS). */
 export async function getSoporteSignedUrl(path: string, secs = 300): Promise<string | null> {
   if (!path) return null;
-  const { data } = await supabase.storage
-    .from("permiso-soportes")
-    .createSignedUrl(path, secs);
+  const { data } = await supabase.storage.from("permiso-soportes").createSignedUrl(path, secs);
   return data?.signedUrl ?? null;
 }
 

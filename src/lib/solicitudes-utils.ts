@@ -66,7 +66,9 @@ export function useShiftTypes() {
         .select("code, name, start_time, end_time, hours, active")
         .order("sort_order");
       const map: Record<string, ShiftTypeRow> = {};
-      (data ?? []).forEach((r) => { map[r.code] = r as ShiftTypeRow; });
+      (data ?? []).forEach((r) => {
+        map[r.code] = r as ShiftTypeRow;
+      });
       return map;
     },
   });
@@ -130,8 +132,16 @@ export async function buscarTurnoProgramado(params: {
   else return null;
   const { data } = await query.maybeSingle();
   if (!data) return null;
-  const d = data as { shift_code: string | null; hours: number | null; unidad_funcional: string | null };
-  return { shift_code: d.shift_code, hours: Number(d.hours) || 0, unidad_funcional: d.unidad_funcional };
+  const d = data as {
+    shift_code: string | null;
+    hours: number | null;
+    unidad_funcional: string | null;
+  };
+  return {
+    shift_code: d.shift_code,
+    hours: Number(d.hours) || 0,
+    unidad_funcional: d.unidad_funcional,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -167,12 +177,12 @@ export const LIMITE_MENSUAL = 3;
 // Consumo mensual (solicitudes propias + coberturas)
 // ---------------------------------------------------------------------------
 export interface UsoMensual {
-  solicitudes: number;   // solicitudes propias que consumen/ reservan cupo
-  coberturas: number;    // veces que cubre a otro (reemplazo)
-  pendientes: number;    // en estado PENDIENTE (reserva provisional)
+  solicitudes: number; // solicitudes propias que consumen/ reservan cupo
+  coberturas: number; // veces que cubre a otro (reemplazo)
+  pendientes: number; // en estado PENDIENTE (reserva provisional)
   aprobadas: number;
-  exentos: number;       // cita médica / calamidad (no suman)
-  total: number;         // solicitudes + coberturas (sin exentos)
+  exentos: number; // cita médica / calamidad (no suman)
+  total: number; // solicitudes + coberturas (sin exentos)
   disponible: number;
 }
 
@@ -205,7 +215,11 @@ export function calcularUsoMensual(
   year: number,
   month: number,
 ): UsoMensual {
-  let solicitudes = 0, coberturas = 0, pendientes = 0, aprobadas = 0, exentos = 0;
+  let solicitudes = 0,
+    coberturas = 0,
+    pendientes = 0,
+    aprobadas = 0,
+    exentos = 0;
   for (const r of requests) {
     const mm = mesDeSolicitud(r);
     if (!mm || mm.y !== year || mm.m !== month) continue;
@@ -214,26 +228,36 @@ export function calcularUsoMensual(
     const esPendiente = r.status === "PENDIENTE" || r.status === "DEVUELTA PARA AJUSTE";
     // Solicitud propia
     if (r.requester_id === userId) {
-      if (exento) { exentos++; continue; }
+      if (exento) {
+        exentos++;
+        continue;
+      }
       solicitudes++;
-      if (esPendiente) pendientes++; else aprobadas++;
+      if (esPendiente) pendientes++;
+      else aprobadas++;
     } else if (r.replacement_user_id === userId) {
       // Cobertura: cuenta al reemplazo (los exentos también generan cobertura real,
       // pero el conteo de límite excluye exentos del solicitante; la cobertura sí suma).
       coberturas++;
-      if (esPendiente) pendientes++; else aprobadas++;
+      if (esPendiente) pendientes++;
+      else aprobadas++;
     }
   }
   const total = solicitudes + coberturas;
   return {
-    solicitudes, coberturas, pendientes, aprobadas, exentos, total,
+    solicitudes,
+    coberturas,
+    pendientes,
+    aprobadas,
+    exentos,
+    total,
     disponible: Math.max(0, LIMITE_MENSUAL - total),
   };
 }
 
 export function semaforoUso(total: number, tieneExcepcion: boolean): string {
-  if (tieneExcepcion) return "bg-sky-100 text-sky-700 border-sky-200";       // AZUL
+  if (tieneExcepcion) return "bg-sky-100 text-sky-700 border-sky-200"; // AZUL
   if (total >= LIMITE_MENSUAL) return "bg-rose-100 text-rose-700 border-rose-200"; // ROJO
-  if (total === 2) return "bg-amber-100 text-amber-700 border-amber-200";    // AMARILLO
-  return "bg-emerald-100 text-emerald-700 border-emerald-200";               // VERDE
+  if (total === 2) return "bg-amber-100 text-amber-700 border-amber-200"; // AMARILLO
+  return "bg-emerald-100 text-emerald-700 border-emerald-200"; // VERDE
 }

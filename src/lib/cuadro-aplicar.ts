@@ -44,11 +44,19 @@ export async function aplicarCoberturaCuadro(r: ShiftRequest, adminId: string): 
     // Fecha original del solicitante (permiso) o del cambio de turno.
     const fechaOriginal = r.original_shift_date || r.start_date;
     if (fechaOriginal && r.requires_replacement && r.replacement_name) {
-      const dia = await buscarDia({ userId: r.requester_id, fullName: r.requester_name, fecha: fechaOriginal });
+      const dia = await buscarDia({
+        userId: r.requester_id,
+        fullName: r.requester_name,
+        fecha: fechaOriginal,
+      });
       if (dia) {
         const nota = `CUBRE: ${r.replacement_name}`.slice(0, 200);
-        const notes = dia.notes && dia.notes.includes(nota) ? dia.notes : [dia.notes, nota].filter(Boolean).join(" · ");
-        await supabase.from("shift_schedule_days")
+        const notes =
+          dia.notes && dia.notes.includes(nota)
+            ? dia.notes
+            : [dia.notes, nota].filter(Boolean).join(" · ");
+        await supabase
+          .from("shift_schedule_days")
           .update({ notes, origin: "cobertura_solicitud", changed_by: adminId })
           .eq("id", dia.id);
         aplicado = true;
@@ -65,10 +73,18 @@ export async function revertirCoberturaCuadro(r: ShiftRequest): Promise<void> {
   try {
     const fechaOriginal = r.original_shift_date || r.start_date;
     if (!fechaOriginal || !r.replacement_name) return;
-    const dia = await buscarDia({ userId: r.requester_id, fullName: r.requester_name, fecha: fechaOriginal });
+    const dia = await buscarDia({
+      userId: r.requester_id,
+      fullName: r.requester_name,
+      fecha: fechaOriginal,
+    });
     if (!dia?.notes) return;
     const nota = `CUBRE: ${r.replacement_name}`;
-    const notes = dia.notes.split(" · ").filter((n) => n.trim() !== nota).join(" · ") || null;
+    const notes =
+      dia.notes
+        .split(" · ")
+        .filter((n) => n.trim() !== nota)
+        .join(" · ") || null;
     await supabase.from("shift_schedule_days").update({ notes }).eq("id", dia.id);
   } catch (e) {
     console.error("revertirCoberturaCuadro", e);
