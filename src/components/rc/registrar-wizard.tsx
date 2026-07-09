@@ -123,7 +123,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const [especialidad, setEspecialidad] = useState("");
   const [unidad, setUnidad] = useState("");
   const [aseguramiento, setAseguramiento] = useState("EPS");
-  const [motivoNeg, setMotivoNeg] = useState("");
+  const [motivoNeg, setMotivoNeg] = useState<MotivoNeg | "">("");
   const [complejidad, setComplejidad] = useState("");
   const [detalle, setDetalle] = useState("");
   // CRUE
@@ -134,6 +134,21 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   // Negación — recontacto (sobreocupación)
   const [fechaRec, setFechaRec] = useState("");
   const [horaRec, setHoraRec] = useState("");
+
+  // ── Negación: entidad responsable + submotivos dinámicos ──
+  const [entidadTipo, setEntidadTipo] = useState<EntidadTipo>("EPS");
+  const [docSubtipo, setDocSubtipo] = useState<DocSubtipo | "">("");
+  const [docChecks, setDocChecks] = useState<Record<string, boolean>>({});
+  const [redSubtipo, setRedSubtipo] = useState<RedSubtipo | "">("");
+  const [complejidadSub, setComplejidadSub] = useState<ComplejidadSub | "">("");
+  // Red no contratada — manejo conjunto
+  const [espPrincipal, setEspPrincipal] = useState("");
+  const [espsExtra, setEspsExtra] = useState<DynItem[]>([newDyn()]);
+  // CRUE — funcionario + listas dinámicas
+  const [nombreFuncionario, setNombreFuncionario] = useState("");
+  const [cargoFuncionario, setCargoFuncionario] = useState("");
+  const [espsCrue, setEspsCrue] = useState<DynItem[]>([newDyn()]);
+  const [motivosCrueDyn, setMotivosCrueDyn] = useState<DynItem[]>([newDyn()]);
 
   // Paciente reconsultante (autollenado) y ventana ADRES
   const [esReconsultante, setEsReconsultante] = useState(false);
