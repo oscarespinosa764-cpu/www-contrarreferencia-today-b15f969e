@@ -2414,42 +2414,116 @@ export function SeguimientoDialog({
                       <Label className={labelCls}>¿El paciente/familiar firmó desistimiento?</Label>
                       <Select
                         value={novDesistTipo}
-                        onValueChange={(v) => setNovDesistTipo(v as "IPS_AMB" | "GENERAL")}
+                        onValueChange={(v) =>
+                          setNovDesistTipo(v as "NO" | "IPS" | "AMB" | "GENERAL")
+                        }
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full">
                           <SelectValue placeholder="Seleccionar…" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="IPS_AMB">DESISTIMIENTO IPS / AMBULANCIA</SelectItem>
+                          <SelectItem value="NO">NO</SelectItem>
+                          <SelectItem value="IPS">DESISTIMIENTO IPS</SelectItem>
+                          <SelectItem value="AMB">DESISTIMIENTO AMBULANCIA</SelectItem>
                           <SelectItem value="GENERAL">DESISTIMIENTO GENERAL</SelectItem>
                         </SelectContent>
                       </Select>
-                      {novDesistTipo === "IPS_AMB" && (
-                        <div className="flex flex-col gap-2 pt-1">
-                          <label className="flex items-center gap-2 text-sm">
-                            <input
-                              type="checkbox"
-                              checked={novDesistIps}
-                              onChange={(e) => setNovDesistIps(e.target.checked)}
-                            />
-                            IPS
-                          </label>
-                          {novAmbDisponible && (
-                            <label className="flex items-center gap-2 text-sm">
-                              <input
-                                type="checkbox"
-                                checked={novDesistAmb}
-                                onChange={(e) => setNovDesistAmb(e.target.checked)}
-                              />
-                              AMBULANCIA
-                            </label>
-                          )}
-                        </div>
+                      {novDesistTipo === "IPS" && (
+                        <p className="rounded-md border border-amber-200 bg-amber-50/60 p-2 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
+                          Se dejará sin efecto la aceptación actual y el caso retornará a PENDIENTE
+                          ACEPTACIÓN.
+                        </p>
+                      )}
+                      {novDesistTipo === "AMB" && (
+                        <p className="rounded-md border border-amber-200 bg-amber-50/60 p-2 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
+                          Se conserva la aceptación de la IPS y el caso retornará a pendiente de
+                          coordinación de ambulancia.
+                        </p>
                       )}
                       {novDesistTipo === "GENERAL" && (
                         <p className="rounded-md border border-amber-200 bg-amber-50/60 p-2 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
                           Al guardar, el caso se cerrará como DESISTIMIENTO GENERAL y pasará al
                           historial.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {novIps && (
+                    <div className="space-y-2 rounded-md border border-dashed p-3">
+                      <Label className={labelCls}>¿Cuál es la novedad?</Label>
+                      <Select
+                        value={novIpsTipo}
+                        onValueChange={(v) =>
+                          setNovIpsTipo(v as "DESIST_IPS" | "CANCELA" | "POSTERGA")
+                        }
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Seleccionar…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem
+                            value="DESIST_IPS"
+                            className="whitespace-normal [overflow-wrap:anywhere]"
+                          >
+                            PACIENTE/FAMILIAR FIRMA DESISTIMIENTO HACIA IPS
+                          </SelectItem>
+                          <SelectItem
+                            value="CANCELA"
+                            className="whitespace-normal [overflow-wrap:anywhere]"
+                          >
+                            IPS RECEPTORA CANCELA ACEPTACIÓN
+                          </SelectItem>
+                          <SelectItem
+                            value="POSTERGA"
+                            className="whitespace-normal [overflow-wrap:anywhere]"
+                          >
+                            IPS RECEPTORA POSTERGA LA ACEPTACIÓN
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {novIpsTipo === "CANCELA" && (
+                        <div className="space-y-1.5 pt-1">
+                          <Label className={labelCls}>Motivo de cancelación *</Label>
+                          <Input
+                            value={novIpsMotivo}
+                            onChange={(e) => setNovIpsMotivo(e.target.value)}
+                            placeholder="Motivo indicado por la IPS receptora"
+                          />
+                        </div>
+                      )}
+                      {novIpsTipo === "POSTERGA" && (
+                        <div className="grid grid-cols-1 gap-3 pt-1 sm:grid-cols-2">
+                          <div className="space-y-1.5">
+                            <Label className={labelCls}>Fecha de postergación *</Label>
+                            <Input
+                              value={novIpsFecha}
+                              onChange={(e) => setNovIpsFecha(maskFechaInput(e.target.value))}
+                              placeholder="DD/MM/AAAA"
+                              inputMode="numeric"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className={labelCls}>Hora de postergación *</Label>
+                            <Input
+                              value={novIpsHora}
+                              onChange={(e) => setNovIpsHora(maskHoraInput(e.target.value))}
+                              placeholder="HH:MM"
+                              inputMode="numeric"
+                            />
+                          </div>
+                        </div>
+                      )}
+                      {(novIpsTipo === "DESIST_IPS" || novIpsTipo === "CANCELA") && (
+                        <p className="rounded-md border border-amber-200 bg-amber-50/60 p-2 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400">
+                          Se conserva la trazabilidad de la aceptación y el caso retornará a
+                          PENDIENTE ACEPTACIÓN.
+                        </p>
+                      )}
+                      {novIpsTipo === "POSTERGA" && (
+                        <p className="rounded-md border border-sky-200 bg-sky-50/60 p-2 text-xs text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-400">
+                          El caso se mantiene activo con subestado ACEPTACIÓN POSTERGADA. No se
+                          reinicia la cadena.
                         </p>
                       )}
                     </div>
