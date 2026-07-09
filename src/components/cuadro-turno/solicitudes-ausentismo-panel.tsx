@@ -48,7 +48,7 @@ function HistorialResumen() {
         .order("created_at", { ascending: false })
         .limit(300);
       const set = new Set<string>();
-      (data ?? []).forEach((r: any) => r.requester_name && set.add(r.requester_name));
+      (data ?? []).forEach((r: { requester_name: string | null }) => r.requester_name && set.add(r.requester_name));
       return Array.from(set);
     },
   });
