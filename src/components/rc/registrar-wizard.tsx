@@ -376,19 +376,45 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     setFechaRec("");
     setHoraRec("");
     setEsReconsultante(false);
+    setEntidadTipo("EPS");
+    setDocSubtipo("");
+    setDocChecks({});
+    setRedSubtipo("");
+    setComplejidadSub("");
+    setEspPrincipal("");
+    setEspsExtra([newDyn()]);
+    setNombreFuncionario("");
+    setCargoFuncionario("");
+    setEspsCrue([newDyn()]);
+    setMotivosCrueDyn([newDyn()]);
     cerrarAdres();
     setResultado(null);
   };
 
   const guardar = async () => {
     if (!tipo) return toast.error("Selecciona el tipo de caso");
-    if (tipo === "NEG" && !motivoNeg) return toast.error("Selecciona el motivo de negación");
-    if (tipo === "NEG" && negComplejidad && !complejidad) return toast.error("Selecciona la complejidad");
-    if (tipo === "NEG" && negEspecialidad && !especialidad.trim())
-      return toast.error("Indica la especialidad requerida");
-    if (tipo === "NEG" && negUnidad && !unidad.trim()) return toast.error("Indica la unidad requerida");
-    if (tipo === "NEG" && negComplejidad && complejidad === "MAYOR COMPLEJIDAD" && !especialidad.trim())
-      return toast.error("Indica la especialidad requerida");
+    if (tipo === "NEG") {
+      if (!motivoNeg) return toast.error("Selecciona el motivo de negación");
+      if (negDoc && !docSubtipo) return toast.error("Selecciona el tipo de documentación");
+      if (negDoc && (docSubtipo === "DOCUMENTACION_EPS" || docSubtipo === "DOCUMENTACION_SOAT_ADRES_POLIZA") && docSeleccionados.length === 0)
+        return toast.error("SELECCIONE AL MENOS UN DOCUMENTO REQUERIDO.");
+      if (negRed && !redSubtipo) return toast.error("Selecciona el subtipo de red no contratada");
+      if (negRed && redSubtipo === "CONJUNTO" && !espPrincipal.trim())
+        return toast.error("Indica la especialidad principal disponible");
+      if (negRed && redSubtipo === "CONJUNTO" && dynValues(espsExtra).length === 0)
+        return toast.error("Indica al menos una especialidad fuera de la red");
+      if (negEspecialidad && !especialidad.trim()) return toast.error("Indica la especialidad requerida");
+      if (negUnidad && !unidad.trim()) return toast.error("Indica la unidad requerida");
+      if (negComplejidad && !complejidad) return toast.error("Selecciona la complejidad");
+      if (negComplejidad && complejidad === "MAYOR COMPLEJIDAD" && !complejidadSub)
+        return toast.error("Indica si hay especialidad faltante");
+      if (negComplejidad && complejidad === "MAYOR COMPLEJIDAD" && complejidadSub === "CON_ESP" && !especialidad.trim())
+        return toast.error("Indica la especialidad requerida");
+    }
+    if (isCrue) {
+      if (!nombreFuncionario.trim()) return toast.error("Indica el nombre del funcionario");
+      if (!cargoFuncionario.trim()) return toast.error("Indica el cargo del funcionario");
+    }
     if (tipo === "CRUE_ACEP" && !unidadReq) return toast.error("Selecciona la unidad requerida (URGENCIAS o UCI)");
 
     setBusy(true);
@@ -397,6 +423,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
       const { codigo } = await siguienteCodigo({
         data: { tipo, yyyy: ahora.getFullYear(), mm: ahora.getMonth() + 1 },
       });
+      const fecha = fmtFechaHora(ahora);
 
       const esActivo = tipo === "ACEP" || tipo === "CRUE_ACEP";
       const unidadEff = isCrue ? unidadReq : unidad;
@@ -410,18 +437,150 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
         fechaVenceStr = fmtFechaHora(venceD);
       }
 
-      const motivoNegFull =
-        motivoNeg === "POR NIVEL DE COMPLEJIDAD" && complejidad
-          ? `POR NIVEL DE COMPLEJIDAD - ${complejidad}`
-          : motivoNeg;
+      const obs = detalle.trim();
+      const espsExtraVals = dynValues(espsExtra);
+      const espsCrueVals = dynValues(espsCrue);
+      const motivosCrueVals = dynValues(motivosCrueDyn);
+      const rr = { codigo, fecha, fechaVence: fechaVenceStr, hrsReserva: String(hrs || "") };
 
-      const negCamasSel = tipo === "NEG" && negCamas;
+      let mensaje = "";
+      let metadata: Record<string, unknown> | null = null;
+      let especialidadCol = especialidad;
 
-      const mensaje = buildMensaje(
-        plantillas,
-        catalogos.medicos,
-        { codigo, fecha: fmtFechaHora(ahora), fechaVence: fechaVenceStr, hrsReserva: String(hrs || "") },
-        {
+      if (tipo === "NEG") {
+        metadata = {
+          tipo_caso: "NEG",
+          entidad_tipo: entidadTipo,
+          motivo_negacion: motivoNeg,
+          observaciones: obs || null,
+        };
+        if (negDoc) {
+          metadata.tipo_documentacion = docSubtipo;
+          if (docSubtipo === "DOCUMENTACION_EPS") {
+            metadata.documentos_solicitados = docSeleccionados;
+            mensaje = plantillaDocEps(docSeleccionados, obs);
+          } else if (docSubtipo === "DOCUMENTACION_SOAT_ADRES_POLIZA") {
+            metadata.documentos_solicitados = docSeleccionados;
+            mensaje = plantillaDocSoat(docSeleccionados, obs);
+          } else {
+            // AFILIACIÓN DE OFICIO → reutiliza la plantilla existente del catálogo.
+            metadata.subtipo_negacion = "AFILIACION_OFICIO";
+            mensaje = buildMensaje(plantillas, catalogos.medicos, rr, {
+              tipo: "NEG",
+              documento,
+              ips,
+              motivoNeg: "POR SOLICITUD DE AFILIACIÓN DE OFICIO",
+              detalle: obs,
+              eapb,
+              regimen,
+            });
+          }
+        } else if (negArl) {
+          mensaje = plantillaArlDirecto(codigo, obs);
+        } else if (negRed) {
+          metadata.subtipo_negacion = redSubtipo;
+          if (redSubtipo === "CONJUNTO") {
+            metadata.especialidades = espsExtraVals;
+            metadata.especialidad_principal = espPrincipal.trim() || null;
+            especialidadCol = espsExtraVals.join(", ");
+            mensaje = plantillaRedConjunto({
+              codigo,
+              ips,
+              profesional: medico,
+              espProfesional: especialidad,
+              espPrincipal,
+              especialidadesExtra: espsExtraVals,
+              obs,
+            });
+          } else {
+            // RED NO CONTRATADA — servicio/especialidad → plantilla existente.
+            metadata.especialidades = especialidad.trim() ? [especialidad.trim()] : [];
+            mensaje = buildMensaje(plantillas, catalogos.medicos, rr, {
+              tipo: "NEG",
+              documento,
+              ips,
+              especialidad,
+              motivoNeg: "RED NO CONTRATADA",
+              detalle: obs,
+              eapb,
+              regimen,
+            });
+          }
+        } else if (negComplejidad) {
+          if (complejidad === "MAYOR COMPLEJIDAD" && complejidadSub === "CON_ESP") {
+            metadata.subtipo_negacion = "MAYOR_CON_ESPECIALIDAD";
+            metadata.especialidades = especialidad.trim() ? [especialidad.trim()] : [];
+            mensaje = plantillaMayorConEsp(codigo, especialidad, obs);
+          } else if (complejidad === "MAYOR COMPLEJIDAD" && complejidadSub === "SIN_ESP") {
+            metadata.subtipo_negacion = "MAYOR_SIN_ESPECIALIDAD";
+            mensaje = plantillaMayorSinEsp(codigo, obs);
+          } else {
+            metadata.subtipo_negacion = "MENOR_COMPLEJIDAD";
+            mensaje = buildMensaje(plantillas, catalogos.medicos, rr, {
+              tipo: "NEG",
+              documento,
+              ips,
+              motivoNeg: "POR NIVEL DE COMPLEJIDAD - MENOR COMPLEJIDAD",
+              detalle: obs,
+              eapb,
+              regimen,
+            });
+          }
+        } else {
+          // NO RECURSO HUMANO / NO DISPONIBILIDAD DE UNIDAD / SOBREOCUPACIÓN → catálogo.
+          const catName = MOTIVO_NEG_CATALOGO[motivoNeg] || "";
+          metadata.especialidades = especialidad.trim() ? [especialidad.trim()] : [];
+          mensaje = buildMensaje(plantillas, catalogos.medicos, rr, {
+            tipo: "NEG",
+            documento,
+            ips,
+            especialidad,
+            unidad,
+            motivoNeg: catName,
+            detalle: obs,
+            eapb,
+            regimen,
+            fechaRecontacto: negCamas ? fechaRec : undefined,
+            horaRecontacto: negCamas ? horaRec : undefined,
+          });
+        }
+      } else if (isCrue) {
+        const subtipoLabel = CRUE_TIPOS.find((t) => t.value === tipo)?.label || "CASO CRUE";
+        const cierre =
+          tipo === "CRUE_ACEP"
+            ? "Se acepta el direccionamiento y se dispone de la unidad requerida para la continuidad del manejo del paciente."
+            : tipo === "CRUE_NR"
+              ? "Se informa que en el momento el caso no requiere direccionamiento."
+              : "Se informa que no es posible aceptar el direccionamiento por los motivos indicados. Sugerimos canalizar la remisión a través de la EAPB y su red prestadora.";
+        especialidadCol = espsCrueVals.join(", ");
+        mensaje = plantillaCrueBase({
+          subtipoLabel,
+          codigo,
+          codigoCrue,
+          ips: contactoIps,
+          nombreFuncionario,
+          cargoFuncionario,
+          unidad: unidadEff,
+          especialidades: espsCrueVals,
+          motivos: tipo === "CRUE_NEG" ? motivosCrueVals : [],
+          obs,
+          cierre,
+        });
+        metadata = {
+          crue_subtipo: tipo,
+          codigo_crue: codigoCrue.trim() || null,
+          ips_nombre: contactoIps.trim() || null,
+          nombre_funcionario: nombreFuncionario.trim(),
+          cargo_funcionario: cargoFuncionario.trim(),
+          unidad_requerida: tipo === "CRUE_ACEP" ? unidadReq || null : null,
+          unidad_solicitada: tipo === "CRUE_NEG" ? unidadReq || null : null,
+          especialidades_requeridas: espsCrueVals,
+          motivos_negacion_direccionamiento: tipo === "CRUE_NEG" ? motivosCrueVals : [],
+          observaciones: obs || null,
+        };
+      } else {
+        // ACEPTACIÓN → plantilla del catálogo (comportamiento actual).
+        mensaje = buildMensaje(plantillas, catalogos.medicos, rr, {
           tipo,
           documento,
           ips,
@@ -429,17 +588,11 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
           especialidad,
           unidad: unidadEff,
           aseguramiento,
-          detalle,
-          motivoNeg: motivoNegFull,
-          codigoCrue,
-          contactoIps,
+          detalle: obs,
           eapb,
           regimen,
-          fechaRecontacto: negCamasSel ? fechaRec : undefined,
-          horaRecontacto: negCamasSel ? horaRec : undefined,
-          motivosCrue: isCrue ? motivosCrue.filter(Boolean) : null,
-        },
-      );
+        });
+      }
 
       const { error } = await supabase.from("casos_entrantes").insert({
         codigo,
@@ -449,17 +602,18 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
         apellidos: apellidos.trim() || null,
         eapb: eapb || null,
         regimen: regimen || null,
-        ips: ips || null,
+        ips: (isCrue ? contactoIps : ips) || null,
         medico: medico || null,
-        especialidad: especialidad || null,
+        especialidad: especialidadCol || null,
         unidad: unidadEff || null,
-        aseguramiento: tipo === "ACEP" ? aseguramiento : null,
-        detalle: detalle || null,
+        aseguramiento: tipo === "ACEP" ? aseguramiento : tipo === "NEG" ? entidadTipo : null,
+        detalle: obs || null,
         estado: esActivo ? "ACTIVO" : "REGISTRADO",
         fecha: ahora.toISOString().slice(0, 10),
         fecha_vence: fechaVenceISO,
         hrs_reserva: hrs ? String(hrs) : null,
         texto_ia: mensaje || null,
+        metadata: metadata as never,
         created_by: user?.id,
       });
       if (error) throw error;
