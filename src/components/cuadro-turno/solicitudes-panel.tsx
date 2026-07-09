@@ -240,6 +240,27 @@ function RevisionDialog({
             {request.rejected_at && ` · Respondida ${fmtFechaHora(request.rejected_at)}`}
           </p>
 
+          {request.will_recover_time && request.requested_minutes ? (
+            <div className="grid grid-cols-3 gap-2 rounded-md bg-muted/50 p-2 text-xs">
+              <div><p className="text-muted-foreground">Solicitadas</p><p className="font-bold">{minutosAHoras(request.requested_minutes || 0)}</p></div>
+              <div><p className="text-muted-foreground">Devueltas</p><p className="font-bold">{minutosAHoras(request.returned_minutes || 0)}</p></div>
+              <div><p className="text-muted-foreground">Recuperación</p><p className="font-bold">{request.recovery_status || "—"}</p></div>
+            </div>
+          ) : null}
+
+          {request.support_path && (
+            <Button
+              size="sm" variant="outline"
+              onClick={async () => {
+                const url = await getSoporteSignedUrl(request.support_path!);
+                if (url) window.open(url, "_blank", "noopener");
+                else toast.error("No se pudo abrir el soporte.");
+              }}
+            >
+              <Paperclip className="mr-1.5 h-4 w-4" /> Ver soporte adjunto
+            </Button>
+          )}
+
           {pendiente && modo === "ver" && (
             <div className="flex flex-wrap gap-2">
               <Button size="sm" onClick={() => setModo("aprobar")}>Aprobar</Button>
