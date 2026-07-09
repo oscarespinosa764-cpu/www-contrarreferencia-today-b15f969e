@@ -13,6 +13,7 @@ import {
 } from "@/lib/cuadro-turno-utils";
 import { generarSolicitudPDF } from "@/lib/solicitud-pdf";
 import { getFirmaDataUrlById } from "@/lib/firmas-utils";
+import { ControlMensualPanel } from "./control-mensual-panel";
 
 export function MiTurnoPanel() {
   const { user } = useAuth();
