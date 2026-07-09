@@ -128,6 +128,7 @@ export function SolicitudesAusentismoPanel({ isAdmin }: { isAdmin: boolean }) {
     <Tabs value={sub} onValueChange={setSub} className="space-y-4">
       <TabsList>
         <TabsTrigger value="solicitudes">Solicitudes y cambios</TabsTrigger>
+        <TabsTrigger value="pendientes">Pendientes de verificación</TabsTrigger>
         <TabsTrigger value="ausentismo">Control de ausentismo</TabsTrigger>
       </TabsList>
       <TabsContent value="solicitudes" className="space-y-4">
@@ -137,7 +138,11 @@ export function SolicitudesAusentismoPanel({ isAdmin }: { isAdmin: boolean }) {
           </Button>
         </div>
         <HistorialResumen />
+        <ControlMensualPanel />
         <SolicitudesPanel />
+      </TabsContent>
+      <TabsContent value="pendientes">
+        <PendientesVerificacionPanel />
       </TabsContent>
       <TabsContent value="ausentismo">
         <AusentismoPanel />
