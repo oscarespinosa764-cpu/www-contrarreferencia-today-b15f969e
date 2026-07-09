@@ -1,12 +1,45 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   renderPlantilla,
   plantillaPorCanal,
   labelAlerta,
   sanitizarMensajeManual,
+  sanitizarVarNotif,
+  TIPOS_ALERTA,
   type PlantillaVars,
 } from "./notifications-utils";
+
+// Allowlist cerrada de tipos de evento (reutiliza el catálogo existente).
+const ALERT_TYPES = new Set(TIPOS_ALERTA.map((t) => t.value));
+
+// Cada valor de variable es opcional y acotado; el cliente no envía el texto final.
+const varStr = z.string().max(300).optional();
+const dispatchInputSchema = z.object({
+  alert_type: z
+    .string()
+    .max(60)
+    .refine((v) => ALERT_TYPES.has(v), { message: "Tipo de evento no permitido" }),
+  module: z.string().max(80).optional(),
+  reference_id: z.string().max(100).optional(),
+  dedup_minutes: z.number().int().min(1).max(1440).optional(),
+  vars: z
+    .object({
+      tipo_alerta: varStr,
+      modulo: varStr,
+      paciente_iniciales: varStr,
+      documento_enmascarado: varStr,
+      codigo: varStr,
+      estado: varStr,
+      accion: varStr,
+      fecha_hora: varStr,
+      usuario: varStr,
+      funcionario: varStr,
+    })
+    .partial()
+    .default({}),
+});
 
 const SAFE_COLS =
   "id, channel_type, enabled, display_name, destination_label, destination_id, token_configured, config_status, allowed_alert_types, message_template, settings, last_test_at, last_success_at, last_error_at, last_error_message, updated_at, updated_by";
@@ -274,16 +307,16 @@ export const sendManualNotification = createServerFn({ method: "POST" })
 /* ------------------------------------------------------------------ */
 export const dispatchEventNotification = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: {
-    alert_type: string;
-    module?: string;
-    reference_id?: string;
-    vars: PlantillaVars;
-    dedup_minutes?: number;
-  }) => d)
+  .inputValidator((d: unknown) => dispatchInputSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { userId } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Solo un miembro ACTIVO puede disparar eventos (rol real desde BD).
+    const { data: activo } = await (supabaseAdmin as any).rpc("is_active_member", {
+      _user_id: userId,
+    });
+    if (!activo) return { ok: false, status: "skipped", reason: "Usuario no activo." };
 
     const { data: canales } = await (supabaseAdmin as any)
       .from("notification_channels")
@@ -295,10 +328,19 @@ export const dispatchEventNotification = createServerFn({ method: "POST" })
     if (lista.length === 0) return { ok: false, status: "skipped", reason: "Sin canales activos." };
 
     const win = data.dedup_minutes ?? 30;
+    // Cada valor del cliente se sanea; el cliente nunca controla el texto final.
+    const raw = data.vars ?? {};
     const vars: PlantillaVars = {
-      ...data.vars,
-      tipo_alerta: data.vars.tipo_alerta || labelAlerta(data.alert_type),
-      fecha_hora: data.vars.fecha_hora || new Date().toLocaleString("es-CO"),
+      tipo_alerta: sanitizarVarNotif(raw.tipo_alerta) || labelAlerta(data.alert_type),
+      modulo: sanitizarVarNotif(raw.modulo),
+      paciente_iniciales: sanitizarVarNotif(raw.paciente_iniciales),
+      documento_enmascarado: sanitizarVarNotif(raw.documento_enmascarado),
+      codigo: sanitizarVarNotif(raw.codigo),
+      estado: sanitizarVarNotif(raw.estado),
+      accion: sanitizarVarNotif(raw.accion),
+      usuario: sanitizarVarNotif(raw.usuario),
+      funcionario: sanitizarVarNotif(raw.funcionario),
+      fecha_hora: sanitizarVarNotif(raw.fecha_hora) || new Date().toLocaleString("es-CO"),
     };
 
     let algunoOk = false;

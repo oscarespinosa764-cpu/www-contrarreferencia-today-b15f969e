@@ -35,3 +35,13 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Documentos generados / datos reales (NUNCA versionar)
+# Los PDF/Excel oficiales se generan bajo demanda y se descargan; no se guardan en el repo.
+*.pdf
+*.xlsx
+*.xls
+*.docx
+/downloads/
+/exports/
+TH-FR-*

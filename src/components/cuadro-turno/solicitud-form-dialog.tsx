@@ -704,7 +704,9 @@ export function SolicitudFormDialog({
         if (fErr) throw fErr;
       }
 
-      // Consumir la excepción (marca provisional; se confirma al aprobar la solicitud)
+      // Consumir la excepción de forma atómica (un solo uso, evita doble consumo
+      // por doble clic / dos pestañas / concurrencia): solo pasa DISPONIBLE->UTILIZADA
+      // sobre una excepción APROBADA. La transición está protegida además por trigger.
       if (usarExcepcionId) {
         await supabase
           .from("shift_monthly_exceptions")
@@ -713,8 +715,11 @@ export function SolicitudFormDialog({
             used_request_id: req.id,
             used_at: new Date().toISOString(),
           })
-          .eq("id", usarExcepcionId);
+          .eq("id", usarExcepcionId)
+          .eq("status", "APROBADA")
+          .eq("usage_status", "DISPONIBLE");
       }
+
 
       await supabase.from("shift_request_audit").insert({
         request_id: req.id,
