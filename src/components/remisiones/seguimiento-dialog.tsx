@@ -279,9 +279,14 @@ export function SeguimientoDialog({
   const [novPaciente, setNovPaciente] = useState(false);
   const [novIps, setNovIps] = useState(false);
   const [novAmbulancia, setNovAmbulancia] = useState(false);
-  const [novDesistTipo, setNovDesistTipo] = useState<"" | "IPS_AMB" | "GENERAL">("");
+  const [novDesistTipo, setNovDesistTipo] = useState<"" | "NO" | "IPS" | "AMB" | "GENERAL">("");
   const [novDesistIps, setNovDesistIps] = useState(false);
   const [novDesistAmb, setNovDesistAmb] = useState(false);
+  // Novedad de la IPS receptora (desistimiento hacia IPS / cancela / posterga).
+  const [novIpsTipo, setNovIpsTipo] = useState<"" | "DESIST_IPS" | "CANCELA" | "POSTERGA">("");
+  const [novIpsMotivo, setNovIpsMotivo] = useState("");
+  const [novIpsFecha, setNovIpsFecha] = useState("");
+  const [novIpsHora, setNovIpsHora] = useState("");
 
   // Referencia interna
   const [riFuncionario, setRiFuncionario] = useState("");
