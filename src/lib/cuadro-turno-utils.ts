@@ -145,6 +145,22 @@ export interface ShiftRequest {
   return_person_role?: string | null;
   return_date?: string | null;
   return_shift_code?: string | null;
+  // Solicitudes y Ausentismo (ampliación aditiva)
+  original_shift_name?: string | null;
+  original_start_time?: string | null;
+  original_end_time?: string | null;
+  requested_minutes?: number | null;
+  returned_minutes?: number | null;
+  pending_minutes?: number | null;
+  recovery_status?: string | null;
+  return_fractioned?: boolean | null;
+  replacement_user_id?: string | null;
+  return_receiver_id?: string | null;
+  is_limit_exempt?: boolean | null;
+  monthly_exception_id?: string | null;
+  support_path?: string | null;
+  support_metadata?: Record<string, unknown> | null;
+  cuadro_applied?: boolean | null;
   approved_by?: string | null;
   approval_observation: string | null;
   rejection_reason: string | null;
