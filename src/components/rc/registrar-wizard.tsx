@@ -1299,13 +1299,32 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
 
           {isCrue && (
             <div className="grid gap-4 sm:grid-cols-2">
+              {/* Fila 1 — Código CRUE · IPS */}
               <div className="space-y-2">
                 <Label htmlFor="codcrue">Código CRUE</Label>
                 <Input id="codcrue" value={codigoCrue} onChange={(e) => setCodigoCrue(e.target.value)} />
               </div>
-              <AutoComplete label="Contacto / IPS" value={contactoIps} onChange={setContactoIps} options={catalogos.ips} minChars={2} />
+              <AutoComplete label="IPS" value={contactoIps} onChange={setContactoIps} options={catalogos.ips} minChars={2} />
 
-              {/* ACEPTACIÓN DIRECCIONAMIENTO → unidad obligatoria (solo URGENCIAS/UCI) */}
+              {/* Fila 2 — Nombre funcionario · Cargo funcionario */}
+              <AutoComplete
+                label="Nombre funcionario"
+                value={nombreFuncionario}
+                onChange={setNombreFuncionario}
+                onPick={(v) => {
+                  setNombreFuncionario(v);
+                  const p = catalogos.profesionales.find((x) => x.nombre === v);
+                  if (p && p.cargo) setCargoFuncionario(p.cargo);
+                }}
+                options={catalogos.profesionales.map((p) => p.nombre)}
+                required
+              />
+              <div className="space-y-2">
+                <Label htmlFor="cargofun">Cargo funcionario</Label>
+                <Input id="cargofun" value={cargoFuncionario} onChange={(e) => setCargoFuncionario(e.target.value)} />
+              </div>
+
+              {/* ACEPTACIÓN DIRECCIONAMIENTO → unidad requerida (URGENCIAS/UCI) */}
               {tipo === "CRUE_ACEP" && (
                 <div className="space-y-2 sm:col-span-2">
                   <Label>Unidad requerida</Label>
@@ -1324,7 +1343,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 </div>
               )}
 
-              {/* NEGACIÓN DIRECCIONAMIENTO → unidad opcional (solo URGENCIAS/UCI) */}
+              {/* NEGACIÓN DIRECCIONAMIENTO → unidad solicitada (opcional) */}
               {tipo === "CRUE_NEG" && (
                 <div className="space-y-2 sm:col-span-2">
                   <Label>Unidad solicitada (opcional)</Label>
@@ -1343,36 +1362,38 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 </div>
               )}
 
-              {/* Especialidad requerida: aplica para aceptación y negación de direccionamiento */}
+              {/* Especialidad(es) requerida(s): aceptación y negación de direccionamiento */}
               {tipo !== "CRUE_NR" && (
-                <AutoComplete label="Especialidad requerida" value={especialidad} onChange={setEspecialidad} options={catalogos.especialidades} />
+                <div className="sm:col-span-2">
+                  <DynEspecialidades
+                    label="Especialidad requerida"
+                    items={espsCrue}
+                    setItems={setEspsCrue}
+                    options={catalogos.especialidades}
+                  />
+                </div>
               )}
 
+              {/* Motivos de negación del direccionamiento (dinámicos) */}
               {tipo === "CRUE_NEG" && (
-                <div className="space-y-2 sm:col-span-2">
-                  <Label>Motivos de negación del direccionamiento (hasta 3)</Label>
-                  {[0, 1, 2].map((i) => (
-                    <Input
-                      key={i}
-                      className="mt-1"
-                      placeholder={`Motivo ${i + 1}`}
-                      value={motivosCrue[i]}
-                      onChange={(e) =>
-                        setMotivosCrue((prev) => prev.map((m, idx) => (idx === i ? e.target.value : m)))
-                      }
-                    />
-                  ))}
+                <div className="sm:col-span-2">
+                  <DynMotivos
+                    label="Motivo de negación del direccionamiento"
+                    items={motivosCrueDyn}
+                    setItems={setMotivosCrueDyn}
+                  />
                 </div>
               )}
             </div>
           )}
 
-          {(tipo === "ACEP" || isCrue) && (
+          {(tipo === "ACEP" || tipo === "NEG" || isCrue) && (
             <div className="space-y-2">
               <Label htmlFor="det">Observaciones / Detalle</Label>
               <Textarea id="det" rows={3} value={detalle} onChange={(e) => setDetalle(e.target.value)} placeholder="Información adicional…" />
             </div>
           )}
+
 
           <div className="flex justify-between">
             <Button type="button" variant="ghost" className="rounded-full" onClick={() => setStep(2)}>
