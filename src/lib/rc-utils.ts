@@ -236,6 +236,8 @@ export interface BuildMsgData {
   motivosCrue?: string[] | null;
   eapb?: string;
   regimen?: string;
+  nombreFuncionario?: string;
+  cargoFuncionario?: string;
 }
 
 export interface BuildMsgResult {
