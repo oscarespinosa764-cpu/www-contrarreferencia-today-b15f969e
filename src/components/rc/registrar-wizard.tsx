@@ -77,6 +77,21 @@ const UNIDADES_CRUE = ["URGENCIAS", "UCI"];
 
 const COMPLEJIDADES = ["MAYOR COMPLEJIDAD", "MENOR COMPLEJIDAD"];
 
+const ENTIDAD_TIPOS: { value: EntidadTipo; label: string }[] = [
+  { value: "EPS", label: "EPS" },
+  { value: "SOAT-ADRES", label: "SOAT / ADRES" },
+  { value: "ARL", label: "ARL" },
+];
+
+// Elemento de lista dinámica (especialidades / motivos) con id estable.
+interface DynItem {
+  id: string;
+  val: string;
+}
+let __dynSeq = 0;
+const newDyn = (val = ""): DynItem => ({ id: `d${++__dynSeq}`, val });
+const dynValues = (items: DynItem[]) => items.map((i) => i.val.trim()).filter(Boolean);
+
 interface Props {
   casos: Caso[];
   catalogos: Catalogos;
