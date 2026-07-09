@@ -20,7 +20,7 @@ export interface SoporteMetadata {
 }
 
 function sanitizeNombre(name: string): string {
-  return name.replace(/[^\w.\-]+/g, "_").slice(-120);
+  return name.replace(/[^\w.-]+/g, "_").slice(-120);
 }
 
 /** Firma "mágica" mínima para detectar el tipo real del archivo. */
