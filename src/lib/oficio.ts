@@ -70,9 +70,23 @@ function iconoCfg(tipo: string): IconoCfg {
   return ICONO[tipo] || { simbolo: "i", bg: "#eef2f7", ring: MAIN, fg: MAIN };
 }
 
+/**
+ * Escapa TODO valor dinámico antes de interpolarlo en HTML (texto y atributos).
+ * Trata como no confiable cualquier dato de formularios, catálogos, base de
+ * datos, importaciones o parámetros. Escapa &, <, >, " y '.
+ */
+export function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // Formato en línea: escapa HTML y aplica *negrita* y ==resaltado==.
 function inlineFmt(texto: string): string {
-  let html = String(texto).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  let html = escapeHtml(texto);
   html = html.replace(/==([^=\n]+)==/g, '<mark style="background-color:#fef3c7;color:#000;padding:0 2px">$1</mark>');
   html = html.replace(/\*([^*\n]+)\*/g, `<strong style="color:${MAIN}">$1</strong>`);
   return html;
