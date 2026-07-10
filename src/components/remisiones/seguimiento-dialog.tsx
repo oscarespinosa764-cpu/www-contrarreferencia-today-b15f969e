@@ -1360,8 +1360,14 @@ export function SeguimientoDialog({
           genera_codigo: cambioGeneraCodigo,
           nuevo_radicado: cambioRadicado.trim() || null,
         };
-      case T.OTRO:
-        return { cual: otroCual.trim() };
+      case T.CAMBIO_ESPECIALIDAD:
+        return {
+          cerradas: espCierreList,
+          agregadas: espAgregadas,
+          reactivadas: espReactivadas,
+          continuan: espContinuan,
+          activas_resultantes: espActivasFinal,
+        };
       case T.NOVEDADES:
         return {
           origen: [
