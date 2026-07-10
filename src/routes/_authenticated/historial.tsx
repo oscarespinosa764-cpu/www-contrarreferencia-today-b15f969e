@@ -732,6 +732,28 @@ function HistorialPage() {
     },
   });
 
+  // Catálogo real de servicios/unidades (para el filtro SERVICIO). Se reutiliza
+  // el catálogo existente; no se crea uno paralelo.
+  const { data: catServicios } = useQuery({
+    queryKey: ["historial-cat-servicios"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("catalogos")
+        .select("valor")
+        .in("tipo", ["UNIDAD", "UNIDAD_REQUERIDA"])
+        .eq("activo", true)
+        .order("valor", { ascending: true });
+      if (error) throw error;
+      return (data ?? []).map((r) => v((r as Record<string, unknown>).valor)).filter(Boolean);
+    },
+  });
+
+  const servicioOpciones = useMemo(() => {
+    const set = new Set<string>(["TODOS LOS SERVICIOS", ...SERVICIOS_BASE]);
+    for (const s of catServicios ?? []) set.add(s.toUpperCase());
+    return Array.from(set);
+  }, [catServicios]);
+
   const { data: seguimientos } = useQuery({
     queryKey: ["historial-seguimientos"],
     queryFn: async () => {
