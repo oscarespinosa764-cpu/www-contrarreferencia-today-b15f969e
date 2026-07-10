@@ -617,6 +617,14 @@ function HistorialPage() {
   const [fechaEspecifica, setFechaEspecifica] = useState<Date | undefined>(undefined);
   const [ingresoFor, setIngresoFor] = useState<Grupo | null>(null);
   const [bitacoraOpen, setBitacoraOpen] = useState(false);
+  // Consulta por paciente (SEDE · SERVICIO · documento · nombre · historia clínica)
+  const [sede, setSede] = useState<string>(SEDE_DEFAULT);
+  const [servicio, setServicio] = useState<string>("TODOS LOS SERVICIOS");
+  const [docBusca, setDocBusca] = useState("");
+  const [buscarPacienteOpen, setBuscarPacienteOpen] = useState(false);
+  const [modoConsulta, setModoConsulta] = useState<"lista" | "timeline">("lista");
+  const [limite, setLimite] = useState(20);
+  const verMas = () => setLimite((n) => n + 20);
 
   const { data: casos, isLoading } = useQuery({
     queryKey: ["historial-casos"],
