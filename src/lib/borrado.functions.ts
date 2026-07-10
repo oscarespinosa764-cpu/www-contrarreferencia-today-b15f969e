@@ -136,14 +136,6 @@ export const MODULOS_BORRADO: {
     subgrupos: ["entrega_firmas"],
   },
   {
-    id: "reportes",
-    label: "Reportes temporales / exportaciones",
-    descripcion: "Los reportes y exportaciones se generan bajo demanda y no se almacenan.",
-    subgrupos: [],
-    vacio: true,
-    nota: "Sin datos transaccionales borrables. Los reportes y exportaciones se generan bajo demanda y no dejan archivos permanentes.",
-  },
-  {
     id: "historial",
     label: "Historial de casos",
     descripcion: "Históricos de entrantes y salientes, seguimientos y bitácoras históricas.",
