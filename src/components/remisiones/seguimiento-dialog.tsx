@@ -440,6 +440,14 @@ export function SeguimientoDialog({
   // --- Flags derivados del caso ---
   const generaCodigo = caso?.eapb_genera_codigo === true;
   const tienePlataforma = caso?.eapb_tiene_plataforma === true;
+  // Flag independiente (Parte 2): ¿los seguimientos de esta EAPB se hacen en
+  // plataforma? Se resuelve desde el catálogo EAPB del caso, no de la radicación.
+  const casoEapbNombre = (caso?.asegurador || caso?.eapb || "").trim();
+  const segEnPlataforma = useMemo(
+    () =>
+      eapbCat.find((e) => e.valor === casoEapbNombre)?.seguimientos_en_plataforma === true,
+    [eapbCat, casoEapbNombre],
+  );
   const esAdminCaso = esTramiteAdministrativo(caso?.tipo_tramite ?? "");
 
   const radicadoReal =
