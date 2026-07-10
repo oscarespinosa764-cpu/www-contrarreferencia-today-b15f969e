@@ -112,14 +112,6 @@ export const MODULOS_BORRADO: {
     ],
   },
   {
-    id: "red",
-    label: "Red / Disponibilidad",
-    descripcion: "La red es información maestra y se preserva siempre.",
-    subgrupos: [],
-    vacio: true,
-    nota: "Sin datos transaccionales borrables. La red maestra (IPS, ambulancias, especialidades CEDIM, jornadas / códigos TEP) se preserva.",
-  },
-  {
     id: "indicadores",
     label: "Indicadores",
     descripcion: "Mediciones mensuales cargadas. Los indicadores base, fórmulas y metas se preservan.",
@@ -142,14 +134,6 @@ export const MODULOS_BORRADO: {
     label: "Entrega documental / QR",
     descripcion: "Sesiones de firma QR, evidencias y firmas de recepción documental.",
     subgrupos: ["entrega_firmas"],
-  },
-  {
-    id: "reportes",
-    label: "Reportes temporales / exportaciones",
-    descripcion: "Los reportes y exportaciones se generan bajo demanda y no se almacenan.",
-    subgrupos: [],
-    vacio: true,
-    nota: "Sin datos transaccionales borrables. Los reportes y exportaciones se generan bajo demanda y no dejan archivos permanentes.",
   },
   {
     id: "historial",
