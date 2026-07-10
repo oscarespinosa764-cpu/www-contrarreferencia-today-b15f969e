@@ -619,6 +619,8 @@ export function SeguimientoDialog({
       // CIERRE POR TRASLADO EFECTIVO: oculto hasta completar la entrega documental.
       ...(mostrarTrasladoOpt ? [T.TRASLADO] : []),
       ...(mostrarCambioEapb ? [T.CAMBIO_EAPB] : []),
+      // CAMBIO EN ESPECIALIDAD: solo disponible mientras el caso siga activo.
+      ...(casoActivo ? [T.CAMBIO_ESPECIALIDAD] : []),
       T.CANCELACION,
       T.PERTINENCIA,
       T.NOVEDADES,
@@ -633,6 +635,7 @@ export function SeguimientoDialog({
     mostrarCierreOpt,
     mostrarTrasladoOpt,
     mostrarCambioEapb,
+    casoActivo,
   ]);
 
   // Tipos para PHD/PAD/O2/Especiales (subconjunto saliente).
