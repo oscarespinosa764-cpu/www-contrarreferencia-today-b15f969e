@@ -45,6 +45,11 @@ import {
   Check,
   Clock,
   ListTree,
+  UserSearch,
+  Eraser,
+  MapPin,
+  Plus,
+
 
 } from "lucide-react";
 import { toast } from "sonner";
@@ -152,6 +157,24 @@ type StatusColor = "green" | "red" | "amber" | "sky";
 
 const TIPO_FILTERS = ["TODOS", "ACEP", "NEG", "AMP", "CAN", "ING"] as const;
 type TipoFilter = (typeof TIPO_FILTERS)[number];
+
+// Sedes (catálogo institucional). "TODAS LAS SEDES" = sin filtro de sede.
+const SEDES = [
+  "TODAS LAS SEDES",
+  "PRINCIPAL",
+  "CONSULTA ESPECIALIZADA",
+  "SALA ROSA",
+  "CLÍNICA GLORIA PATRICIA PINZÓN",
+] as const;
+const SEDE_DEFAULT = "CLÍNICA GLORIA PATRICIA PINZÓN";
+// Servicios base garantizados; se complementan con el catálogo real de unidades.
+const SERVICIOS_BASE = [
+  "URGENCIAS",
+  "HOSPITALIZACIÓN",
+  "UCI",
+  "QUIRÓFANO",
+  "CONSULTA ESPECIALIZADA",
+];
 
 const TIPO_LABEL: Record<TipoFilter, string> = {
   TODOS: "Todos los casos",
@@ -617,6 +640,14 @@ function HistorialPage() {
   const [fechaEspecifica, setFechaEspecifica] = useState<Date | undefined>(undefined);
   const [ingresoFor, setIngresoFor] = useState<Grupo | null>(null);
   const [bitacoraOpen, setBitacoraOpen] = useState(false);
+  // Consulta por paciente (SEDE · SERVICIO · documento · nombre · historia clínica)
+  const [sede, setSede] = useState<string>(SEDE_DEFAULT);
+  const [servicio, setServicio] = useState<string>("TODOS LOS SERVICIOS");
+  const [docBusca, setDocBusca] = useState("");
+  const [buscarPacienteOpen, setBuscarPacienteOpen] = useState(false);
+  const [modoConsulta, setModoConsulta] = useState<"lista" | "timeline">("lista");
+  const [limite, setLimite] = useState(20);
+  const verMas = () => setLimite((n) => n + 20);
 
   const { data: casos, isLoading } = useQuery({
     queryKey: ["historial-casos"],
@@ -724,6 +755,28 @@ function HistorialPage() {
     },
   });
 
+  // Catálogo real de servicios/unidades (para el filtro SERVICIO). Se reutiliza
+  // el catálogo existente; no se crea uno paralelo.
+  const { data: catServicios } = useQuery({
+    queryKey: ["historial-cat-servicios"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("catalogos")
+        .select("valor")
+        .in("tipo", ["UNIDAD", "UNIDAD_REQUERIDA"])
+        .eq("activo", true)
+        .order("valor", { ascending: true });
+      if (error) throw error;
+      return (data ?? []).map((r) => v((r as Record<string, unknown>).valor)).filter(Boolean);
+    },
+  });
+
+  const servicioOpciones = useMemo(() => {
+    const set = new Set<string>(["TODOS LOS SERVICIOS", ...SERVICIOS_BASE]);
+    for (const s of catServicios ?? []) set.add(s.toUpperCase());
+    return Array.from(set);
+  }, [catServicios]);
+
   const { data: seguimientos } = useQuery({
     queryKey: ["historial-seguimientos"],
     queryFn: async () => {
@@ -759,16 +812,86 @@ function HistorialPage() {
     return out;
   }, [casos, historicosEntrantes]);
 
-  const term = q.trim().toLowerCase();
+  // El documento de la consulta por paciente tiene prioridad sobre el buscador
+  // libre; ambos alimentan el mismo término de filtrado.
+  const docTrim = docBusca.trim();
+  const term = (docTrim || q.trim()).toLowerCase();
+
+  const servicioActivo = servicio !== "TODOS LOS SERVICIOS";
+  const sedeActiva = sede !== "TODAS LAS SEDES";
+  const su = sinTildes(servicio).toUpperCase();
+  const seu = sinTildes(sede).toUpperCase();
+  const matchServicio = (txt: string) =>
+    !servicioActivo || sinTildes(txt).toUpperCase().includes(su);
+  // La sede sólo excluye cuando el registro tiene un valor de unidad/sede que
+  // no coincide; registros sin ese dato siempre pasan (evita ocultar todo).
+  const matchSede = (txt: string) => {
+    if (!sedeActiva) return true;
+    const t = sinTildes(txt).toUpperCase().trim();
+    return t === "" || t.includes(seu);
+  };
+
+  const busquedaActiva =
+    term !== "" ||
+    tipo !== "TODOS" ||
+    salTipo !== "TODOS" ||
+    genTipo !== "TODOS" ||
+    periodo !== "Todos" ||
+    !!fechaEspecifica ||
+    servicioActivo;
 
   const pasaPeriodo = (raw: string | null) =>
     fechaEspecifica ? mismoDia(raw, fechaEspecifica) : dentroPeriodo(raw, periodo);
+
+  // Índice de pacientes (para la búsqueda avanzada por nombre/apellido).
+  const pacientesIndex = useMemo<PacienteIndex[]>(() => {
+    const map = new Map<string, PacienteIndex>();
+    const add = (documento: string, nombres: string, apellidos: string) => {
+      const doc = documento.trim();
+      if (!doc || map.has(doc)) return;
+      map.set(doc, {
+        documento: doc,
+        nombres: nombres.trim(),
+        apellidos: apellidos.trim(),
+        nombre: [nombres, apellidos].filter(Boolean).join(" ").trim(),
+      });
+    };
+    for (const c of [...(casos ?? []), ...historicosEntrantes])
+      add(v(c.documento), v(c.nombres), v(c.apellidos));
+    for (const r of remisiones ?? []) add(v(r.documento), v(r.paciente), "");
+    for (const r of [...phdDatos, ...internasDatos]) add(v(r.documento), v(r.paciente), "");
+    return Array.from(map.values());
+  }, [casos, historicosEntrantes, remisiones, phdDatos, internasDatos]);
+
+  const pacienteNombre = useMemo(() => {
+    if (!docTrim) return "";
+    const dn = docTrim.toLowerCase();
+    return pacientesIndex.find((p) => p.documento.toLowerCase() === dn)?.nombre ?? "";
+  }, [docTrim, pacientesIndex]);
+  const pacienteExiste = pacienteNombre !== "" || (docTrim !== "" &&
+    pacientesIndex.some((p) => p.documento.toLowerCase() === docTrim.toLowerCase()));
+
+  const limpiarConsulta = () => {
+    setDocBusca("");
+    setQ("");
+    setSede(SEDE_DEFAULT);
+    setServicio("TODOS LOS SERVICIOS");
+    setTipo("TODOS");
+    setSalTipo("TODOS");
+    setGenTipo("TODOS");
+    setPeriodo("Todos");
+    setFechaEspecifica(undefined);
+    setLimite(20);
+    setModoConsulta("lista");
+  };
 
   const gruposF = useMemo(
     () =>
       grupos.filter((g) => {
         if (tipo !== "TODOS" && !tieneTipo(g.eventos, tipo)) return false;
         if (!pasaPeriodo(g.base.fecha || g.base.created_at)) return false;
+        if (!matchServicio(`${g.base.unidad ?? ""} ${g.base.especialidad ?? ""}`)) return false;
+        if (!matchSede(`${g.base.unidad ?? ""}`)) return false;
         if (!term) return true;
         const hay = g.eventos
           .map((e) => `${e.codigo ?? ""} ${e.documento ?? ""} ${e.nombres ?? ""} ${e.apellidos ?? ""} ${e.ips ?? ""}`)
@@ -776,7 +899,8 @@ function HistorialPage() {
           .toLowerCase();
         return hay.includes(term);
       }),
-    [grupos, tipo, periodo, fechaEspecifica, term],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [grupos, tipo, periodo, fechaEspecifica, term, servicio, sede],
   );
 
   const remisionesF = useMemo(
@@ -784,11 +908,13 @@ function HistorialPage() {
       (remisiones ?? []).filter((r) => {
         if (salTipo !== "TODOS" && !(r.estado || "").toUpperCase().includes(salTipo)) return false;
         if (!pasaPeriodo((r.fecha_radicado as string) || r.created_at)) return false;
+        if (!matchServicio(`${v(r.servicio)} ${v((r as Record<string, unknown>).especialidad_receptora)}`)) return false;
         if (!term) return true;
         const hay = `${r.codigo_radicacion ?? ""} ${r.documento ?? ""} ${r.paciente ?? ""} ${r.ips_receptora ?? ""} ${r.servicio ?? ""}`.toLowerCase();
         return hay.includes(term);
       }),
-    [remisiones, salTipo, periodo, fechaEspecifica, term],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [remisiones, salTipo, periodo, fechaEspecifica, term, servicio],
   );
 
   const filtraGenerico = (rows: Generico[], campos: (r: Generico) => string) =>
@@ -799,22 +925,51 @@ function HistorialPage() {
         if (genTipo !== "CERRADO" && !e.includes(genTipo)) return false;
       }
       if (!pasaPeriodo((r.fecha_inicio as string) || (r.fecha as string) || r.created_at)) return false;
+      if (!matchServicio(`${v(r.servicio)} ${v(r.tipo_solicitud)} ${v((r as Record<string, unknown>).unidad)}`)) return false;
       if (!term) return true;
       return campos(r).toLowerCase().includes(term);
     });
 
   const phdF = useMemo(
     () => filtraGenerico(phdDatos, (r) => `${v(r.paciente)} ${v(r.documento)} ${v(r.tipo_solicitud)} ${v(r.eapb)} ${v(r.codigo_radicacion)}`),
-    [phdDatos, genTipo, periodo, fechaEspecifica, term],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [phdDatos, genTipo, periodo, fechaEspecifica, term, servicio],
   );
   const internasF = useMemo(
     () => filtraGenerico(internasDatos, (r) => `${v(r.paciente)} ${v(r.documento)} ${v(r.tipo_solicitud)} ${v(r.servicio)} ${v(r.eapb)}`),
-    [internasDatos, genTipo, periodo, fechaEspecifica, term],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [internasDatos, genTipo, periodo, fechaEspecifica, term, servicio],
   );
   const pendientesF = useMemo(
     () => filtraGenerico((pendientes ?? []) as Generico[], (r) => `${v(r.paciente_asunto)} ${v(r.tipo_pendiente)} ${v(r.ips_area)} ${v(r.prioridad)}`),
-    [pendientes, genTipo, periodo, fechaEspecifica, term],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pendientes, genTipo, periodo, fechaEspecifica, term, servicio],
   );
+
+  // Listas visibles: sin búsqueda activa, sólo los últimos `limite` (20 por
+  // defecto) con botón VER MÁS; con búsqueda activa se muestran todos los
+  // resultados reales.
+  const cap = <T,>(arr: T[]): T[] => (busquedaActiva ? arr : arr.slice(0, limite));
+  const gruposV = cap(gruposF);
+  const remisionesV = cap(remisionesF);
+  const phdV = cap(phdF);
+  const internasV = cap(internasF);
+  const fullLen =
+    vista === "entrantes" ? gruposF.length
+    : vista === "salientes" ? remisionesF.length
+    : vista === "phd" ? phdF.length
+    : vista === "interna" ? internasF.length
+    : pendientesF.length;
+  const hayMas = !busquedaActiva && fullLen > limite;
+
+  const mensajeVacio = !busquedaActiva
+    ? "NO HAY CASOS REGISTRADOS EN ESTA CATEGORÍA."
+    : docTrim && !pacienteExiste
+      ? "NO SE ENCONTRÓ UN PACIENTE CON EL DOCUMENTO INGRESADO."
+      : docTrim && pacienteExiste
+        ? "EL PACIENTE FUE ENCONTRADO, PERO NO TIENE REGISTROS EN ESTA CATEGORÍA Y CON LOS FILTROS ACTUALES."
+        : "Sin coincidencias";
+
 
   // Mensajes recientes
   const mensajes = useMemo<MensajeItem[]>(() => {
@@ -1273,6 +1428,14 @@ function HistorialPage() {
     };
   };
 
+  // Eventos del paciente consultado (historia clínica cronológica tipo ÍNDIGO).
+  const consultaItems = useMemo<Construido[]>(() => {
+    if (!docTrim) return [];
+    const r = buscarBitacoras(docTrim);
+    return [...r.entrantes, ...r.salientes, ...r.phd, ...r.internas];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [docTrim, grupos, remisiones, phdDatos, internasDatos]);
+
   const pdfConstruido = (c: Construido) => generarUno(c, c.bloque.tipoDocumento);
 
   const pdfConsolidado = (cs: Construido[], doc: string, filtros: string) => {
@@ -1338,7 +1501,11 @@ function HistorialPage() {
               return (
                 <button
                   key={vw.key}
-                  onClick={() => setVista(vw.key)}
+                  onClick={() => {
+                    setVista(vw.key);
+                    setLimite(20);
+                    setModoConsulta("lista");
+                  }}
                   className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
                     active ? `${vw.color} text-white shadow-sm` : "text-muted-foreground hover:text-foreground"
                   }`}
@@ -1349,6 +1516,105 @@ function HistorialPage() {
             })}
           </div>
         </div>
+
+        {/* CONSULTA POR PACIENTE (SEDE · SERVICIO · documento · nombre) */}
+        <div className="mb-3 rounded-xl border border-border bg-muted/30 p-2.5">
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            Consulta por paciente
+          </p>
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="grid gap-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Sede</Label>
+              <Select value={sede} onValueChange={setSede}>
+                <SelectTrigger className="h-9 w-[13rem] text-xs">
+                  <MapPin className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SEDES.map((s) => (
+                    <SelectItem key={s} value={s} className="text-xs">
+                      {s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Servicio</Label>
+              <Select value={servicio} onValueChange={setServicio}>
+                <SelectTrigger className="h-9 w-[12rem] text-xs">
+                  <Stethoscope className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {servicioOpciones.map((s) => (
+                    <SelectItem key={s} value={s} className="text-xs">
+                      {s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Documento del paciente</Label>
+              <div className="flex items-center gap-1.5">
+                <Input
+                  className="h-9 w-[11rem] text-xs"
+                  placeholder="N.º documento"
+                  value={docBusca}
+                  onChange={(e) => setDocBusca(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && setLimite(20)}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-9 w-9 shrink-0 p-0"
+                  aria-label="BUSCAR PACIENTE POR NOMBRE O APELLIDO"
+                  title="Búsqueda avanzada de paciente"
+                  onClick={() => setBuscarPacienteOpen(true)}
+                >
+                  <UserSearch className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            {docTrim && (
+              <div className="grid gap-1">
+                <Label className="text-[10px] uppercase text-muted-foreground">Nombre del paciente</Label>
+                <div className="flex h-9 items-center rounded-md border border-border bg-card px-2.5 text-xs font-semibold text-foreground">
+                  {pacienteNombre || "Paciente no encontrado"}
+                </div>
+              </div>
+            )}
+            <div className="ml-auto flex items-end gap-1.5">
+              <div className="inline-flex overflow-hidden rounded-full border border-border">
+                <button
+                  type="button"
+                  onClick={() => setModoConsulta("lista")}
+                  className={`flex items-center gap-1 px-2.5 py-2 text-[10px] font-semibold transition ${
+                    modoConsulta === "lista" ? "bg-status-blue text-white" : "bg-card text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <ListTree className="h-3 w-3" /> Lista
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModoConsulta("timeline")}
+                  className={`flex items-center gap-1 px-2.5 py-2 text-[10px] font-semibold transition ${
+                    modoConsulta === "timeline" ? "bg-status-blue text-white" : "bg-card text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Clock className="h-3 w-3" /> Historia clínica
+                </button>
+              </div>
+              <Button type="button" size="sm" variant="outline" className="h-9" onClick={limpiarConsulta}>
+                <Eraser className="mr-1.5 h-4 w-4" /> Limpiar búsqueda
+              </Button>
+            </div>
+          </div>
+        </div>
+
+
 
         {/* Encabezado: título + filtros + exportar */}
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -1480,30 +1746,51 @@ function HistorialPage() {
           />
         </div>
 
-        {/* Lista */}
-        {cargando ? (
+        {/* Consulta por paciente: historia clínica cronológica tipo ÍNDIGO */}
+        {modoConsulta === "timeline" ? (
+          cargando ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">Cargando…</p>
+          ) : !docTrim ? (
+            <div className="rounded-2xl border border-border bg-card py-14 text-center shadow-sm">
+              <p className="text-sm font-semibold text-foreground">Ingresa un documento</p>
+              <p className="text-xs text-muted-foreground">
+                Escribe el documento o usa la búsqueda avanzada para ver la historia del paciente.
+              </p>
+            </div>
+          ) : !pacienteExiste ? (
+            <div className="rounded-2xl border border-border bg-card py-14 text-center shadow-sm">
+              <p className="text-sm font-semibold text-foreground">NO SE ENCONTRÓ UN PACIENTE CON EL DOCUMENTO INGRESADO.</p>
+            </div>
+          ) : (
+            <LineaTiempoPaciente items={consultaItems} documento={docTrim} />
+          )
+        ) : /* Lista */ cargando ? (
           <p className="py-10 text-center text-sm text-muted-foreground">Cargando…</p>
         ) : vacio ? (
           <div className="rounded-2xl border border-border bg-card py-16 text-center shadow-sm">
             <p className="text-3xl text-muted-foreground">🔍</p>
-            <p className="mt-2 text-sm font-semibold text-foreground">Sin coincidencias</p>
-            <p className="text-xs text-muted-foreground">Prueba con otros términos o limpia los filtros</p>
+            <p className="mt-2 text-sm font-semibold text-foreground">{mensajeVacio}</p>
+            {busquedaActiva && (
+              <p className="text-xs text-muted-foreground">Prueba con otros términos o limpia los filtros</p>
+            )}
           </div>
         ) : vista === "entrantes" ? (
           <div className="grid gap-2">
-            {gruposF.map((g) => (
+            {gruposV.map((g) => (
               <CasoCard key={g.key} grupo={g} canEdit={canEdit} onConfirmar={() => setIngresoFor(g)} onPDF={() => pdfEntrante(g)} />
             ))}
+            {hayMas && <VerMasButton onClick={verMas} />}
           </div>
         ) : vista === "salientes" ? (
           <div className="grid gap-2">
-            {remisionesF.map((r) => (
+            {remisionesV.map((r) => (
               <RemisionCard key={r.id} remision={r} onPDF={() => pdfSaliente(r)} />
             ))}
+            {hayMas && <VerMasButton onClick={verMas} />}
           </div>
         ) : vista === "phd" ? (
           <div className="grid gap-2">
-            {(phdF as Generico[]).map((r) => (
+            {(phdV as Generico[]).map((r) => (
               <GenericoCard
                 key={r.id}
                 titulo={`${v(r.paciente) || "Sin nombre"}`}
@@ -1514,10 +1801,11 @@ function HistorialPage() {
                 onPDF={() => pdfPHD(r)}
               />
             ))}
+            {hayMas && <VerMasButton onClick={verMas} />}
           </div>
         ) : (
           <div className="grid gap-2">
-            {(internasF as Generico[]).map((r) => (
+            {(internasV as Generico[]).map((r) => (
               <GenericoCard
                 key={r.id}
                 titulo={`${v(r.paciente) || "Sin nombre"}`}
@@ -1527,6 +1815,7 @@ function HistorialPage() {
                 onPDF={() => pdfInterna(r)}
               />
             ))}
+            {hayMas && <VerMasButton onClick={verMas} />}
           </div>
         )}
       </Panel>
@@ -1539,6 +1828,15 @@ function HistorialPage() {
         buscar={buscarBitacoras}
         onPDF={pdfConstruido}
         onConsolidado={pdfConsolidado}
+      />
+      <BuscarPacienteDialog
+        open={buscarPacienteOpen}
+        onClose={() => setBuscarPacienteOpen(false)}
+        pacientes={pacientesIndex}
+        onPick={(documento) => {
+          setDocBusca(documento);
+          setLimite(20);
+        }}
       />
 
     </div>
@@ -1564,6 +1862,17 @@ function FilterButton({ active, label, onClick }: { active: boolean; label: stri
     >
       {label}
       {active && <Check className="h-3.5 w-3.5" />}
+    </button>
+  );
+}
+
+function VerMasButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border bg-card py-2 text-xs font-semibold text-muted-foreground transition hover:text-foreground"
+    >
+      <Plus className="h-3.5 w-3.5" /> Ver más
     </button>
   );
 }
@@ -2260,6 +2569,164 @@ function BitacoraBuscadorDialog({
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>
             Cerrar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ---- Índice de pacientes (para búsqueda avanzada por nombre/apellido) ----
+export type PacienteIndex = {
+  documento: string;
+  nombre: string;
+  nombres: string;
+  apellidos: string;
+};
+
+// ---- Modal BUSCAR PACIENTE (búsqueda avanzada por nombre/apellido) ----
+function BuscarPacienteDialog({
+  open,
+  onClose,
+  pacientes,
+  onPick,
+}: {
+  open: boolean;
+  onClose: () => void;
+  pacientes: PacienteIndex[];
+  onPick: (documento: string) => void;
+}) {
+  const [ident, setIdent] = useState("");
+  const [n1, setN1] = useState("");
+  const [n2, setN2] = useState("");
+  const [a1, setA1] = useState("");
+  const [a2, setA2] = useState("");
+  const [buscado, setBuscado] = useState(false);
+  const [sel, setSel] = useState<string | null>(null);
+
+  const limpiar = () => {
+    setIdent("");
+    setN1("");
+    setN2("");
+    setA1("");
+    setA2("");
+    setBuscado(false);
+    setSel(null);
+  };
+
+  const norm = (s: string) => sinTildes(s).toUpperCase().trim();
+  const criterios = [ident, n1, n2, a1, a2].map(norm).filter(Boolean);
+
+  const resultados = useMemo(() => {
+    if (!buscado || criterios.length === 0) return [];
+    const di = norm(ident);
+    const nombreTokens = [n1, n2, a1, a2].map(norm).filter(Boolean);
+    return pacientes
+      .filter((p) => {
+        if (di && !norm(p.documento).includes(di)) return false;
+        if (nombreTokens.length) {
+          const full = norm(`${p.nombres} ${p.apellidos}`);
+          if (!nombreTokens.every((t) => full.includes(t))) return false;
+        }
+        return true;
+      })
+      .slice(0, 50);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buscado, pacientes, ident, n1, n2, a1, a2]);
+
+  const aceptar = () => {
+    if (!sel) {
+      toast.info("Selecciona un paciente de la lista.");
+      return;
+    }
+    onPick(sel);
+    limpiar();
+    onClose();
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) {
+          limpiar();
+          onClose();
+        }
+      }}
+    >
+      <DialogContent className="max-h-[90vh] overflow-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <UserSearch className="h-5 w-5 text-status-blue" /> Buscar paciente
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-5">
+          <div className="grid gap-1"><Label className="text-[11px]">Identificación</Label><Input value={ident} onChange={(e) => setIdent(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setBuscado(true)} /></div>
+          <div className="grid gap-1"><Label className="text-[11px]">Primer nombre</Label><Input value={n1} onChange={(e) => setN1(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setBuscado(true)} /></div>
+          <div className="grid gap-1"><Label className="text-[11px]">Segundo nombre</Label><Input value={n2} onChange={(e) => setN2(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setBuscado(true)} /></div>
+          <div className="grid gap-1"><Label className="text-[11px]">Primer apellido</Label><Input value={a1} onChange={(e) => setA1(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setBuscado(true)} /></div>
+          <div className="grid gap-1"><Label className="text-[11px]">Segundo apellido</Label><Input value={a2} onChange={(e) => setA2(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setBuscado(true)} /></div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" className="bg-status-blue text-white hover:bg-status-blue/90" onClick={() => setBuscado(true)}>
+            <Search className="mr-1.5 h-4 w-4" /> Buscar
+          </Button>
+          <Button size="sm" variant="outline" onClick={limpiar}>
+            <Eraser className="mr-1.5 h-4 w-4" /> Limpiar filtros
+          </Button>
+        </div>
+
+        <div className="mt-1 max-h-[45vh] overflow-y-auto rounded-lg border border-border">
+          {!buscado ? (
+            <p className="py-8 text-center text-xs text-muted-foreground">Ingresa un criterio y presiona Buscar.</p>
+          ) : criterios.length === 0 ? (
+            <p className="py-8 text-center text-xs text-muted-foreground">Ingresa al menos un criterio de búsqueda.</p>
+          ) : resultados.length === 0 ? (
+            <p className="py-8 text-center text-xs text-muted-foreground">
+              NO SE ENCONTRÓ UN PACIENTE CON LOS CRITERIOS INGRESADOS.
+            </p>
+          ) : (
+            <table className="w-full text-left text-xs">
+              <thead className="sticky top-0 bg-muted/80 text-[10px] uppercase text-muted-foreground">
+                <tr>
+                  <th className="px-2 py-1.5">Identificación</th>
+                  <th className="px-2 py-1.5">Nombres</th>
+                  <th className="px-2 py-1.5">Apellidos</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resultados.map((p) => (
+                  <tr
+                    key={p.documento}
+                    onClick={() => setSel(p.documento)}
+                    onDoubleClick={() => {
+                      setSel(p.documento);
+                      onPick(p.documento);
+                      limpiar();
+                      onClose();
+                    }}
+                    className={`cursor-pointer border-t border-border transition ${
+                      sel === p.documento ? "bg-status-blue/15" : "hover:bg-muted/50"
+                    }`}
+                  >
+                    <td className="px-2 py-1.5 font-mono font-semibold text-status-blue">{p.documento}</td>
+                    <td className="px-2 py-1.5">{p.nombres || "—"}</td>
+                    <td className="px-2 py-1.5">{p.apellidos || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button className="bg-status-blue text-white hover:bg-status-blue/90" onClick={aceptar}>
+            <Check className="mr-1.5 h-4 w-4" /> Aceptar
           </Button>
         </DialogFooter>
       </DialogContent>
