@@ -1530,6 +1530,23 @@ export function SeguimientoDialog({
         if (riHora.trim() && !isHoraValida(riHora))
           return toast.error("Hora del examen inválida (HH:MM)");
       }
+      // Cambio en especialidad: exige cambio real, conservar una activa y motivo.
+      if (esCambioEsp) {
+        if (!espHayCambio)
+          return toast.error(
+            "No se ha registrado ningún cambio en las especialidades del caso.",
+          );
+        const activasNorm = new Set(especialidadesList.map(normEsp));
+        const yaActiva = espNuevasLimpias.find((e) => activasNorm.has(normEsp(e)));
+        if (yaActiva)
+          return toast.error(`La especialidad ${yaActiva.toUpperCase()} ya está activa en el caso.`);
+        if (espActivasFinal.length === 0)
+          return toast.error(
+            "El caso debe conservar al menos una especialidad activa mientras continúe en trámite.",
+          );
+        if ((espCierreList.length > 0 || espReactivadas.length > 0) && !detalle.trim())
+          return toast.error("Registra las observaciones del cambio.");
+      }
       if (evoRequiereMotivo && !evoMotivoPend.trim())
         return toast.error("Indica el motivo del pendiente");
       // 9.8 · Advertir si no se marcó ninguna especialidad ni se dejó observación.
