@@ -315,7 +315,7 @@ export function CatalogoMaestras() {
       registrarAuditoria({
         data: {
           accion: "editar_eapb_seguimientos_plataforma",
-          modulo: "catalogo",
+          modulo: "catalogos",
           tabla: "catalogos",
           registroId: editing.id,
           resultado: "exito",
