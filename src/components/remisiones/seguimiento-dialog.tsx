@@ -1368,6 +1368,8 @@ export function SeguimientoDialog({
           continuan: espContinuan,
           activas_resultantes: espActivasFinal,
         };
+      case T.OTRO:
+        return { cual: otroCual.trim() };
       case T.NOVEDADES:
         return {
           origen: [
