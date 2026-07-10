@@ -2225,6 +2225,106 @@ export function SeguimientoDialog({
                 </div>
               )}
 
+              {/* CAMBIO EN ESPECIALIDAD */}
+              {esCambioEsp && (
+                <div className={sectionCls}>
+                  <p className={labelCls}>Cambio en especialidad</p>
+
+                  {/* Especialidades actualmente en manejo */}
+                  <div className="space-y-2 rounded-lg border border-border/60 bg-background/40 p-3">
+                    <p className={labelCls}>Especialidades actualmente en manejo</p>
+                    {especialidadesList.length === 0 ? (
+                      <p className="text-xs italic text-muted-foreground">
+                        El caso no tiene especialidades activas registradas.
+                      </p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {especialidadesList.map((esp) => (
+                          <label
+                            key={esp}
+                            className="flex items-center justify-between gap-2 rounded-md border border-border/50 px-2 py-1.5 text-sm"
+                          >
+                            <span>{esp}</span>
+                            <span className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                              <Checkbox
+                                checked={!!espCierres[esp]}
+                                onCheckedChange={() => toggleEspCierre(esp)}
+                              />
+                              ELIMINAR POR CIERRE DE MANEJO
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Nuevas especialidades en manejo */}
+                  <div className="space-y-2 rounded-lg border border-border/60 bg-background/40 p-3">
+                    <p className={labelCls}>Nuevas especialidades en manejo</p>
+                    <div className="space-y-2">
+                      {espNuevas.map((val, i) => (
+                        <div key={i} className="flex items-end gap-2">
+                          <div className="flex-1">
+                            <AutoComplete
+                              value={val}
+                              onChange={(v) => setEspNuevaAt(i, v)}
+                              onPick={(v) => onPickEspNueva(i, v)}
+                              options={catEspecialidades}
+                              placeholder="Buscar especialidad…"
+                            />
+                          </div>
+                          {espNuevas.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9 shrink-0"
+                              onClick={() => removeEspNuevaLine(i)}
+                              aria-label="Eliminar línea"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addEspNuevaLine}
+                      className="gap-1"
+                    >
+                      <Plus className="h-4 w-4" /> Agregar especialidad
+                    </Button>
+                    {especCerradasNombres.length > 0 && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Cerradas previamente (se pueden reactivar):{" "}
+                        {especCerradasNombres.join(", ")}.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Resumen del cambio */}
+                  {espHayCambio && (
+                    <div className="rounded-md bg-muted/40 p-2 text-[11px] text-muted-foreground">
+                      {espCierreList.length > 0 && (
+                        <p>Cierres: {espCierreList.join(", ")}.</p>
+                      )}
+                      {espAgregadas.length > 0 && (
+                        <p>Nuevas: {espAgregadas.join(", ")}.</p>
+                      )}
+                      {espReactivadas.length > 0 && (
+                        <p>Reactivadas: {espReactivadas.join(", ")}.</p>
+                      )}
+                      <p>Activas resultantes: {espActivasFinal.join(", ") || "—"}.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+
+
               {/* FÍSICO O PRESENCIAL */}
               {esFisico && (
                 <div className={sectionCls}>
