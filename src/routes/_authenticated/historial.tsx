@@ -2092,8 +2092,11 @@ function BitacoraBuscadorDialog({
     setIniStr("");
     setFinStr("");
     setTipoTramite("todos");
+    setModo("timeline");
     setRes(null);
   };
+
+
 
   return (
     <Dialog
