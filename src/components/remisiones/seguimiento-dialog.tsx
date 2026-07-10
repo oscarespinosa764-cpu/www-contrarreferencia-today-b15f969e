@@ -52,6 +52,7 @@ import {
   generarPlantillaAceptacionIps,
   generarPlantillaAmbulancia,
   generarPlantillaCambioAsegurador,
+  generarPlantillaCambioEspecialidad,
   generarPlantillaCancelacionRemision,
   generarPlantillaCierreAdmision,
   generarPlantillaCierreTraslado,
