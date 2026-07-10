@@ -550,6 +550,24 @@ export function SeguimientoDialog({
   const esCambioEsp = esSaliente && tipoSeg === T.CAMBIO_ESPECIALIDAD;
   const toggleEspCierre = (esp: string) =>
     setEspCierres((prev) => ({ ...prev, [esp]: !prev[esp] }));
+  const setEspNuevaAt = (i: number, v: string) =>
+    setEspNuevas((prev) => prev.map((x, idx) => (idx === i ? v : x)));
+  const addEspNuevaLine = () => setEspNuevas((prev) => [...prev, ""]);
+  const removeEspNuevaLine = (i: number) =>
+    setEspNuevas((prev) => (prev.length <= 1 ? [""] : prev.filter((_, idx) => idx !== i)));
+  // Al elegir una especialidad cerrada, confirmar su reactivación.
+  const onPickEspNueva = (i: number, v: string) => {
+    if (especCerradasSet.has(normEsp(v))) {
+      const ok = window.confirm(
+        "LA ESPECIALIDAD YA HABÍA SIDO CERRADA. ¿DESEA REACTIVARLA EN EL MANEJO ACTUAL?",
+      );
+      if (!ok) {
+        setEspNuevaAt(i, "");
+        return;
+      }
+    }
+    setEspNuevaAt(i, v);
+  };
 
 
   const radicadoReal =
