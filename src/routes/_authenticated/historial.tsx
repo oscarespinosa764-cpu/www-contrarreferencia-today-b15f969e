@@ -153,6 +153,24 @@ type StatusColor = "green" | "red" | "amber" | "sky";
 const TIPO_FILTERS = ["TODOS", "ACEP", "NEG", "AMP", "CAN", "ING"] as const;
 type TipoFilter = (typeof TIPO_FILTERS)[number];
 
+// Sedes (catálogo institucional). "TODAS LAS SEDES" = sin filtro de sede.
+const SEDES = [
+  "TODAS LAS SEDES",
+  "PRINCIPAL",
+  "CONSULTA ESPECIALIZADA",
+  "SALA ROSA",
+  "CLÍNICA GLORIA PATRICIA PINZÓN",
+] as const;
+const SEDE_DEFAULT = "CLÍNICA GLORIA PATRICIA PINZÓN";
+// Servicios base garantizados; se complementan con el catálogo real de unidades.
+const SERVICIOS_BASE = [
+  "URGENCIAS",
+  "HOSPITALIZACIÓN",
+  "UCI",
+  "QUIRÓFANO",
+  "CONSULTA ESPECIALIZADA",
+];
+
 const TIPO_LABEL: Record<TipoFilter, string> = {
   TODOS: "Todos los casos",
   ACEP: "Aceptación",
