@@ -112,14 +112,6 @@ export const MODULOS_BORRADO: {
     ],
   },
   {
-    id: "red",
-    label: "Red / Disponibilidad",
-    descripcion: "La red es información maestra y se preserva siempre.",
-    subgrupos: [],
-    vacio: true,
-    nota: "Sin datos transaccionales borrables. La red maestra (IPS, ambulancias, especialidades CEDIM, jornadas / códigos TEP) se preserva.",
-  },
-  {
     id: "indicadores",
     label: "Indicadores",
     descripcion: "Mediciones mensuales cargadas. Los indicadores base, fórmulas y metas se preservan.",
