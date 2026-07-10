@@ -392,7 +392,7 @@ export function SeguimientoDialog({
     queryFn: async () => {
       const { data } = await supabase
         .from("catalogos")
-        .select("valor, extra1, extra2, extra3")
+        .select("valor, extra1, extra2, extra3, seguimientos_en_plataforma")
         .eq("tipo", "EAPB")
         .eq("activo", true)
         .order("valor");
@@ -401,6 +401,7 @@ export function SeguimientoDialog({
         extra1: string | null;
         extra2: string | null;
         extra3: string | null;
+        seguimientos_en_plataforma: boolean | null;
       }[];
     },
   });
@@ -439,6 +440,14 @@ export function SeguimientoDialog({
   // --- Flags derivados del caso ---
   const generaCodigo = caso?.eapb_genera_codigo === true;
   const tienePlataforma = caso?.eapb_tiene_plataforma === true;
+  // Flag independiente (Parte 2): ¿los seguimientos de esta EAPB se hacen en
+  // plataforma? Se resuelve desde el catálogo EAPB del caso, no de la radicación.
+  const casoEapbNombre = (caso?.asegurador || caso?.eapb || "").trim();
+  const segEnPlataforma = useMemo(
+    () =>
+      eapbCat.find((e) => e.valor === casoEapbNombre)?.seguimientos_en_plataforma === true,
+    [eapbCat, casoEapbNombre],
+  );
   const esAdminCaso = esTramiteAdministrativo(caso?.tipo_tramite ?? "");
 
   const radicadoReal =
@@ -675,15 +684,16 @@ export function SeguimientoDialog({
   const novAmbDisponible = faseAceptadoCon || facePendienteEgreso;
 
   // --- Estado de evolución diaria (salientes v2) ---
+  // El canal PLATAFORMA depende de si la EAPB hace seguimientos en plataforma.
   const evoEstadoSal: EvolucionEstado = useMemo(() => {
-    if (tienePlataforma) {
+    if (segEnPlataforma) {
       const n = (evoCorreo ? 1 : 0) + (evoPlataforma ? 1 : 0);
       return n === 0 ? "sin" : n === 1 ? "parcial" : "completo";
     }
     return evoCorreo ? "completo" : "sin";
-  }, [tienePlataforma, evoCorreo, evoPlataforma]);
+  }, [segEnPlataforma, evoCorreo, evoPlataforma]);
   const evoMetaSal = evolucionMeta[evoEstadoSal];
-  const evoRequiereMotivo = esEvolucionSal && tienePlataforma && evoEstadoSal === "parcial";
+  const evoRequiereMotivo = esEvolucionSal && segEnPlataforma && evoEstadoSal === "parcial";
 
   // --- Evolución por especialidades tratantes (Parte 9) ---
   const evoEspEvolucionadas = useMemo(
@@ -793,15 +803,15 @@ export function SeguimientoDialog({
             evolucionadas: evoEspEvolucionadas,
             pendientes: evoEspPendientes,
             enviadoCorreo: evoCorreo,
-            enviadoPlataforma: tienePlataforma ? evoPlataforma : false,
+            enviadoPlataforma: segEnPlataforma ? evoPlataforma : false,
             observacion: detalle,
           });
         } else {
           base = generarPlantillaEvolucionDiaria({
             estadoCaso,
             esTramiteAdministrativo: esAdminCaso,
-            tienePlataforma,
-            plataformaFunciona: tienePlataforma ? plataformaFuncSeg === "SI" : null,
+            tienePlataforma: segEnPlataforma,
+            plataformaFunciona: segEnPlataforma ? plataformaFuncSeg === "SI" : null,
             enviadoCorreo: evoCorreo,
             enviadoPlataforma: evoPlataforma,
             motivoPendiente: evoMotivoPend,
@@ -932,6 +942,7 @@ export function SeguimientoDialog({
     estadoCaso,
     esAdminCaso,
     tienePlataforma,
+    segEnPlataforma,
     plataformaFuncSeg,
     evoCorreo,
     evoPlataforma,
@@ -1138,9 +1149,9 @@ export function SeguimientoDialog({
         return { radicado: radicado.trim() };
       case T.EVOLUCION:
         return {
-          plataforma_funcionando: tienePlataforma ? plataformaFuncSeg : null,
+          plataforma_funcionando: segEnPlataforma ? plataformaFuncSeg : null,
           enviado_correo: evoCorreo,
-          enviado_plataforma: tienePlataforma ? evoPlataforma : null,
+          enviado_plataforma: segEnPlataforma ? evoPlataforma : null,
           estado_evolucion: evoEstadoSal,
           motivo_pendiente: evoRequiereMotivo ? evoMotivoPend.trim() : null,
           // Trazabilidad por especialidades tratantes (Parte 9).
@@ -1893,7 +1904,7 @@ export function SeguimientoDialog({
                     </span>
                   </div>
 
-                  {tienePlataforma && (
+                  {segEnPlataforma && (
                     <div className="space-y-1.5">
                       <Label className={labelCls}>¿Plataforma EAPB funcionando?</Label>
                       <Select
@@ -1916,7 +1927,7 @@ export function SeguimientoDialog({
                       <Checkbox checked={evoCorreo} onCheckedChange={(v) => setEvoCorreo(!!v)} />
                       EAPB CORREO
                     </label>
-                    {tienePlataforma && (
+                    {segEnPlataforma && (
                       <label className="flex items-center gap-2 text-sm">
                         <Checkbox
                           checked={evoPlataforma}
