@@ -392,7 +392,7 @@ export function SeguimientoDialog({
     queryFn: async () => {
       const { data } = await supabase
         .from("catalogos")
-        .select("valor, extra1, extra2, extra3")
+        .select("valor, extra1, extra2, extra3, seguimientos_en_plataforma")
         .eq("tipo", "EAPB")
         .eq("activo", true)
         .order("valor");
@@ -401,6 +401,7 @@ export function SeguimientoDialog({
         extra1: string | null;
         extra2: string | null;
         extra3: string | null;
+        seguimientos_en_plataforma: boolean | null;
       }[];
     },
   });
