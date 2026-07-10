@@ -803,15 +803,15 @@ export function SeguimientoDialog({
             evolucionadas: evoEspEvolucionadas,
             pendientes: evoEspPendientes,
             enviadoCorreo: evoCorreo,
-            enviadoPlataforma: tienePlataforma ? evoPlataforma : false,
+            enviadoPlataforma: segEnPlataforma ? evoPlataforma : false,
             observacion: detalle,
           });
         } else {
           base = generarPlantillaEvolucionDiaria({
             estadoCaso,
             esTramiteAdministrativo: esAdminCaso,
-            tienePlataforma,
-            plataformaFunciona: tienePlataforma ? plataformaFuncSeg === "SI" : null,
+            tienePlataforma: segEnPlataforma,
+            plataformaFunciona: segEnPlataforma ? plataformaFuncSeg === "SI" : null,
             enviadoCorreo: evoCorreo,
             enviadoPlataforma: evoPlataforma,
             motivoPendiente: evoMotivoPend,
