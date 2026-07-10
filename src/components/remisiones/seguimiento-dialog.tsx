@@ -1622,26 +1622,68 @@ export function SeguimientoDialog({
 
     const tipoSegFinal = nuevoRadicadoMode ? "RADICADO ADICIONAL" : tipoSeg;
 
-    const { error } = await supabase.from("seguimientos").insert({
-      caso_id: casoId,
-      tipo_caso: tipoCaso,
-      radicado: radicadoSeg || null,
-      tipo_seguimiento: tipoSegFinal,
-      detalle: detalle || null,
-      estado_solicitud:
-        nuevoRadicadoMode || !mostrarEstadoSolicitud ? null : estadoSolicitud || null,
-      nombre_contacto: mostrarContacto ? nombreContacto.trim() || null : null,
-      telefono: mostrarContacto ? telefono.trim() || null : null,
-      plantilla_indigo: indigoTexto.trim() || null,
-      detalles: construirDetalles() as never,
-      nombre_usuario: perfil?.nombre || u.user?.email || null,
-      created_by: u.user?.id,
-    });
+    const { data: segInsertada, error } = await supabase
+      .from("seguimientos")
+      .insert({
+        caso_id: casoId,
+        tipo_caso: tipoCaso,
+        radicado: radicadoSeg || null,
+        tipo_seguimiento: tipoSegFinal,
+        detalle: detalle || null,
+        estado_solicitud:
+          nuevoRadicadoMode || !mostrarEstadoSolicitud ? null : estadoSolicitud || null,
+        nombre_contacto: mostrarContacto ? nombreContacto.trim() || null : null,
+        telefono: mostrarContacto ? telefono.trim() || null : null,
+        plantilla_indigo: indigoTexto.trim() || null,
+        detalles: construirDetalles() as never,
+        nombre_usuario: perfil?.nombre || u.user?.email || null,
+        created_by: u.user?.id,
+      })
+      .select("id")
+      .maybeSingle();
     if (error) {
       toast.error(error.message);
       setBusy(false);
       return;
     }
+
+    // Cambio en especialidad: registra el historial inmutable de cambios.
+    if (esCambioEsp && segInsertada?.id) {
+      const nombreUsuario = perfil?.nombre || u.user?.email || null;
+      const filas = [
+        ...espCierreList.map((esp) => ({
+          action: "CLOSED" as const,
+          especialidad: esp,
+          previous_status: "ACTIVA",
+          new_status: "CERRADA POR FINALIZACIÓN DE MANEJO",
+        })),
+        ...espReactivadas.map((esp) => ({
+          action: "REACTIVATED" as const,
+          especialidad: esp,
+          previous_status: "CERRADA POR FINALIZACIÓN DE MANEJO",
+          new_status: "ACTIVA",
+        })),
+        ...espAgregadas.map((esp) => ({
+          action: "ADDED" as const,
+          especialidad: esp,
+          previous_status: null,
+          new_status: "ACTIVA",
+        })),
+      ].map((f) => ({
+        ...f,
+        caso_id: casoId,
+        tabla: tabla ?? "remisiones",
+        tipo_caso: tipoCaso,
+        motivo: detalle.trim() || null,
+        seguimiento_id: segInsertada.id,
+        changed_by: u.user?.id ?? null,
+        changed_by_name: nombreUsuario,
+      }));
+      if (filas.length > 0) {
+        await supabase.from("especialidades_historial").insert(filas);
+      }
+    }
+
 
     if (tabla) {
       const update: {
