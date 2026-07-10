@@ -2059,6 +2059,8 @@ function BitacoraBuscadorDialog({
   const [finStr, setFinStr] = useState("");
   const [tipoTramite, setTipoTramite] = useState<TramiteKey>("todos");
   const [res, setRes] = useState<ResultadosBitacora | null>(null);
+  const [modo, setModo] = useState<"timeline" | "lista">("timeline");
+
 
   const consultar = () => {
     if (!doc.trim()) {
