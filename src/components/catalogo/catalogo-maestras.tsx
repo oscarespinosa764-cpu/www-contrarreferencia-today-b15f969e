@@ -29,6 +29,7 @@ type CatRow = {
   radica_pad?: boolean | null;
   radica_oxigeno?: boolean | null;
   radica_unidad_especial?: boolean | null;
+  seguimientos_en_plataforma?: boolean | null;
 };
 
 // Etiqueta legible + dónde se usa + módulo agrupador
