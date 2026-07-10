@@ -789,16 +789,86 @@ function HistorialPage() {
     return out;
   }, [casos, historicosEntrantes]);
 
-  const term = q.trim().toLowerCase();
+  // El documento de la consulta por paciente tiene prioridad sobre el buscador
+  // libre; ambos alimentan el mismo término de filtrado.
+  const docTrim = docBusca.trim();
+  const term = (docTrim || q.trim()).toLowerCase();
+
+  const servicioActivo = servicio !== "TODOS LOS SERVICIOS";
+  const sedeActiva = sede !== "TODAS LAS SEDES";
+  const su = sinTildes(servicio).toUpperCase();
+  const seu = sinTildes(sede).toUpperCase();
+  const matchServicio = (txt: string) =>
+    !servicioActivo || sinTildes(txt).toUpperCase().includes(su);
+  // La sede sólo excluye cuando el registro tiene un valor de unidad/sede que
+  // no coincide; registros sin ese dato siempre pasan (evita ocultar todo).
+  const matchSede = (txt: string) => {
+    if (!sedeActiva) return true;
+    const t = sinTildes(txt).toUpperCase().trim();
+    return t === "" || t.includes(seu);
+  };
+
+  const busquedaActiva =
+    term !== "" ||
+    tipo !== "TODOS" ||
+    salTipo !== "TODOS" ||
+    genTipo !== "TODOS" ||
+    periodo !== "Todos" ||
+    !!fechaEspecifica ||
+    servicioActivo;
 
   const pasaPeriodo = (raw: string | null) =>
     fechaEspecifica ? mismoDia(raw, fechaEspecifica) : dentroPeriodo(raw, periodo);
+
+  // Índice de pacientes (para la búsqueda avanzada por nombre/apellido).
+  const pacientesIndex = useMemo<PacienteIndex[]>(() => {
+    const map = new Map<string, PacienteIndex>();
+    const add = (documento: string, nombres: string, apellidos: string) => {
+      const doc = documento.trim();
+      if (!doc || map.has(doc)) return;
+      map.set(doc, {
+        documento: doc,
+        nombres: nombres.trim(),
+        apellidos: apellidos.trim(),
+        nombre: [nombres, apellidos].filter(Boolean).join(" ").trim(),
+      });
+    };
+    for (const c of [...(casos ?? []), ...historicosEntrantes])
+      add(v(c.documento), v(c.nombres), v(c.apellidos));
+    for (const r of remisiones ?? []) add(v(r.documento), v(r.paciente), "");
+    for (const r of [...phdDatos, ...internasDatos]) add(v(r.documento), v(r.paciente), "");
+    return Array.from(map.values());
+  }, [casos, historicosEntrantes, remisiones, phdDatos, internasDatos]);
+
+  const pacienteNombre = useMemo(() => {
+    if (!docTrim) return "";
+    const dn = docTrim.toLowerCase();
+    return pacientesIndex.find((p) => p.documento.toLowerCase() === dn)?.nombre ?? "";
+  }, [docTrim, pacientesIndex]);
+  const pacienteExiste = pacienteNombre !== "" || (docTrim !== "" &&
+    pacientesIndex.some((p) => p.documento.toLowerCase() === docTrim.toLowerCase()));
+
+  const limpiarConsulta = () => {
+    setDocBusca("");
+    setQ("");
+    setSede(SEDE_DEFAULT);
+    setServicio("TODOS LOS SERVICIOS");
+    setTipo("TODOS");
+    setSalTipo("TODOS");
+    setGenTipo("TODOS");
+    setPeriodo("Todos");
+    setFechaEspecifica(undefined);
+    setLimite(20);
+    setModoConsulta("lista");
+  };
 
   const gruposF = useMemo(
     () =>
       grupos.filter((g) => {
         if (tipo !== "TODOS" && !tieneTipo(g.eventos, tipo)) return false;
         if (!pasaPeriodo(g.base.fecha || g.base.created_at)) return false;
+        if (!matchServicio(`${g.base.unidad ?? ""} ${g.base.especialidad ?? ""}`)) return false;
+        if (!matchSede(`${g.base.unidad ?? ""}`)) return false;
         if (!term) return true;
         const hay = g.eventos
           .map((e) => `${e.codigo ?? ""} ${e.documento ?? ""} ${e.nombres ?? ""} ${e.apellidos ?? ""} ${e.ips ?? ""}`)
@@ -806,7 +876,8 @@ function HistorialPage() {
           .toLowerCase();
         return hay.includes(term);
       }),
-    [grupos, tipo, periodo, fechaEspecifica, term],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [grupos, tipo, periodo, fechaEspecifica, term, servicio, sede],
   );
 
   const remisionesF = useMemo(
@@ -814,11 +885,13 @@ function HistorialPage() {
       (remisiones ?? []).filter((r) => {
         if (salTipo !== "TODOS" && !(r.estado || "").toUpperCase().includes(salTipo)) return false;
         if (!pasaPeriodo((r.fecha_radicado as string) || r.created_at)) return false;
+        if (!matchServicio(`${v(r.servicio)} ${v((r as Record<string, unknown>).especialidad_receptora)}`)) return false;
         if (!term) return true;
         const hay = `${r.codigo_radicacion ?? ""} ${r.documento ?? ""} ${r.paciente ?? ""} ${r.ips_receptora ?? ""} ${r.servicio ?? ""}`.toLowerCase();
         return hay.includes(term);
       }),
-    [remisiones, salTipo, periodo, fechaEspecifica, term],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [remisiones, salTipo, periodo, fechaEspecifica, term, servicio],
   );
 
   const filtraGenerico = (rows: Generico[], campos: (r: Generico) => string) =>
@@ -829,22 +902,51 @@ function HistorialPage() {
         if (genTipo !== "CERRADO" && !e.includes(genTipo)) return false;
       }
       if (!pasaPeriodo((r.fecha_inicio as string) || (r.fecha as string) || r.created_at)) return false;
+      if (!matchServicio(`${v(r.servicio)} ${v(r.tipo_solicitud)} ${v((r as Record<string, unknown>).unidad)}`)) return false;
       if (!term) return true;
       return campos(r).toLowerCase().includes(term);
     });
 
   const phdF = useMemo(
     () => filtraGenerico(phdDatos, (r) => `${v(r.paciente)} ${v(r.documento)} ${v(r.tipo_solicitud)} ${v(r.eapb)} ${v(r.codigo_radicacion)}`),
-    [phdDatos, genTipo, periodo, fechaEspecifica, term],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [phdDatos, genTipo, periodo, fechaEspecifica, term, servicio],
   );
   const internasF = useMemo(
     () => filtraGenerico(internasDatos, (r) => `${v(r.paciente)} ${v(r.documento)} ${v(r.tipo_solicitud)} ${v(r.servicio)} ${v(r.eapb)}`),
-    [internasDatos, genTipo, periodo, fechaEspecifica, term],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [internasDatos, genTipo, periodo, fechaEspecifica, term, servicio],
   );
   const pendientesF = useMemo(
     () => filtraGenerico((pendientes ?? []) as Generico[], (r) => `${v(r.paciente_asunto)} ${v(r.tipo_pendiente)} ${v(r.ips_area)} ${v(r.prioridad)}`),
-    [pendientes, genTipo, periodo, fechaEspecifica, term],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pendientes, genTipo, periodo, fechaEspecifica, term, servicio],
   );
+
+  // Listas visibles: sin búsqueda activa, sólo los últimos `limite` (20 por
+  // defecto) con botón VER MÁS; con búsqueda activa se muestran todos los
+  // resultados reales.
+  const cap = <T,>(arr: T[]): T[] => (busquedaActiva ? arr : arr.slice(0, limite));
+  const gruposV = cap(gruposF);
+  const remisionesV = cap(remisionesF);
+  const phdV = cap(phdF);
+  const internasV = cap(internasF);
+  const fullLen =
+    vista === "entrantes" ? gruposF.length
+    : vista === "salientes" ? remisionesF.length
+    : vista === "phd" ? phdF.length
+    : vista === "interna" ? internasF.length
+    : pendientesF.length;
+  const hayMas = !busquedaActiva && fullLen > limite;
+
+  const mensajeVacio = !busquedaActiva
+    ? "NO HAY CASOS REGISTRADOS EN ESTA CATEGORÍA."
+    : docTrim && !pacienteExiste
+      ? "NO SE ENCONTRÓ UN PACIENTE CON EL DOCUMENTO INGRESADO."
+      : docTrim && pacienteExiste
+        ? "EL PACIENTE FUE ENCONTRADO, PERO NO TIENE REGISTROS EN ESTA CATEGORÍA Y CON LOS FILTROS ACTUALES."
+        : "Sin coincidencias";
+
 
   // Mensajes recientes
   const mensajes = useMemo<MensajeItem[]>(() => {
