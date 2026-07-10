@@ -487,12 +487,11 @@ export function SeguimientoDialog({
 
   // --- CAMBIO EN ESPECIALIDAD (manejo por especialidades) ---
   const normEsp = (s: string) => (s || "").trim().toUpperCase();
-  // El caso está activo si no está archivado ni en un estado de cierre.
+  // El caso está activo si su estado no corresponde a un cierre/cancelación.
   const casoActivo = useMemo(() => {
-    if (caso?.archivado === true) return false;
-    const est = normEsp(estadoActual ?? caso?.estado ?? "");
+    const est = normEsp(estadoActual ?? "");
     return !/CERRAD|CANCELAD|DESIST|TRASLADO EFECTIVO|ARCHIV|CULMINAD/.test(est);
-  }, [caso?.archivado, caso?.estado, estadoActual]);
+  }, [estadoActual]);
   // Especialidades actualmente cerradas según el historial (última acción CLOSED).
   const especCerradasSet = useMemo(() => {
     const status = new Map<string, boolean>();
