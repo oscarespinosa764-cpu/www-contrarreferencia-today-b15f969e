@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Search, Pencil, X, SearchCheck, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { registrarAuditoria } from "@/lib/auditoria.functions";
 
 type CatRow = {
   id: string;
