@@ -1006,6 +1006,7 @@ export function SeguimientoDialog({
           observacion: detalle,
         });
         break;
+      case T.ENTREGA_DOC:
         base = "";
         break;
       case T.OTRO:
