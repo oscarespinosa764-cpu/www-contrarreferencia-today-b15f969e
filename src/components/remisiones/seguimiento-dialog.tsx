@@ -942,6 +942,7 @@ export function SeguimientoDialog({
     estadoCaso,
     esAdminCaso,
     tienePlataforma,
+    segEnPlataforma,
     plataformaFuncSeg,
     evoCorreo,
     evoPlataforma,
