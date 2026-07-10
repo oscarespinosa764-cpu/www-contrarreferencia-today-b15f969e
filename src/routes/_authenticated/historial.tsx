@@ -1405,6 +1405,14 @@ function HistorialPage() {
     };
   };
 
+  // Eventos del paciente consultado (historia clínica cronológica tipo ÍNDIGO).
+  const consultaItems = useMemo<Construido[]>(() => {
+    if (!docTrim) return [];
+    const r = buscarBitacoras(docTrim);
+    return [...r.entrantes, ...r.salientes, ...r.phd, ...r.internas];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [docTrim, grupos, remisiones, phdDatos, internasDatos]);
+
   const pdfConstruido = (c: Construido) => generarUno(c, c.bloque.tipoDocumento);
 
   const pdfConsolidado = (cs: Construido[], doc: string, filtros: string) => {
