@@ -285,15 +285,19 @@ export function CatalogoMaestras() {
     const extra2 = isIPS ? null : ((String(f.get("extra2")).trim() || null) as string | null);
     const extra3 =
       editing.tipo === "EAPB" ? ((String(f.get("extra3")).trim() || null) as string | null) : editing.extra3;
-    const radicaPatch =
-      editing.tipo === "EAPB"
-        ? {
-            radica_phd: radicaFlags.radica_phd,
-            radica_pad: radicaFlags.radica_pad,
-            radica_oxigeno: radicaFlags.radica_oxigeno,
-            radica_unidad_especial: radicaFlags.radica_unidad_especial,
-          }
-        : {};
+    const isEAPB = editing.tipo === "EAPB";
+    const nuevoSegPlataforma = isEAPB
+      ? String(f.get("seguimientos_en_plataforma")) === "SI"
+      : undefined;
+    const radicaPatch = isEAPB
+      ? {
+          radica_phd: radicaFlags.radica_phd,
+          radica_pad: radicaFlags.radica_pad,
+          radica_oxigeno: radicaFlags.radica_oxigeno,
+          radica_unidad_especial: radicaFlags.radica_unidad_especial,
+          seguimientos_en_plataforma: nuevoSegPlataforma,
+        }
+      : {};
     const { error } = await supabase
       .from("catalogos")
       .update({
@@ -305,6 +309,22 @@ export function CatalogoMaestras() {
       })
       .eq("id", editing.id);
     if (error) return toast.error(error.message);
+    // Auditar cambio del canal de seguimientos por plataforma (solo si cambió).
+    if (isEAPB && !!editing.seguimientos_en_plataforma !== nuevoSegPlataforma) {
+      registrarAuditoria({
+        data: {
+          accion: "editar_eapb_seguimientos_plataforma",
+          modulo: "catalogo",
+          tabla: "catalogos",
+          registroId: editing.id,
+          resultado: "exito",
+          detalles: {
+            anterior: !!editing.seguimientos_en_plataforma ? "SI" : "NO",
+            nuevo: nuevoSegPlataforma ? "SI" : "NO",
+          },
+        },
+      }).catch(() => {});
+    }
     toast.success("Elemento actualizado");
     setEditing(null);
     qc.invalidateQueries({ queryKey: ["catalogo-todos"] });
