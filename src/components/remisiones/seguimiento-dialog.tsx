@@ -485,6 +485,74 @@ export function SeguimientoDialog({
   );
   const esAdminCaso = esTramiteAdministrativo(caso?.tipo_tramite ?? "");
 
+  // --- CAMBIO EN ESPECIALIDAD (manejo por especialidades) ---
+  const normEsp = (s: string) => (s || "").trim().toUpperCase();
+  // El caso está activo si no está archivado ni en un estado de cierre.
+  const casoActivo = useMemo(() => {
+    if (caso?.archivado === true) return false;
+    const est = normEsp(estadoActual ?? caso?.estado ?? "");
+    return !/CERRAD|CANCELAD|DESIST|TRASLADO EFECTIVO|ARCHIV|CULMINAD/.test(est);
+  }, [caso?.archivado, caso?.estado, estadoActual]);
+  // Especialidades actualmente cerradas según el historial (última acción CLOSED).
+  const especCerradasSet = useMemo(() => {
+    const status = new Map<string, boolean>();
+    for (const h of espHistorial) status.set(normEsp(h.especialidad), h.action === "CLOSED");
+    const activasNorm = new Set(especialidadesList.map(normEsp));
+    const out = new Set<string>();
+    for (const [esp, cerrada] of status) if (cerrada && !activasNorm.has(esp)) out.add(esp);
+    return out;
+  }, [espHistorial, especialidadesList]);
+  // Nombres reales (con mayúsculas de catálogo) de las cerradas, para mostrarlas.
+  const especCerradasNombres = useMemo(() => {
+    const last = new Map<string, string>();
+    for (const h of espHistorial) last.set(normEsp(h.especialidad), h.especialidad);
+    return [...especCerradasSet].map((n) => last.get(n) ?? n);
+  }, [especCerradasSet, espHistorial]);
+  // Nuevas especialidades escritas (sin vacíos ni duplicados internos).
+  const espNuevasLimpias = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const v of espNuevas) {
+      const t = v.trim();
+      if (!t) continue;
+      const n = normEsp(t);
+      if (seen.has(n)) continue;
+      seen.add(n);
+      out.push(t);
+    }
+    return out;
+  }, [espNuevas]);
+  const espCierreList = useMemo(
+    () => especialidadesList.filter((e) => espCierres[e]),
+    [especialidadesList, espCierres],
+  );
+  // De las nuevas, cuáles son reactivaciones (estaban cerradas) y cuáles altas.
+  const espReactivadas = useMemo(
+    () => espNuevasLimpias.filter((e) => especCerradasSet.has(normEsp(e))),
+    [espNuevasLimpias, especCerradasSet],
+  );
+  const espAgregadas = useMemo(
+    () => espNuevasLimpias.filter((e) => !especCerradasSet.has(normEsp(e))),
+    [espNuevasLimpias, especCerradasSet],
+  );
+  // Especialidades activas resultantes tras aplicar el cambio.
+  const espActivasFinal = useMemo(() => {
+    const activasNorm = new Set(especialidadesList.map(normEsp));
+    const cierreNorm = new Set(espCierreList.map(normEsp));
+    const restantes = especialidadesList.filter((e) => !cierreNorm.has(normEsp(e)));
+    const nuevas = espNuevasLimpias.filter((e) => !activasNorm.has(normEsp(e)));
+    return [...restantes, ...nuevas];
+  }, [especialidadesList, espCierreList, espNuevasLimpias]);
+  const espContinuan = useMemo(
+    () => especialidadesList.filter((e) => !espCierreList.some((c) => normEsp(c) === normEsp(e))),
+    [especialidadesList, espCierreList],
+  );
+  const espHayCambio = espCierreList.length > 0 || espNuevasLimpias.length > 0;
+  const esCambioEsp = esSaliente && tipoSeg === T.CAMBIO_ESPECIALIDAD;
+  const toggleEspCierre = (esp: string) =>
+    setEspCierres((prev) => ({ ...prev, [esp]: !prev[esp] }));
+
+
   const radicadoReal =
     radicadoCaso && !/PENDIENTE|NO APLICA/i.test(radicadoCaso) ? radicadoCaso.trim() : "";
 
