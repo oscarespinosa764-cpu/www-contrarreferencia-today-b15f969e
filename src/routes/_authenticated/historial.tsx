@@ -1866,6 +1866,17 @@ function FilterButton({ active, label, onClick }: { active: boolean; label: stri
   );
 }
 
+function VerMasButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border bg-card py-2 text-xs font-semibold text-muted-foreground transition hover:text-foreground"
+    >
+      <Plus className="h-3.5 w-3.5" /> Ver más
+    </button>
+  );
+}
+
 function MensajesRecientesButton({ vista, mensajes }: { vista: Vista; mensajes: MensajeItem[] }) {
   const [abierto, setAbierto] = useState<string | null>(null);
 
