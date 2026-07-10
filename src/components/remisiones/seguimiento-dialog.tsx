@@ -997,7 +997,15 @@ export function SeguimientoDialog({
           nuevoRadicado: cambioRadicado,
         });
         break;
-      case T.ENTREGA_DOC:
+      case T.CAMBIO_ESPECIALIDAD:
+        base = generarPlantillaCambioEspecialidad({
+          cerradas: espCierreList,
+          agregadas: espAgregadas,
+          reactivadas: espReactivadas,
+          continuan: espContinuan,
+          observacion: detalle,
+        });
+        break;
         base = "";
         break;
       case T.OTRO:
