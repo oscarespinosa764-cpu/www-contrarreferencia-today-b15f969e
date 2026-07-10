@@ -608,6 +608,57 @@ export type Database = {
         }
         Relationships: []
       }
+      especialidades_historial: {
+        Row: {
+          action: string
+          caso_id: string
+          changed_by: string | null
+          changed_by_name: string | null
+          created_at: string
+          effective_at: string
+          especialidad: string
+          id: string
+          motivo: string | null
+          new_status: string | null
+          previous_status: string | null
+          seguimiento_id: string | null
+          tabla: string
+          tipo_caso: string | null
+        }
+        Insert: {
+          action: string
+          caso_id: string
+          changed_by?: string | null
+          changed_by_name?: string | null
+          created_at?: string
+          effective_at?: string
+          especialidad: string
+          id?: string
+          motivo?: string | null
+          new_status?: string | null
+          previous_status?: string | null
+          seguimiento_id?: string | null
+          tabla?: string
+          tipo_caso?: string | null
+        }
+        Update: {
+          action?: string
+          caso_id?: string
+          changed_by?: string | null
+          changed_by_name?: string | null
+          created_at?: string
+          effective_at?: string
+          especialidad?: string
+          id?: string
+          motivo?: string | null
+          new_status?: string | null
+          previous_status?: string | null
+          seguimiento_id?: string | null
+          tabla?: string
+          tipo_caso?: string | null
+        }
+        Relationships: []
+      }
       historial_turnos: {
         Row: {
           created_at: string
