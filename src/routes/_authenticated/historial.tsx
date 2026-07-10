@@ -2172,17 +2172,39 @@ function BitacoraBuscadorDialog({
 
         {res && (
           <div className="mt-2 grid gap-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs font-semibold text-muted-foreground">{todos.length} caso(s) encontrado(s)</p>
-              {todos.length > 0 && (
-                <Button
-                  size="sm"
-                  className="h-8 bg-status-teal text-[11px] text-white hover:bg-status-teal/90"
-                  onClick={() => onConsolidado(todos, doc.trim(), filtrosTxt)}
-                >
-                  <FileText className="mr-1.5 h-3.5 w-3.5" /> Bitácora consolidada del paciente
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                {todos.length > 0 && (
+                  <div className="inline-flex overflow-hidden rounded-full border border-border">
+                    <button
+                      onClick={() => setModo("timeline")}
+                      className={`flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold transition ${
+                        modo === "timeline" ? "bg-status-blue text-white" : "bg-card text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Clock className="h-3 w-3" /> Historia clínica
+                    </button>
+                    <button
+                      onClick={() => setModo("lista")}
+                      className={`flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold transition ${
+                        modo === "lista" ? "bg-status-blue text-white" : "bg-card text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <ListTree className="h-3 w-3" /> Por trámite
+                    </button>
+                  </div>
+                )}
+                {todos.length > 0 && (
+                  <Button
+                    size="sm"
+                    className="h-8 bg-status-teal text-[11px] text-white hover:bg-status-teal/90"
+                    onClick={() => onConsolidado(todos, doc.trim(), filtrosTxt)}
+                  >
+                    <FileText className="mr-1.5 h-3.5 w-3.5" /> Bitácora consolidada del paciente
+                  </Button>
+                )}
+              </div>
             </div>
 
             {todos.length === 0 ? (
@@ -2190,6 +2212,8 @@ function BitacoraBuscadorDialog({
                 <p className="text-sm font-semibold text-foreground">Sin registros</p>
                 <p className="text-xs text-muted-foreground">No se hallaron casos para ese documento y rango.</p>
               </div>
+            ) : modo === "timeline" ? (
+              <LineaTiempoPaciente items={todos} documento={doc.trim()} />
             ) : (
               grupos.map((g) => (
                 <div key={g.label}>
@@ -2230,6 +2254,7 @@ function BitacoraBuscadorDialog({
               ))
             )}
           </div>
+
         )}
 
         <DialogFooter>
