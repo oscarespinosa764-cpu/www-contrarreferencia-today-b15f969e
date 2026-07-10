@@ -1386,6 +1386,8 @@ export function SeguimientoDialog({
     setEvoCorreo(false);
     setEvoPlataforma(false);
     setEvoEsp({});
+    setEspCierres({});
+    setEspNuevas([""]);
     setCierreEgreso("");
     setEvoMotivoPend("");
     setFisNombre("");
