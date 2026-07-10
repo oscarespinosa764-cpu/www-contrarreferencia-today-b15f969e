@@ -1904,7 +1904,7 @@ export function SeguimientoDialog({
                     </span>
                   </div>
 
-                  {tienePlataforma && (
+                  {segEnPlataforma && (
                     <div className="space-y-1.5">
                       <Label className={labelCls}>¿Plataforma EAPB funcionando?</Label>
                       <Select
