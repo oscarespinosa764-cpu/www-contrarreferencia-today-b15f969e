@@ -1927,7 +1927,7 @@ export function SeguimientoDialog({
                       <Checkbox checked={evoCorreo} onCheckedChange={(v) => setEvoCorreo(!!v)} />
                       EAPB CORREO
                     </label>
-                    {tienePlataforma && (
+                    {segEnPlataforma && (
                       <label className="flex items-center gap-2 text-sm">
                         <Checkbox
                           checked={evoPlataforma}
