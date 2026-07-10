@@ -233,6 +233,10 @@ export function SeguimientoDialog({
   // Evolución diaria por especialidades tratantes (Parte 9): marca cuáles ya evolucionaron.
   const [evoEsp, setEvoEsp] = useState<Record<string, boolean>>({});
 
+  // Cambio en especialidad: cierres marcados y nuevas especialidades a agregar.
+  const [espCierres, setEspCierres] = useState<Record<string, boolean>>({});
+  const [espNuevas, setEspNuevas] = useState<string[]>([""]);
+
   // Físico / presencial
   const [acercamiento, setAcercamiento] = useState<AcercamientoTipo>("FAMILIAR");
   const [fisNombre, setFisNombre] = useState("");
