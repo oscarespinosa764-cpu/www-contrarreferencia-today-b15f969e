@@ -1480,30 +1480,51 @@ function HistorialPage() {
           />
         </div>
 
-        {/* Lista */}
-        {cargando ? (
+        {/* Consulta por paciente: historia clínica cronológica tipo ÍNDIGO */}
+        {modoConsulta === "timeline" ? (
+          cargando ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">Cargando…</p>
+          ) : !docTrim ? (
+            <div className="rounded-2xl border border-border bg-card py-14 text-center shadow-sm">
+              <p className="text-sm font-semibold text-foreground">Ingresa un documento</p>
+              <p className="text-xs text-muted-foreground">
+                Escribe el documento o usa la búsqueda avanzada para ver la historia del paciente.
+              </p>
+            </div>
+          ) : !pacienteExiste ? (
+            <div className="rounded-2xl border border-border bg-card py-14 text-center shadow-sm">
+              <p className="text-sm font-semibold text-foreground">NO SE ENCONTRÓ UN PACIENTE CON EL DOCUMENTO INGRESADO.</p>
+            </div>
+          ) : (
+            <LineaTiempoPaciente items={consultaItems} documento={docTrim} />
+          )
+        ) : /* Lista */ cargando ? (
           <p className="py-10 text-center text-sm text-muted-foreground">Cargando…</p>
         ) : vacio ? (
           <div className="rounded-2xl border border-border bg-card py-16 text-center shadow-sm">
             <p className="text-3xl text-muted-foreground">🔍</p>
-            <p className="mt-2 text-sm font-semibold text-foreground">Sin coincidencias</p>
-            <p className="text-xs text-muted-foreground">Prueba con otros términos o limpia los filtros</p>
+            <p className="mt-2 text-sm font-semibold text-foreground">{mensajeVacio}</p>
+            {busquedaActiva && (
+              <p className="text-xs text-muted-foreground">Prueba con otros términos o limpia los filtros</p>
+            )}
           </div>
         ) : vista === "entrantes" ? (
           <div className="grid gap-2">
-            {gruposF.map((g) => (
+            {gruposV.map((g) => (
               <CasoCard key={g.key} grupo={g} canEdit={canEdit} onConfirmar={() => setIngresoFor(g)} onPDF={() => pdfEntrante(g)} />
             ))}
+            {hayMas && <VerMasButton onClick={verMas} />}
           </div>
         ) : vista === "salientes" ? (
           <div className="grid gap-2">
-            {remisionesF.map((r) => (
+            {remisionesV.map((r) => (
               <RemisionCard key={r.id} remision={r} onPDF={() => pdfSaliente(r)} />
             ))}
+            {hayMas && <VerMasButton onClick={verMas} />}
           </div>
         ) : vista === "phd" ? (
           <div className="grid gap-2">
-            {(phdF as Generico[]).map((r) => (
+            {(phdV as Generico[]).map((r) => (
               <GenericoCard
                 key={r.id}
                 titulo={`${v(r.paciente) || "Sin nombre"}`}
@@ -1514,10 +1535,11 @@ function HistorialPage() {
                 onPDF={() => pdfPHD(r)}
               />
             ))}
+            {hayMas && <VerMasButton onClick={verMas} />}
           </div>
         ) : (
           <div className="grid gap-2">
-            {(internasF as Generico[]).map((r) => (
+            {(internasV as Generico[]).map((r) => (
               <GenericoCard
                 key={r.id}
                 titulo={`${v(r.paciente) || "Sin nombre"}`}
@@ -1527,6 +1549,7 @@ function HistorialPage() {
                 onPDF={() => pdfInterna(r)}
               />
             ))}
+            {hayMas && <VerMasButton onClick={verMas} />}
           </div>
         )}
       </Panel>
