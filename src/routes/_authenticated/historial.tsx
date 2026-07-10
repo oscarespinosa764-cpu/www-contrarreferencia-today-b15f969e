@@ -1906,7 +1906,142 @@ const TRAMITE_OPS: { key: TramiteKey; label: string }[] = [
 
 
 
+// ---- Línea de tiempo del paciente (referencia funcional ÍNDIGO) ----
+type LineaEvento = {
+  orden: number;
+  fecha: string;
+  tramite: string;
+  codigo: string;
+  color: StatusColor;
+  accion: string;
+  entidad: string;
+  estado: string;
+  observaciones: string;
+  funcionario: string;
+};
+
+const TRAMITE_COLOR: Record<string, StatusColor> = {
+  "REMISIÓN ENTRANTE": "sky",
+  "REMISIÓN SALIENTE": "green",
+  "PHD / PAD / O2 / ESPECIALES": "amber",
+  "REFERENCIA INTERNA": "red",
+};
+
+function construirLineaTiempo(items: Construido[]): LineaEvento[] {
+  const out: LineaEvento[] = [];
+  for (const c of items) {
+    const color = TRAMITE_COLOR[c.bloque.tipoDocumento] ?? "sky";
+    if (c.bloque.seguimientos.length === 0) {
+      out.push({
+        orden: new Date(c.fechaBase || 0).getTime(),
+        fecha: fmtFechaHora(c.fechaBase),
+        tramite: c.bloque.tipoDocumento,
+        codigo: c.codigo,
+        color,
+        accion: "REGISTRO",
+        entidad: "—",
+        estado: c.estado || "—",
+        observaciones: "—",
+        funcionario: "—",
+      });
+      continue;
+    }
+    for (const s of c.bloque.seguimientos) {
+      out.push({
+        orden: s._orden ?? new Date(c.fechaBase || 0).getTime(),
+        fecha: s.fecha,
+        tramite: c.bloque.tipoDocumento,
+        codigo: c.codigo,
+        color,
+        accion: s.accion || "—",
+        entidad: s.entidad || "—",
+        estado: s.estado || "—",
+        observaciones: s.observaciones || "—",
+        funcionario: s.funcionario || "—",
+      });
+    }
+  }
+  out.sort((a, b) => b.orden - a.orden);
+  return out;
+}
+
+function resumenPaciente(items: Construido[]): { nombre: string; campos: CampoPDF[] } {
+  const c = items.find((x) => x.datosPaciente.length > 0) ?? items[0];
+  if (!c) return { nombre: "", campos: [] };
+  return { nombre: c.paciente, campos: c.datosPaciente };
+}
+
+function LineaTiempoPaciente({ items, documento }: { items: Construido[]; documento: string }) {
+  const eventos = useMemo(() => construirLineaTiempo(items), [items]);
+  const { nombre, campos } = useMemo(() => resumenPaciente(items), [items]);
+  const campoVal = (label: string) => campos.find((c) => c.label === label)?.value || "—";
+
+  if (eventos.length === 0) {
+    return (
+      <div className="rounded-lg border border-border bg-card py-10 text-center">
+        <p className="text-sm font-semibold text-foreground">Sin eventos</p>
+        <p className="text-xs text-muted-foreground">No hay movimientos registrados para este paciente.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-3">
+      {/* Encabezado de identidad del paciente (ÍNDIGO) */}
+      <div className="rounded-xl border border-status-blue/30 bg-status-blue/5 px-3 py-2.5">
+        <p className="text-sm font-extrabold uppercase tracking-wide text-status-blue">
+          {nombre || "Paciente sin nombre"}
+        </p>
+        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+          <span><b className="text-foreground">Documento:</b> {campoVal("Tipo documento")} {documento}</span>
+          <span><b className="text-foreground">Edad:</b> {campoVal("Edad")}</span>
+          <span><b className="text-foreground">Entidad:</b> {campoVal("Entidad responsable")}</span>
+          <span><b className="text-foreground">Régimen:</b> {campoVal("Régimen")}</span>
+          <span><b className="text-foreground">Teléfono:</b> {campoVal("Teléfono")}</span>
+        </div>
+        <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {eventos.length} evento(s) · orden cronológico (más reciente primero)
+        </p>
+      </div>
+
+      {/* Timeline */}
+      <div className="relative ml-1 border-l-2 border-border pl-4">
+        {eventos.map((e, i) => (
+          <div key={i} className="relative pb-3 last:pb-0">
+            <span
+              className={`absolute -left-[1.32rem] top-1 h-3 w-3 rounded-full border-2 border-card ${cardBorder[e.color].replace("border-l-", "bg-")}`}
+            />
+            <div className="rounded-lg border border-border bg-card px-2.5 py-2 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${statusBadge[e.color]}`}>
+                    {e.tramite}
+                  </span>
+                  {e.codigo && <span className="font-mono text-[10px] font-semibold text-status-blue">{e.codigo}</span>}
+                  <span className="text-[11px] font-bold uppercase text-foreground">{e.accion}</span>
+                </div>
+                <span className="font-mono text-[10px] text-muted-foreground">{e.fecha}</span>
+              </div>
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
+                {e.entidad !== "—" && <span><b className="text-foreground">Entidad:</b> {e.entidad}</span>}
+                {e.estado !== "—" && <span><b className="text-foreground">Estado:</b> {e.estado}</span>}
+                {e.funcionario !== "—" && <span><b className="text-foreground">Gestor:</b> {e.funcionario}</span>}
+              </div>
+              {e.observaciones !== "—" && (
+                <p className="mt-1 whitespace-pre-wrap break-words text-[11px] leading-snug text-foreground">
+                  {e.observaciones}
+                </p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function BitacoraBuscadorDialog({
+
   open,
   onClose,
   buscar,
