@@ -685,7 +685,39 @@ export function generarPlantillaEvolucionEspecialidades(i: EvolucionEspInput): s
   return `SE REALIZA EVOLUCIÓN DIARIA DEL PROCESO DE REMISIÓN POR ${evo}, A TRAVÉS DE ${medio}. QUEDA PENDIENTE EVOLUCIÓN POR ${pend} PARA CONTINUIDAD EN EL SIGUIENTE TURNO.`;
 }
 
-// --- 6/7. CORREO ELECTRÓNICO / PLATAFORMA WEB (con ASUNTO) ---
+// --- CAMBIO EN ESPECIALIDAD (actualización del manejo por especialidades) ---
+export interface CambioEspecialidadInput {
+  cerradas: string[];
+  agregadas: string[];
+  reactivadas: string[];
+  continuan: string[];
+  observacion?: string | null;
+}
+
+export function generarPlantillaCambioEspecialidad(i: CambioEspecialidadInput): string {
+  const up = (arr: string[]) =>
+    arr.map((s) => (s || "").trim().toUpperCase()).filter(Boolean);
+  const cerradas = up(i.cerradas);
+  const agregadas = up(i.agregadas);
+  const reactivadas = up(i.reactivadas);
+  const continuan = up(i.continuan);
+  const obs = (i.observacion || "").trim().toUpperCase();
+
+  const lineas: string[] = [
+    "SE ACTUALIZA EL MANEJO POR ESPECIALIDADES DEL PACIENTE EN TRÁMITE DE REMISIÓN.",
+  ];
+  if (cerradas.length > 0)
+    lineas.push(`ESPECIALIDADES CON CIERRE DE MANEJO: ${joinList(cerradas, "")}.`);
+  if (agregadas.length > 0)
+    lineas.push(`NUEVAS ESPECIALIDADES EN MANEJO: ${joinList(agregadas, "")}.`);
+  if (reactivadas.length > 0)
+    lineas.push(`ESPECIALIDADES REACTIVADAS: ${joinList(reactivadas, "")}.`);
+  if (continuan.length > 0)
+    lineas.push(`ESPECIALIDADES QUE CONTINÚAN EN MANEJO: ${joinList(continuan, "")}.`);
+  if (obs) lineas.push(`OBSERVACIONES: ${obs}.`);
+  lineas.push("SE DEJA TRAZABILIDAD PARA LA CONTINUIDAD DEL PROCESO.");
+  return lineas.join("\n");
+}
 export function generarPlantillaCorreoSeg(asunto: string, estadoSolicitud: string): string {
   let t = `SE REALIZA SEGUIMIENTO POR CORREO ELECTRÓNICO RELACIONADO CON EL ASUNTO: ${ph(
     asunto,

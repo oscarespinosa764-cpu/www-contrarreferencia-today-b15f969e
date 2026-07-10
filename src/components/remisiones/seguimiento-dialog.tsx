@@ -52,6 +52,7 @@ import {
   generarPlantillaAceptacionIps,
   generarPlantillaAmbulancia,
   generarPlantillaCambioAsegurador,
+  generarPlantillaCambioEspecialidad,
   generarPlantillaCancelacionRemision,
   generarPlantillaCierreAdmision,
   generarPlantillaCierreTraslado,
@@ -110,6 +111,7 @@ const T = {
   CIERRE: "CIERRE DE CASO POR EGRESO",
   TRASLADO: "CIERRE DE CASO POR TRASLADO EFECTIVO",
   CAMBIO_EAPB: "CAMBIO DE ASEGURADOR A EAPB",
+  CAMBIO_ESPECIALIDAD: "CAMBIO EN ESPECIALIDAD",
   CANCELACION: "CANCELACIÓN DE TRÁMITE DE REMISIÓN",
   PERTINENCIA: "REVISIÓN AUTORIZACIÓN ESTANCIA (CANCELACIÓN)",
   NOVEDADES: "NOVEDADES",
@@ -230,6 +232,10 @@ export function SeguimientoDialog({
   const [evoMotivoPend, setEvoMotivoPend] = useState("");
   // Evolución diaria por especialidades tratantes (Parte 9): marca cuáles ya evolucionaron.
   const [evoEsp, setEvoEsp] = useState<Record<string, boolean>>({});
+
+  // Cambio en especialidad: cierres marcados y nuevas especialidades a agregar.
+  const [espCierres, setEspCierres] = useState<Record<string, boolean>>({});
+  const [espNuevas, setEspNuevas] = useState<string[]>([""]);
 
   // Físico / presencial
   const [acercamiento, setAcercamiento] = useState<AcercamientoTipo>("FAMILIAR");
@@ -437,7 +443,36 @@ export function SeguimientoDialog({
     },
   });
 
-  // --- Flags derivados del caso ---
+  // Catálogo de especialidades (para agregar nuevas en CAMBIO EN ESPECIALIDAD).
+  const { data: catEspecialidades = [] } = useQuery({
+    queryKey: ["cat-especialidad-seg"],
+    enabled: open && esSaliente,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor")
+        .eq("tipo", "ESPECIALIDAD")
+        .eq("activo", true)
+        .order("valor");
+      return (data ?? []).map((r) => r.valor);
+    },
+  });
+
+  // Historial de especialidades del caso: permite conocer las especialidades
+  // que fueron cerradas (para ofrecer reactivación) sin duplicar información.
+  const { data: espHistorial = [], refetch: refetchEspHist } = useQuery({
+    queryKey: ["esp-historial", casoId],
+    enabled: open && esSaliente,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("especialidades_historial")
+        .select("especialidad, action, effective_at")
+        .eq("caso_id", casoId)
+        .order("effective_at", { ascending: true });
+      return data ?? [];
+    },
+  });
+
   const generaCodigo = caso?.eapb_genera_codigo === true;
   const tienePlataforma = caso?.eapb_tiene_plataforma === true;
   // Flag independiente (Parte 2): ¿los seguimientos de esta EAPB se hacen en
@@ -449,6 +484,91 @@ export function SeguimientoDialog({
     [eapbCat, casoEapbNombre],
   );
   const esAdminCaso = esTramiteAdministrativo(caso?.tipo_tramite ?? "");
+
+  // --- CAMBIO EN ESPECIALIDAD (manejo por especialidades) ---
+  const normEsp = (s: string) => (s || "").trim().toUpperCase();
+  // El caso está activo si su estado no corresponde a un cierre/cancelación.
+  const casoActivo = useMemo(() => {
+    const est = normEsp(estadoActual ?? "");
+    return !/CERRAD|CANCELAD|DESIST|TRASLADO EFECTIVO|ARCHIV|CULMINAD/.test(est);
+  }, [estadoActual]);
+  // Especialidades actualmente cerradas según el historial (última acción CLOSED).
+  const especCerradasSet = useMemo(() => {
+    const status = new Map<string, boolean>();
+    for (const h of espHistorial) status.set(normEsp(h.especialidad), h.action === "CLOSED");
+    const activasNorm = new Set(especialidadesList.map(normEsp));
+    const out = new Set<string>();
+    for (const [esp, cerrada] of status) if (cerrada && !activasNorm.has(esp)) out.add(esp);
+    return out;
+  }, [espHistorial, especialidadesList]);
+  // Nombres reales (con mayúsculas de catálogo) de las cerradas, para mostrarlas.
+  const especCerradasNombres = useMemo(() => {
+    const last = new Map<string, string>();
+    for (const h of espHistorial) last.set(normEsp(h.especialidad), h.especialidad);
+    return [...especCerradasSet].map((n) => last.get(n) ?? n);
+  }, [especCerradasSet, espHistorial]);
+  // Nuevas especialidades escritas (sin vacíos ni duplicados internos).
+  const espNuevasLimpias = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const v of espNuevas) {
+      const t = v.trim();
+      if (!t) continue;
+      const n = normEsp(t);
+      if (seen.has(n)) continue;
+      seen.add(n);
+      out.push(t);
+    }
+    return out;
+  }, [espNuevas]);
+  const espCierreList = useMemo(
+    () => especialidadesList.filter((e) => espCierres[e]),
+    [especialidadesList, espCierres],
+  );
+  // De las nuevas, cuáles son reactivaciones (estaban cerradas) y cuáles altas.
+  const espReactivadas = useMemo(
+    () => espNuevasLimpias.filter((e) => especCerradasSet.has(normEsp(e))),
+    [espNuevasLimpias, especCerradasSet],
+  );
+  const espAgregadas = useMemo(
+    () => espNuevasLimpias.filter((e) => !especCerradasSet.has(normEsp(e))),
+    [espNuevasLimpias, especCerradasSet],
+  );
+  // Especialidades activas resultantes tras aplicar el cambio.
+  const espActivasFinal = useMemo(() => {
+    const activasNorm = new Set(especialidadesList.map(normEsp));
+    const cierreNorm = new Set(espCierreList.map(normEsp));
+    const restantes = especialidadesList.filter((e) => !cierreNorm.has(normEsp(e)));
+    const nuevas = espNuevasLimpias.filter((e) => !activasNorm.has(normEsp(e)));
+    return [...restantes, ...nuevas];
+  }, [especialidadesList, espCierreList, espNuevasLimpias]);
+  const espContinuan = useMemo(
+    () => especialidadesList.filter((e) => !espCierreList.some((c) => normEsp(c) === normEsp(e))),
+    [especialidadesList, espCierreList],
+  );
+  const espHayCambio = espCierreList.length > 0 || espNuevasLimpias.length > 0;
+  const esCambioEsp = esSaliente && tipoSeg === T.CAMBIO_ESPECIALIDAD;
+  const toggleEspCierre = (esp: string) =>
+    setEspCierres((prev) => ({ ...prev, [esp]: !prev[esp] }));
+  const setEspNuevaAt = (i: number, v: string) =>
+    setEspNuevas((prev) => prev.map((x, idx) => (idx === i ? v : x)));
+  const addEspNuevaLine = () => setEspNuevas((prev) => [...prev, ""]);
+  const removeEspNuevaLine = (i: number) =>
+    setEspNuevas((prev) => (prev.length <= 1 ? [""] : prev.filter((_, idx) => idx !== i)));
+  // Al elegir una especialidad cerrada, confirmar su reactivación.
+  const onPickEspNueva = (i: number, v: string) => {
+    if (especCerradasSet.has(normEsp(v))) {
+      const ok = window.confirm(
+        "LA ESPECIALIDAD YA HABÍA SIDO CERRADA. ¿DESEA REACTIVARLA EN EL MANEJO ACTUAL?",
+      );
+      if (!ok) {
+        setEspNuevaAt(i, "");
+        return;
+      }
+    }
+    setEspNuevaAt(i, v);
+  };
+
 
   const radicadoReal =
     radicadoCaso && !/PENDIENTE|NO APLICA/i.test(radicadoCaso) ? radicadoCaso.trim() : "";
@@ -517,6 +637,8 @@ export function SeguimientoDialog({
       // CIERRE POR TRASLADO EFECTIVO: oculto hasta completar la entrega documental.
       ...(mostrarTrasladoOpt ? [T.TRASLADO] : []),
       ...(mostrarCambioEapb ? [T.CAMBIO_EAPB] : []),
+      // CAMBIO EN ESPECIALIDAD: solo disponible mientras el caso siga activo.
+      ...(casoActivo ? [T.CAMBIO_ESPECIALIDAD] : []),
       T.CANCELACION,
       T.PERTINENCIA,
       T.NOVEDADES,
@@ -531,6 +653,7 @@ export function SeguimientoDialog({
     mostrarCierreOpt,
     mostrarTrasladoOpt,
     mostrarCambioEapb,
+    casoActivo,
   ]);
 
   // Tipos para PHD/PAD/O2/Especiales (subconjunto saliente).
@@ -559,6 +682,8 @@ export function SeguimientoDialog({
     setIndigoEditada(false);
     setTipoSeg("");
     setEvoEsp({});
+    setEspCierres({});
+    setEspNuevas([""]);
   }, [open, evolucionDetalle, especialidadesList, estadoActual]);
 
   // Prefill desde el caso.
@@ -593,7 +718,12 @@ export function SeguimientoDialog({
     }
     if (!usaIndigo || !tipoSeg) return;
     // Estado de la solicitud automático según el tipo (interno, ya no visible).
-    if (tipoSeg === T.RADICADO || tipoSeg === T.CANCELACION || tipoSeg === T.CAMBIO_EAPB)
+    if (
+      tipoSeg === T.RADICADO ||
+      tipoSeg === T.CANCELACION ||
+      tipoSeg === T.CAMBIO_EAPB ||
+      tipoSeg === T.CAMBIO_ESPECIALIDAD
+    )
       setEstadoSolicitud("No aplica");
     else if (tipoSeg === T.ACEPTACION || tipoSeg === T.AMBULANCIA) setEstadoSolicitud("Sí acepta");
     else if (tipoSeg === T.NEGACIONES) setEstadoSolicitud("No acepta");
@@ -890,6 +1020,15 @@ export function SeguimientoDialog({
           nuevoRadicado: cambioRadicado,
         });
         break;
+      case T.CAMBIO_ESPECIALIDAD:
+        base = generarPlantillaCambioEspecialidad({
+          cerradas: espCierreList,
+          agregadas: espAgregadas,
+          reactivadas: espReactivadas,
+          continuan: espContinuan,
+          observacion: detalle,
+        });
+        break;
       case T.ENTREGA_DOC:
         base = "";
         break;
@@ -950,6 +1089,10 @@ export function SeguimientoDialog({
     especialidadesList,
     evoEspEvolucionadas,
     evoEspPendientes,
+    espCierreList,
+    espAgregadas,
+    espReactivadas,
+    espContinuan,
     estadoSolicitud,
     asunto,
     acercamiento,
@@ -1240,6 +1383,14 @@ export function SeguimientoDialog({
           genera_codigo: cambioGeneraCodigo,
           nuevo_radicado: cambioRadicado.trim() || null,
         };
+      case T.CAMBIO_ESPECIALIDAD:
+        return {
+          cerradas: espCierreList,
+          agregadas: espAgregadas,
+          reactivadas: espReactivadas,
+          continuan: espContinuan,
+          activas_resultantes: espActivasFinal,
+        };
       case T.OTRO:
         return { cual: otroCual.trim() };
       case T.NOVEDADES:
@@ -1279,6 +1430,8 @@ export function SeguimientoDialog({
     setEvoCorreo(false);
     setEvoPlataforma(false);
     setEvoEsp({});
+    setEspCierres({});
+    setEspNuevas([""]);
     setCierreEgreso("");
     setEvoMotivoPend("");
     setFisNombre("");
@@ -1400,6 +1553,23 @@ export function SeguimientoDialog({
         if (riHora.trim() && !isHoraValida(riHora))
           return toast.error("Hora del examen inválida (HH:MM)");
       }
+      // Cambio en especialidad: exige cambio real, conservar una activa y motivo.
+      if (esCambioEsp) {
+        if (!espHayCambio)
+          return toast.error(
+            "No se ha registrado ningún cambio en las especialidades del caso.",
+          );
+        const activasNorm = new Set(especialidadesList.map(normEsp));
+        const yaActiva = espNuevasLimpias.find((e) => activasNorm.has(normEsp(e)));
+        if (yaActiva)
+          return toast.error(`La especialidad ${yaActiva.toUpperCase()} ya está activa en el caso.`);
+        if (espActivasFinal.length === 0)
+          return toast.error(
+            "El caso debe conservar al menos una especialidad activa mientras continúe en trámite.",
+          );
+        if ((espCierreList.length > 0 || espReactivadas.length > 0) && !detalle.trim())
+          return toast.error("Registra las observaciones del cambio.");
+      }
       if (evoRequiereMotivo && !evoMotivoPend.trim())
         return toast.error("Indica el motivo del pendiente");
       // 9.8 · Advertir si no se marcó ninguna especialidad ni se dejó observación.
@@ -1475,26 +1645,68 @@ export function SeguimientoDialog({
 
     const tipoSegFinal = nuevoRadicadoMode ? "RADICADO ADICIONAL" : tipoSeg;
 
-    const { error } = await supabase.from("seguimientos").insert({
-      caso_id: casoId,
-      tipo_caso: tipoCaso,
-      radicado: radicadoSeg || null,
-      tipo_seguimiento: tipoSegFinal,
-      detalle: detalle || null,
-      estado_solicitud:
-        nuevoRadicadoMode || !mostrarEstadoSolicitud ? null : estadoSolicitud || null,
-      nombre_contacto: mostrarContacto ? nombreContacto.trim() || null : null,
-      telefono: mostrarContacto ? telefono.trim() || null : null,
-      plantilla_indigo: indigoTexto.trim() || null,
-      detalles: construirDetalles() as never,
-      nombre_usuario: perfil?.nombre || u.user?.email || null,
-      created_by: u.user?.id,
-    });
+    const { data: segInsertada, error } = await supabase
+      .from("seguimientos")
+      .insert({
+        caso_id: casoId,
+        tipo_caso: tipoCaso,
+        radicado: radicadoSeg || null,
+        tipo_seguimiento: tipoSegFinal,
+        detalle: detalle || null,
+        estado_solicitud:
+          nuevoRadicadoMode || !mostrarEstadoSolicitud ? null : estadoSolicitud || null,
+        nombre_contacto: mostrarContacto ? nombreContacto.trim() || null : null,
+        telefono: mostrarContacto ? telefono.trim() || null : null,
+        plantilla_indigo: indigoTexto.trim() || null,
+        detalles: construirDetalles() as never,
+        nombre_usuario: perfil?.nombre || u.user?.email || null,
+        created_by: u.user?.id,
+      })
+      .select("id")
+      .maybeSingle();
     if (error) {
       toast.error(error.message);
       setBusy(false);
       return;
     }
+
+    // Cambio en especialidad: registra el historial inmutable de cambios.
+    if (esCambioEsp && segInsertada?.id) {
+      const nombreUsuario = perfil?.nombre || u.user?.email || null;
+      const filas = [
+        ...espCierreList.map((esp) => ({
+          action: "CLOSED" as const,
+          especialidad: esp,
+          previous_status: "ACTIVA",
+          new_status: "CERRADA POR FINALIZACIÓN DE MANEJO",
+        })),
+        ...espReactivadas.map((esp) => ({
+          action: "REACTIVATED" as const,
+          especialidad: esp,
+          previous_status: "CERRADA POR FINALIZACIÓN DE MANEJO",
+          new_status: "ACTIVA",
+        })),
+        ...espAgregadas.map((esp) => ({
+          action: "ADDED" as const,
+          especialidad: esp,
+          previous_status: null,
+          new_status: "ACTIVA",
+        })),
+      ].map((f) => ({
+        ...f,
+        caso_id: casoId,
+        tabla: tabla ?? "remisiones",
+        tipo_caso: tipoCaso,
+        motivo: detalle.trim() || null,
+        seguimiento_id: segInsertada.id,
+        changed_by: u.user?.id ?? null,
+        changed_by_name: nombreUsuario,
+      }));
+      if (filas.length > 0) {
+        await supabase.from("especialidades_historial").insert(filas);
+      }
+    }
+
 
     if (tabla) {
       const update: {
@@ -1513,7 +1725,13 @@ export function SeguimientoDialog({
         plataforma_funcionando?: boolean | null;
         prestador_traslado?: string;
         tipo_ambulancia?: string;
+        especialidades_tratantes?: string;
       } = {};
+      // Cambio en especialidad: actualiza la lista de especialidades activas del
+      // caso (sin tocar el estado). El historial completo queda en la tabla aparte.
+      if (esCambioEsp) {
+        update.especialidades_tratantes = espActivasFinal.join(", ");
+      }
       // Evolución diaria salientes v2: refleja estado en la tarjeta.
       if (esEvolucionSal) {
         update.evolucion = evoEstadoSal;
@@ -2011,6 +2229,106 @@ export function SeguimientoDialog({
                   </div>
                 </div>
               )}
+
+              {/* CAMBIO EN ESPECIALIDAD */}
+              {esCambioEsp && (
+                <div className={sectionCls}>
+                  <p className={labelCls}>Cambio en especialidad</p>
+
+                  {/* Especialidades actualmente en manejo */}
+                  <div className="space-y-2 rounded-lg border border-border/60 bg-background/40 p-3">
+                    <p className={labelCls}>Especialidades actualmente en manejo</p>
+                    {especialidadesList.length === 0 ? (
+                      <p className="text-xs italic text-muted-foreground">
+                        El caso no tiene especialidades activas registradas.
+                      </p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {especialidadesList.map((esp) => (
+                          <label
+                            key={esp}
+                            className="flex items-center justify-between gap-2 rounded-md border border-border/50 px-2 py-1.5 text-sm"
+                          >
+                            <span>{esp}</span>
+                            <span className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                              <Checkbox
+                                checked={!!espCierres[esp]}
+                                onCheckedChange={() => toggleEspCierre(esp)}
+                              />
+                              ELIMINAR POR CIERRE DE MANEJO
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Nuevas especialidades en manejo */}
+                  <div className="space-y-2 rounded-lg border border-border/60 bg-background/40 p-3">
+                    <p className={labelCls}>Nuevas especialidades en manejo</p>
+                    <div className="space-y-2">
+                      {espNuevas.map((val, i) => (
+                        <div key={i} className="flex items-end gap-2">
+                          <div className="flex-1">
+                            <AutoComplete
+                              value={val}
+                              onChange={(v) => setEspNuevaAt(i, v)}
+                              onPick={(v) => onPickEspNueva(i, v)}
+                              options={catEspecialidades}
+                              placeholder="Buscar especialidad…"
+                            />
+                          </div>
+                          {espNuevas.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9 shrink-0"
+                              onClick={() => removeEspNuevaLine(i)}
+                              aria-label="Eliminar línea"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addEspNuevaLine}
+                      className="gap-1"
+                    >
+                      <Plus className="h-4 w-4" /> Agregar especialidad
+                    </Button>
+                    {especCerradasNombres.length > 0 && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Cerradas previamente (se pueden reactivar):{" "}
+                        {especCerradasNombres.join(", ")}.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Resumen del cambio */}
+                  {espHayCambio && (
+                    <div className="rounded-md bg-muted/40 p-2 text-[11px] text-muted-foreground">
+                      {espCierreList.length > 0 && (
+                        <p>Cierres: {espCierreList.join(", ")}.</p>
+                      )}
+                      {espAgregadas.length > 0 && (
+                        <p>Nuevas: {espAgregadas.join(", ")}.</p>
+                      )}
+                      {espReactivadas.length > 0 && (
+                        <p>Reactivadas: {espReactivadas.join(", ")}.</p>
+                      )}
+                      <p>Activas resultantes: {espActivasFinal.join(", ") || "—"}.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+
 
               {/* FÍSICO O PRESENCIAL */}
               {esFisico && (
