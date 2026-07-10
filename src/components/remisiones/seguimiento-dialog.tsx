@@ -1149,9 +1149,9 @@ export function SeguimientoDialog({
         return { radicado: radicado.trim() };
       case T.EVOLUCION:
         return {
-          plataforma_funcionando: tienePlataforma ? plataformaFuncSeg : null,
+          plataforma_funcionando: segEnPlataforma ? plataformaFuncSeg : null,
           enviado_correo: evoCorreo,
-          enviado_plataforma: tienePlataforma ? evoPlataforma : null,
+          enviado_plataforma: segEnPlataforma ? evoPlataforma : null,
           estado_evolucion: evoEstadoSal,
           motivo_pendiente: evoRequiereMotivo ? evoMotivoPend.trim() : null,
           // Trazabilidad por especialidades tratantes (Parte 9).
