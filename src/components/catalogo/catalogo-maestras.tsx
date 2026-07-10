@@ -207,7 +207,7 @@ export function CatalogoMaestras() {
       const { data, error } = await supabase
         .from("catalogos")
         .select(
-          "id, tipo, valor, extra1, extra2, extra3, activo, radica_phd, radica_pad, radica_oxigeno, radica_unidad_especial",
+          "id, tipo, valor, extra1, extra2, extra3, activo, radica_phd, radica_pad, radica_oxigeno, radica_unidad_especial, seguimientos_en_plataforma",
         )
         .neq("tipo", "plantilla")
         .order("tipo")
