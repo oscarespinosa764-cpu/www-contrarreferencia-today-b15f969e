@@ -443,7 +443,36 @@ export function SeguimientoDialog({
     },
   });
 
-  // --- Flags derivados del caso ---
+  // Catálogo de especialidades (para agregar nuevas en CAMBIO EN ESPECIALIDAD).
+  const { data: catEspecialidades = [] } = useQuery({
+    queryKey: ["cat-especialidad-seg"],
+    enabled: open && esSaliente,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor")
+        .eq("tipo", "ESPECIALIDAD")
+        .eq("activo", true)
+        .order("valor");
+      return (data ?? []).map((r) => r.valor);
+    },
+  });
+
+  // Historial de especialidades del caso: permite conocer las especialidades
+  // que fueron cerradas (para ofrecer reactivación) sin duplicar información.
+  const { data: espHistorial = [], refetch: refetchEspHist } = useQuery({
+    queryKey: ["esp-historial", casoId],
+    enabled: open && esSaliente,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("especialidades_historial")
+        .select("especialidad, action, effective_at")
+        .eq("caso_id", casoId)
+        .order("effective_at", { ascending: true });
+      return data ?? [];
+    },
+  });
+
   const generaCodigo = caso?.eapb_genera_codigo === true;
   const tienePlataforma = caso?.eapb_tiene_plataforma === true;
   // Flag independiente (Parte 2): ¿los seguimientos de esta EAPB se hacen en
