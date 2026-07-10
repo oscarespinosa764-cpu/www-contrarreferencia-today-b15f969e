@@ -1666,6 +1666,15 @@ function HistorialPage() {
         onPDF={pdfConstruido}
         onConsolidado={pdfConsolidado}
       />
+      <BuscarPacienteDialog
+        open={buscarPacienteOpen}
+        onClose={() => setBuscarPacienteOpen(false)}
+        pacientes={pacientesIndex}
+        onPick={(documento) => {
+          setDocBusca(documento);
+          setLimite(20);
+        }}
+      />
 
     </div>
   );
