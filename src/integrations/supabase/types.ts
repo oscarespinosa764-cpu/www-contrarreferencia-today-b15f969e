@@ -197,6 +197,7 @@ export type Database = {
           radica_pad: boolean
           radica_phd: boolean
           radica_unidad_especial: boolean
+          seguimientos_en_plataforma: boolean
           tipo: string
           updated_at: string
           valor: string
@@ -212,6 +213,7 @@ export type Database = {
           radica_pad?: boolean
           radica_phd?: boolean
           radica_unidad_especial?: boolean
+          seguimientos_en_plataforma?: boolean
           tipo: string
           updated_at?: string
           valor: string
@@ -227,6 +229,7 @@ export type Database = {
           radica_pad?: boolean
           radica_phd?: boolean
           radica_unidad_especial?: boolean
+          seguimientos_en_plataforma?: boolean
           tipo?: string
           updated_at?: string
           valor?: string

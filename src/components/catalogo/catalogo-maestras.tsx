@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Search, Pencil, X, SearchCheck, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { registrarAuditoria } from "@/lib/auditoria.functions";
 
 type CatRow = {
   id: string;
@@ -29,6 +30,7 @@ type CatRow = {
   radica_pad?: boolean | null;
   radica_oxigeno?: boolean | null;
   radica_unidad_especial?: boolean | null;
+  seguimientos_en_plataforma?: boolean | null;
 };
 
 // Etiqueta legible + dónde se usa + módulo agrupador
@@ -206,7 +208,7 @@ export function CatalogoMaestras() {
       const { data, error } = await supabase
         .from("catalogos")
         .select(
-          "id, tipo, valor, extra1, extra2, extra3, activo, radica_phd, radica_pad, radica_oxigeno, radica_unidad_especial",
+          "id, tipo, valor, extra1, extra2, extra3, activo, radica_phd, radica_pad, radica_oxigeno, radica_unidad_especial, seguimientos_en_plataforma",
         )
         .neq("tipo", "plantilla")
         .order("tipo")
@@ -284,15 +286,19 @@ export function CatalogoMaestras() {
     const extra2 = isIPS ? null : ((String(f.get("extra2")).trim() || null) as string | null);
     const extra3 =
       editing.tipo === "EAPB" ? ((String(f.get("extra3")).trim() || null) as string | null) : editing.extra3;
-    const radicaPatch =
-      editing.tipo === "EAPB"
-        ? {
-            radica_phd: radicaFlags.radica_phd,
-            radica_pad: radicaFlags.radica_pad,
-            radica_oxigeno: radicaFlags.radica_oxigeno,
-            radica_unidad_especial: radicaFlags.radica_unidad_especial,
-          }
-        : {};
+    const isEAPB = editing.tipo === "EAPB";
+    const nuevoSegPlataforma = isEAPB
+      ? String(f.get("seguimientos_en_plataforma")) === "SI"
+      : undefined;
+    const radicaPatch = isEAPB
+      ? {
+          radica_phd: radicaFlags.radica_phd,
+          radica_pad: radicaFlags.radica_pad,
+          radica_oxigeno: radicaFlags.radica_oxigeno,
+          radica_unidad_especial: radicaFlags.radica_unidad_especial,
+          seguimientos_en_plataforma: nuevoSegPlataforma,
+        }
+      : {};
     const { error } = await supabase
       .from("catalogos")
       .update({
@@ -304,6 +310,22 @@ export function CatalogoMaestras() {
       })
       .eq("id", editing.id);
     if (error) return toast.error(error.message);
+    // Auditar cambio del canal de seguimientos por plataforma (solo si cambió).
+    if (isEAPB && !!editing.seguimientos_en_plataforma !== nuevoSegPlataforma) {
+      registrarAuditoria({
+        data: {
+          accion: "editar_eapb_seguimientos_plataforma",
+          modulo: "catalogos",
+          tabla: "catalogos",
+          registroId: editing.id,
+          resultado: "exito",
+          detalles: {
+            anterior: !!editing.seguimientos_en_plataforma ? "SI" : "NO",
+            nuevo: nuevoSegPlataforma ? "SI" : "NO",
+          },
+        },
+      }).catch(() => {});
+    }
     toast.success("Elemento actualizado");
     setEditing(null);
     qc.invalidateQueries({ queryKey: ["catalogo-todos"] });
@@ -616,6 +638,24 @@ export function CatalogoMaestras() {
                       <option value="SI">Sí</option>
                       <option value="NO">No</option>
                     </select>
+                  </div>
+                  <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                    <Label htmlFor="seguimientos_en_plataforma">
+                      ¿Los seguimientos se hacen en plataforma?
+                    </Label>
+                    <select
+                      id="seguimientos_en_plataforma"
+                      name="seguimientos_en_plataforma"
+                      defaultValue={editing.seguimientos_en_plataforma ? "SI" : "NO"}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                    >
+                      <option value="SI">Sí</option>
+                      <option value="NO">No</option>
+                    </select>
+                    <p className="text-[11px] text-muted-foreground">
+                      Independiente de "Tiene plataforma" (radicación). Si es "No", la Evolución
+                      diaria solo ofrecerá el canal de correo.
+                    </p>
                   </div>
                   <div className="space-y-2 rounded-lg border border-border/60 bg-muted/30 p-3">
                     <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
