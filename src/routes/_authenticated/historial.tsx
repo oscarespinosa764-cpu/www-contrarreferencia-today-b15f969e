@@ -1354,6 +1354,105 @@ function HistorialPage() {
           </div>
         </div>
 
+        {/* CONSULTA POR PACIENTE (SEDE · SERVICIO · documento · nombre) */}
+        <div className="mb-3 rounded-xl border border-border bg-muted/30 p-2.5">
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            Consulta por paciente
+          </p>
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="grid gap-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Sede</Label>
+              <Select value={sede} onValueChange={setSede}>
+                <SelectTrigger className="h-9 w-[13rem] text-xs">
+                  <MapPin className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SEDES.map((s) => (
+                    <SelectItem key={s} value={s} className="text-xs">
+                      {s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Servicio</Label>
+              <Select value={servicio} onValueChange={setServicio}>
+                <SelectTrigger className="h-9 w-[12rem] text-xs">
+                  <Stethoscope className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {servicioOpciones.map((s) => (
+                    <SelectItem key={s} value={s} className="text-xs">
+                      {s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Documento del paciente</Label>
+              <div className="flex items-center gap-1.5">
+                <Input
+                  className="h-9 w-[11rem] text-xs"
+                  placeholder="N.º documento"
+                  value={docBusca}
+                  onChange={(e) => setDocBusca(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && setLimite(20)}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-9 w-9 shrink-0 p-0"
+                  aria-label="BUSCAR PACIENTE POR NOMBRE O APELLIDO"
+                  title="Búsqueda avanzada de paciente"
+                  onClick={() => setBuscarPacienteOpen(true)}
+                >
+                  <UserSearch className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            {docTrim && (
+              <div className="grid gap-1">
+                <Label className="text-[10px] uppercase text-muted-foreground">Nombre del paciente</Label>
+                <div className="flex h-9 items-center rounded-md border border-border bg-card px-2.5 text-xs font-semibold text-foreground">
+                  {pacienteNombre || "Paciente no encontrado"}
+                </div>
+              </div>
+            )}
+            <div className="ml-auto flex items-end gap-1.5">
+              <div className="inline-flex overflow-hidden rounded-full border border-border">
+                <button
+                  type="button"
+                  onClick={() => setModoConsulta("lista")}
+                  className={`flex items-center gap-1 px-2.5 py-2 text-[10px] font-semibold transition ${
+                    modoConsulta === "lista" ? "bg-status-blue text-white" : "bg-card text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <ListTree className="h-3 w-3" /> Lista
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModoConsulta("timeline")}
+                  className={`flex items-center gap-1 px-2.5 py-2 text-[10px] font-semibold transition ${
+                    modoConsulta === "timeline" ? "bg-status-blue text-white" : "bg-card text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Clock className="h-3 w-3" /> Historia clínica
+                </button>
+              </div>
+              <Button type="button" size="sm" variant="outline" className="h-9" onClick={limpiarConsulta}>
+                <Eraser className="mr-1.5 h-4 w-4" /> Limpiar búsqueda
+              </Button>
+            </div>
+          </div>
+        </div>
+
+
+
         {/* Encabezado: título + filtros + exportar */}
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-extrabold uppercase tracking-wide text-foreground">
