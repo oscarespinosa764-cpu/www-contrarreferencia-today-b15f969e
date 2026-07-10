@@ -1702,7 +1702,13 @@ export function SeguimientoDialog({
         plataforma_funcionando?: boolean | null;
         prestador_traslado?: string;
         tipo_ambulancia?: string;
+        especialidades_tratantes?: string;
       } = {};
+      // Cambio en especialidad: actualiza la lista de especialidades activas del
+      // caso (sin tocar el estado). El historial completo queda en la tabla aparte.
+      if (esCambioEsp) {
+        update.especialidades_tratantes = espActivasFinal.join(", ");
+      }
       // Evolución diaria salientes v2: refleja estado en la tarjeta.
       if (esEvolucionSal) {
         update.evolucion = evoEstadoSal;
