@@ -2266,3 +2266,161 @@ function BitacoraBuscadorDialog({
     </Dialog>
   );
 }
+
+// ---- Índice de pacientes (para búsqueda avanzada por nombre/apellido) ----
+export type PacienteIndex = {
+  documento: string;
+  nombre: string;
+  nombres: string;
+  apellidos: string;
+};
+
+// ---- Modal BUSCAR PACIENTE (búsqueda avanzada por nombre/apellido) ----
+function BuscarPacienteDialog({
+  open,
+  onClose,
+  pacientes,
+  onPick,
+}: {
+  open: boolean;
+  onClose: () => void;
+  pacientes: PacienteIndex[];
+  onPick: (documento: string) => void;
+}) {
+  const [ident, setIdent] = useState("");
+  const [n1, setN1] = useState("");
+  const [n2, setN2] = useState("");
+  const [a1, setA1] = useState("");
+  const [a2, setA2] = useState("");
+  const [buscado, setBuscado] = useState(false);
+  const [sel, setSel] = useState<string | null>(null);
+
+  const limpiar = () => {
+    setIdent("");
+    setN1("");
+    setN2("");
+    setA1("");
+    setA2("");
+    setBuscado(false);
+    setSel(null);
+  };
+
+  const norm = (s: string) => sinTildes(s).toUpperCase().trim();
+  const criterios = [ident, n1, n2, a1, a2].map(norm).filter(Boolean);
+
+  const resultados = useMemo(() => {
+    if (!buscado || criterios.length === 0) return [];
+    const di = norm(ident);
+    const nombreTokens = [n1, n2, a1, a2].map(norm).filter(Boolean);
+    return pacientes
+      .filter((p) => {
+        if (di && !norm(p.documento).includes(di)) return false;
+        if (nombreTokens.length) {
+          const full = norm(`${p.nombres} ${p.apellidos}`);
+          if (!nombreTokens.every((t) => full.includes(t))) return false;
+        }
+        return true;
+      })
+      .slice(0, 50);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buscado, pacientes, ident, n1, n2, a1, a2]);
+
+  const aceptar = () => {
+    if (!sel) {
+      toast.info("Selecciona un paciente de la lista.");
+      return;
+    }
+    onPick(sel);
+    limpiar();
+    onClose();
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) {
+          limpiar();
+          onClose();
+        }
+      }}
+    >
+      <DialogContent className="max-h-[90vh] overflow-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <UserSearch className="h-5 w-5 text-status-blue" /> Buscar paciente
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-5">
+          <div className="grid gap-1"><Label className="text-[11px]">Identificación</Label><Input value={ident} onChange={(e) => setIdent(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setBuscado(true)} /></div>
+          <div className="grid gap-1"><Label className="text-[11px]">Primer nombre</Label><Input value={n1} onChange={(e) => setN1(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setBuscado(true)} /></div>
+          <div className="grid gap-1"><Label className="text-[11px]">Segundo nombre</Label><Input value={n2} onChange={(e) => setN2(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setBuscado(true)} /></div>
+          <div className="grid gap-1"><Label className="text-[11px]">Primer apellido</Label><Input value={a1} onChange={(e) => setA1(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setBuscado(true)} /></div>
+          <div className="grid gap-1"><Label className="text-[11px]">Segundo apellido</Label><Input value={a2} onChange={(e) => setA2(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setBuscado(true)} /></div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" className="bg-status-blue text-white hover:bg-status-blue/90" onClick={() => setBuscado(true)}>
+            <Search className="mr-1.5 h-4 w-4" /> Buscar
+          </Button>
+          <Button size="sm" variant="outline" onClick={limpiar}>
+            <Eraser className="mr-1.5 h-4 w-4" /> Limpiar filtros
+          </Button>
+        </div>
+
+        <div className="mt-1 max-h-[45vh] overflow-y-auto rounded-lg border border-border">
+          {!buscado ? (
+            <p className="py-8 text-center text-xs text-muted-foreground">Ingresa un criterio y presiona Buscar.</p>
+          ) : criterios.length === 0 ? (
+            <p className="py-8 text-center text-xs text-muted-foreground">Ingresa al menos un criterio de búsqueda.</p>
+          ) : resultados.length === 0 ? (
+            <p className="py-8 text-center text-xs text-muted-foreground">
+              NO SE ENCONTRÓ UN PACIENTE CON LOS CRITERIOS INGRESADOS.
+            </p>
+          ) : (
+            <table className="w-full text-left text-xs">
+              <thead className="sticky top-0 bg-muted/80 text-[10px] uppercase text-muted-foreground">
+                <tr>
+                  <th className="px-2 py-1.5">Identificación</th>
+                  <th className="px-2 py-1.5">Nombres</th>
+                  <th className="px-2 py-1.5">Apellidos</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resultados.map((p) => (
+                  <tr
+                    key={p.documento}
+                    onClick={() => setSel(p.documento)}
+                    onDoubleClick={() => {
+                      setSel(p.documento);
+                      onPick(p.documento);
+                      limpiar();
+                      onClose();
+                    }}
+                    className={`cursor-pointer border-t border-border transition ${
+                      sel === p.documento ? "bg-status-blue/15" : "hover:bg-muted/50"
+                    }`}
+                  >
+                    <td className="px-2 py-1.5 font-mono font-semibold text-status-blue">{p.documento}</td>
+                    <td className="px-2 py-1.5">{p.nombres || "—"}</td>
+                    <td className="px-2 py-1.5">{p.apellidos || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button className="bg-status-blue text-white hover:bg-status-blue/90" onClick={aceptar}>
+            <Check className="mr-1.5 h-4 w-4" /> Aceptar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
