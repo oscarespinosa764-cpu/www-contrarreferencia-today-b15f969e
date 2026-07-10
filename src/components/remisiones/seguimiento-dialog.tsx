@@ -684,15 +684,16 @@ export function SeguimientoDialog({
   const novAmbDisponible = faseAceptadoCon || facePendienteEgreso;
 
   // --- Estado de evolución diaria (salientes v2) ---
+  // El canal PLATAFORMA depende de si la EAPB hace seguimientos en plataforma.
   const evoEstadoSal: EvolucionEstado = useMemo(() => {
-    if (tienePlataforma) {
+    if (segEnPlataforma) {
       const n = (evoCorreo ? 1 : 0) + (evoPlataforma ? 1 : 0);
       return n === 0 ? "sin" : n === 1 ? "parcial" : "completo";
     }
     return evoCorreo ? "completo" : "sin";
-  }, [tienePlataforma, evoCorreo, evoPlataforma]);
+  }, [segEnPlataforma, evoCorreo, evoPlataforma]);
   const evoMetaSal = evolucionMeta[evoEstadoSal];
-  const evoRequiereMotivo = esEvolucionSal && tienePlataforma && evoEstadoSal === "parcial";
+  const evoRequiereMotivo = esEvolucionSal && segEnPlataforma && evoEstadoSal === "parcial";
 
   // --- Evolución por especialidades tratantes (Parte 9) ---
   const evoEspEvolucionadas = useMemo(
