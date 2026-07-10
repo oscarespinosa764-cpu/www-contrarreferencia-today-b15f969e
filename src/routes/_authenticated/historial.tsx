@@ -1338,7 +1338,11 @@ function HistorialPage() {
               return (
                 <button
                   key={vw.key}
-                  onClick={() => setVista(vw.key)}
+                  onClick={() => {
+                    setVista(vw.key);
+                    setLimite(20);
+                    setModoConsulta("lista");
+                  }}
                   className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
                     active ? `${vw.color} text-white shadow-sm` : "text-muted-foreground hover:text-foreground"
                   }`}
