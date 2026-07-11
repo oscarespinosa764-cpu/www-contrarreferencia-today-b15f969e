@@ -17,6 +17,7 @@ import { useCasos, useCatalogos, usePlantillas } from "@/lib/use-rc-data";
 import { useNotifVencimientos } from "@/lib/use-notif-vencimientos";
 import { RegistrarWizard } from "@/components/rc/registrar-wizard";
 import { SeguimientoControl } from "@/components/rc/seguimiento-control";
+import { PosiblesIngresos } from "@/components/rc/posibles-ingresos";
 import { type Caso, TIPO_LABEL } from "@/lib/rc-utils";
 import {
   MensajesRecientesButton,
