@@ -31,6 +31,12 @@ import {
 } from "@/lib/rc-utils";
 import type { Catalogos } from "@/lib/use-rc-data";
 import type { Plantilla } from "@/lib/rc-utils";
+import {
+  type CategoriaIngreso,
+  CATEGORIA_MARCA,
+  CATEGORIA_LABEL,
+  construirAlertaIngreso,
+} from "@/lib/notif-ingreso";
 
 type Accion = "ingreso" | "ampliar" | "cancelar" | "archivar";
 
@@ -198,13 +204,15 @@ export function SeguimientoControl({ casos, catalogos, plantillas, tick }: Props
   );
 }
 
-function AccionDialog({
+export function AccionDialog({
   accion,
   caso,
   casos,
   catalogos,
   plantillas,
   onClose,
+  modo,
+  categoria,
 }: {
   accion: Accion;
   caso: Caso;
@@ -212,6 +220,9 @@ function AccionDialog({
   catalogos: Catalogos;
   plantillas: Plantilla[];
   onClose: () => void;
+  /** "posterior" = ingreso posterior a cancelación/negación (ventana de 24 h). */
+  modo?: "posterior";
+  categoria?: CategoriaIngreso;
 }) {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -303,8 +314,11 @@ function AccionDialog({
   const [detalle, setDetalle] = useState("");
   const [copied, setCopied] = useState(false);
 
+  const posterior = modo === "posterior" && !!categoria;
   const titulos: Record<Accion, string> = {
-    ingreso: "Confirmar ingreso del paciente",
+    ingreso: posterior
+      ? `Confirmar ingreso · ${categoria ? CATEGORIA_LABEL[categoria] : ""}`
+      : "Confirmar ingreso del paciente",
     ampliar: "Ampliar cupo",
     cancelar: "Cancelar cupo",
     archivar: "Notificación de vencimiento",
@@ -362,6 +376,7 @@ function AccionDialog({
     qc.invalidateQueries({ queryKey: ["rc-casos"] });
     qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
     qc.invalidateQueries({ queryKey: ["seguimientos-pendientes"] });
+    qc.invalidateQueries({ queryKey: ["avisos-operativos"] });
   };
 
   const ejecutar = async () => {
@@ -415,6 +430,9 @@ function AccionDialog({
         ]
           .filter(Boolean)
           .join(" · ");
+        const detalleIngreso = posterior && categoria
+          ? [`[${CATEGORIA_MARCA[categoria]}]`, obs].filter(Boolean).join(" · ")
+          : obs;
         const { error: e1 } = await supabase.from("casos_entrantes").insert({
           ...paciente,
           codigo,
@@ -422,20 +440,50 @@ function AccionDialog({
           cod_ref: caso.codigo,
           estado: "INGRESADO",
           fecha: fechaIngreso || ahora.toISOString().slice(0, 10),
-          detalle: obs || null,
+          detalle: detalleIngreso || null,
           texto_ia: mensaje || null,
           created_by: user?.id,
         });
-        if (e1) throw e1;
-        const { error: e2 } = await supabase
-          .from("casos_entrantes")
-          .update({ estado: "INGRESADO" })
-          .eq("id", caso.id);
-        if (e2) throw e2;
+        if (e1) {
+          // El índice único rechaza un segundo ingreso del mismo cupo.
+          const dup = String((e1 as { code?: string }).code) === "23505";
+          throw new Error(
+            dup ? "Este cupo ya tiene un ingreso registrado." : e1.message,
+          );
+        }
+        if (posterior && categoria) {
+          // Ingreso posterior: NO se sobrescriben los eventos originales
+          // (cancelación/negación se conservan). Se genera la alerta de coordinación.
+          const alerta = construirAlertaIngreso(categoria, caso);
+          const { error: ea } = await supabase.from("avisos").insert({
+            mensaje: alerta.mensaje,
+            prioridad: alerta.prioridad,
+            modulo: alerta.modulo,
+            fecha_inicio: ahora.toISOString(),
+            estado: "ACTIVO",
+            created_by: user?.id,
+          });
+          if (ea) {
+            // El ingreso ya quedó registrado; la alerta es complementaria.
+            console.error("No se pudo generar la alerta de coordinación");
+            toast.warning("Ingreso registrado, pero no se pudo crear la alerta.");
+          }
+        } else {
+          const { error: e2 } = await supabase
+            .from("casos_entrantes")
+            .update({ estado: "INGRESADO" })
+            .eq("id", caso.id);
+          if (e2) throw e2;
+        }
         try {
           await registrarAuditoria({
             data: {
-              accion: "confirmar_ingreso",
+              accion:
+                posterior && categoria
+                  ? categoria === "tardio"
+                    ? "ingreso_tardio_post_cancelacion"
+                    : "ingreso_sin_referencia"
+                  : "confirmar_ingreso",
               modulo: "entrantes",
               tabla: "casos_entrantes",
               registroId: caso.codigo,
@@ -444,7 +492,7 @@ function AccionDialog({
         } catch {
           /* no bloquea el flujo */
         }
-        toast.success("Ingreso confirmado");
+        toast.success(posterior ? "Ingreso posterior registrado · alerta generada" : "Ingreso confirmado");
         refrescar();
         setResultado({ tipo: "ING", codigo: caso.codigo, mensaje });
         return;
@@ -647,6 +695,13 @@ function AccionDialog({
           <div className="space-y-4">
             {accion === "ingreso" && (
               <>
+                {posterior && categoria && (
+                  <div className="rounded-lg border border-status-amber/40 bg-status-amber/10 p-3 text-xs text-foreground">
+                    <strong>{CATEGORIA_LABEL[categoria]}.</strong> Se registrará el ingreso y se
+                    generará la alerta de coordinación. El evento original
+                    {categoria === "tardio" ? " de cancelación" : " de negación"} se conserva sin cambios.
+                  </div>
+                )}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="fing">Fecha de ingreso</Label>
