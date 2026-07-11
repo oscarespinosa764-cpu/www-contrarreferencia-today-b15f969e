@@ -702,6 +702,7 @@ export function AccionDialog({
                     {categoria === "tardio" ? " de cancelación" : " de negación"} se conserva sin cambios.
                   </div>
                 )}
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="fing">Fecha de ingreso</Label>
                     <Input
