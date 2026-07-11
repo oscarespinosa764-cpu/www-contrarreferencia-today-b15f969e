@@ -189,6 +189,15 @@ function CasosPage() {
           tick={tick}
         />
       </Panel>
+
+      <Panel title="POSIBLES NOTIFICACIONES DE INGRESO" bodyMaxHeight={null}>
+        <PosiblesIngresos
+          casos={casos}
+          catalogos={catalogos}
+          plantillas={plantillas}
+          tick={tick}
+        />
+      </Panel>
     </div>
   );
 }
