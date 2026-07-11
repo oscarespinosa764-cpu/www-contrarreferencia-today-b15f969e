@@ -812,9 +812,9 @@ function HistorialPage() {
   }, [casos, historicosEntrantes]);
 
   // El documento de la consulta por paciente tiene prioridad sobre el buscador
-  // libre; ambos alimentan el mismo término de filtrado.
+  // libre; el documento normalizado alimenta el término de filtrado.
   const docTrim = docBusca.trim();
-  const term = (docTrim || q.trim()).toLowerCase();
+  const term = docTrim.toLowerCase();
 
   const servicioActivo = servicio !== "TODOS LOS SERVICIOS";
   const sedeActiva = sede !== "TODAS LAS SEDES";
