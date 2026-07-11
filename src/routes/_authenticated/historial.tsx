@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
@@ -632,22 +632,21 @@ function HistorialPage() {
     (user?.user_metadata?.nombre as string) || user?.email || "Usuario autenticado";
   const qc = useQueryClient();
   const [vista, setVista] = useState<Vista>("entrantes");
-  const [q, setQ] = useState("");
   const [tipo, setTipo] = useState<TipoFilter>("TODOS");
   const [salTipo, setSalTipo] = useState<SalFilter>("TODOS");
   const [genTipo, setGenTipo] = useState<GenFilter>("TODOS");
   const [periodo, setPeriodo] = useState<Periodo>("Todos");
   const [fechaEspecifica, setFechaEspecifica] = useState<Date | undefined>(undefined);
   const [ingresoFor, setIngresoFor] = useState<Grupo | null>(null);
-  const [bitacoraOpen, setBitacoraOpen] = useState(false);
-  // Consulta por paciente (SEDE · SERVICIO · documento · nombre · historia clínica)
+  // Consulta por paciente (SEDE · documento · nombre)
   const [sede, setSede] = useState<string>(SEDE_DEFAULT);
-  const [servicio, setServicio] = useState<string>("TODOS LOS SERVICIOS");
+  const [servicio] = useState<string>("TODOS LOS SERVICIOS");
   const [docBusca, setDocBusca] = useState("");
   const [buscarPacienteOpen, setBuscarPacienteOpen] = useState(false);
-  const [modoConsulta, setModoConsulta] = useState<"lista" | "timeline">("lista");
+  // Estado inicial: barra "Últimos 10 casos" plegable + secuencia de caso desplegable.
+  const [u10Abierto, setU10Abierto] = useState(false);
+  const [casoExpandido, setCasoExpandido] = useState<string | null>(null);
   const [limite, setLimite] = useState(20);
-  const verMas = () => setLimite((n) => n + 20);
 
   const { data: casos, isLoading } = useQuery({
     queryKey: ["historial-casos"],
@@ -813,9 +812,9 @@ function HistorialPage() {
   }, [casos, historicosEntrantes]);
 
   // El documento de la consulta por paciente tiene prioridad sobre el buscador
-  // libre; ambos alimentan el mismo término de filtrado.
+  // libre; el documento normalizado alimenta el término de filtrado.
   const docTrim = docBusca.trim();
-  const term = (docTrim || q.trim()).toLowerCase();
+  const term = docTrim.toLowerCase();
 
   const servicioActivo = servicio !== "TODOS LOS SERVICIOS";
   const sedeActiva = sede !== "TODAS LAS SEDES";
@@ -873,16 +872,15 @@ function HistorialPage() {
 
   const limpiarConsulta = () => {
     setDocBusca("");
-    setQ("");
     setSede(SEDE_DEFAULT);
-    setServicio("TODOS LOS SERVICIOS");
     setTipo("TODOS");
     setSalTipo("TODOS");
     setGenTipo("TODOS");
     setPeriodo("Todos");
     setFechaEspecifica(undefined);
     setLimite(20);
-    setModoConsulta("lista");
+    setU10Abierto(false);
+    setCasoExpandido(null);
   };
 
   const gruposF = useMemo(
@@ -1504,7 +1502,7 @@ function HistorialPage() {
                   onClick={() => {
                     setVista(vw.key);
                     setLimite(20);
-                    setModoConsulta("lista");
+                    setCasoExpandido(null);
                   }}
                   className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
                     active ? `${vw.color} text-white shadow-sm` : "text-muted-foreground hover:text-foreground"
@@ -1517,7 +1515,7 @@ function HistorialPage() {
           </div>
         </div>
 
-        {/* CONSULTA POR PACIENTE (SEDE · SERVICIO · documento · nombre) */}
+        {/* CONSULTA POR PACIENTE (SEDE · documento · nombre) */}
         <div className="mb-3 rounded-xl border border-border bg-muted/30 p-2.5">
           <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
             Consulta por paciente
@@ -1540,22 +1538,6 @@ function HistorialPage() {
               </Select>
             </div>
             <div className="grid gap-1">
-              <Label className="text-[10px] uppercase text-muted-foreground">Servicio</Label>
-              <Select value={servicio} onValueChange={setServicio}>
-                <SelectTrigger className="h-9 w-[12rem] text-xs">
-                  <Stethoscope className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {servicioOpciones.map((s) => (
-                    <SelectItem key={s} value={s} className="text-xs">
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-1">
               <Label className="text-[10px] uppercase text-muted-foreground">Documento del paciente</Label>
               <div className="flex items-center gap-1.5">
                 <Input
@@ -1563,56 +1545,57 @@ function HistorialPage() {
                   placeholder="N.º documento"
                   value={docBusca}
                   onChange={(e) => setDocBusca(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && setLimite(20)}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    e.preventDefault();
+                    const doc = docBusca.trim();
+                    if (doc === "") {
+                      setBuscarPacienteOpen(true);
+                      return;
+                    }
+                    setDocBusca(doc);
+                    setLimite(20);
+                    setCasoExpandido(null);
+                  }}
                 />
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
                   className="h-9 w-9 shrink-0 p-0"
-                  aria-label="BUSCAR PACIENTE POR NOMBRE O APELLIDO"
-                  title="Búsqueda avanzada de paciente"
-                  onClick={() => setBuscarPacienteOpen(true)}
+                  aria-label="BUSCAR PACIENTE"
+                  title="Buscar por documento; vacío abre la búsqueda avanzada"
+                  onClick={() => {
+                    const doc = docBusca.trim();
+                    if (doc === "") {
+                      setBuscarPacienteOpen(true);
+                      return;
+                    }
+                    setDocBusca(doc);
+                    setLimite(20);
+                    setCasoExpandido(null);
+                  }}
                 >
-                  <UserSearch className="h-4 w-4" />
+                  {docBusca.trim() === "" ? <UserSearch className="h-4 w-4" /> : <Search className="h-4 w-4" />}
                 </Button>
               </div>
             </div>
             {docTrim && (
               <div className="grid gap-1">
                 <Label className="text-[10px] uppercase text-muted-foreground">Nombre del paciente</Label>
-                <div className="flex h-9 items-center rounded-md border border-border bg-card px-2.5 text-xs font-semibold text-foreground">
-                  {pacienteNombre || "Paciente no encontrado"}
+                <div className="flex h-9 items-center rounded-md border border-border bg-card px-2.5 text-xs font-semibold uppercase text-foreground">
+                  {(pacienteNombre || "Paciente no encontrado").toUpperCase().replace(/\s+/g, " ")}
                 </div>
               </div>
             )}
             <div className="ml-auto flex items-end gap-1.5">
-              <div className="inline-flex overflow-hidden rounded-full border border-border">
-                <button
-                  type="button"
-                  onClick={() => setModoConsulta("lista")}
-                  className={`flex items-center gap-1 px-2.5 py-2 text-[10px] font-semibold transition ${
-                    modoConsulta === "lista" ? "bg-status-blue text-white" : "bg-card text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <ListTree className="h-3 w-3" /> Lista
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setModoConsulta("timeline")}
-                  className={`flex items-center gap-1 px-2.5 py-2 text-[10px] font-semibold transition ${
-                    modoConsulta === "timeline" ? "bg-status-blue text-white" : "bg-card text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Clock className="h-3 w-3" /> Historia clínica
-                </button>
-              </div>
               <Button type="button" size="sm" variant="outline" className="h-9" onClick={limpiarConsulta}>
                 <Eraser className="mr-1.5 h-4 w-4" /> Limpiar búsqueda
               </Button>
             </div>
           </div>
         </div>
+
 
 
 
@@ -1692,20 +1675,6 @@ function HistorialPage() {
               </PopoverContent>
             </Popover>
 
-            {usaMensajes && <MensajesRecientesButton vista={vista} mensajes={mensajes} />}
-
-            {/* Bitácora PDF por documento */}
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 rounded-full border-status-red/40 bg-status-red/10 text-[11px] font-semibold text-status-red hover:bg-status-red/20"
-              onClick={() => setBitacoraOpen(true)}
-            >
-              <FileText className="mr-1.5 h-3.5 w-3.5" /> Bitácora PDF
-            </Button>
-
-
-
             {/* Exportación */}
             <Popover>
               <PopoverTrigger asChild>
@@ -1735,106 +1704,101 @@ function HistorialPage() {
           </div>
         </div>
 
-        {/* Búsqueda */}
-        <div className="relative mb-3">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="rounded-lg pl-9"
-            placeholder="Buscar por documento, paciente, radicado…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-        </div>
-
-        {/* Consulta por paciente: historia clínica cronológica tipo ÍNDIGO */}
-        {modoConsulta === "timeline" ? (
+        {/* Consulta por paciente activa: cabecera + casos separados por case_id.
+            Sin búsqueda: barra plegable "Últimos 10 casos". */}
+        {docTrim ? (
           cargando ? (
             <p className="py-10 text-center text-sm text-muted-foreground">Cargando…</p>
-          ) : !docTrim ? (
-            <div className="rounded-2xl border border-border bg-card py-14 text-center shadow-sm">
-              <p className="text-sm font-semibold text-foreground">Ingresa un documento</p>
-              <p className="text-xs text-muted-foreground">
-                Escribe el documento o usa la búsqueda avanzada para ver la historia del paciente.
-              </p>
-            </div>
           ) : !pacienteExiste ? (
             <div className="rounded-2xl border border-border bg-card py-14 text-center shadow-sm">
               <p className="text-sm font-semibold text-foreground">NO SE ENCONTRÓ UN PACIENTE CON EL DOCUMENTO INGRESADO.</p>
             </div>
           ) : (
-            <LineaTiempoPaciente items={consultaItems} documento={docTrim} />
+            <PacienteResultado
+              vista={vista}
+              nombre={pacienteNombre}
+              documento={docTrim}
+              entrantes={gruposF}
+              salientes={remisionesF as Remision[]}
+              phd={phdF as Generico[]}
+              internas={internasF as Generico[]}
+              buildEntrante={buildEntrante}
+              buildSaliente={buildSaliente}
+              buildPHD={buildPHD}
+              buildInterna={buildInterna}
+              canEdit={canEdit}
+              onConfirmar={(g) => setIngresoFor(g)}
+              casoExpandido={casoExpandido}
+              onToggleCaso={(k) => setCasoExpandido((p) => (p === k ? null : k))}
+              onBitacoraCaso={pdfConstruido}
+              onBitacoraUnificada={pdfConsolidado}
+            />
           )
-        ) : /* Lista */ cargando ? (
+        ) : cargando ? (
           <p className="py-10 text-center text-sm text-muted-foreground">Cargando…</p>
-        ) : vacio ? (
-          <div className="rounded-2xl border border-border bg-card py-16 text-center shadow-sm">
-            <p className="text-3xl text-muted-foreground">🔍</p>
-            <p className="mt-2 text-sm font-semibold text-foreground">{mensajeVacio}</p>
-            {busquedaActiva && (
-              <p className="text-xs text-muted-foreground">Prueba con otros términos o limpia los filtros</p>
-            )}
-          </div>
-        ) : vista === "entrantes" ? (
-          <div className="grid gap-2">
-            {gruposV.map((g) => (
-              <CasoCard key={g.key} grupo={g} canEdit={canEdit} onConfirmar={() => setIngresoFor(g)} onPDF={() => pdfEntrante(g)} />
-            ))}
-            {hayMas && <VerMasButton onClick={verMas} />}
-          </div>
-        ) : vista === "salientes" ? (
-          <div className="grid gap-2">
-            {remisionesV.map((r) => (
-              <RemisionCard key={r.id} remision={r} onPDF={() => pdfSaliente(r)} />
-            ))}
-            {hayMas && <VerMasButton onClick={verMas} />}
-          </div>
-        ) : vista === "phd" ? (
-          <div className="grid gap-2">
-            {(phdV as Generico[]).map((r) => (
-              <GenericoCard
-                key={r.id}
-                titulo={`${v(r.paciente) || "Sin nombre"}`}
-                sub={[v(r.documento), v(r.tipo_solicitud_detalle) || v(r.tipo_solicitud), v(r.eapb)]}
-                estado={estadoGenerico(r.estado)}
-                fecha={fmtFechaHora((r.fecha_inicio as string) || r.created_at)}
-                radicado={fmtRadicado(v(r.codigo_radicacion), r.eapb_genera_codigo as boolean)}
-                onPDF={() => pdfPHD(r)}
-              />
-            ))}
-            {hayMas && <VerMasButton onClick={verMas} />}
-          </div>
         ) : (
-          <div className="grid gap-2">
-            {(internasV as Generico[]).map((r) => (
-              <GenericoCard
-                key={r.id}
-                titulo={`${v(r.paciente) || "Sin nombre"}`}
-                sub={[v(r.documento), v(r.tipo_solicitud), v(r.servicio)]}
-                estado={estadoGenerico(r.estado)}
-                fecha={fmtFechaHora((r.fecha_inicio as string) || r.created_at)}
-                onPDF={() => pdfInterna(r)}
-              />
-            ))}
-            {hayMas && <VerMasButton onClick={verMas} />}
-          </div>
+          <Ultimos10Bar
+            abierto={u10Abierto}
+            onToggle={() => setU10Abierto((o) => !o)}
+            total={Math.min(fullLen, 10)}
+          >
+            {fullLen === 0 ? (
+              <p className="py-6 text-center text-xs font-semibold text-muted-foreground">
+                NO HAY CASOS REGISTRADOS EN ESTA CATEGORÍA.
+              </p>
+            ) : vista === "entrantes" ? (
+              <div className="grid gap-2">
+                {gruposF.slice(0, 10).map((g) => (
+                  <CasoCard key={g.key} grupo={g} canEdit={canEdit} onConfirmar={() => setIngresoFor(g)} onPDF={() => pdfEntrante(g)} />
+                ))}
+              </div>
+            ) : vista === "salientes" ? (
+              <div className="grid gap-2">
+                {(remisionesF as Remision[]).slice(0, 10).map((r) => (
+                  <RemisionCard key={r.id} remision={r} onPDF={() => pdfSaliente(r)} />
+                ))}
+              </div>
+            ) : vista === "phd" ? (
+              <div className="grid gap-2">
+                {(phdF as Generico[]).slice(0, 10).map((r) => (
+                  <GenericoCard
+                    key={r.id}
+                    titulo={`${v(r.paciente) || "Sin nombre"}`}
+                    sub={[v(r.documento), v(r.tipo_solicitud_detalle) || v(r.tipo_solicitud), v(r.eapb)]}
+                    estado={estadoGenerico(r.estado)}
+                    fecha={fmtFechaHora((r.fecha_inicio as string) || r.created_at)}
+                    radicado={fmtRadicado(v(r.codigo_radicacion), r.eapb_genera_codigo as boolean)}
+                    onPDF={() => pdfPHD(r)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="grid gap-2">
+                {(internasF as Generico[]).slice(0, 10).map((r) => (
+                  <GenericoCard
+                    key={r.id}
+                    titulo={`${v(r.paciente) || "Sin nombre"}`}
+                    sub={[v(r.documento), v(r.tipo_solicitud), v(r.servicio)]}
+                    estado={estadoGenerico(r.estado)}
+                    fecha={fmtFechaHora((r.fecha_inicio as string) || r.created_at)}
+                    onPDF={() => pdfInterna(r)}
+                  />
+                ))}
+              </div>
+            )}
+          </Ultimos10Bar>
         )}
       </Panel>
 
 
+
       <IngresoDialog grupo={ingresoFor} onClose={() => setIngresoFor(null)} onConfirmar={handleConfirmarIngreso} />
-      <BitacoraBuscadorDialog
-        open={bitacoraOpen}
-        onClose={() => setBitacoraOpen(false)}
-        buscar={buscarBitacoras}
-        onPDF={pdfConstruido}
-        onConsolidado={pdfConsolidado}
-      />
       <BuscarPacienteDialog
         open={buscarPacienteOpen}
         onClose={() => setBuscarPacienteOpen(false)}
         pacientes={pacientesIndex}
         onPick={(documento) => {
-          setDocBusca(documento);
+          setDocBusca(documento.trim());
           setLimite(20);
         }}
       />
@@ -1866,103 +1830,8 @@ function FilterButton({ active, label, onClick }: { active: boolean; label: stri
   );
 }
 
-function VerMasButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border bg-card py-2 text-xs font-semibold text-muted-foreground transition hover:text-foreground"
-    >
-      <Plus className="h-3.5 w-3.5" /> Ver más
-    </button>
-  );
-}
-
-function MensajesRecientesButton({ vista, mensajes }: { vista: Vista; mensajes: MensajeItem[] }) {
-  const [abierto, setAbierto] = useState<string | null>(null);
-
-  const copiar = async (texto: string) => {
-    try {
-      await navigator.clipboard.writeText(texto);
-      toast.success("Mensaje copiado");
-    } catch {
-      toast.error("No se pudo copiar");
-    }
-  };
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 rounded-full border-status-teal/40 bg-status-teal/10 text-[11px] font-semibold text-status-teal hover:bg-status-teal/20"
-        >
-          <MessageSquare className="mr-1.5 h-3.5 w-3.5" /> Mensajes recientes
-          <ChevronDown className="ml-1 h-3.5 w-3.5 opacity-70" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-[22rem] p-0">
-        <div className="border-b px-3 py-2">
-          <p className="text-xs font-bold uppercase tracking-wide text-foreground">
-            Últimos mensajes {vista === "entrantes" ? "de gestión" : "de remisión"}
-          </p>
-          <p className="text-[10px] text-muted-foreground">
-            Recupera el mensaje en caso de haberlo cerrado por accidente.
-          </p>
-        </div>
-        <div className="max-h-[24rem] overflow-y-auto p-2">
-          {mensajes.length === 0 ? (
-            <p className="py-6 text-center text-xs text-muted-foreground">No hay mensajes recientes.</p>
-          ) : (
-            <div className="grid gap-1.5">
-              {mensajes.map((m) => {
-                const open = abierto === m.id;
-                return (
-                  <div key={m.id} className="rounded-lg border border-border bg-card">
-                    <button
-                      onClick={() => setAbierto(open ? null : m.id)}
-                      className="flex w-full items-start justify-between gap-2 px-2.5 py-2 text-left"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-xs font-bold text-status-blue">{m.documento}</p>
-                        <p className="truncate text-[10px] font-semibold uppercase text-muted-foreground">{m.nombre}</p>
-                        {m.ips && <p className="truncate text-[10px] text-muted-foreground">{m.ips}</p>}
-                      </div>
-                      <span
-                        className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${statusBadge[m.color]}`}
-                      >
-                        {m.estado}
-                      </span>
-                    </button>
-                    {open && (
-                      <div className="border-t px-2.5 py-2">
-                        <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-muted/60 p-2 text-[11px] leading-snug text-foreground">
-                          {m.mensaje}
-                        </pre>
-                        <div className="mt-2 flex items-center justify-end gap-1.5">
-                          <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setAbierto(null)}>
-                            <X className="mr-1 h-3.5 w-3.5" /> Cerrar
-                          </Button>
-                          <Button
-                            size="sm"
-                            className="h-7 bg-status-teal text-[11px] text-white hover:bg-status-teal/90"
-                            onClick={() => copiar(m.mensaje)}
-                          >
-                            <Copy className="mr-1 h-3.5 w-3.5" /> Copiar
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
+// (VerMasButton y MensajesRecientesButton retirados: el listado ahora usa
+// "Últimos 10 casos" y los mensajes se muestran en el Dashboard Operativo Entrantes.)
 
 function IngresoDialog({
   grupo,
@@ -2349,232 +2218,316 @@ function LineaTiempoPaciente({ items, documento }: { items: Construido[]; docume
   );
 }
 
-function BitacoraBuscadorDialog({
-
-  open,
-  onClose,
-  buscar,
-  onPDF,
-  onConsolidado,
+function MenuBtn({
+  icon: Icon,
+  label,
+  onClick,
+  danger,
 }: {
-  open: boolean;
-  onClose: () => void;
-  buscar: (doc: string, ini?: Date, fin?: Date) => ResultadosBitacora;
-  onPDF: (c: Construido) => void;
-  onConsolidado: (cs: Construido[], doc: string, filtros: string) => void;
+  icon: typeof FileText;
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
 }) {
-  const [doc, setDoc] = useState("");
-  const [iniStr, setIniStr] = useState("");
-  const [finStr, setFinStr] = useState("");
-  const [tipoTramite, setTipoTramite] = useState<TramiteKey>("todos");
-  const [res, setRes] = useState<ResultadosBitacora | null>(null);
-  const [modo, setModo] = useState<"timeline" | "lista">("timeline");
-
-
-  const consultar = () => {
-    if (!doc.trim()) {
-      toast.info("Ingresa un número de documento.");
-      return;
-    }
-    setRes(buscar(doc, parseDateInput(iniStr), parseDateInput(finStr)));
-  };
-
-  const incluir = (k: TramiteKey) => tipoTramite === "todos" || tipoTramite === k;
-
-  const tramiteTxt = TRAMITE_OPS.find((t) => t.key === tipoTramite)?.label ?? "Todos";
-  const filtrosTxt = `Documento=${doc.trim()}${iniStr ? `; Desde=${iniStr}` : ""}${finStr ? `; Hasta=${finStr}` : ""}; Tipo=${tramiteTxt}`;
-
-  const gruposTodos: { label: string; key: TramiteKey; items: Construido[] }[] = res
-    ? [
-        { label: "Entrantes", key: "entrantes", items: res.entrantes },
-        { label: "Salientes", key: "salientes", items: res.salientes },
-        { label: "PHD/PAD/O2/Esp.", key: "phd", items: res.phd },
-        { label: "Ref. Internas", key: "internas", items: res.internas },
-      ]
-    : [];
-  const grupos = gruposTodos.filter((g) => incluir(g.key));
-
-  const todos = grupos.flatMap((g) => g.items);
-
-  const reset = () => {
-    setDoc("");
-    setIniStr("");
-    setFinStr("");
-    setTipoTramite("todos");
-    setModo("timeline");
-    setRes(null);
-  };
-
-
-
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => {
-        if (!o) {
-          reset();
-          onClose();
-        }
-      }}
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs font-medium transition hover:bg-muted"
     >
-      <DialogContent className="max-h-[90vh] overflow-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-base">
-            <FileText className="h-5 w-5 text-status-red" /> Generar Bitácora PDF
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="grid gap-3">
-          <div className="grid gap-1.5">
-            <Label htmlFor="bit-doc" className="text-xs">
-              Número de documento
-            </Label>
-            <div className="flex gap-2">
-              <Input
-                id="bit-doc"
-                value={doc}
-                onChange={(e) => setDoc(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && consultar()}
-                placeholder="Ej. 1117545825"
-              />
-              <Button onClick={consultar} className="bg-status-blue text-white hover:bg-status-blue/90">
-                <Search className="mr-1.5 h-4 w-4" /> Consultar
-              </Button>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="bit-ini" className="text-xs">
-                Fecha inicio (opcional)
-              </Label>
-              <Input id="bit-ini" type="date" value={iniStr} onChange={(e) => setIniStr(e.target.value)} />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="bit-fin" className="text-xs">
-                Fecha fin (opcional)
-              </Label>
-              <Input id="bit-fin" type="date" value={finStr} onChange={(e) => setFinStr(e.target.value)} />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-            <div className="grid gap-1.5">
-              <Label className="text-xs">Tipo de trámite</Label>
-              <Select value={tipoTramite} onValueChange={(val) => setTipoTramite(val as TramiteKey)}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TRAMITE_OPS.map((t) => (
-                    <SelectItem key={t.key} value={t.key}>
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button variant="outline" className="h-9" onClick={reset}>
-              <X className="mr-1.5 h-4 w-4" /> Borrar filtros
-            </Button>
-          </div>
-        </div>
-
-
-        {res && (
-          <div className="mt-2 grid gap-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-semibold text-muted-foreground">{todos.length} caso(s) encontrado(s)</p>
-              <div className="flex items-center gap-2">
-                {todos.length > 0 && (
-                  <div className="inline-flex overflow-hidden rounded-full border border-border">
-                    <button
-                      onClick={() => setModo("timeline")}
-                      className={`flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold transition ${
-                        modo === "timeline" ? "bg-status-blue text-white" : "bg-card text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      <Clock className="h-3 w-3" /> Historia clínica
-                    </button>
-                    <button
-                      onClick={() => setModo("lista")}
-                      className={`flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold transition ${
-                        modo === "lista" ? "bg-status-blue text-white" : "bg-card text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      <ListTree className="h-3 w-3" /> Por trámite
-                    </button>
-                  </div>
-                )}
-                {todos.length > 0 && (
-                  <Button
-                    size="sm"
-                    className="h-8 bg-status-teal text-[11px] text-white hover:bg-status-teal/90"
-                    onClick={() => onConsolidado(todos, doc.trim(), filtrosTxt)}
-                  >
-                    <FileText className="mr-1.5 h-3.5 w-3.5" /> Bitácora consolidada del paciente
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {todos.length === 0 ? (
-              <div className="rounded-lg border border-border bg-card py-10 text-center">
-                <p className="text-sm font-semibold text-foreground">Sin registros</p>
-                <p className="text-xs text-muted-foreground">No se hallaron casos para ese documento y rango.</p>
-              </div>
-            ) : modo === "timeline" ? (
-              <LineaTiempoPaciente items={todos} documento={doc.trim()} />
-            ) : (
-              grupos.map((g) => (
-                <div key={g.label}>
-                  <p className="mb-1 text-xs font-bold uppercase tracking-wide text-status-blue">{g.label}</p>
-                  {g.items.length === 0 ? (
-                    <p className="rounded-md border border-dashed border-border px-2 py-1.5 text-[11px] text-muted-foreground">
-                      Sin registros
-                    </p>
-                  ) : (
-                    <div className="grid gap-1.5">
-                      {g.items.map((c, i) => (
-                        <div
-                          key={`${g.label}-${i}`}
-                          className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-2.5 py-2"
-                        >
-                          <div className="min-w-0">
-                            <p className="truncate text-xs font-bold text-foreground">
-                              {c.bloque.tipoDocumento} · {c.paciente}
-                            </p>
-                            <p className="truncate text-[10px] text-muted-foreground">
-                              Doc {c.documento || "—"}
-                              {c.codigo ? ` · ${c.codigo}` : ""} · {fmtFechaHora(c.fechaBase)} · {c.estado}
-                            </p>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 rounded-md border-status-red/40 text-[11px] font-semibold text-status-red hover:bg-status-red/10"
-                            onClick={() => onPDF(c)}
-                          >
-                            <FileText className="mr-1 h-3.5 w-3.5" /> Bitácora PDF
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-
-        )}
-
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>
-            Cerrar
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <Icon className={`h-4 w-4 ${danger ? "text-status-red" : "text-muted-foreground"}`} /> {label}
+    </button>
   );
 }
+
+// Cabecera del paciente con menú contextual (Ver todos / Bitácora unificada).
+function PacienteCabecera({
+  nombre,
+  documento,
+  resumen,
+  totalCasos,
+  onBitacoraUnificada,
+}: {
+  nombre: string;
+  documento: string;
+  resumen: { tipoDoc: string; edad: string; entidad: string; regimen: string; telefono: string };
+  totalCasos: number;
+  onBitacoraUnificada: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="w-full rounded-xl border border-status-blue/30 bg-status-blue/5 px-3 py-2.5 text-left transition hover:bg-status-blue/10"
+        >
+          <p className="text-sm font-extrabold uppercase tracking-wide text-status-blue">
+            {nombre || "Paciente sin nombre"}
+          </p>
+          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+            <span><b className="text-foreground">Documento:</b> {resumen.tipoDoc} {documento}</span>
+            <span><b className="text-foreground">Edad:</b> {resumen.edad}</span>
+            <span><b className="text-foreground">Entidad:</b> {resumen.entidad}</span>
+            <span><b className="text-foreground">Régimen:</b> {resumen.regimen}</span>
+            <span><b className="text-foreground">Teléfono:</b> {resumen.telefono}</span>
+          </div>
+          <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {totalCasos} caso(s) en esta subventana · clic para acciones
+          </p>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64 p-1.5">
+        <MenuBtn icon={ListTree} label="Ver todos los casos del paciente" onClick={() => setOpen(false)} />
+        <MenuBtn
+          icon={FileText}
+          label="Generar bitácora unificada"
+          onClick={() => {
+            onBitacoraUnificada();
+            setOpen(false);
+          }}
+        />
+        <p className="px-2 pb-1 pt-0.5 text-[10px] text-muted-foreground">
+          La bitácora unificada incluye todos los casos de esta subventana.
+        </p>
+        <MenuBtn icon={X} label="Cancelar" onClick={() => setOpen(false)} danger />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// Fila de un caso individual con menú contextual y secuencia desplegable.
+function CasoConMenu({
+  expanded,
+  onVerSecuencia,
+  onBitacora,
+  sequenceItems,
+  documento,
+  children,
+}: {
+  expanded: boolean;
+  onVerSecuencia: () => void;
+  onBitacora: () => void;
+  sequenceItems: Construido[];
+  documento: string;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <div role="button" tabIndex={0} className="cursor-pointer">
+            {children}
+          </div>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-60 p-1.5">
+          <MenuBtn
+            icon={Clock}
+            label={expanded ? "Ocultar secuencia del caso" : "Ver secuencia del caso"}
+            onClick={() => {
+              onVerSecuencia();
+              setOpen(false);
+            }}
+          />
+          <MenuBtn
+            icon={FileText}
+            label="Generar bitácora de este caso"
+            onClick={() => {
+              onBitacora();
+              setOpen(false);
+            }}
+          />
+          <MenuBtn icon={X} label="Cancelar" onClick={() => setOpen(false)} danger />
+        </PopoverContent>
+      </Popover>
+      {expanded && (
+        <div className="mt-1.5 rounded-lg border border-dashed border-border bg-muted/20 p-2">
+          <LineaTiempoPaciente items={sequenceItems} documento={documento} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Resumen compacto de un caso (por case_id).
+function CasoResumenRow({
+  c,
+  indice,
+  confirmable,
+  canEdit,
+  onConfirmar,
+}: {
+  c: Construido;
+  indice: number;
+  confirmable: boolean;
+  canEdit: boolean;
+  onConfirmar?: () => void;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-sm transition hover:border-status-blue/50">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
+            CASO {indice}
+          </span>
+          <span className="rounded-full bg-status-blue/10 px-2 py-0.5 text-[9px] font-bold uppercase text-status-blue">
+            {c.bloque.tipoDocumento}
+          </span>
+          {c.codigo && <span className="font-mono text-[11px] font-semibold text-status-blue">{c.codigo}</span>}
+        </div>
+        <span className="font-mono text-[10px] text-muted-foreground">{fmtFechaHora(c.fechaBase)}</span>
+      </div>
+      <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-[11px] font-semibold text-foreground">{c.estado || "—"}</span>
+        {confirmable && canEdit && onConfirmar && (
+          <Button
+            size="sm"
+            className="h-7 rounded-md bg-status-green text-[11px] text-white hover:bg-status-green/90"
+            onClick={(e) => {
+              e.stopPropagation();
+              onConfirmar();
+            }}
+          >
+            <Hospital className="mr-1.5 h-3.5 w-3.5" /> Confirmar Ingreso
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Resultado de consulta por paciente: cabecera + casos separados por case_id.
+function PacienteResultado({
+  vista,
+  nombre,
+  documento,
+  entrantes,
+  salientes,
+  phd,
+  internas,
+  buildEntrante,
+  buildSaliente,
+  buildPHD,
+  buildInterna,
+  canEdit,
+  onConfirmar,
+  casoExpandido,
+  onToggleCaso,
+  onBitacoraCaso,
+  onBitacoraUnificada,
+}: {
+  vista: Vista;
+  nombre: string;
+  documento: string;
+  entrantes: Grupo[];
+  salientes: Remision[];
+  phd: Generico[];
+  internas: Generico[];
+  buildEntrante: (g: Grupo) => Construido;
+  buildSaliente: (r: Remision) => Construido;
+  buildPHD: (r: Generico) => Construido;
+  buildInterna: (r: Generico) => Construido;
+  canEdit: boolean;
+  onConfirmar: (g: Grupo) => void;
+  casoExpandido: string | null;
+  onToggleCaso: (key: string) => void;
+  onBitacoraCaso: (c: Construido) => void;
+  onBitacoraUnificada: (cs: Construido[], doc: string, filtros: string) => void;
+}) {
+  const rows = useMemo(() => {
+    if (vista === "entrantes")
+      return entrantes.map((g) => ({ key: g.key, construido: buildEntrante(g), grupo: g as Grupo | null }));
+    if (vista === "salientes")
+      return salientes.map((r) => ({ key: r.id, construido: buildSaliente(r), grupo: null as Grupo | null }));
+    if (vista === "phd")
+      return phd.map((r) => ({ key: r.id, construido: buildPHD(r), grupo: null as Grupo | null }));
+    return internas.map((r) => ({ key: r.id, construido: buildInterna(r), grupo: null as Grupo | null }));
+  }, [vista, entrantes, salientes, phd, internas, buildEntrante, buildSaliente, buildPHD, buildInterna]);
+
+  const construidos = rows.map((x) => x.construido);
+  const { campos } = resumenPaciente(construidos);
+  const campoVal = (l: string) => campos.find((c) => c.label === l)?.value || "—";
+  const resumen = {
+    tipoDoc: campoVal("Tipo documento"),
+    edad: campoVal("Edad"),
+    entidad: campoVal("Entidad responsable"),
+    regimen: campoVal("Régimen"),
+    telefono: campoVal("Teléfono"),
+  };
+
+  return (
+    <div className="grid gap-2.5">
+      <PacienteCabecera
+        nombre={nombre}
+        documento={documento}
+        resumen={resumen}
+        totalCasos={rows.length}
+        onBitacoraUnificada={() =>
+          onBitacoraUnificada(construidos, documento, `Paciente=${documento}; Subventana=${vista}`)
+        }
+      />
+      {rows.length === 0 ? (
+        <div className="rounded-lg border border-border bg-card py-10 text-center">
+          <p className="text-sm font-semibold text-foreground">
+            EL PACIENTE FUE ENCONTRADO, PERO NO TIENE CASOS EN ESTA SUBVENTANA.
+          </p>
+        </div>
+      ) : (
+        rows.map((row, idx) => (
+          <CasoConMenu
+            key={row.key}
+            expanded={casoExpandido === row.key}
+            onVerSecuencia={() => onToggleCaso(row.key)}
+            onBitacora={() => onBitacoraCaso(row.construido)}
+            sequenceItems={[row.construido]}
+            documento={documento}
+          >
+            <CasoResumenRow
+              c={row.construido}
+              indice={idx + 1}
+              confirmable={!!row.grupo?.confirmable}
+              canEdit={canEdit}
+              onConfirmar={row.grupo ? () => onConfirmar(row.grupo as Grupo) : undefined}
+            />
+          </CasoConMenu>
+        ))
+      )}
+    </div>
+  );
+}
+
+// Barra plegable "Últimos 10 casos" (estado inicial sin búsqueda).
+function Ultimos10Bar({
+  abierto,
+  onToggle,
+  total,
+  children,
+}: {
+  abierto: boolean;
+  onToggle: () => void;
+  total: number;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-muted/20">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between px-3 py-2.5 text-left"
+      >
+        <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-foreground">
+          <Clock className="h-4 w-4 text-muted-foreground" />
+          Últimos 10 casos
+          {total > 0 && <span className="text-muted-foreground">· {total} registro(s)</span>}
+        </span>
+        <ChevronDown className={`h-4 w-4 text-muted-foreground transition ${abierto ? "rotate-180" : ""}`} />
+      </button>
+      {abierto && <div className="border-t border-border p-2.5">{children}</div>}
+    </div>
+  );
+}
+
 
 // ---- Índice de pacientes (para búsqueda avanzada por nombre/apellido) ----
 export type PacienteIndex = {
