@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, LogIn, Timer } from "lucide-react";
+import { LogIn, Timer } from "lucide-react";
 import { AccionDialog } from "@/components/rc/seguimiento-control";
 import type { Caso, Plantilla } from "@/lib/rc-utils";
 import type { Catalogos } from "@/lib/use-rc-data";
