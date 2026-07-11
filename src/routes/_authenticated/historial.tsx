@@ -1822,19 +1822,12 @@ function HistorialPage() {
 
 
       <IngresoDialog grupo={ingresoFor} onClose={() => setIngresoFor(null)} onConfirmar={handleConfirmarIngreso} />
-      <BitacoraBuscadorDialog
-        open={bitacoraOpen}
-        onClose={() => setBitacoraOpen(false)}
-        buscar={buscarBitacoras}
-        onPDF={pdfConstruido}
-        onConsolidado={pdfConsolidado}
-      />
       <BuscarPacienteDialog
         open={buscarPacienteOpen}
         onClose={() => setBuscarPacienteOpen(false)}
         pacientes={pacientesIndex}
         onPick={(documento) => {
-          setDocBusca(documento);
+          setDocBusca(documento.trim());
           setLimite(20);
         }}
       />
