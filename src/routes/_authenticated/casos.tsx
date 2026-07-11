@@ -67,6 +67,25 @@ function CasosPage() {
     };
   }, [casos]);
 
+  // Mensajes recientes de gestión (movido desde Historial): últimos textos generados.
+  const mensajes = useMemo<MensajeItem[]>(
+    () =>
+      casos
+        .filter((c) => (c.texto_ia || "").trim().length > 0)
+        .slice(0, 20)
+        .map((c) => ({
+          id: c.id,
+          documento: c.documento || "—",
+          nombre: [c.nombres, c.apellidos].filter(Boolean).join(" ") || "Sin nombre",
+          ips: c.ips || "",
+          estado: (TIPO_LABEL[c.tipo] || c.tipo || "GESTIÓN").toUpperCase(),
+          color: colorPorTipo(c.tipo),
+          fecha: "",
+          mensaje: c.texto_ia || "",
+        })),
+    [casos],
+  );
+
   const refrescar = () => {
     qc.invalidateQueries({ queryKey: ["rc-casos"] });
     qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
