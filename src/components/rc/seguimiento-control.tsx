@@ -695,7 +695,13 @@ export function AccionDialog({
           <div className="space-y-4">
             {accion === "ingreso" && (
               <>
-                <div className="grid gap-4 sm:grid-cols-2">
+                {posterior && categoria && (
+                  <div className="rounded-lg border border-status-amber/40 bg-status-amber/10 p-3 text-xs text-foreground">
+                    <strong>{CATEGORIA_LABEL[categoria]}.</strong> Se registrará el ingreso y se
+                    generará la alerta de coordinación. El evento original
+                    {categoria === "tardio" ? " de cancelación" : " de negación"} se conserva sin cambios.
+                  </div>
+                )}
                   <div className="space-y-2">
                     <Label htmlFor="fing">Fecha de ingreso</Label>
                     <Input
