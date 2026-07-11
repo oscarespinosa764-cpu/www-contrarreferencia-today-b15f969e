@@ -31,6 +31,12 @@ import {
 } from "@/lib/rc-utils";
 import type { Catalogos } from "@/lib/use-rc-data";
 import type { Plantilla } from "@/lib/rc-utils";
+import {
+  type CategoriaIngreso,
+  CATEGORIA_MARCA,
+  CATEGORIA_LABEL,
+  construirAlertaIngreso,
+} from "@/lib/notif-ingreso";
 
 type Accion = "ingreso" | "ampliar" | "cancelar" | "archivar";
 
