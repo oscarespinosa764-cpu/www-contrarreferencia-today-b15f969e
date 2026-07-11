@@ -314,8 +314,11 @@ export function AccionDialog({
   const [detalle, setDetalle] = useState("");
   const [copied, setCopied] = useState(false);
 
+  const posterior = modo === "posterior" && !!categoria;
   const titulos: Record<Accion, string> = {
-    ingreso: "Confirmar ingreso del paciente",
+    ingreso: posterior
+      ? `Confirmar ingreso · ${categoria ? CATEGORIA_LABEL[categoria] : ""}`
+      : "Confirmar ingreso del paciente",
     ampliar: "Ampliar cupo",
     cancelar: "Cancelar cupo",
     archivar: "Notificación de vencimiento",
