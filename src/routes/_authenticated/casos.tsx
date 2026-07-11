@@ -113,15 +113,19 @@ function CasosPage() {
         title="SEGUIMIENTOS"
         bodyMaxHeight={null}
         leftAction={
-          <Button
-            size="sm"
-            variant={enabled ? "secondary" : "outline"}
-            className="rounded-full"
-            onClick={toggleNotif}
-          >
-            {enabled ? <Bell className="mr-1.5 h-4 w-4" /> : <BellOff className="mr-1.5 h-4 w-4" />}
-            {enabled ? "Alertas activas" : "Alertas apagadas"}
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button
+              size="sm"
+              variant={enabled ? "secondary" : "outline"}
+              className="h-9 w-9 rounded-full p-0"
+              onClick={toggleNotif}
+              title={enabled ? "ALERTAS ACTIVAS" : "ALERTAS APAGADAS"}
+              aria-label={enabled ? "ALERTAS ACTIVAS" : "ALERTAS APAGADAS"}
+            >
+              {enabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+            </Button>
+            <MensajesRecientesButton mensajes={mensajes} titulo="Últimos mensajes de gestión" />
+          </div>
         }
         action={
           canEdit && (
