@@ -11,7 +11,21 @@ import { useCasos, useCatalogos, usePlantillas } from "@/lib/use-rc-data";
 import { useNotifVencimientos } from "@/lib/use-notif-vencimientos";
 import { RegistrarWizard } from "@/components/rc/registrar-wizard";
 import { SeguimientoControl } from "@/components/rc/seguimiento-control";
-import { type Caso } from "@/lib/rc-utils";
+import { type Caso, TIPO_LABEL } from "@/lib/rc-utils";
+import {
+  MensajesRecientesButton,
+  type MensajeItem,
+  type MensajeColor,
+} from "@/components/remisiones/mensajes-recientes";
+
+function colorPorTipo(tipo: string): MensajeColor {
+  const t = (tipo || "").toUpperCase();
+  if (t === "ACEP" || t === "CRUE_ACEP" || t === "ING") return "green";
+  if (t === "NEG" || t === "CRUE_NEG" || t === "CAN") return "red";
+  if (t === "AMP") return "amber";
+  if (t === "CRUE_NR") return "sky";
+  return "blue";
+}
 
 export const Route = createFileRoute("/_authenticated/casos")({
   component: CasosPage,
