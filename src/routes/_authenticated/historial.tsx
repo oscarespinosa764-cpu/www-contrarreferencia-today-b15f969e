@@ -1692,20 +1692,6 @@ function HistorialPage() {
               </PopoverContent>
             </Popover>
 
-            {usaMensajes && <MensajesRecientesButton vista={vista} mensajes={mensajes} />}
-
-            {/* Bitácora PDF por documento */}
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 rounded-full border-status-red/40 bg-status-red/10 text-[11px] font-semibold text-status-red hover:bg-status-red/20"
-              onClick={() => setBitacoraOpen(true)}
-            >
-              <FileText className="mr-1.5 h-3.5 w-3.5" /> Bitácora PDF
-            </Button>
-
-
-
             {/* Exportación */}
             <Popover>
               <PopoverTrigger asChild>
@@ -1735,90 +1721,92 @@ function HistorialPage() {
           </div>
         </div>
 
-        {/* Búsqueda */}
-        <div className="relative mb-3">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="rounded-lg pl-9"
-            placeholder="Buscar por documento, paciente, radicado…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-        </div>
-
-        {/* Consulta por paciente: historia clínica cronológica tipo ÍNDIGO */}
-        {modoConsulta === "timeline" ? (
+        {/* Consulta por paciente activa: cabecera + casos separados por case_id.
+            Sin búsqueda: barra plegable "Últimos 10 casos". */}
+        {docTrim ? (
           cargando ? (
             <p className="py-10 text-center text-sm text-muted-foreground">Cargando…</p>
-          ) : !docTrim ? (
-            <div className="rounded-2xl border border-border bg-card py-14 text-center shadow-sm">
-              <p className="text-sm font-semibold text-foreground">Ingresa un documento</p>
-              <p className="text-xs text-muted-foreground">
-                Escribe el documento o usa la búsqueda avanzada para ver la historia del paciente.
-              </p>
-            </div>
           ) : !pacienteExiste ? (
             <div className="rounded-2xl border border-border bg-card py-14 text-center shadow-sm">
               <p className="text-sm font-semibold text-foreground">NO SE ENCONTRÓ UN PACIENTE CON EL DOCUMENTO INGRESADO.</p>
             </div>
           ) : (
-            <LineaTiempoPaciente items={consultaItems} documento={docTrim} />
+            <PacienteResultado
+              vista={vista}
+              nombre={pacienteNombre}
+              documento={docTrim}
+              entrantes={gruposF}
+              salientes={remisionesF as Remision[]}
+              phd={phdF as Generico[]}
+              internas={internasF as Generico[]}
+              buildEntrante={buildEntrante}
+              buildSaliente={buildSaliente}
+              buildPHD={buildPHD}
+              buildInterna={buildInterna}
+              canEdit={canEdit}
+              onConfirmar={(g) => setIngresoFor(g)}
+              casoExpandido={casoExpandido}
+              onToggleCaso={(k) => setCasoExpandido((p) => (p === k ? null : k))}
+              onBitacoraCaso={pdfConstruido}
+              onBitacoraUnificada={pdfConsolidado}
+            />
           )
-        ) : /* Lista */ cargando ? (
+        ) : cargando ? (
           <p className="py-10 text-center text-sm text-muted-foreground">Cargando…</p>
-        ) : vacio ? (
-          <div className="rounded-2xl border border-border bg-card py-16 text-center shadow-sm">
-            <p className="text-3xl text-muted-foreground">🔍</p>
-            <p className="mt-2 text-sm font-semibold text-foreground">{mensajeVacio}</p>
-            {busquedaActiva && (
-              <p className="text-xs text-muted-foreground">Prueba con otros términos o limpia los filtros</p>
-            )}
-          </div>
-        ) : vista === "entrantes" ? (
-          <div className="grid gap-2">
-            {gruposV.map((g) => (
-              <CasoCard key={g.key} grupo={g} canEdit={canEdit} onConfirmar={() => setIngresoFor(g)} onPDF={() => pdfEntrante(g)} />
-            ))}
-            {hayMas && <VerMasButton onClick={verMas} />}
-          </div>
-        ) : vista === "salientes" ? (
-          <div className="grid gap-2">
-            {remisionesV.map((r) => (
-              <RemisionCard key={r.id} remision={r} onPDF={() => pdfSaliente(r)} />
-            ))}
-            {hayMas && <VerMasButton onClick={verMas} />}
-          </div>
-        ) : vista === "phd" ? (
-          <div className="grid gap-2">
-            {(phdV as Generico[]).map((r) => (
-              <GenericoCard
-                key={r.id}
-                titulo={`${v(r.paciente) || "Sin nombre"}`}
-                sub={[v(r.documento), v(r.tipo_solicitud_detalle) || v(r.tipo_solicitud), v(r.eapb)]}
-                estado={estadoGenerico(r.estado)}
-                fecha={fmtFechaHora((r.fecha_inicio as string) || r.created_at)}
-                radicado={fmtRadicado(v(r.codigo_radicacion), r.eapb_genera_codigo as boolean)}
-                onPDF={() => pdfPHD(r)}
-              />
-            ))}
-            {hayMas && <VerMasButton onClick={verMas} />}
-          </div>
         ) : (
-          <div className="grid gap-2">
-            {(internasV as Generico[]).map((r) => (
-              <GenericoCard
-                key={r.id}
-                titulo={`${v(r.paciente) || "Sin nombre"}`}
-                sub={[v(r.documento), v(r.tipo_solicitud), v(r.servicio)]}
-                estado={estadoGenerico(r.estado)}
-                fecha={fmtFechaHora((r.fecha_inicio as string) || r.created_at)}
-                onPDF={() => pdfInterna(r)}
-              />
-            ))}
-            {hayMas && <VerMasButton onClick={verMas} />}
-          </div>
+          <Ultimos10Bar
+            abierto={u10Abierto}
+            onToggle={() => setU10Abierto((o) => !o)}
+            total={Math.min(fullLen, 10)}
+          >
+            {fullLen === 0 ? (
+              <p className="py-6 text-center text-xs font-semibold text-muted-foreground">
+                NO HAY CASOS REGISTRADOS EN ESTA CATEGORÍA.
+              </p>
+            ) : vista === "entrantes" ? (
+              <div className="grid gap-2">
+                {gruposF.slice(0, 10).map((g) => (
+                  <CasoCard key={g.key} grupo={g} canEdit={canEdit} onConfirmar={() => setIngresoFor(g)} onPDF={() => pdfEntrante(g)} />
+                ))}
+              </div>
+            ) : vista === "salientes" ? (
+              <div className="grid gap-2">
+                {(remisionesF as Remision[]).slice(0, 10).map((r) => (
+                  <RemisionCard key={r.id} remision={r} onPDF={() => pdfSaliente(r)} />
+                ))}
+              </div>
+            ) : vista === "phd" ? (
+              <div className="grid gap-2">
+                {(phdF as Generico[]).slice(0, 10).map((r) => (
+                  <GenericoCard
+                    key={r.id}
+                    titulo={`${v(r.paciente) || "Sin nombre"}`}
+                    sub={[v(r.documento), v(r.tipo_solicitud_detalle) || v(r.tipo_solicitud), v(r.eapb)]}
+                    estado={estadoGenerico(r.estado)}
+                    fecha={fmtFechaHora((r.fecha_inicio as string) || r.created_at)}
+                    radicado={fmtRadicado(v(r.codigo_radicacion), r.eapb_genera_codigo as boolean)}
+                    onPDF={() => pdfPHD(r)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="grid gap-2">
+                {(internasF as Generico[]).slice(0, 10).map((r) => (
+                  <GenericoCard
+                    key={r.id}
+                    titulo={`${v(r.paciente) || "Sin nombre"}`}
+                    sub={[v(r.documento), v(r.tipo_solicitud), v(r.servicio)]}
+                    estado={estadoGenerico(r.estado)}
+                    fecha={fmtFechaHora((r.fecha_inicio as string) || r.created_at)}
+                    onPDF={() => pdfInterna(r)}
+                  />
+                ))}
+              </div>
+            )}
+          </Ultimos10Bar>
         )}
       </Panel>
+
 
 
       <IngresoDialog grupo={ingresoFor} onClose={() => setIngresoFor(null)} onConfirmar={handleConfirmarIngreso} />
