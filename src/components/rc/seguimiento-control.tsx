@@ -198,13 +198,15 @@ export function SeguimientoControl({ casos, catalogos, plantillas, tick }: Props
   );
 }
 
-function AccionDialog({
+export function AccionDialog({
   accion,
   caso,
   casos,
   catalogos,
   plantillas,
   onClose,
+  modo,
+  categoria,
 }: {
   accion: Accion;
   caso: Caso;
@@ -212,6 +214,9 @@ function AccionDialog({
   catalogos: Catalogos;
   plantillas: Plantilla[];
   onClose: () => void;
+  /** "posterior" = ingreso posterior a cancelación/negación (ventana de 24 h). */
+  modo?: "posterior";
+  categoria?: CategoriaIngreso;
 }) {
   const { user } = useAuth();
   const qc = useQueryClient();
