@@ -872,16 +872,15 @@ function HistorialPage() {
 
   const limpiarConsulta = () => {
     setDocBusca("");
-    setQ("");
     setSede(SEDE_DEFAULT);
-    setServicio("TODOS LOS SERVICIOS");
     setTipo("TODOS");
     setSalTipo("TODOS");
     setGenTipo("TODOS");
     setPeriodo("Todos");
     setFechaEspecifica(undefined);
     setLimite(20);
-    setModoConsulta("lista");
+    setU10Abierto(false);
+    setCasoExpandido(null);
   };
 
   const gruposF = useMemo(
