@@ -71,9 +71,10 @@ function CasosPage() {
   const mensajes = useMemo<MensajeItem[]>(
     () =>
       casos
-        .filter((c) => (c.texto_ia || "").trim().length > 0)
+        .map((c) => ({ c, texto: ((c as { texto_ia?: string | null }).texto_ia || "").trim() }))
+        .filter(({ texto }) => texto.length > 0)
         .slice(0, 20)
-        .map((c) => ({
+        .map(({ c, texto }) => ({
           id: c.id,
           documento: c.documento || "—",
           nombre: [c.nombres, c.apellidos].filter(Boolean).join(" ") || "Sin nombre",
@@ -81,7 +82,7 @@ function CasosPage() {
           estado: (TIPO_LABEL[c.tipo] || c.tipo || "GESTIÓN").toUpperCase(),
           color: colorPorTipo(c.tipo),
           fecha: "",
-          mensaje: c.texto_ia || "",
+          mensaje: texto,
         })),
     [casos],
   );
