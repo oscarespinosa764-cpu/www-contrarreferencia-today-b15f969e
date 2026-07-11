@@ -632,22 +632,21 @@ function HistorialPage() {
     (user?.user_metadata?.nombre as string) || user?.email || "Usuario autenticado";
   const qc = useQueryClient();
   const [vista, setVista] = useState<Vista>("entrantes");
-  const [q, setQ] = useState("");
   const [tipo, setTipo] = useState<TipoFilter>("TODOS");
   const [salTipo, setSalTipo] = useState<SalFilter>("TODOS");
   const [genTipo, setGenTipo] = useState<GenFilter>("TODOS");
   const [periodo, setPeriodo] = useState<Periodo>("Todos");
   const [fechaEspecifica, setFechaEspecifica] = useState<Date | undefined>(undefined);
   const [ingresoFor, setIngresoFor] = useState<Grupo | null>(null);
-  const [bitacoraOpen, setBitacoraOpen] = useState(false);
-  // Consulta por paciente (SEDE · SERVICIO · documento · nombre · historia clínica)
+  // Consulta por paciente (SEDE · documento · nombre)
   const [sede, setSede] = useState<string>(SEDE_DEFAULT);
-  const [servicio, setServicio] = useState<string>("TODOS LOS SERVICIOS");
+  const [servicio] = useState<string>("TODOS LOS SERVICIOS");
   const [docBusca, setDocBusca] = useState("");
   const [buscarPacienteOpen, setBuscarPacienteOpen] = useState(false);
-  const [modoConsulta, setModoConsulta] = useState<"lista" | "timeline">("lista");
+  // Estado inicial: barra "Últimos 10 casos" plegable + secuencia de caso desplegable.
+  const [u10Abierto, setU10Abierto] = useState(false);
+  const [casoExpandido, setCasoExpandido] = useState<string | null>(null);
   const [limite, setLimite] = useState(20);
-  const verMas = () => setLimite((n) => n + 20);
 
   const { data: casos, isLoading } = useQuery({
     queryKey: ["historial-casos"],
