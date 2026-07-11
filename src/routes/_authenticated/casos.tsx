@@ -5,7 +5,13 @@ import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/app-header";
 import { Panel, StatCard } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Plus, Bell, BellOff } from "lucide-react";
 import { useCasos, useCatalogos, usePlantillas } from "@/lib/use-rc-data";
 import { useNotifVencimientos } from "@/lib/use-notif-vencimientos";
@@ -99,14 +105,37 @@ function CasosPage() {
 
   return (
     <div>
-      <AppHeader title="DASHBOARD OPERATIVO ENTRANTES" subtitle="Registro de casos referencias entrantes" />
+      <AppHeader
+        title="DASHBOARD OPERATIVO ENTRANTES"
+        subtitle="Registro de casos referencias entrantes"
+      />
 
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <StatCard title="Aceptados" value={stats.aceptados} caption="Cupos aceptados" color="green" />
+        <StatCard
+          title="Aceptados"
+          value={stats.aceptados}
+          caption="Cupos aceptados"
+          color="green"
+        />
         <StatCard title="Negados" value={stats.negados} caption="Cupos negados" color="red" />
-        <StatCard title="Ampliaciones" value={stats.ampliaciones} caption="Cupos ampliados" color="amber" />
-        <StatCard title="Cancelaciones" value={stats.cancelaciones} caption="Cupos cancelados" color="red" />
-        <StatCard title="Ingresos" value={stats.ingresos} caption="Pacientes ingresados" color="blue" />
+        <StatCard
+          title="Ampliaciones"
+          value={stats.ampliaciones}
+          caption="Cupos ampliados"
+          color="amber"
+        />
+        <StatCard
+          title="Cancelaciones"
+          value={stats.cancelaciones}
+          caption="Cupos cancelados"
+          color="red"
+        />
+        <StatCard
+          title="Ingresos"
+          value={stats.ingresos}
+          caption="Pacientes ingresados"
+          color="blue"
+        />
       </div>
 
       <Panel
@@ -142,13 +171,23 @@ function CasosPage() {
                     Asistente de 3 pasos: documento → datos del paciente → clasificación y texto.
                   </p>
                 </DialogHeader>
-                <RegistrarWizard casos={casos} catalogos={catalogos} plantillas={plantillas} onDone={refrescar} />
+                <RegistrarWizard
+                  casos={casos}
+                  catalogos={catalogos}
+                  plantillas={plantillas}
+                  onDone={refrescar}
+                />
               </DialogContent>
             </Dialog>
           )
         }
       >
-        <SeguimientoControl casos={casos} catalogos={catalogos} plantillas={plantillas} tick={tick} />
+        <SeguimientoControl
+          casos={casos}
+          catalogos={catalogos}
+          plantillas={plantillas}
+          tick={tick}
+        />
       </Panel>
     </div>
   );

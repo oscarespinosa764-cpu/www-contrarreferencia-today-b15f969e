@@ -75,7 +75,9 @@ export function MensajesRecientesButton({
         </div>
         <div className="max-h-[24rem] overflow-y-auto p-2">
           {mensajes.length === 0 ? (
-            <p className="py-6 text-center text-xs text-muted-foreground">No hay mensajes recientes.</p>
+            <p className="py-6 text-center text-xs text-muted-foreground">
+              No hay mensajes recientes.
+            </p>
           ) : (
             <div className="grid gap-1.5">
               {mensajes.map((m) => {
@@ -88,10 +90,16 @@ export function MensajesRecientesButton({
                     >
                       <div className="min-w-0">
                         <p className="truncate text-xs font-bold text-status-blue">{m.documento}</p>
-                        <p className="truncate text-[10px] font-semibold uppercase text-muted-foreground">{m.nombre}</p>
-                        {m.ips && <p className="truncate text-[10px] text-muted-foreground">{m.ips}</p>}
+                        <p className="truncate text-[10px] font-semibold uppercase text-muted-foreground">
+                          {m.nombre}
+                        </p>
+                        {m.ips && (
+                          <p className="truncate text-[10px] text-muted-foreground">{m.ips}</p>
+                        )}
                       </div>
-                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${BADGE[m.color]}`}>
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase ${BADGE[m.color]}`}
+                      >
                         {m.estado}
                       </span>
                     </button>
@@ -101,7 +109,12 @@ export function MensajesRecientesButton({
                           {m.mensaje}
                         </pre>
                         <div className="mt-2 flex items-center justify-end gap-1.5">
-                          <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setAbierto(null)}>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-[11px]"
+                            onClick={() => setAbierto(null)}
+                          >
                             <X className="mr-1 h-3.5 w-3.5" /> Cerrar
                           </Button>
                           <Button
