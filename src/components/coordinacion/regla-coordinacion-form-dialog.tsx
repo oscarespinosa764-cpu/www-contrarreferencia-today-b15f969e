@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -20,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import type { ReglaCoordDB } from "@/lib/reglas-coordinacion-db";
+import { CANALES } from "@/lib/notifications-utils";
 
 export type ReglaCoordFormValues = {
   codigo: string;
@@ -33,11 +35,15 @@ export type ReglaCoordFormValues = {
   unidad: string | null;
   prioridad: string;
   activo: boolean;
+  notificar_externo: boolean;
+  canales: string[];
+  requiere_crue: boolean;
 };
 
 const SUBVENTANAS = ["ENTRANTES", "SALIENTES"];
 const PRIORIDADES = ["MEDIO", "ALTO", "CRITICO"];
 const UNIDADES = ["min", "horas", "turnos"];
+const CANALES_ACTIVOS = CANALES.filter((c) => c.activo);
 
 function normalizarCodigo(v: string) {
   return v
