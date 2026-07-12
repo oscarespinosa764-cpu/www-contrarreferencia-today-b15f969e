@@ -52,7 +52,10 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
     enabled: !!schedule,
     queryFn: async () => {
       const { data } = await supabase.from("shift_schedule_members")
-        .select("*").eq("schedule_id", schedule!.id).order("sort_order");
+        .select(
+          "id, schedule_id, user_id, full_name, role_name, sede, active, base_hours, pending_hours, notes, sort_order",
+        )
+        .eq("schedule_id", schedule!.id).order("sort_order");
       return (data ?? []) as unknown as ShiftMember[];
     },
   });
@@ -383,7 +386,10 @@ function AgregarColaborador({
             role_name: perfil.cargo || null,
             sort_order: sortOrder,
           })
-          .select("*").single();
+          .select(
+            "id, schedule_id, user_id, full_name, role_name, sede, active, base_hours, pending_hours, notes, sort_order",
+          )
+          .single();
         if (error) throw error;
         member = data as unknown as ShiftMember;
         onMembersChanged();
