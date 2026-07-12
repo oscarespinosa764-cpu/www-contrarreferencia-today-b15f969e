@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, ShieldAlert, SlidersHorizontal, X } from "lucide-react";
+import { Search, ShieldAlert, SlidersHorizontal, X, Zap, User } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { NIVEL_BADGE } from "@/lib/avisos-reglas";
@@ -48,6 +48,12 @@ function tiempoAbierto(v: string | null | undefined): string {
   return `${dias} día${dias > 1 ? "s" : ""} ${h % 24} h`;
 }
 
+// Una alerta es "automática" cuando la generó el cron de evaluación por umbral.
+function esAutomatica(a: Alerta): boolean {
+  const d = a.detalles as { origen?: string } | null;
+  return d?.origen === "cron";
+}
+
 // Próximas transiciones disponibles según el estado actual.
 function transicionesDe(estado: string): { estado: EstadoAlerta; label: string }[] {
   switch (estado) {
@@ -77,6 +83,7 @@ export function AlertasCoordinacionPanel() {
   const [fEstado, setFEstado] = useState("todas");
   const [fPrioridad, setFPrioridad] = useState("todas");
   const [fModulo, setFModulo] = useState("todos");
+  const [fOrigen, setFOrigen] = useState("todos");
   const [filtrosOpen, setFiltrosOpen] = useState(false);
 
   const { data: alertas, isLoading } = useQuery({
@@ -117,11 +124,13 @@ export function AlertasCoordinacionPanel() {
         if (fEstado !== "todas" && a.estado !== fEstado) return false;
         if (fPrioridad !== "todas" && (a.prioridad ?? "").toUpperCase() !== fPrioridad) return false;
         if (fModulo !== "todos" && (a.modulo ?? "") !== fModulo) return false;
+        if (fOrigen === "auto" && !esAutomatica(a)) return false;
+        if (fOrigen === "manual" && esAutomatica(a)) return false;
         if (term && !(a.mensaje ?? "").toLowerCase().includes(term) && !(a.caso_codigo ?? "").toLowerCase().includes(term))
           return false;
         return true;
       }),
-    [alertas, fEstado, fPrioridad, fModulo, term],
+    [alertas, fEstado, fPrioridad, fModulo, fOrigen, term],
   );
 
   const modulos = useMemo(
@@ -136,11 +145,16 @@ export function AlertasCoordinacionPanel() {
       abiertas: t.filter((a) => a.estado === "ABIERTA").length,
       revision: t.filter((a) => a.estado === "EN REVISIÓN").length,
       gestionadas: t.filter((a) => a.estado === "GESTIONADA").length,
+      automaticas: t.filter((a) => esAutomatica(a)).length,
     };
   }, [alertas]);
 
   const filtrosActivos =
-    q.trim() !== "" || fEstado !== "todas" || fPrioridad !== "todas" || fModulo !== "todos";
+    q.trim() !== "" ||
+    fEstado !== "todas" ||
+    fPrioridad !== "todas" ||
+    fModulo !== "todos" ||
+    fOrigen !== "todos";
 
   const manejar = (a: Alerta, estado: EstadoAlerta) => {
     let nota: string | undefined;
@@ -173,6 +187,10 @@ export function AlertasCoordinacionPanel() {
           <span className="rounded-full bg-status-sky/15 px-2.5 py-0.5 text-status-sky">
             {resumen.gestionadas} gestionadas
           </span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-vitalis-blue/15 px-2.5 py-0.5 text-vitalis-blue">
+            <Zap className="h-3 w-3" />
+            {resumen.automaticas} automáticas
+          </span>
         </div>
         <Button
           type="button"
@@ -198,12 +216,13 @@ export function AlertasCoordinacionPanel() {
                 setFEstado("todas");
                 setFPrioridad("todas");
                 setFModulo("todos");
+                setFOrigen("todos");
               }}
             >
               <X className="h-3 w-3" /> Limpiar
             </button>
           </div>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <div className="relative min-w-0">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -241,6 +260,14 @@ export function AlertasCoordinacionPanel() {
                 {modulos.map((m) => (
                   <SelectItem key={m} value={m}>{m}</SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+            <Select value={fOrigen} onValueChange={setFOrigen}>
+              <SelectTrigger className="rounded-full"><SelectValue placeholder="Origen" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todo origen</SelectItem>
+                <SelectItem value="auto">Automáticas (motor)</SelectItem>
+                <SelectItem value="manual">Manuales (evento)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -287,6 +314,15 @@ export function AlertasCoordinacionPanel() {
                         </span>
                         {a.caso_codigo && (
                           <span className="rounded-full bg-muted px-2 py-0.5 font-semibold">Cupo {a.caso_codigo}</span>
+                        )}
+                        {esAutomatica(a) ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-vitalis-blue/15 px-2 py-0.5 font-semibold text-vitalis-blue">
+                            <Zap className="h-3 w-3" /> Automática
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-semibold">
+                            <User className="h-3 w-3" /> Manual
+                          </span>
                         )}
                       </p>
                       {a.mensaje && <p className="mt-1.5 text-xs text-muted-foreground">{a.mensaje}</p>}
