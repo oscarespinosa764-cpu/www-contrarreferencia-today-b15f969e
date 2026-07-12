@@ -1085,6 +1085,32 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                   setHoraRec("");
                 }}
               />
+              <TipoCard
+                label="Paciente sin gestión de referencia"
+                icon={<AlertTriangle className="h-5 w-5" />}
+                accent="blue"
+                active={isSinGestion}
+                onClick={() => {
+                  setTipo("SIN_GESTION");
+                  setCrueOpen(false);
+                  setMedico("");
+                  setMotivoNeg("");
+                  setComplejidad("");
+                  setComplejidadSub("");
+                  setDocSubtipo("");
+                  setDocChecks({});
+                  setRedSubtipo("");
+                  setCodigoCrue("");
+                  setContactoIps("");
+                  setUnidadReq("");
+                  setNombreFuncionario("");
+                  setCargoFuncionario("");
+                  setEspsCrue([newDyn()]);
+                  setMotivosCrueDyn([newDyn()]);
+                  setFechaRec("");
+                  setHoraRec("");
+                }}
+              />
             </div>
             {crueOpen && (
               <div className="grid gap-2 pt-1 sm:grid-cols-3">
