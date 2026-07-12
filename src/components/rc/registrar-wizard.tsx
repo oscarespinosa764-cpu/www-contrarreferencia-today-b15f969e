@@ -5,6 +5,7 @@ import { siguienteCodigo } from "@/lib/codigo.functions";
 import { crearAlertaCoordinacion } from "@/lib/alertas-coordinacion.functions";
 import { useAuth } from "@/lib/auth";
 import { AutoComplete } from "@/components/rc/autocomplete";
+import { Cie10Field } from "@/components/remisiones/cie10-field";
 import { ResultadoCard } from "@/components/rc/resultado-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
