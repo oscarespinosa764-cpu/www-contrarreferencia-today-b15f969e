@@ -775,6 +775,25 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
         /* no bloquea el flujo si falla la auditoría */
       }
 
+      // Alerta de coordinación (idempotente) para "Paciente sin gestión previa".
+      if (isSinGestion) {
+        try {
+          await crearAlertaCoordinacion({
+            data: {
+              codigo: "ALT-ENT-SIN-GESTION-PREVIA",
+              modulo: "REMISIONES",
+              prioridad: "ALTO",
+              mensaje: `Paciente ${[nombres, apellidos].filter(Boolean).join(" ") || "sin nombre"} (doc. ${documento.trim()}) ingresó sin gestión previa de referencia. Cupo/caso ${codigo}.`,
+              casoCodigo: codigo,
+              casoDocumento: documento.trim(),
+              idempotencyKey: `ALT-ENT-SIN-GESTION-PREVIA:${codigo}`,
+            },
+          });
+        } catch {
+          /* la alerta no debe bloquear el registro del caso */
+        }
+      }
+
       toast.success(`Registrado ${codigo}`);
       setResultado({ tipo, codigo, mensaje });
       onDone();
