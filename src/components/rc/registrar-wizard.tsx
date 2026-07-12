@@ -692,19 +692,19 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
         metadata = {
           tipo_caso: "SIN_GESTION",
           sin_gestion_previa: true,
+          // Procedencia reutilizada de los datos generales (paso 2). No se
+          // vuelve a solicitar en este paso.
           procedencia: {
             ips: ips || null,
             ciudad: ciudad || null,
-            departamento: sgDepto.trim() || null,
-            direccion: sgDireccion.trim() || null,
-            telefono: sgTelProc.trim() || null,
           },
           ingreso: {
             fecha: sgFechaIng || null,
             hora: sgHoraIng || null,
+            // Momento real del registro, completo y con zona horaria (auditoría).
+            capturado_en: sgIngresoAt.toISOString(),
             sede: sgSede.trim() || null,
             unidad: unidad || null,
-            cama: sgCama.trim() || null,
             especialidad: especialidad || null,
             diagnostico: sgDiagnostico.trim() || null,
           },
@@ -712,9 +712,8 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
             empresa: sgEmpresa.trim() || null,
             tipo_ambulancia: sgTipoAmb.trim() || null,
             placa: sgPlaca.trim() || null,
-            tripulante: sgTripulante.trim() || null,
-            cargo: sgCargoTrip.trim() || null,
-            telefono: sgTelTrip.trim() || null,
+            tripulante: sgTripulante.trim().toUpperCase() || null,
+            cargo: sgCargoTrip.trim().toUpperCase() || null,
             placa_no_catalogada: placaNoCatalogada,
             empresa_no_catalogada: empresaNoCatalogada,
           },
