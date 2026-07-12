@@ -23,11 +23,13 @@ export function Cie10Field({
   label = "CIE-10",
   required,
   defaultValue = "",
+  onValueChange,
 }: {
   name?: string;
   label?: string;
   required?: boolean;
   defaultValue?: string;
+  onValueChange?: (v: string) => void;
 }) {
   const [val, setVal] = useState(defaultValue);
   const [results, setResults] = useState<Cie[]>([]);
@@ -44,6 +46,7 @@ export function Cie10Field({
 
   const onChange = async (q: string) => {
     setVal(q);
+    onValueChange?.(q);
     const term = q.trim().toLowerCase();
     if (term.length < 2) {
       setResults([]);
@@ -59,7 +62,9 @@ export function Cie10Field({
   };
 
   const pick = (x: Cie) => {
-    setVal(`${x.c} - ${x.d}`);
+    const next = `${x.c} - ${x.d}`;
+    setVal(next);
+    onValueChange?.(next);
     setResults([]);
     setOpen(false);
   };

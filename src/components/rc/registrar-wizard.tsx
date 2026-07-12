@@ -5,6 +5,7 @@ import { siguienteCodigo } from "@/lib/codigo.functions";
 import { crearAlertaCoordinacion } from "@/lib/alertas-coordinacion.functions";
 import { useAuth } from "@/lib/auth";
 import { AutoComplete } from "@/components/rc/autocomplete";
+import { Cie10Field } from "@/components/remisiones/cie10-field";
 import { ResultadoCard } from "@/components/rc/resultado-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,6 +76,20 @@ const CRUE_TIPOS: { value: Tipo; label: string }[] = [
 const UNIDADES_CRUE = ["URGENCIAS", "UCI"];
 
 const COMPLEJIDADES = ["MAYOR COMPLEJIDAD", "MENOR COMPLEJIDAD"];
+
+// ── Catálogo institucional para "Paciente sin gestión de referencia" ──
+// No existe un catálogo dedicado de SEDES ni de TIPO_AMBULANCIA en la tabla
+// catalogos; se usa la nomenclatura institucional vigente como respaldo.
+const SEDES_SG = [
+  "CLÍNICA GLORIA PATRICIA PINZÓN",
+  "PRINCIPAL",
+  "CONSULTA ESPECIALIZADA",
+  "SALA ROSA",
+  "SAN VICENTE DEL CAGUÁN",
+];
+const SEDE_SG_DEFAULT = "CLÍNICA GLORIA PATRICIA PINZÓN";
+const TIPOS_AMB_SG = ["TAB", "TAM", "TAM-N"];
+const UNIDAD_SG_DEFAULT = "URGENCIAS";
 
 const ENTIDAD_TIPOS: { value: EntidadTipo; label: string }[] = [
   { value: "EPS", label: "EPS" },
@@ -150,29 +165,25 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const [motivosCrueDyn, setMotivosCrueDyn] = useState<DynItem[]>([newDyn()]);
 
   // ── PACIENTE SIN GESTIÓN DE REFERENCIA (paciente ya ingresado físicamente) ──
-  const nowHHMM = () => {
-    const d = new Date();
-    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-  };
-  const [sgDepto, setSgDepto] = useState("");
-  const [sgDireccion, setSgDireccion] = useState("");
-  const [sgTelProc, setSgTelProc] = useState("");
-  const [sgFechaIng, setSgFechaIng] = useState(() => new Date().toISOString().slice(0, 10));
-  const [sgHoraIng, setSgHoraIng] = useState(nowHHMM);
-  const [sgSede, setSgSede] = useState("");
-  const [sgCama, setSgCama] = useState("");
+  // Fecha y hora de ingreso: se captura automáticamente del sistema al abrir el
+  // registro; es de solo lectura y se guarda completa con zona horaria.
+  const [sgIngresoAt] = useState(() => new Date());
+  const sgFechaIng = sgIngresoAt.toISOString().slice(0, 10);
+  const sgHoraIng = `${String(sgIngresoAt.getHours()).padStart(2, "0")}:${String(sgIngresoAt.getMinutes()).padStart(2, "0")}`;
+  const sgFechaHoraLabel = sgIngresoAt.toLocaleString("es-CO", { dateStyle: "long", timeStyle: "short" });
+  const [sgSede, setSgSede] = useState(SEDE_SG_DEFAULT);
   const [sgDiagnostico, setSgDiagnostico] = useState("");
   const [sgEmpresa, setSgEmpresa] = useState("");
   const [sgTipoAmb, setSgTipoAmb] = useState("");
   const [sgPlaca, setSgPlaca] = useState("");
   const [sgTripulante, setSgTripulante] = useState("");
   const [sgCargoTrip, setSgCargoTrip] = useState("");
-  const [sgTelTrip, setSgTelTrip] = useState("");
   const [sgCrueConoce, setSgCrueConoce] = useState<"" | "SI" | "NO" | "NV">("");
   const [sgCrueCodigo, setSgCrueCodigo] = useState("");
   const [sgCrueFuncionario, setSgCrueFuncionario] = useState("");
   const [sgCrueObs, setSgCrueObs] = useState("");
   const [sgPlantilla, setSgPlantilla] = useState("");
+
 
 
   // Paciente reconsultante (autollenado) y ventana ADRES
@@ -457,20 +468,13 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     setCargoFuncionario("");
     setEspsCrue([newDyn()]);
     setMotivosCrueDyn([newDyn()]);
-    setSgDepto("");
-    setSgDireccion("");
-    setSgTelProc("");
-    setSgFechaIng(new Date().toISOString().slice(0, 10));
-    setSgHoraIng(nowHHMM());
-    setSgSede("");
-    setSgCama("");
+    setSgSede(SEDE_SG_DEFAULT);
     setSgDiagnostico("");
     setSgEmpresa("");
     setSgTipoAmb("");
     setSgPlaca("");
     setSgTripulante("");
     setSgCargoTrip("");
-    setSgTelTrip("");
     setSgCrueConoce("");
     setSgCrueCodigo("");
     setSgCrueFuncionario("");
@@ -507,9 +511,16 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     if (tipo === "CRUE_ACEP" && !unidadReq) return toast.error("Selecciona la unidad requerida (URGENCIAS o UCI)");
     if (isSinGestion) {
       if (!documento.trim()) return toast.error("Indica el documento del paciente");
-      if (!sgFechaIng) return toast.error("Indica la fecha real de ingreso");
-      if (!sgHoraIng) return toast.error("Indica la hora real de ingreso");
+      if (!sgFechaIng || !sgHoraIng) return toast.error("No se pudo capturar la fecha y hora de ingreso");
+      if (!sgSede.trim()) return toast.error("Selecciona la sede de ingreso");
       if (!unidad.trim()) return toast.error("Indica la unidad o servicio de ingreso");
+      if (!especialidad.trim()) return toast.error("Indica la especialidad");
+      if (!sgDiagnostico.trim()) return toast.error("Indica el diagnóstico / CIE-10");
+      if (!sgEmpresa.trim()) return toast.error("Indica la empresa de ambulancia");
+      if (!sgTipoAmb.trim()) return toast.error("Selecciona el tipo de ambulancia");
+      if (!sgPlaca.trim()) return toast.error("Indica la placa del vehículo");
+      if (!sgTripulante.trim()) return toast.error("Indica el funcionario del TEP");
+      if (!sgCargoTrip.trim()) return toast.error("Indica el cargo");
       if (!sgCrueConoce) return toast.error("Indica si el CRUE tenía conocimiento de la llegada");
     }
 
@@ -682,19 +693,19 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
         metadata = {
           tipo_caso: "SIN_GESTION",
           sin_gestion_previa: true,
+          // Procedencia reutilizada de los datos generales (paso 2). No se
+          // vuelve a solicitar en este paso.
           procedencia: {
             ips: ips || null,
             ciudad: ciudad || null,
-            departamento: sgDepto.trim() || null,
-            direccion: sgDireccion.trim() || null,
-            telefono: sgTelProc.trim() || null,
           },
           ingreso: {
             fecha: sgFechaIng || null,
             hora: sgHoraIng || null,
+            // Momento real del registro, completo y con zona horaria (auditoría).
+            capturado_en: sgIngresoAt.toISOString(),
             sede: sgSede.trim() || null,
             unidad: unidad || null,
-            cama: sgCama.trim() || null,
             especialidad: especialidad || null,
             diagnostico: sgDiagnostico.trim() || null,
           },
@@ -702,9 +713,8 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
             empresa: sgEmpresa.trim() || null,
             tipo_ambulancia: sgTipoAmb.trim() || null,
             placa: sgPlaca.trim() || null,
-            tripulante: sgTripulante.trim() || null,
-            cargo: sgCargoTrip.trim() || null,
-            telefono: sgTelTrip.trim() || null,
+            tripulante: sgTripulante.trim().toUpperCase() || null,
+            cargo: sgCargoTrip.trim().toUpperCase() || null,
             placa_no_catalogada: placaNoCatalogada,
             empresa_no_catalogada: empresaNoCatalogada,
           },
@@ -1576,48 +1586,28 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
 
           {isSinGestion && (
             <div className="space-y-4 rounded-2xl border border-status-blue/30 bg-status-blue/5 p-3">
-              <p className="text-[11px] text-muted-foreground">
-                El paciente ya está físicamente ingresado, sin gestión previa de referencia. Se registra
-                el ingreso ya confirmado; no genera cupo, seguimiento ni ventanas de ingreso. Las
-                sugerencias provienen de Catálogos.
+              <p className="text-center text-[12px] font-bold uppercase tracking-wide text-status-blue">
+                Paciente sin gestión previa de referencia
               </p>
 
-              {/* A. PROCEDENCIA */}
+              {/* A. INGRESO */}
               <div>
-                <Label className="text-[11px] font-bold uppercase text-status-blue">A. Procedencia</Label>
+                <Label className="text-[11px] font-bold uppercase text-status-blue">A. Ingreso</Label>
                 <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                  <AutoComplete label="IPS / institución de procedencia" value={ips} onChange={setIps} options={catalogos.ips} minChars={2} />
-                  <AutoComplete label="Ciudad" value={ciudad} onChange={setCiudad} options={catalogos.ciudades} />
-                  <div className="space-y-2">
-                    <Label htmlFor="sgdepto">Departamento</Label>
-                    <Input id="sgdepto" value={sgDepto} onChange={(e) => setSgDepto(e.target.value)} />
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="sgfh">Fecha y hora de ingreso</Label>
+                    <Input id="sgfh" value={sgFechaHoraLabel} readOnly tabIndex={-1} className="cursor-default bg-muted/40" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="sgdir">Dirección (si se conoce)</Label>
-                    <Input id="sgdir" value={sgDireccion} onChange={(e) => setSgDireccion(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sgtelp">Teléfono de contacto (si se conoce)</Label>
-                    <Input id="sgtelp" value={sgTelProc} onChange={(e) => setSgTelProc(e.target.value)} />
-                  </div>
-                </div>
-              </div>
-
-              {/* B. INGRESO */}
-              <div>
-                <Label className="text-[11px] font-bold uppercase text-status-blue">B. Ingreso</Label>
-                <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="sgfing">Fecha real de ingreso</Label>
-                    <Input id="sgfing" type="date" value={sgFechaIng} onChange={(e) => setSgFechaIng(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sghing">Hora real de ingreso</Label>
-                    <Input id="sghing" type="time" value={sgHoraIng} onChange={(e) => setSgHoraIng(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sgsede">Sede</Label>
-                    <Input id="sgsede" value={sgSede} onChange={(e) => setSgSede(e.target.value)} placeholder="Sede de ingreso" />
+                    <Label>Sede</Label>
+                    <Select value={sgSede} onValueChange={setSgSede}>
+                      <SelectTrigger><SelectValue placeholder="Seleccionar…" /></SelectTrigger>
+                      <SelectContent>
+                        {SEDES_SG.map((s) => (
+                          <SelectItem key={s} value={s}>{s}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Unidad / servicio de ingreso</Label>
@@ -1630,63 +1620,68 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sgcama">Cama (cuando aplique)</Label>
-                    <Input id="sgcama" value={sgCama} onChange={(e) => setSgCama(e.target.value)} />
-                  </div>
-                  <AutoComplete label="Especialidad" value={especialidad} onChange={setEspecialidad} options={catalogos.especialidades} />
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="sgdx">Diagnóstico / CIE-10 (si aplica)</Label>
-                    <Input id="sgdx" value={sgDiagnostico} onChange={(e) => setSgDiagnostico(e.target.value)} />
+                  <AutoComplete label="Especialidad" value={especialidad} onChange={setEspecialidad} options={catalogos.especialidades} minChars={2} required />
+                  <div className="sm:col-span-2">
+                    <Cie10Field
+                      name="sgcie10"
+                      label="Diagnóstico / CIE-10"
+                      required
+                      defaultValue={sgDiagnostico}
+                      onValueChange={setSgDiagnostico}
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* C. TRASLADO */}
+              {/* B. TRASLADO */}
               <div>
-                <Label className="text-[11px] font-bold uppercase text-status-blue">C. Traslado</Label>
+                <Label className="text-[11px] font-bold uppercase text-status-blue">B. Traslado</Label>
                 <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                  <AutoComplete label="Empresa de ambulancia" value={sgEmpresa} onChange={setSgEmpresa} options={catalogos.empresasTep} />
+                  <div className="space-y-1">
+                    <AutoComplete label="Empresa de ambulancia" value={sgEmpresa} onChange={setSgEmpresa} options={catalogos.empresasTep} minChars={2} required />
+                    {empresaNoCatalogada && (
+                      <span className="text-[10px] font-semibold text-status-amber">Empresa no catalogada (pendiente de revisión administrativa)</span>
+                    )}
+                  </div>
                   <div className="space-y-2">
-                    <Label htmlFor="sgtipoamb">Tipo de ambulancia</Label>
-                    <Input id="sgtipoamb" value={sgTipoAmb} onChange={(e) => setSgTipoAmb(e.target.value)} placeholder="BÁSICA / MEDICALIZADA…" />
+                    <Label>Tipo de ambulancia</Label>
+                    <Select value={sgTipoAmb} onValueChange={setSgTipoAmb}>
+                      <SelectTrigger><SelectValue placeholder="Seleccionar…" /></SelectTrigger>
+                      <SelectContent>
+                        {TIPOS_AMB_SG.map((t) => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-1">
-                    <AutoComplete label="Placa" value={sgPlaca} onChange={setSgPlaca} options={catalogos.placas} />
+                    <AutoComplete label="Placa" value={sgPlaca} onChange={setSgPlaca} options={catalogos.placas} required />
                     {placaNoCatalogada && (
                       <span className="text-[10px] font-semibold text-status-amber">Dato no catalogado (pendiente de revisión)</span>
                     )}
                   </div>
                   <AutoComplete
-                    label="Funcionario / tripulante que lo trae"
+                    label="Funcionario del TEP"
                     value={sgTripulante}
-                    onChange={setSgTripulante}
+                    onChange={(v) => setSgTripulante(v.toUpperCase())}
                     onPick={(v) => {
-                      setSgTripulante(v);
+                      setSgTripulante(v.toUpperCase());
                       const p = catalogos.profesionales.find((x) => x.nombre === v);
-                      if (p && p.cargo) setSgCargoTrip(p.cargo);
+                      if (p && p.cargo) setSgCargoTrip(p.cargo.toUpperCase());
                     }}
                     options={catalogos.profesionales.map((p) => p.nombre)}
+                    required
                   />
                   <div className="space-y-2">
-                    <Label htmlFor="sgcargo">Cargo del tripulante</Label>
-                    <Input id="sgcargo" value={sgCargoTrip} onChange={(e) => setSgCargoTrip(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sgtelt">Teléfono del tripulante</Label>
-                    <Input id="sgtelt" value={sgTelTrip} onChange={(e) => setSgTelTrip(e.target.value)} />
+                    <Label htmlFor="sgcargo">Cargo</Label>
+                    <Input id="sgcargo" value={sgCargoTrip} onChange={(e) => setSgCargoTrip(e.target.value.toUpperCase())} required />
                   </div>
                 </div>
-                {empresaNoCatalogada && (
-                  <span className="mt-1 block text-[10px] font-semibold text-status-amber">
-                    Empresa no catalogada (pendiente de revisión administrativa)
-                  </span>
-                )}
               </div>
 
-              {/* D. CRUE */}
+              {/* C. CRUE */}
               <div>
-                <Label className="text-[11px] font-bold uppercase text-status-blue">D. CRUE</Label>
+                <Label className="text-[11px] font-bold uppercase text-status-blue">C. CRUE</Label>
                 <div className="mt-2 grid gap-3 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>¿El CRUE tenía conocimiento de la llegada?</Label>
@@ -1718,10 +1713,10 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 </div>
               </div>
 
-              {/* E. INFORMACIÓN ADICIONAL */}
+              {/* D. INFORMACIÓN ADICIONAL */}
               <div className="space-y-2">
                 <Label htmlFor="sgdet" className="text-[11px] font-bold uppercase text-status-blue">
-                  E. Observaciones / detalle
+                  D. Observaciones / detalle
                 </Label>
                 <Textarea id="sgdet" rows={2} value={detalle} onChange={(e) => setDetalle(e.target.value)} placeholder="Información adicional…" />
               </div>
