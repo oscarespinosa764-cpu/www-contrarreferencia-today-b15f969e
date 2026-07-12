@@ -26,6 +26,7 @@ import { Route as AuthenticatedCuadroTurnoRouteImport } from './routes/_authenti
 import { Route as AuthenticatedControlMandoRouteImport } from './routes/_authenticated/control-mando'
 import { Route as AuthenticatedCatalogoRouteImport } from './routes/_authenticated/catalogo'
 import { Route as AuthenticatedCasosRouteImport } from './routes/_authenticated/casos'
+import { Route as ApiPublicHooksEvaluarAlertasCoordinacionRouteImport } from './routes/api/public/hooks/evaluar-alertas-coordinacion'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
@@ -115,6 +116,12 @@ const AuthenticatedCasosRoute = AuthenticatedCasosRouteImport.update({
   path: '/casos',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const ApiPublicHooksEvaluarAlertasCoordinacionRoute =
+  ApiPublicHooksEvaluarAlertasCoordinacionRouteImport.update({
+    id: '/api/public/hooks/evaluar-alertas-coordinacion',
+    path: '/api/public/hooks/evaluar-alertas-coordinacion',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -133,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/reglas': typeof AuthenticatedReglasRoute
   '/remisiones': typeof AuthenticatedRemisionesRoute
   '/seguimientos': typeof AuthenticatedSeguimientosRoute
+  '/api/public/hooks/evaluar-alertas-coordinacion': typeof ApiPublicHooksEvaluarAlertasCoordinacionRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -151,6 +159,7 @@ export interface FileRoutesByTo {
   '/reglas': typeof AuthenticatedReglasRoute
   '/remisiones': typeof AuthenticatedRemisionesRoute
   '/seguimientos': typeof AuthenticatedSeguimientosRoute
+  '/api/public/hooks/evaluar-alertas-coordinacion': typeof ApiPublicHooksEvaluarAlertasCoordinacionRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -171,6 +180,7 @@ export interface FileRoutesById {
   '/_authenticated/reglas': typeof AuthenticatedReglasRoute
   '/_authenticated/remisiones': typeof AuthenticatedRemisionesRoute
   '/_authenticated/seguimientos': typeof AuthenticatedSeguimientosRoute
+  '/api/public/hooks/evaluar-alertas-coordinacion': typeof ApiPublicHooksEvaluarAlertasCoordinacionRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -191,6 +201,7 @@ export interface FileRouteTypes {
     | '/reglas'
     | '/remisiones'
     | '/seguimientos'
+    | '/api/public/hooks/evaluar-alertas-coordinacion'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -209,6 +220,7 @@ export interface FileRouteTypes {
     | '/reglas'
     | '/remisiones'
     | '/seguimientos'
+    | '/api/public/hooks/evaluar-alertas-coordinacion'
   id:
     | '__root__'
     | '/'
@@ -228,6 +240,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reglas'
     | '/_authenticated/remisiones'
     | '/_authenticated/seguimientos'
+    | '/api/public/hooks/evaluar-alertas-coordinacion'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -237,6 +250,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   PrivacidadRoute: typeof PrivacidadRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  ApiPublicHooksEvaluarAlertasCoordinacionRoute: typeof ApiPublicHooksEvaluarAlertasCoordinacionRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -360,6 +374,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCasosRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/api/public/hooks/evaluar-alertas-coordinacion': {
+      id: '/api/public/hooks/evaluar-alertas-coordinacion'
+      path: '/api/public/hooks/evaluar-alertas-coordinacion'
+      fullPath: '/api/public/hooks/evaluar-alertas-coordinacion'
+      preLoaderRoute: typeof ApiPublicHooksEvaluarAlertasCoordinacionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -402,6 +423,8 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   PrivacidadRoute: PrivacidadRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  ApiPublicHooksEvaluarAlertasCoordinacionRoute:
+    ApiPublicHooksEvaluarAlertasCoordinacionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
