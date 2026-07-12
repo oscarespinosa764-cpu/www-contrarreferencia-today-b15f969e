@@ -166,7 +166,10 @@ const SEDES = [
   "SALA ROSA",
   "CLÍNICA GLORIA PATRICIA PINZÓN",
 ] as const;
-const SEDE_DEFAULT = "CLÍNICA GLORIA PATRICIA PINZÓN";
+// Por defecto NO se filtra por sede: el campo `unidad` de los casos entrantes
+// guarda el SERVICIO (p. ej. URGENCIAS), no el nombre de la sede, de modo que un
+// valor de sede por defecto ocultaba casos activos reales (bug "0 casos").
+const SEDE_DEFAULT = "TODAS LAS SEDES";
 // Servicios base garantizados; se complementan con el catálogo real de unidades.
 const SERVICIOS_BASE = [
   "URGENCIAS",
