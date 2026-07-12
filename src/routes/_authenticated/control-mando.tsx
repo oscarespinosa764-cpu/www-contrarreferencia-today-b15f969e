@@ -7,6 +7,7 @@ import { AlmacenamientoPanel } from "@/components/coordinacion/almacenamiento-pa
 import { UsuariosPanel } from "@/components/coordinacion/usuarios-panel";
 import { DictadoPanel } from "@/components/coordinacion/dictado-panel";
 import { NotificacionesExternasPanel } from "@/components/coordinacion/notificaciones-externas-panel";
+import { AlertasAvisosAdmin } from "@/components/coordinacion/alertas-avisos-admin";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/_authenticated/control-mando")({
@@ -35,9 +36,10 @@ function ControlMandoPage() {
       />
 
       <Tabs defaultValue="usuarios" className="w-full">
-        <TabsList className="mb-4 grid h-auto w-full grid-cols-2 sm:grid-cols-4">
+        <TabsList className="mb-4 grid h-auto w-full grid-cols-2 sm:grid-cols-5">
           <TabsTrigger className="whitespace-normal" value="usuarios">Usuarios</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="historicos">Históricos</TabsTrigger>
+          <TabsTrigger className="whitespace-normal" value="alertas">Alertas y avisos</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="dictado">Dictado por voz</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="notificaciones">Notificaciones externas</TabsTrigger>
         </TabsList>
@@ -54,6 +56,9 @@ function ControlMandoPage() {
             <HistoricosPanel />
           </div>
         </TabsContent>
+        <TabsContent value="alertas">
+          <AlertasAvisosAdmin />
+        </TabsContent>
         <TabsContent value="dictado">
           <DictadoPanel />
         </TabsContent>
@@ -61,6 +66,7 @@ function ControlMandoPage() {
           <NotificacionesExternasPanel />
         </TabsContent>
       </Tabs>
+
     </div>
   );
 }
