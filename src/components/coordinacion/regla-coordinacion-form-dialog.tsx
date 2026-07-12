@@ -75,6 +75,9 @@ export function ReglaCoordinacionFormDialog({
   const [unidad, setUnidad] = useState("horas");
   const [prioridad, setPrioridad] = useState("MEDIO");
   const [activo, setActivo] = useState(true);
+  const [notificarExterno, setNotificarExterno] = useState(false);
+  const [canales, setCanales] = useState<string[]>([]);
+  const [requiereCrue, setRequiereCrue] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
