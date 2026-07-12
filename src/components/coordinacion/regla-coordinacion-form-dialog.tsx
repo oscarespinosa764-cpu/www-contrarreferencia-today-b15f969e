@@ -113,6 +113,10 @@ export function ReglaCoordinacionFormDialog({
     if (tieneUmbral && (umbral === "" || Number.isNaN(Number(umbral)))) {
       return toast.error("Indica un umbral numérico válido.");
     }
+    if (notificarExterno && canales.length === 0) {
+      return toast.error("Selecciona al menos un canal externo o desactiva la notificación.");
+    }
+
 
     setSaving(true);
     const ok = await onSubmit(
