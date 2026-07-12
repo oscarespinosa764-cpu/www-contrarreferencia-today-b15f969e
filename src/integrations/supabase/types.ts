@@ -14,6 +14,99 @@ export type Database = {
   }
   public: {
     Tables: {
+      alertas_coordinacion: {
+        Row: {
+          caso_codigo: string | null
+          caso_documento: string | null
+          cerrado_at: string | null
+          cerrado_por: string | null
+          cerrado_por_nombre: string | null
+          codigo: string
+          created_at: string
+          created_by: string | null
+          descripcion: string | null
+          detalles: Json | null
+          estado: string
+          evento_at: string
+          gestionado_at: string | null
+          gestionado_por: string | null
+          gestionado_por_nombre: string | null
+          hallazgo: string | null
+          id: string
+          idempotency_key: string
+          justificacion: string | null
+          mensaje: string | null
+          modulo: string | null
+          nombre: string | null
+          prioridad: string
+          revisado_at: string | null
+          revisado_por: string | null
+          revisado_por_nombre: string | null
+          subventana: string
+          updated_at: string
+        }
+        Insert: {
+          caso_codigo?: string | null
+          caso_documento?: string | null
+          cerrado_at?: string | null
+          cerrado_por?: string | null
+          cerrado_por_nombre?: string | null
+          codigo: string
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          detalles?: Json | null
+          estado?: string
+          evento_at?: string
+          gestionado_at?: string | null
+          gestionado_por?: string | null
+          gestionado_por_nombre?: string | null
+          hallazgo?: string | null
+          id?: string
+          idempotency_key: string
+          justificacion?: string | null
+          mensaje?: string | null
+          modulo?: string | null
+          nombre?: string | null
+          prioridad?: string
+          revisado_at?: string | null
+          revisado_por?: string | null
+          revisado_por_nombre?: string | null
+          subventana?: string
+          updated_at?: string
+        }
+        Update: {
+          caso_codigo?: string | null
+          caso_documento?: string | null
+          cerrado_at?: string | null
+          cerrado_por?: string | null
+          cerrado_por_nombre?: string | null
+          codigo?: string
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          detalles?: Json | null
+          estado?: string
+          evento_at?: string
+          gestionado_at?: string | null
+          gestionado_por?: string | null
+          gestionado_por_nombre?: string | null
+          hallazgo?: string | null
+          id?: string
+          idempotency_key?: string
+          justificacion?: string | null
+          mensaje?: string | null
+          modulo?: string | null
+          nombre?: string | null
+          prioridad?: string
+          revisado_at?: string | null
+          revisado_por?: string | null
+          revisado_por_nombre?: string | null
+          subventana?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           accion: string

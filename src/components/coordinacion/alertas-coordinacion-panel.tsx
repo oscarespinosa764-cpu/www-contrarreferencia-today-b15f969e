@@ -1,14 +1,14 @@
-// Subventana ALERTAS DE COORDINACIÓN (solo visualización + gestión, sin configuradores).
-// Fase 1: lista las alertas de coordinación persistidas hoy en `avisos`
-// (identificadas por el código [ALT-...] en el mensaje) con filtros de estado,
-// prioridad, módulo y búsqueda. El ciclo de vida completo (revisión, cierre,
-// hallazgo, trazabilidad) y el motor backend con tabla propia se conectan en la
-// fase 2 (migración aparte). No mostrar reglas ni credenciales aquí.
+// Subventana ALERTAS DE COORDINACIÓN (visualización + gestión de ciclo de vida).
+// Etapa 2: lee de la tabla persistente `alertas_coordinacion` (motor server-side
+// e idempotente). El admin/coordinación gestiona el ciclo de vida (revisión,
+// gestión, cierre con/sin hallazgo, descarte con justificación) vía server fn.
+// No muestra reglas ni credenciales: las reglas se administran en su subventana.
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { Panel } from "@/components/stat-card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -17,22 +17,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Search, ShieldAlert } from "lucide-react";
-import { NIVEL_BADGE, type Aviso } from "@/lib/avisos-reglas";
+import { toast } from "sonner";
+import { useAuth } from "@/lib/auth";
+import { NIVEL_BADGE } from "@/lib/avisos-reglas";
 import {
-  extraerCodigoAlerta,
   reglaPorCodigo,
   ESTADO_BADGE,
+  type EstadoAlerta,
 } from "@/lib/alertas-coordinacion";
+import { gestionarAlertaCoordinacion } from "@/lib/alertas-coordinacion.functions";
+import type { Tables } from "@/integrations/supabase/types";
 
-/** Mapea el estado crudo del aviso al vocabulario del ciclo de vida de coordinación. */
-function estadoAlerta(a: Aviso): string {
-  const e = (a.estado ?? "").toUpperCase();
-  if (e === "ACTIVO" || e === "" ) return "ABIERTA";
-  if (e === "EN REVISION" || e === "REVISION") return "EN REVISIÓN";
-  if (e === "GESTIONADO" || e === "GESTIONADA") return "GESTIONADA";
-  if (e === "CERRADO" || e === "CERRADA") return "CERRADA SIN IRREGULARIDAD";
-  return e;
-}
+type Alerta = Tables<"alertas_coordinacion">;
 
 function fmtFecha(v: string | null | undefined): string {
   if (!v) return "—";
@@ -52,48 +48,97 @@ function tiempoAbierto(v: string | null | undefined): string {
   return `${dias} día${dias > 1 ? "s" : ""} ${h % 24} h`;
 }
 
+// Próximas transiciones disponibles según el estado actual.
+function transicionesDe(estado: string): { estado: EstadoAlerta; label: string }[] {
+  switch (estado) {
+    case "ABIERTA":
+      return [{ estado: "EN REVISIÓN", label: "Tomar en revisión" }];
+    case "EN REVISIÓN":
+      return [
+        { estado: "GESTIONADA", label: "Marcar gestionada" },
+        { estado: "CERRADA SIN IRREGULARIDAD", label: "Cerrar sin irregularidad" },
+        { estado: "CERRADA CON HALLAZGO", label: "Cerrar con hallazgo" },
+        { estado: "DESCARTADA CON JUSTIFICACIÓN", label: "Descartar" },
+      ];
+    case "GESTIONADA":
+      return [
+        { estado: "CERRADA SIN IRREGULARIDAD", label: "Cerrar sin irregularidad" },
+        { estado: "CERRADA CON HALLAZGO", label: "Cerrar con hallazgo" },
+      ];
+    default:
+      return [];
+  }
+}
+
 export function AlertasCoordinacionPanel() {
+  const { isAdmin } = useAuth();
+  const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [fEstado, setFEstado] = useState("todas");
   const [fPrioridad, setFPrioridad] = useState("todas");
   const [fModulo, setFModulo] = useState("todos");
 
-  const { data: avisos, isLoading } = useQuery({
-    queryKey: ["avisos-operativos"],
+  const { data: alertas, isLoading } = useQuery({
+    queryKey: ["alertas-coordinacion"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("avisos")
+        .from("alertas_coordinacion")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("evento_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as unknown as Aviso[];
+      return (data ?? []) as Alerta[];
     },
   });
 
-  // Solo las alertas de coordinación (mensaje con código [ALT-...]).
-  const alertas = useMemo(
-    () => (avisos ?? []).filter((a) => extraerCodigoAlerta(a.mensaje)),
-    [avisos],
-  );
+  const gestionar = useMutation({
+    mutationFn: async (vars: { id: string; estado: EstadoAlerta; nota?: string }) => {
+      await gestionarAlertaCoordinacion({
+        data: {
+          id: vars.id,
+          estado: vars.estado,
+          hallazgo: vars.estado === "CERRADA CON HALLAZGO" ? vars.nota : undefined,
+          justificacion:
+            vars.estado === "DESCARTADA CON JUSTIFICACIÓN" ? vars.nota : undefined,
+        },
+      });
+    },
+    onSuccess: () => {
+      toast.success("Alerta actualizada");
+      qc.invalidateQueries({ queryKey: ["alertas-coordinacion"] });
+    },
+    onError: () => toast.error("No se pudo actualizar la alerta"),
+  });
 
   const term = q.trim().toLowerCase();
   const lista = useMemo(
     () =>
-      alertas.filter((a) => {
-        const estado = estadoAlerta(a);
-        if (fEstado !== "todas" && estado !== fEstado) return false;
+      (alertas ?? []).filter((a) => {
+        if (fEstado !== "todas" && a.estado !== fEstado) return false;
         if (fPrioridad !== "todas" && (a.prioridad ?? "").toUpperCase() !== fPrioridad) return false;
         if (fModulo !== "todos" && (a.modulo ?? "") !== fModulo) return false;
-        if (term && !(a.mensaje ?? "").toLowerCase().includes(term)) return false;
+        if (term && !(a.mensaje ?? "").toLowerCase().includes(term) && !(a.caso_codigo ?? "").toLowerCase().includes(term))
+          return false;
         return true;
       }),
     [alertas, fEstado, fPrioridad, fModulo, term],
   );
 
   const modulos = useMemo(
-    () => Array.from(new Set(alertas.map((a) => a.modulo).filter(Boolean))) as string[],
+    () => Array.from(new Set((alertas ?? []).map((a) => a.modulo).filter(Boolean))) as string[],
     [alertas],
   );
+
+  const manejar = (a: Alerta, estado: EstadoAlerta) => {
+    let nota: string | undefined;
+    if (estado === "CERRADA CON HALLAZGO") {
+      nota = window.prompt("Describa el hallazgo:") ?? undefined;
+      if (!nota) return;
+    } else if (estado === "DESCARTADA CON JUSTIFICACIÓN") {
+      nota = window.prompt("Justifique el descarte:") ?? undefined;
+      if (!nota) return;
+    }
+    gestionar.mutate({ id: a.id, estado, nota });
+  };
 
   return (
     <Panel title={`Alertas de coordinación · ${lista.length}`} bodyMaxHeight={null}>
@@ -107,7 +152,7 @@ export function AlertasCoordinacionPanel() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="rounded-full pl-9"
-            placeholder="Buscar alerta…"
+            placeholder="Buscar alerta o cupo…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
@@ -119,7 +164,9 @@ export function AlertasCoordinacionPanel() {
             <SelectItem value="ABIERTA">Abiertas</SelectItem>
             <SelectItem value="EN REVISIÓN">En revisión</SelectItem>
             <SelectItem value="GESTIONADA">Gestionadas</SelectItem>
-            <SelectItem value="CERRADA SIN IRREGULARIDAD">Cerradas</SelectItem>
+            <SelectItem value="CERRADA SIN IRREGULARIDAD">Cerradas sin irregularidad</SelectItem>
+            <SelectItem value="CERRADA CON HALLAZGO">Cerradas con hallazgo</SelectItem>
+            <SelectItem value="DESCARTADA CON JUSTIFICACIÓN">Descartadas</SelectItem>
           </SelectContent>
         </Select>
         <Select value={fPrioridad} onValueChange={setFPrioridad}>
@@ -151,9 +198,8 @@ export function AlertasCoordinacionPanel() {
         ) : lista.length > 0 ? (
           <div className="grid gap-3">
             {lista.map((a) => {
-              const codigo = extraerCodigoAlerta(a.mensaje);
-              const regla = reglaPorCodigo(codigo);
-              const estado = estadoAlerta(a);
+              const regla = reglaPorCodigo(a.codigo);
+              const transiciones = isAdmin ? transicionesDe(a.estado) : [];
               return (
                 <div
                   key={a.id}
@@ -169,35 +215,57 @@ export function AlertasCoordinacionPanel() {
                     <div className="min-w-0">
                       <p className="flex items-center gap-2 text-sm font-bold text-foreground">
                         <ShieldAlert className="h-4 w-4 shrink-0 text-status-amber" />
-                        {regla?.nombre ?? "Alerta de coordinación"}
+                        {a.nombre ?? regla?.nombre ?? "Alerta de coordinación"}
                       </p>
                       <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
-                        {codigo && (
-                          <span className="rounded-full bg-secondary px-2 py-0.5 font-mono font-semibold text-secondary-foreground">
-                            {codigo}
-                          </span>
-                        )}
+                        <span className="rounded-full bg-secondary px-2 py-0.5 font-mono font-semibold text-secondary-foreground">
+                          {a.codigo}
+                        </span>
                         {a.modulo && (
                           <span className="rounded-full bg-muted px-2 py-0.5 font-semibold">{a.modulo}</span>
                         )}
-                        {regla && (
-                          <span className="rounded-full bg-muted px-2 py-0.5 font-semibold">
-                            {regla.subventana === "ENTRANTES" ? "Entrantes" : "Salientes"}
-                          </span>
+                        <span className="rounded-full bg-muted px-2 py-0.5 font-semibold">
+                          {a.subventana === "ENTRANTES" ? "Entrantes" : "Salientes"}
+                        </span>
+                        {a.caso_codigo && (
+                          <span className="rounded-full bg-muted px-2 py-0.5 font-semibold">Cupo {a.caso_codigo}</span>
                         )}
                       </p>
                       {a.mensaje && <p className="mt-1.5 text-xs text-muted-foreground">{a.mensaje}</p>}
                       <p className="mt-1.5 text-[11px] text-muted-foreground">
-                        Generada: {fmtFecha(a.fecha_inicio ?? a.created_at)} · Tiempo abierta:{" "}
-                        {tiempoAbierto(a.fecha_inicio ?? a.created_at)}
+                        Generada: {fmtFecha(a.evento_at)} · Tiempo abierta: {tiempoAbierto(a.evento_at)}
                       </p>
+                      {a.hallazgo && (
+                        <p className="mt-1 text-[11px] text-vitalis-blue">Hallazgo: {a.hallazgo}</p>
+                      )}
+                      {a.justificacion && (
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          Justificación: {a.justificacion}
+                        </p>
+                      )}
+                      {transiciones.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {transiciones.map((t) => (
+                            <Button
+                              key={t.estado}
+                              size="sm"
+                              variant="outline"
+                              className="h-7 rounded-full text-[11px]"
+                              disabled={gestionar.isPending}
+                              onClick={() => manejar(a, t.estado)}
+                            >
+                              {t.label}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1.5">
-                      <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${NIVEL_BADGE[a.prioridad ?? "MEDIO"] ?? "bg-muted"}`}>
-                        {a.prioridad ?? "MEDIO"}
+                      <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ${NIVEL_BADGE[a.prioridad] ?? "bg-muted"}`}>
+                        {a.prioridad}
                       </span>
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${ESTADO_BADGE[estado] ?? "bg-muted"}`}>
-                        {estado}
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${ESTADO_BADGE[a.estado] ?? "bg-muted"}`}>
+                        {a.estado}
                       </span>
                     </div>
                   </div>

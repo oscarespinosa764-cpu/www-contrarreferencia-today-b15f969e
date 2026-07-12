@@ -37,6 +37,7 @@ import {
   CATEGORIA_LABEL,
   construirAlertaIngreso,
 } from "@/lib/notif-ingreso";
+import { crearAlertaCoordinacion } from "@/lib/alertas-coordinacion.functions";
 
 type Accion = "ingreso" | "ampliar" | "cancelar" | "archivar";
 
@@ -377,6 +378,7 @@ export function AccionDialog({
     qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
     qc.invalidateQueries({ queryKey: ["seguimientos-pendientes"] });
     qc.invalidateQueries({ queryKey: ["avisos-operativos"] });
+    qc.invalidateQueries({ queryKey: ["alertas-coordinacion"] });
   };
 
   const ejecutar = async () => {
@@ -453,17 +455,27 @@ export function AccionDialog({
         }
         if (posterior && categoria) {
           // Ingreso posterior: NO se sobrescriben los eventos originales
-          // (cancelación/negación se conservan). Se genera la alerta de coordinación.
+          // (cancelación/negación se conservan). Se genera la alerta de
+          // coordinación PERSISTENTE (tabla alertas_coordinacion, idempotente).
           const alerta = construirAlertaIngreso(categoria, caso);
-          const { error: ea } = await supabase.from("avisos").insert({
-            mensaje: alerta.mensaje,
-            prioridad: alerta.prioridad,
-            modulo: alerta.modulo,
-            fecha_inicio: ahora.toISOString(),
-            estado: "ACTIVO",
-            created_by: user?.id,
-          });
-          if (ea) {
+          const codigoAlerta =
+            categoria === "tardio"
+              ? "ALT-ENT-INGRESO-TARDIO"
+              : "ALT-ENT-INGRESO-SIN-REFERENCIA";
+          try {
+            await crearAlertaCoordinacion({
+              data: {
+                codigo: codigoAlerta,
+                mensaje: alerta.mensaje,
+                prioridad: alerta.prioridad,
+                modulo: alerta.modulo,
+                casoCodigo: caso.codigo,
+                casoDocumento: caso.documento ?? undefined,
+                idempotencyKey: `${codigoAlerta}:${caso.codigo}`,
+                eventoAt: ahora.toISOString(),
+              },
+            });
+          } catch {
             // El ingreso ya quedó registrado; la alerta es complementaria.
             console.error("No se pudo generar la alerta de coordinación");
             toast.warning("Ingreso registrado, pero no se pudo crear la alerta.");
