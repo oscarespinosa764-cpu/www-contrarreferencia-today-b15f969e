@@ -87,6 +87,19 @@ export const REGLAS_COORDINACION: ReglaCoordinacion[] = [
     prioridad: "ALTO",
   },
   {
+    codigo: "ALT-ENT-SIN-GESTION-PREVIA",
+    nombre: "Paciente sin gestión previa de referencia",
+    descripcion:
+      "El paciente llega directamente a CEDIM IPS sin correo, comunicación de la IPS, aceptación, negación ni direccionamiento CRUE: no existía ninguna gestión previa registrada.",
+    modulo: "REMISIONES",
+    subventana: "ENTRANTES",
+    evento: "Ingreso sin gestión previa",
+    condicion: "Ingreso registrado sin proceso de referencia previo",
+    umbral: null,
+    unidad: null,
+    prioridad: "ALTO",
+  },
+  {
     codigo: "ALT-ENT-CIERRE-SIN-NOTIFICACION",
     nombre: "Cierre sin notificación",
     descripcion:

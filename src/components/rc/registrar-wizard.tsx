@@ -2,6 +2,7 @@ import { useMemo, useRef, useState, type ReactNode, type Dispatch, type SetState
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { siguienteCodigo } from "@/lib/codigo.functions";
+import { crearAlertaCoordinacion } from "@/lib/alertas-coordinacion.functions";
 import { useAuth } from "@/lib/auth";
 import { AutoComplete } from "@/components/rc/autocomplete";
 import { ResultadoCard } from "@/components/rc/resultado-card";
@@ -62,7 +63,7 @@ import {
 import type { Catalogos } from "@/lib/use-rc-data";
 import type { Plantilla } from "@/lib/rc-utils";
 
-type Tipo = "ACEP" | "NEG" | "CRUE_ACEP" | "CRUE_NR" | "CRUE_NEG";
+type Tipo = "ACEP" | "NEG" | "CRUE_ACEP" | "CRUE_NR" | "CRUE_NEG" | "SIN_GESTION";
 
 const CRUE_TIPOS: { value: Tipo; label: string }[] = [
   { value: "CRUE_ACEP", label: "ACEPTACIÓN DIRECCIONAMIENTO" },
@@ -148,6 +149,32 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const [espsCrue, setEspsCrue] = useState<DynItem[]>([newDyn()]);
   const [motivosCrueDyn, setMotivosCrueDyn] = useState<DynItem[]>([newDyn()]);
 
+  // ── PACIENTE SIN GESTIÓN DE REFERENCIA (paciente ya ingresado físicamente) ──
+  const nowHHMM = () => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  };
+  const [sgDepto, setSgDepto] = useState("");
+  const [sgDireccion, setSgDireccion] = useState("");
+  const [sgTelProc, setSgTelProc] = useState("");
+  const [sgFechaIng, setSgFechaIng] = useState(() => new Date().toISOString().slice(0, 10));
+  const [sgHoraIng, setSgHoraIng] = useState(nowHHMM);
+  const [sgSede, setSgSede] = useState("");
+  const [sgCama, setSgCama] = useState("");
+  const [sgDiagnostico, setSgDiagnostico] = useState("");
+  const [sgEmpresa, setSgEmpresa] = useState("");
+  const [sgTipoAmb, setSgTipoAmb] = useState("");
+  const [sgPlaca, setSgPlaca] = useState("");
+  const [sgTripulante, setSgTripulante] = useState("");
+  const [sgCargoTrip, setSgCargoTrip] = useState("");
+  const [sgTelTrip, setSgTelTrip] = useState("");
+  const [sgCrueConoce, setSgCrueConoce] = useState<"" | "SI" | "NO" | "NV">("");
+  const [sgCrueCodigo, setSgCrueCodigo] = useState("");
+  const [sgCrueFuncionario, setSgCrueFuncionario] = useState("");
+  const [sgCrueObs, setSgCrueObs] = useState("");
+  const [sgPlantilla, setSgPlantilla] = useState("");
+
+
   // Paciente reconsultante (autollenado) y ventana ADRES
   const [esReconsultante, setEsReconsultante] = useState(false);
   const adresWinRef = useRef<Window | null>(null);
@@ -203,6 +230,51 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
 
   const unidadOptions = catalogos.unidades.map((u) => u.nombre);
   const isCrue = tipo === "CRUE_ACEP" || tipo === "CRUE_NR" || tipo === "CRUE_NEG";
+  const isSinGestion = tipo === "SIN_GESTION";
+
+  // Etiqueta legible del conocimiento del CRUE.
+  const sgCrueLabel =
+    sgCrueConoce === "SI" ? "SÍ" : sgCrueConoce === "NO" ? "NO" : sgCrueConoce === "NV" ? "NO SE PUDO VERIFICAR" : "—";
+
+  // Placa/empresa fuera del catálogo → se marca como "dato no catalogado".
+  const placaNoCatalogada = !!sgPlaca.trim() && !catalogos.placas.includes(sgPlaca.trim());
+  const empresaNoCatalogada = !!sgEmpresa.trim() && !catalogos.empresasTep.includes(sgEmpresa.trim());
+
+  // Plantilla institucional por defecto (editable antes de guardar) — sección 32.
+  const sgPlantillaDefault = useMemo(() => {
+    const nombreP = [nombres, apellidos].filter((x) => x.trim()).join(" ").trim() || "PACIENTE";
+    const fh = sgFechaIng
+      ? new Date(`${sgFechaIng}T${sgHoraIng || "00:00"}`)
+      : null;
+    const fechaTxt = fh && !isNaN(fh.getTime()) ? fh.toLocaleDateString("es-CO", { dateStyle: "long" }) : "___";
+    const horaTxt = sgHoraIng || "___";
+    const lineas: string[] = [];
+    lineas.push(
+      `SE REGISTRA INGRESO DEL PACIENTE ${nombreP.toUpperCase()}, IDENTIFICADO CON DOCUMENTO ${documento.trim() || "___"}` +
+        `, PROCEDENTE DE ${(ips || "INSTITUCIÓN NO INDICADA").toUpperCase()}${ciudad ? ` (${ciudad.toUpperCase()})` : ""}` +
+        `, SIN GESTIÓN PREVIA DE REFERENCIA, SIN ACEPTACIÓN INSTITUCIONAL PREVIA Y SIN DIRECCIONAMIENTO REGISTRADO.`,
+    );
+    lineas.push(
+      `EL PACIENTE INGRESA EL DÍA ${fechaTxt} A LAS ${horaTxt}, AL SERVICIO DE ${(unidad || "___").toUpperCase()}` +
+        `${sgSede ? `, SEDE ${sgSede.toUpperCase()}` : ""}${especialidad ? `. ESPECIALIDAD: ${especialidad.toUpperCase()}` : ""}.`,
+    );
+    if (sgEmpresa || sgPlaca || sgTripulante) {
+      lineas.push(
+        `TRASLADO REALIZADO POR ${(sgEmpresa || "___").toUpperCase()}, VEHÍCULO DE PLACA ${(sgPlaca || "___").toUpperCase()}` +
+          `${sgTipoAmb ? `, TIPO ${sgTipoAmb.toUpperCase()}` : ""}, A CARGO DE ${(sgTripulante || "___").toUpperCase()}` +
+          ` - ${(sgCargoTrip || "___").toUpperCase()}.`,
+      );
+    }
+    lineas.push(`CONOCIMIENTO DEL CRUE: ${sgCrueLabel}${sgCrueConoce === "SI" && sgCrueCodigo ? ` (CÓD. ${sgCrueCodigo.toUpperCase()})` : ""}.`);
+    if (detalle.trim()) lineas.push(`OBSERVACIONES: ${detalle.trim()}`);
+    lineas.push("SE DEJA TRAZABILIDAD PARA REVISIÓN Y GESTIÓN DE COORDINACIÓN.");
+    return lineas.join("\n\n");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    nombres, apellidos, documento, ips, ciudad, sgFechaIng, sgHoraIng, unidad, sgSede,
+    especialidad, sgEmpresa, sgPlaca, sgTipoAmb, sgTripulante, sgCargoTrip, sgCrueConoce, sgCrueCodigo, detalle,
+  ]);
+
 
   // ── Enlace IPS ⇄ Ciudad/Departamento ──
   const ipsEntry = catalogos.ipsConCiudades.find((x) => x.nombre === ips);
@@ -385,6 +457,25 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     setCargoFuncionario("");
     setEspsCrue([newDyn()]);
     setMotivosCrueDyn([newDyn()]);
+    setSgDepto("");
+    setSgDireccion("");
+    setSgTelProc("");
+    setSgFechaIng(new Date().toISOString().slice(0, 10));
+    setSgHoraIng(nowHHMM());
+    setSgSede("");
+    setSgCama("");
+    setSgDiagnostico("");
+    setSgEmpresa("");
+    setSgTipoAmb("");
+    setSgPlaca("");
+    setSgTripulante("");
+    setSgCargoTrip("");
+    setSgTelTrip("");
+    setSgCrueConoce("");
+    setSgCrueCodigo("");
+    setSgCrueFuncionario("");
+    setSgCrueObs("");
+    setSgPlantilla("");
     cerrarAdres();
     setResultado(null);
   };
@@ -414,6 +505,13 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
       if (!cargoFuncionario.trim()) return toast.error("Indica el cargo del funcionario");
     }
     if (tipo === "CRUE_ACEP" && !unidadReq) return toast.error("Selecciona la unidad requerida (URGENCIAS o UCI)");
+    if (isSinGestion) {
+      if (!documento.trim()) return toast.error("Indica el documento del paciente");
+      if (!sgFechaIng) return toast.error("Indica la fecha real de ingreso");
+      if (!sgHoraIng) return toast.error("Indica la hora real de ingreso");
+      if (!unidad.trim()) return toast.error("Indica la unidad o servicio de ingreso");
+      if (!sgCrueConoce) return toast.error("Indica si el CRUE tenía conocimiento de la llegada");
+    }
 
     setBusy(true);
     try {
@@ -576,6 +674,48 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
           motivos_negacion_direccionamiento: tipo === "CRUE_NEG" ? motivosCrueVals : [],
           observaciones: obs || null,
         };
+      } else if (isSinGestion) {
+        // Paciente ya ingresado físicamente sin gestión previa de referencia.
+        // La plantilla es editable; si el usuario no la tocó, se usa la de por defecto.
+        mensaje = (sgPlantilla.trim() || sgPlantillaDefault).trim();
+        especialidadCol = especialidad;
+        metadata = {
+          tipo_caso: "SIN_GESTION",
+          sin_gestion_previa: true,
+          procedencia: {
+            ips: ips || null,
+            ciudad: ciudad || null,
+            departamento: sgDepto.trim() || null,
+            direccion: sgDireccion.trim() || null,
+            telefono: sgTelProc.trim() || null,
+          },
+          ingreso: {
+            fecha: sgFechaIng || null,
+            hora: sgHoraIng || null,
+            sede: sgSede.trim() || null,
+            unidad: unidad || null,
+            cama: sgCama.trim() || null,
+            especialidad: especialidad || null,
+            diagnostico: sgDiagnostico.trim() || null,
+          },
+          traslado: {
+            empresa: sgEmpresa.trim() || null,
+            tipo_ambulancia: sgTipoAmb.trim() || null,
+            placa: sgPlaca.trim() || null,
+            tripulante: sgTripulante.trim() || null,
+            cargo: sgCargoTrip.trim() || null,
+            telefono: sgTelTrip.trim() || null,
+            placa_no_catalogada: placaNoCatalogada,
+            empresa_no_catalogada: empresaNoCatalogada,
+          },
+          crue: {
+            conocimiento: sgCrueConoce, // SI | NO | NV
+            codigo_crue: sgCrueConoce === "SI" ? sgCrueCodigo.trim() || null : null,
+            funcionario: sgCrueConoce === "SI" ? sgCrueFuncionario.trim() || null : null,
+            observacion: sgCrueConoce === "SI" ? sgCrueObs.trim() || null : null,
+          },
+          observaciones: obs || null,
+        };
       } else {
         // ACEPTACIÓN → plantilla del catálogo (comportamiento actual).
         mensaje = buildMensaje(plantillas, catalogos.medicos, rr, {
@@ -606,7 +746,11 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
         unidad: unidadEff || null,
         aseguramiento: tipo === "ACEP" ? aseguramiento : tipo === "NEG" ? entidadTipo : null,
         detalle: obs || null,
-        estado: esActivo ? "ACTIVO" : "REGISTRADO",
+        estado: isSinGestion
+          ? "INGRESADO SIN GESTIÓN PREVIA DE REFERENCIA"
+          : esActivo
+            ? "ACTIVO"
+            : "REGISTRADO",
         fecha: ahora.toISOString().slice(0, 10),
         fecha_vence: fechaVenceISO,
         hrs_reserva: hrs ? String(hrs) : null,
@@ -629,6 +773,25 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
         });
       } catch {
         /* no bloquea el flujo si falla la auditoría */
+      }
+
+      // Alerta de coordinación (idempotente) para "Paciente sin gestión previa".
+      if (isSinGestion) {
+        try {
+          await crearAlertaCoordinacion({
+            data: {
+              codigo: "ALT-ENT-SIN-GESTION-PREVIA",
+              modulo: "REMISIONES",
+              prioridad: "ALTO",
+              mensaje: `Paciente ${[nombres, apellidos].filter(Boolean).join(" ") || "sin nombre"} (doc. ${documento.trim()}) ingresó sin gestión previa de referencia. Cupo/caso ${codigo}.`,
+              casoCodigo: codigo,
+              casoDocumento: documento.trim(),
+              idempotencyKey: `ALT-ENT-SIN-GESTION-PREVIA:${codigo}`,
+            },
+          });
+        } catch {
+          /* la alerta no debe bloquear el registro del caso */
+        }
       }
 
       toast.success(`Registrado ${codigo}`);
@@ -849,7 +1012,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
         <section className="space-y-4">
           <div className="space-y-2">
             <Label>Tipo de caso</Label>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <TipoCard
                 label="Aceptación"
                 icon={<CheckCircle2 className="h-5 w-5" />}
@@ -918,6 +1081,32 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                   setDocSubtipo("");
                   setDocChecks({});
                   setRedSubtipo("");
+                  setFechaRec("");
+                  setHoraRec("");
+                }}
+              />
+              <TipoCard
+                label="Paciente sin gestión de referencia"
+                icon={<AlertTriangle className="h-5 w-5" />}
+                accent="blue"
+                active={isSinGestion}
+                onClick={() => {
+                  setTipo("SIN_GESTION");
+                  setCrueOpen(false);
+                  setMedico("");
+                  setMotivoNeg("");
+                  setComplejidad("");
+                  setComplejidadSub("");
+                  setDocSubtipo("");
+                  setDocChecks({});
+                  setRedSubtipo("");
+                  setCodigoCrue("");
+                  setContactoIps("");
+                  setUnidadReq("");
+                  setNombreFuncionario("");
+                  setCargoFuncionario("");
+                  setEspsCrue([newDyn()]);
+                  setMotivosCrueDyn([newDyn()]);
                   setFechaRec("");
                   setHoraRec("");
                 }}
@@ -1384,6 +1573,183 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
               )}
             </div>
           )}
+
+          {isSinGestion && (
+            <div className="space-y-4 rounded-2xl border border-status-blue/30 bg-status-blue/5 p-3">
+              <p className="text-[11px] text-muted-foreground">
+                El paciente ya está físicamente ingresado, sin gestión previa de referencia. Se registra
+                el ingreso ya confirmado; no genera cupo, seguimiento ni ventanas de ingreso. Las
+                sugerencias provienen de Catálogos.
+              </p>
+
+              {/* A. PROCEDENCIA */}
+              <div>
+                <Label className="text-[11px] font-bold uppercase text-status-blue">A. Procedencia</Label>
+                <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                  <AutoComplete label="IPS / institución de procedencia" value={ips} onChange={setIps} options={catalogos.ips} minChars={2} />
+                  <AutoComplete label="Ciudad" value={ciudad} onChange={setCiudad} options={catalogos.ciudades} />
+                  <div className="space-y-2">
+                    <Label htmlFor="sgdepto">Departamento</Label>
+                    <Input id="sgdepto" value={sgDepto} onChange={(e) => setSgDepto(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sgdir">Dirección (si se conoce)</Label>
+                    <Input id="sgdir" value={sgDireccion} onChange={(e) => setSgDireccion(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sgtelp">Teléfono de contacto (si se conoce)</Label>
+                    <Input id="sgtelp" value={sgTelProc} onChange={(e) => setSgTelProc(e.target.value)} />
+                  </div>
+                </div>
+              </div>
+
+              {/* B. INGRESO */}
+              <div>
+                <Label className="text-[11px] font-bold uppercase text-status-blue">B. Ingreso</Label>
+                <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="sgfing">Fecha real de ingreso</Label>
+                    <Input id="sgfing" type="date" value={sgFechaIng} onChange={(e) => setSgFechaIng(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sghing">Hora real de ingreso</Label>
+                    <Input id="sghing" type="time" value={sgHoraIng} onChange={(e) => setSgHoraIng(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sgsede">Sede</Label>
+                    <Input id="sgsede" value={sgSede} onChange={(e) => setSgSede(e.target.value)} placeholder="Sede de ingreso" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Unidad / servicio de ingreso</Label>
+                    <Select value={unidad} onValueChange={setUnidad}>
+                      <SelectTrigger><SelectValue placeholder="Seleccionar…" /></SelectTrigger>
+                      <SelectContent>
+                        {unidadOptions.map((u) => (
+                          <SelectItem key={u} value={u}>{u}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sgcama">Cama (cuando aplique)</Label>
+                    <Input id="sgcama" value={sgCama} onChange={(e) => setSgCama(e.target.value)} />
+                  </div>
+                  <AutoComplete label="Especialidad" value={especialidad} onChange={setEspecialidad} options={catalogos.especialidades} />
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="sgdx">Diagnóstico / CIE-10 (si aplica)</Label>
+                    <Input id="sgdx" value={sgDiagnostico} onChange={(e) => setSgDiagnostico(e.target.value)} />
+                  </div>
+                </div>
+              </div>
+
+              {/* C. TRASLADO */}
+              <div>
+                <Label className="text-[11px] font-bold uppercase text-status-blue">C. Traslado</Label>
+                <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                  <AutoComplete label="Empresa de ambulancia" value={sgEmpresa} onChange={setSgEmpresa} options={catalogos.empresasTep} />
+                  <div className="space-y-2">
+                    <Label htmlFor="sgtipoamb">Tipo de ambulancia</Label>
+                    <Input id="sgtipoamb" value={sgTipoAmb} onChange={(e) => setSgTipoAmb(e.target.value)} placeholder="BÁSICA / MEDICALIZADA…" />
+                  </div>
+                  <div className="space-y-1">
+                    <AutoComplete label="Placa" value={sgPlaca} onChange={setSgPlaca} options={catalogos.placas} />
+                    {placaNoCatalogada && (
+                      <span className="text-[10px] font-semibold text-status-amber">Dato no catalogado (pendiente de revisión)</span>
+                    )}
+                  </div>
+                  <AutoComplete
+                    label="Funcionario / tripulante que lo trae"
+                    value={sgTripulante}
+                    onChange={setSgTripulante}
+                    onPick={(v) => {
+                      setSgTripulante(v);
+                      const p = catalogos.profesionales.find((x) => x.nombre === v);
+                      if (p && p.cargo) setSgCargoTrip(p.cargo);
+                    }}
+                    options={catalogos.profesionales.map((p) => p.nombre)}
+                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="sgcargo">Cargo del tripulante</Label>
+                    <Input id="sgcargo" value={sgCargoTrip} onChange={(e) => setSgCargoTrip(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sgtelt">Teléfono del tripulante</Label>
+                    <Input id="sgtelt" value={sgTelTrip} onChange={(e) => setSgTelTrip(e.target.value)} />
+                  </div>
+                </div>
+                {empresaNoCatalogada && (
+                  <span className="mt-1 block text-[10px] font-semibold text-status-amber">
+                    Empresa no catalogada (pendiente de revisión administrativa)
+                  </span>
+                )}
+              </div>
+
+              {/* D. CRUE */}
+              <div>
+                <Label className="text-[11px] font-bold uppercase text-status-blue">D. CRUE</Label>
+                <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>¿El CRUE tenía conocimiento de la llegada?</Label>
+                    <Select value={sgCrueConoce} onValueChange={(v) => setSgCrueConoce(v as "SI" | "NO" | "NV")}>
+                      <SelectTrigger><SelectValue placeholder="Seleccionar…" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="SI">Sí</SelectItem>
+                        <SelectItem value="NO">No</SelectItem>
+                        <SelectItem value="NV">No se pudo verificar</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {sgCrueConoce === "SI" && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="sgcruecod">Código / dato CRUE</Label>
+                        <Input id="sgcruecod" value={sgCrueCodigo} onChange={(e) => setSgCrueCodigo(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="sgcruefun">Funcionario CRUE (si se conoce)</Label>
+                        <Input id="sgcruefun" value={sgCrueFuncionario} onChange={(e) => setSgCrueFuncionario(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="sgcrueobs">Observación CRUE</Label>
+                        <Input id="sgcrueobs" value={sgCrueObs} onChange={(e) => setSgCrueObs(e.target.value)} />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* E. INFORMACIÓN ADICIONAL */}
+              <div className="space-y-2">
+                <Label htmlFor="sgdet" className="text-[11px] font-bold uppercase text-status-blue">
+                  E. Observaciones / detalle
+                </Label>
+                <Textarea id="sgdet" rows={2} value={detalle} onChange={(e) => setDetalle(e.target.value)} placeholder="Información adicional…" />
+              </div>
+
+              {/* Plantilla institucional editable */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="sgtpl">Plantilla institucional (editable)</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 rounded-full text-[11px]"
+                    onClick={() => setSgPlantilla("")}
+                  >
+                    Regenerar
+                  </Button>
+                </div>
+                <Textarea
+                  id="sgtpl"
+                  rows={8}
+                  value={sgPlantilla || sgPlantillaDefault}
+                  onChange={(e) => setSgPlantilla(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
 
           {(tipo === "ACEP" || tipo === "NEG" || isCrue) && (
             <div className="space-y-2">

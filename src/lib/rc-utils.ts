@@ -133,6 +133,8 @@ export const PREFIJO_CODIGO: Record<string, string> = {
   CRUE_ACEP: "AD",
   CRUE_NEG: "ND",
   CRUE_NR: "NR",
+  // Paciente sin gestión previa de referencia (paciente ya ingresado).
+  SIN_GESTION: "SG",
 };
 
 export function nextCodigo(todos: Caso[], tipo: string, ahora: Date): string {
