@@ -230,6 +230,51 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
 
   const unidadOptions = catalogos.unidades.map((u) => u.nombre);
   const isCrue = tipo === "CRUE_ACEP" || tipo === "CRUE_NR" || tipo === "CRUE_NEG";
+  const isSinGestion = tipo === "SIN_GESTION";
+
+  // Etiqueta legible del conocimiento del CRUE.
+  const sgCrueLabel =
+    sgCrueConoce === "SI" ? "SÍ" : sgCrueConoce === "NO" ? "NO" : sgCrueConoce === "NV" ? "NO SE PUDO VERIFICAR" : "—";
+
+  // Placa/empresa fuera del catálogo → se marca como "dato no catalogado".
+  const placaNoCatalogada = !!sgPlaca.trim() && !catalogos.placas.includes(sgPlaca.trim());
+  const empresaNoCatalogada = !!sgEmpresa.trim() && !catalogos.empresasTep.includes(sgEmpresa.trim());
+
+  // Plantilla institucional por defecto (editable antes de guardar) — sección 32.
+  const sgPlantillaDefault = useMemo(() => {
+    const nombreP = [nombres, apellidos].filter((x) => x.trim()).join(" ").trim() || "PACIENTE";
+    const fh = sgFechaIng
+      ? new Date(`${sgFechaIng}T${sgHoraIng || "00:00"}`)
+      : null;
+    const fechaTxt = fh && !isNaN(fh.getTime()) ? fh.toLocaleDateString("es-CO", { dateStyle: "long" }) : "___";
+    const horaTxt = sgHoraIng || "___";
+    const lineas: string[] = [];
+    lineas.push(
+      `SE REGISTRA INGRESO DEL PACIENTE ${nombreP.toUpperCase()}, IDENTIFICADO CON DOCUMENTO ${documento.trim() || "___"}` +
+        `, PROCEDENTE DE ${(ips || "INSTITUCIÓN NO INDICADA").toUpperCase()}${ciudad ? ` (${ciudad.toUpperCase()})` : ""}` +
+        `, SIN GESTIÓN PREVIA DE REFERENCIA, SIN ACEPTACIÓN INSTITUCIONAL PREVIA Y SIN DIRECCIONAMIENTO REGISTRADO.`,
+    );
+    lineas.push(
+      `EL PACIENTE INGRESA EL DÍA ${fechaTxt} A LAS ${horaTxt}, AL SERVICIO DE ${(unidad || "___").toUpperCase()}` +
+        `${sgSede ? `, SEDE ${sgSede.toUpperCase()}` : ""}${especialidad ? `. ESPECIALIDAD: ${especialidad.toUpperCase()}` : ""}.`,
+    );
+    if (sgEmpresa || sgPlaca || sgTripulante) {
+      lineas.push(
+        `TRASLADO REALIZADO POR ${(sgEmpresa || "___").toUpperCase()}, VEHÍCULO DE PLACA ${(sgPlaca || "___").toUpperCase()}` +
+          `${sgTipoAmb ? `, TIPO ${sgTipoAmb.toUpperCase()}` : ""}, A CARGO DE ${(sgTripulante || "___").toUpperCase()}` +
+          ` - ${(sgCargoTrip || "___").toUpperCase()}.`,
+      );
+    }
+    lineas.push(`CONOCIMIENTO DEL CRUE: ${sgCrueLabel}${sgCrueConoce === "SI" && sgCrueCodigo ? ` (CÓD. ${sgCrueCodigo.toUpperCase()})` : ""}.`);
+    if (detalle.trim()) lineas.push(`OBSERVACIONES: ${detalle.trim()}`);
+    lineas.push("SE DEJA TRAZABILIDAD PARA REVISIÓN Y GESTIÓN DE COORDINACIÓN.");
+    return lineas.join("\n\n");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    nombres, apellidos, documento, ips, ciudad, sgFechaIng, sgHoraIng, unidad, sgSede,
+    especialidad, sgEmpresa, sgPlaca, sgTipoAmb, sgTripulante, sgCargoTrip, sgCrueConoce, sgCrueCodigo, detalle,
+  ]);
+
 
   // ── Enlace IPS ⇄ Ciudad/Departamento ──
   const ipsEntry = catalogos.ipsConCiudades.find((x) => x.nombre === ips);
