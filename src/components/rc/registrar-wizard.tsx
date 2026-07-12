@@ -1585,48 +1585,28 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
 
           {isSinGestion && (
             <div className="space-y-4 rounded-2xl border border-status-blue/30 bg-status-blue/5 p-3">
-              <p className="text-[11px] text-muted-foreground">
-                El paciente ya está físicamente ingresado, sin gestión previa de referencia. Se registra
-                el ingreso ya confirmado; no genera cupo, seguimiento ni ventanas de ingreso. Las
-                sugerencias provienen de Catálogos.
+              <p className="text-center text-[12px] font-bold uppercase tracking-wide text-status-blue">
+                Paciente sin gestión previa de referencia
               </p>
 
-              {/* A. PROCEDENCIA */}
+              {/* A. INGRESO */}
               <div>
-                <Label className="text-[11px] font-bold uppercase text-status-blue">A. Procedencia</Label>
+                <Label className="text-[11px] font-bold uppercase text-status-blue">A. Ingreso</Label>
                 <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                  <AutoComplete label="IPS / institución de procedencia" value={ips} onChange={setIps} options={catalogos.ips} minChars={2} />
-                  <AutoComplete label="Ciudad" value={ciudad} onChange={setCiudad} options={catalogos.ciudades} />
-                  <div className="space-y-2">
-                    <Label htmlFor="sgdepto">Departamento</Label>
-                    <Input id="sgdepto" value={sgDepto} onChange={(e) => setSgDepto(e.target.value)} />
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="sgfh">Fecha y hora de ingreso</Label>
+                    <Input id="sgfh" value={sgFechaHoraLabel} readOnly tabIndex={-1} className="cursor-default bg-muted/40" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="sgdir">Dirección (si se conoce)</Label>
-                    <Input id="sgdir" value={sgDireccion} onChange={(e) => setSgDireccion(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sgtelp">Teléfono de contacto (si se conoce)</Label>
-                    <Input id="sgtelp" value={sgTelProc} onChange={(e) => setSgTelProc(e.target.value)} />
-                  </div>
-                </div>
-              </div>
-
-              {/* B. INGRESO */}
-              <div>
-                <Label className="text-[11px] font-bold uppercase text-status-blue">B. Ingreso</Label>
-                <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="sgfing">Fecha real de ingreso</Label>
-                    <Input id="sgfing" type="date" value={sgFechaIng} onChange={(e) => setSgFechaIng(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sghing">Hora real de ingreso</Label>
-                    <Input id="sghing" type="time" value={sgHoraIng} onChange={(e) => setSgHoraIng(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sgsede">Sede</Label>
-                    <Input id="sgsede" value={sgSede} onChange={(e) => setSgSede(e.target.value)} placeholder="Sede de ingreso" />
+                    <Label>Sede</Label>
+                    <Select value={sgSede} onValueChange={setSgSede}>
+                      <SelectTrigger><SelectValue placeholder="Seleccionar…" /></SelectTrigger>
+                      <SelectContent>
+                        {SEDES_SG.map((s) => (
+                          <SelectItem key={s} value={s}>{s}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Unidad / servicio de ingreso</Label>
@@ -1639,63 +1619,68 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sgcama">Cama (cuando aplique)</Label>
-                    <Input id="sgcama" value={sgCama} onChange={(e) => setSgCama(e.target.value)} />
-                  </div>
-                  <AutoComplete label="Especialidad" value={especialidad} onChange={setEspecialidad} options={catalogos.especialidades} />
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="sgdx">Diagnóstico / CIE-10 (si aplica)</Label>
-                    <Input id="sgdx" value={sgDiagnostico} onChange={(e) => setSgDiagnostico(e.target.value)} />
+                  <AutoComplete label="Especialidad" value={especialidad} onChange={setEspecialidad} options={catalogos.especialidades} minChars={2} required />
+                  <div className="sm:col-span-2">
+                    <Cie10Field
+                      name="sgcie10"
+                      label="Diagnóstico / CIE-10"
+                      required
+                      defaultValue={sgDiagnostico}
+                      onValueChange={setSgDiagnostico}
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* C. TRASLADO */}
+              {/* B. TRASLADO */}
               <div>
-                <Label className="text-[11px] font-bold uppercase text-status-blue">C. Traslado</Label>
+                <Label className="text-[11px] font-bold uppercase text-status-blue">B. Traslado</Label>
                 <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                  <AutoComplete label="Empresa de ambulancia" value={sgEmpresa} onChange={setSgEmpresa} options={catalogos.empresasTep} />
+                  <div className="space-y-1">
+                    <AutoComplete label="Empresa de ambulancia" value={sgEmpresa} onChange={setSgEmpresa} options={catalogos.empresasTep} minChars={2} required />
+                    {empresaNoCatalogada && (
+                      <span className="text-[10px] font-semibold text-status-amber">Empresa no catalogada (pendiente de revisión administrativa)</span>
+                    )}
+                  </div>
                   <div className="space-y-2">
-                    <Label htmlFor="sgtipoamb">Tipo de ambulancia</Label>
-                    <Input id="sgtipoamb" value={sgTipoAmb} onChange={(e) => setSgTipoAmb(e.target.value)} placeholder="BÁSICA / MEDICALIZADA…" />
+                    <Label>Tipo de ambulancia</Label>
+                    <Select value={sgTipoAmb} onValueChange={setSgTipoAmb}>
+                      <SelectTrigger><SelectValue placeholder="Seleccionar…" /></SelectTrigger>
+                      <SelectContent>
+                        {TIPOS_AMB_SG.map((t) => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-1">
-                    <AutoComplete label="Placa" value={sgPlaca} onChange={setSgPlaca} options={catalogos.placas} />
+                    <AutoComplete label="Placa" value={sgPlaca} onChange={setSgPlaca} options={catalogos.placas} required />
                     {placaNoCatalogada && (
                       <span className="text-[10px] font-semibold text-status-amber">Dato no catalogado (pendiente de revisión)</span>
                     )}
                   </div>
                   <AutoComplete
-                    label="Funcionario / tripulante que lo trae"
+                    label="Funcionario del TEP"
                     value={sgTripulante}
-                    onChange={setSgTripulante}
+                    onChange={(v) => setSgTripulante(v.toUpperCase())}
                     onPick={(v) => {
-                      setSgTripulante(v);
+                      setSgTripulante(v.toUpperCase());
                       const p = catalogos.profesionales.find((x) => x.nombre === v);
-                      if (p && p.cargo) setSgCargoTrip(p.cargo);
+                      if (p && p.cargo) setSgCargoTrip(p.cargo.toUpperCase());
                     }}
                     options={catalogos.profesionales.map((p) => p.nombre)}
+                    required
                   />
                   <div className="space-y-2">
-                    <Label htmlFor="sgcargo">Cargo del tripulante</Label>
-                    <Input id="sgcargo" value={sgCargoTrip} onChange={(e) => setSgCargoTrip(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sgtelt">Teléfono del tripulante</Label>
-                    <Input id="sgtelt" value={sgTelTrip} onChange={(e) => setSgTelTrip(e.target.value)} />
+                    <Label htmlFor="sgcargo">Cargo</Label>
+                    <Input id="sgcargo" value={sgCargoTrip} onChange={(e) => setSgCargoTrip(e.target.value.toUpperCase())} required />
                   </div>
                 </div>
-                {empresaNoCatalogada && (
-                  <span className="mt-1 block text-[10px] font-semibold text-status-amber">
-                    Empresa no catalogada (pendiente de revisión administrativa)
-                  </span>
-                )}
               </div>
 
-              {/* D. CRUE */}
+              {/* C. CRUE */}
               <div>
-                <Label className="text-[11px] font-bold uppercase text-status-blue">D. CRUE</Label>
+                <Label className="text-[11px] font-bold uppercase text-status-blue">C. CRUE</Label>
                 <div className="mt-2 grid gap-3 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>¿El CRUE tenía conocimiento de la llegada?</Label>
@@ -1727,7 +1712,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 </div>
               </div>
 
-              {/* E. INFORMACIÓN ADICIONAL */}
+              {/* D. INFORMACIÓN ADICIONAL */}
               <div className="space-y-2">
                 <Label htmlFor="sgdet" className="text-[11px] font-bold uppercase text-status-blue">
                   E. Observaciones / detalle
