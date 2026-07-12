@@ -746,7 +746,11 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
         unidad: unidadEff || null,
         aseguramiento: tipo === "ACEP" ? aseguramiento : tipo === "NEG" ? entidadTipo : null,
         detalle: obs || null,
-        estado: esActivo ? "ACTIVO" : "REGISTRADO",
+        estado: isSinGestion
+          ? "INGRESADO SIN GESTIÓN PREVIA DE REFERENCIA"
+          : esActivo
+            ? "ACTIVO"
+            : "REGISTRADO",
         fecha: ahora.toISOString().slice(0, 10),
         fecha_vence: fechaVenceISO,
         hrs_reserva: hrs ? String(hrs) : null,
