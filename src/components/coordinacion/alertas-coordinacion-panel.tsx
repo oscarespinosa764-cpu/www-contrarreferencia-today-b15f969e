@@ -262,6 +262,14 @@ export function AlertasCoordinacionPanel() {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={fOrigen} onValueChange={setFOrigen}>
+              <SelectTrigger className="rounded-full"><SelectValue placeholder="Origen" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todo origen</SelectItem>
+                <SelectItem value="auto">Automáticas (motor)</SelectItem>
+                <SelectItem value="manual">Manuales (evento)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       )}
