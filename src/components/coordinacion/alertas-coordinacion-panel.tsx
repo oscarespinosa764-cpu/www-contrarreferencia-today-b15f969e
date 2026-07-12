@@ -145,11 +145,16 @@ export function AlertasCoordinacionPanel() {
       abiertas: t.filter((a) => a.estado === "ABIERTA").length,
       revision: t.filter((a) => a.estado === "EN REVISIÓN").length,
       gestionadas: t.filter((a) => a.estado === "GESTIONADA").length,
+      automaticas: t.filter((a) => esAutomatica(a)).length,
     };
   }, [alertas]);
 
   const filtrosActivos =
-    q.trim() !== "" || fEstado !== "todas" || fPrioridad !== "todas" || fModulo !== "todos";
+    q.trim() !== "" ||
+    fEstado !== "todas" ||
+    fPrioridad !== "todas" ||
+    fModulo !== "todos" ||
+    fOrigen !== "todos";
 
   const manejar = (a: Alerta, estado: EstadoAlerta) => {
     let nota: string | undefined;
