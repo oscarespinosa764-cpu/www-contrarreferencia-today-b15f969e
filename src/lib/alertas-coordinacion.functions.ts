@@ -131,7 +131,7 @@ export const gestionarAlertaCoordinacion = createServerFn({ method: "POST" })
 
     const { error } = await supabase
       .from("alertas_coordinacion")
-      .update(patch)
+      .update(patch as never)
       .eq("id", data.id);
     if (error) throw error;
     return { ok: true };
