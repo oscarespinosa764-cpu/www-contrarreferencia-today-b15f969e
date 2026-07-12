@@ -510,9 +510,16 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     if (tipo === "CRUE_ACEP" && !unidadReq) return toast.error("Selecciona la unidad requerida (URGENCIAS o UCI)");
     if (isSinGestion) {
       if (!documento.trim()) return toast.error("Indica el documento del paciente");
-      if (!sgFechaIng) return toast.error("Indica la fecha real de ingreso");
-      if (!sgHoraIng) return toast.error("Indica la hora real de ingreso");
+      if (!sgFechaIng || !sgHoraIng) return toast.error("No se pudo capturar la fecha y hora de ingreso");
+      if (!sgSede.trim()) return toast.error("Selecciona la sede de ingreso");
       if (!unidad.trim()) return toast.error("Indica la unidad o servicio de ingreso");
+      if (!especialidad.trim()) return toast.error("Indica la especialidad");
+      if (!sgDiagnostico.trim()) return toast.error("Indica el diagnóstico / CIE-10");
+      if (!sgEmpresa.trim()) return toast.error("Indica la empresa de ambulancia");
+      if (!sgTipoAmb.trim()) return toast.error("Selecciona el tipo de ambulancia");
+      if (!sgPlaca.trim()) return toast.error("Indica la placa del vehículo");
+      if (!sgTripulante.trim()) return toast.error("Indica el funcionario del TEP");
+      if (!sgCargoTrip.trim()) return toast.error("Indica el cargo");
       if (!sgCrueConoce) return toast.error("Indica si el CRUE tenía conocimiento de la llegada");
     }
 
