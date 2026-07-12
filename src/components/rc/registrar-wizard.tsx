@@ -2,6 +2,7 @@ import { useMemo, useRef, useState, type ReactNode, type Dispatch, type SetState
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { siguienteCodigo } from "@/lib/codigo.functions";
+import { crearAlertaCoordinacion } from "@/lib/alertas-coordinacion.functions";
 import { useAuth } from "@/lib/auth";
 import { AutoComplete } from "@/components/rc/autocomplete";
 import { ResultadoCard } from "@/components/rc/resultado-card";
