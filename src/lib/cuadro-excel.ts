@@ -213,7 +213,9 @@ export async function importarCuadroExcel(params: {
       const { data, error } = await supabase
         .from("shift_schedule_members")
         .insert({ schedule_id: scheduleId, full_name: nombre, role_name: cargo, sede, sort_order: sortOrder++ })
-        .select("*").single();
+        .select(
+          "id, schedule_id, user_id, full_name, role_name, sede, active, base_hours, pending_hours, notes, sort_order",
+        ).single();
       if (error) { res.filasOmitidas++; continue; }
       member = data as unknown as ShiftMember;
       memberByName.set(norm(nombre), member);

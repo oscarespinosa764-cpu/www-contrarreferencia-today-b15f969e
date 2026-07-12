@@ -81,7 +81,10 @@ export function ImportarCuadroDialog({
       // 2) Miembros actuales del cuadro.
       const { data: members } = await supabase
         .from("shift_schedule_members")
-        .select("*").eq("schedule_id", schedule.id).order("sort_order");
+        .select(
+          "id, schedule_id, user_id, full_name, role_name, sede, active, base_hours, pending_hours, notes, sort_order",
+        )
+        .eq("schedule_id", schedule.id).order("sort_order");
 
       const r = await importarCuadroExcel({
         file: archivo,

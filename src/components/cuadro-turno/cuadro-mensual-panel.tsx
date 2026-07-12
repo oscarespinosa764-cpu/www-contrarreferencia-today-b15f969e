@@ -386,7 +386,10 @@ function AgregarColaborador({
             role_name: perfil.cargo || null,
             sort_order: sortOrder,
           })
-          .select("*").single();
+          .select(
+            "id, schedule_id, user_id, full_name, role_name, sede, active, base_hours, pending_hours, notes, sort_order",
+          )
+          .single();
         if (error) throw error;
         member = data as unknown as ShiftMember;
         onMembersChanged();
