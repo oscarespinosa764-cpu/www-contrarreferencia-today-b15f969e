@@ -315,6 +315,15 @@ export function AlertasCoordinacionPanel() {
                         {a.caso_codigo && (
                           <span className="rounded-full bg-muted px-2 py-0.5 font-semibold">Cupo {a.caso_codigo}</span>
                         )}
+                        {esAutomatica(a) ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-vitalis-blue/15 px-2 py-0.5 font-semibold text-vitalis-blue">
+                            <Zap className="h-3 w-3" /> Automática
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-semibold">
+                            <User className="h-3 w-3" /> Manual
+                          </span>
+                        )}
                       </p>
                       {a.mensaje && <p className="mt-1.5 text-xs text-muted-foreground">{a.mensaje}</p>}
                       <p className="mt-1.5 text-[11px] text-muted-foreground">
