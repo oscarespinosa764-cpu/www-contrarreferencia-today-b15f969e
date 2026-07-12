@@ -505,6 +505,13 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
       if (!cargoFuncionario.trim()) return toast.error("Indica el cargo del funcionario");
     }
     if (tipo === "CRUE_ACEP" && !unidadReq) return toast.error("Selecciona la unidad requerida (URGENCIAS o UCI)");
+    if (isSinGestion) {
+      if (!documento.trim()) return toast.error("Indica el documento del paciente");
+      if (!sgFechaIng) return toast.error("Indica la fecha real de ingreso");
+      if (!sgHoraIng) return toast.error("Indica la hora real de ingreso");
+      if (!unidad.trim()) return toast.error("Indica la unidad o servicio de ingreso");
+      if (!sgCrueConoce) return toast.error("Indica si el CRUE tenía conocimiento de la llegada");
+    }
 
     setBusy(true);
     try {
