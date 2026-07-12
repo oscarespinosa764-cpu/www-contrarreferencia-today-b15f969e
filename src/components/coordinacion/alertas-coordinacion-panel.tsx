@@ -48,6 +48,12 @@ function tiempoAbierto(v: string | null | undefined): string {
   return `${dias} día${dias > 1 ? "s" : ""} ${h % 24} h`;
 }
 
+// Una alerta es "automática" cuando la generó el cron de evaluación por umbral.
+function esAutomatica(a: Alerta): boolean {
+  const d = a.detalles as { origen?: string } | null;
+  return d?.origen === "cron";
+}
+
 // Próximas transiciones disponibles según el estado actual.
 function transicionesDe(estado: string): { estado: EstadoAlerta; label: string }[] {
   switch (estado) {
