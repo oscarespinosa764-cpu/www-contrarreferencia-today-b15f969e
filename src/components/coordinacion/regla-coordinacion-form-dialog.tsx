@@ -295,7 +295,53 @@ export function ReglaCoordinacionFormDialog({
             <span className="text-sm font-medium text-foreground">Regla activa</span>
             <Switch checked={activo} onCheckedChange={setActivo} />
           </label>
+
+          <div className="rounded-lg border border-border p-3">
+            <label className="flex cursor-pointer items-center justify-between">
+              <span className="text-sm font-medium text-foreground">
+                Notificar por canales externos
+              </span>
+              <Switch checked={notificarExterno} onCheckedChange={setNotificarExterno} />
+            </label>
+            {notificarExterno ? (
+              <div className="mt-3 space-y-2">
+                <p className="text-[11px] text-muted-foreground">
+                  Al generarse la alerta se enviará a los canales seleccionados (configurados en
+                  Notificaciones externas). No se duplican credenciales.
+                </p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {CANALES_ACTIVOS.map((c) => (
+                    <label
+                      key={c.type}
+                      className="flex cursor-pointer items-center gap-2 rounded-lg border border-border px-3 py-2"
+                    >
+                      <Checkbox
+                        checked={canales.includes(c.type)}
+                        onCheckedChange={() => toggleCanal(c.type)}
+                      />
+                      <span className="text-sm text-foreground">{c.label}</span>
+                    </label>
+                  ))}
+                </div>
+                {canales.length === 0 && (
+                  <p className="text-[11px] text-status-amber">
+                    Selecciona al menos un canal o desactiva la notificación externa.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="mt-1.5 text-[11px] text-muted-foreground">
+                Sin notificación externa: la alerta solo se registra internamente.
+              </p>
+            )}
+          </div>
+
+          <label className="flex cursor-pointer items-center justify-between rounded-lg border border-status-red/30 bg-status-red/5 px-3 py-2">
+            <span className="text-sm font-medium text-foreground">Requiere notificación al CRUE</span>
+            <Switch checked={requiereCrue} onCheckedChange={setRequiereCrue} />
+          </label>
         </div>
+
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
