@@ -37,6 +37,7 @@ import {
   CATEGORIA_LABEL,
   construirAlertaIngreso,
 } from "@/lib/notif-ingreso";
+import { crearAlertaCoordinacion } from "@/lib/alertas-coordinacion.functions";
 
 type Accion = "ingreso" | "ampliar" | "cancelar" | "archivar";
 
