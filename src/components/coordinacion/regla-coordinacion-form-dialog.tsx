@@ -128,6 +128,9 @@ export function ReglaCoordinacionFormDialog({
         unidad: tieneUmbral ? unidad : null,
         prioridad,
         activo,
+        notificar_externo: notificarExterno,
+        canales: notificarExterno ? canales : [],
+        requiere_crue: requiereCrue,
       },
       editing?.id,
     );
