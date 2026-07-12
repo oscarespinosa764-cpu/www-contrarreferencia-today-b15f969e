@@ -7,11 +7,13 @@
 // conectan en la fase 2 (requiere migración de base de datos).
 import { Panel } from "@/components/stat-card";
 import { Zap, Info } from "lucide-react";
-import {
-  REGLAS_COORDINACION,
-  umbralTexto,
-  NIVEL_LABEL,
-} from "@/lib/alertas-coordinacion-ui";
+import { REGLAS_COORDINACION, umbralTexto } from "@/lib/alertas-coordinacion";
+
+const NIVEL_LABEL: Record<string, string> = {
+  MEDIO: "MEDIA",
+  ALTO: "ALTA",
+  CRITICO: "CRÍTICA",
+};
 
 export function ReglasCoordinacionPanel() {
   const entrantes = REGLAS_COORDINACION.filter((r) => r.subventana === "ENTRANTES");
