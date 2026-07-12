@@ -378,6 +378,7 @@ export function AccionDialog({
     qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
     qc.invalidateQueries({ queryKey: ["seguimientos-pendientes"] });
     qc.invalidateQueries({ queryKey: ["avisos-operativos"] });
+    qc.invalidateQueries({ queryKey: ["alertas-coordinacion"] });
   };
 
   const ejecutar = async () => {
