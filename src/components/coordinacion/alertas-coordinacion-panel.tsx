@@ -124,11 +124,13 @@ export function AlertasCoordinacionPanel() {
         if (fEstado !== "todas" && a.estado !== fEstado) return false;
         if (fPrioridad !== "todas" && (a.prioridad ?? "").toUpperCase() !== fPrioridad) return false;
         if (fModulo !== "todos" && (a.modulo ?? "") !== fModulo) return false;
+        if (fOrigen === "auto" && !esAutomatica(a)) return false;
+        if (fOrigen === "manual" && esAutomatica(a)) return false;
         if (term && !(a.mensaje ?? "").toLowerCase().includes(term) && !(a.caso_codigo ?? "").toLowerCase().includes(term))
           return false;
         return true;
       }),
-    [alertas, fEstado, fPrioridad, fModulo, term],
+    [alertas, fEstado, fPrioridad, fModulo, fOrigen, term],
   );
 
   const modulos = useMemo(
