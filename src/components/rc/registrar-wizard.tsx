@@ -1716,7 +1716,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
               {/* D. INFORMACIÓN ADICIONAL */}
               <div className="space-y-2">
                 <Label htmlFor="sgdet" className="text-[11px] font-bold uppercase text-status-blue">
-                  E. Observaciones / detalle
+                  D. Observaciones / detalle
                 </Label>
                 <Textarea id="sgdet" rows={2} value={detalle} onChange={(e) => setDetalle(e.target.value)} placeholder="Información adicional…" />
               </div>
