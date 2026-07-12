@@ -187,6 +187,10 @@ export function AlertasCoordinacionPanel() {
           <span className="rounded-full bg-status-sky/15 px-2.5 py-0.5 text-status-sky">
             {resumen.gestionadas} gestionadas
           </span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-vitalis-blue/15 px-2.5 py-0.5 text-vitalis-blue">
+            <Zap className="h-3 w-3" />
+            {resumen.automaticas} automáticas
+          </span>
         </div>
         <Button
           type="button"
