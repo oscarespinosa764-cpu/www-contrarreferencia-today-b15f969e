@@ -19,7 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Zap, Info, Plus, Pencil, Archive } from "lucide-react";
+import { Zap, Info, Plus, Pencil, Archive, Send, Siren } from "lucide-react";
 import { toast } from "sonner";
 import {
   ReglaCoordinacionFormDialog,
@@ -165,6 +165,20 @@ export function ReglasCoordinacionPanel() {
               </span>
             )}
           </p>
+          {(r.notificar_externo || r.requiere_crue) && (
+            <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+              {r.notificar_externo && (r.canales?.length ?? 0) > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-status-sky/15 px-2 py-0.5 font-semibold text-status-sky">
+                  <Send className="h-3 w-3" /> {r.canales.join(" · ")}
+                </span>
+              )}
+              {r.requiere_crue && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-status-red/15 px-2 py-0.5 font-bold text-status-red">
+                  <Siren className="h-3 w-3" /> CRUE
+                </span>
+              )}
+            </p>
+          )}
           {r.descripcion && (
             <p className="mt-1.5 text-xs text-muted-foreground">{r.descripcion}</p>
           )}
@@ -175,6 +189,7 @@ export function ReglasCoordinacionPanel() {
               {r.condicion ? `Condición: ${r.condicion}` : ""}
             </p>
           )}
+
         </div>
         {isAdmin && (
           <div className="flex shrink-0 items-center gap-1.5">

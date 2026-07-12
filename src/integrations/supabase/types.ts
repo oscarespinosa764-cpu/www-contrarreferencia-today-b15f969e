@@ -1511,6 +1511,7 @@ export type Database = {
         Row: {
           activo: boolean
           archivado: boolean
+          canales: string[]
           codigo: string
           condicion: string | null
           created_at: string
@@ -1521,8 +1522,10 @@ export type Database = {
           id: string
           modulo: string
           nombre: string
+          notificar_externo: boolean
           orden: number
           prioridad: string
+          requiere_crue: boolean
           subventana: string
           umbral: number | null
           unidad: string | null
@@ -1531,6 +1534,7 @@ export type Database = {
         Insert: {
           activo?: boolean
           archivado?: boolean
+          canales?: string[]
           codigo: string
           condicion?: string | null
           created_at?: string
@@ -1541,8 +1545,10 @@ export type Database = {
           id?: string
           modulo?: string
           nombre: string
+          notificar_externo?: boolean
           orden?: number
           prioridad?: string
+          requiere_crue?: boolean
           subventana?: string
           umbral?: number | null
           unidad?: string | null
@@ -1551,6 +1557,7 @@ export type Database = {
         Update: {
           activo?: boolean
           archivado?: boolean
+          canales?: string[]
           codigo?: string
           condicion?: string | null
           created_at?: string
@@ -1561,8 +1568,10 @@ export type Database = {
           id?: string
           modulo?: string
           nombre?: string
+          notificar_externo?: boolean
           orden?: number
           prioridad?: string
+          requiere_crue?: boolean
           subventana?: string
           umbral?: number | null
           unidad?: string | null

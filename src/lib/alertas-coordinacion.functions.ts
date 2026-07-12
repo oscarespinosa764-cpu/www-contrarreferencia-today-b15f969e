@@ -75,8 +75,42 @@ export const crearAlertaCoordinacion = createServerFn({ method: "POST" })
       }
       throw error;
     }
+
+    // Despacho a canales externos según la regla de coordinación (si aplica).
+    // No bloquea la creación de la alerta: si falla, la alerta ya quedó registrada.
+    try {
+      const { data: reglaDb } = await supabaseAdmin
+        .from("reglas_coordinacion")
+        .select("notificar_externo, canales, requiere_crue, nombre, modulo")
+        .eq("codigo", data.codigo)
+        .eq("archivado", false)
+        .maybeSingle();
+
+      if (reglaDb?.notificar_externo && (reglaDb.canales?.length ?? 0) > 0) {
+        const { despacharAlertaCoordinacion } = await import("./notifications.server");
+        await despacharAlertaCoordinacion(supabaseAdmin, {
+          canales: reglaDb.canales as string[],
+          requiereCrue: !!reglaDb.requiere_crue,
+          referenceId: idempotencyKey,
+          module: data.modulo ?? reglaDb.modulo ?? regla?.modulo ?? null,
+          userId,
+          vars: {
+            tipo_alerta: reglaDb.nombre ?? regla?.nombre ?? data.codigo,
+            modulo: data.modulo ?? reglaDb.modulo ?? regla?.modulo ?? "",
+            codigo: data.casoCodigo ?? "",
+            estado: "ABIERTA",
+            accion: data.mensaje ?? regla?.condicion ?? "",
+            fecha_hora: new Date().toLocaleString("es-CO"),
+          },
+        });
+      }
+    } catch {
+      // Silencioso: la notificación externa es best-effort.
+    }
+
     return { ok: true, id: ins.id, created: true };
   });
+
 
 const gestionarSchema = z.object({
   id: z.string().uuid(),
