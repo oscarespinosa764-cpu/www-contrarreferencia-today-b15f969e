@@ -129,6 +129,19 @@ export function AlertasCoordinacionPanel() {
     [alertas],
   );
 
+  // Resumen de estados (sección 11): abiertas, en revisión, gestionadas.
+  const resumen = useMemo(() => {
+    const t = alertas ?? [];
+    return {
+      abiertas: t.filter((a) => a.estado === "ABIERTA").length,
+      revision: t.filter((a) => a.estado === "EN REVISIÓN").length,
+      gestionadas: t.filter((a) => a.estado === "GESTIONADA").length,
+    };
+  }, [alertas]);
+
+  const filtrosActivos =
+    q.trim() !== "" || fEstado !== "todas" || fPrioridad !== "todas" || fModulo !== "todos";
+
   const manejar = (a: Alerta, estado: EstadoAlerta) => {
     let nota: string | undefined;
     if (estado === "CERRADA CON HALLAZGO") {
