@@ -1507,6 +1507,69 @@ export type Database = {
         }
         Relationships: []
       }
+      reglas_coordinacion: {
+        Row: {
+          activo: boolean
+          archivado: boolean
+          codigo: string
+          condicion: string | null
+          created_at: string
+          created_by: string | null
+          descripcion: string | null
+          es_base: boolean
+          evento: string | null
+          id: string
+          modulo: string
+          nombre: string
+          orden: number
+          prioridad: string
+          subventana: string
+          umbral: number | null
+          unidad: string | null
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          archivado?: boolean
+          codigo: string
+          condicion?: string | null
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          es_base?: boolean
+          evento?: string | null
+          id?: string
+          modulo?: string
+          nombre: string
+          orden?: number
+          prioridad?: string
+          subventana?: string
+          umbral?: number | null
+          unidad?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          archivado?: boolean
+          codigo?: string
+          condicion?: string | null
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          es_base?: boolean
+          evento?: string | null
+          id?: string
+          modulo?: string
+          nombre?: string
+          orden?: number
+          prioridad?: string
+          subventana?: string
+          umbral?: number | null
+          unidad?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reglas_operativas: {
         Row: {
           accion: string | null
