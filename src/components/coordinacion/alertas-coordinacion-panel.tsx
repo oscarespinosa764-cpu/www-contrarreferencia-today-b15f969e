@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, ShieldAlert, SlidersHorizontal, X } from "lucide-react";
+import { Search, ShieldAlert, SlidersHorizontal, X, Zap, User } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { NIVEL_BADGE } from "@/lib/avisos-reglas";
