@@ -216,6 +216,7 @@ export function AlertasCoordinacionPanel() {
                 setFEstado("todas");
                 setFPrioridad("todas");
                 setFModulo("todos");
+                setFOrigen("todos");
               }}
             >
               <X className="h-3 w-3" /> Limpiar
