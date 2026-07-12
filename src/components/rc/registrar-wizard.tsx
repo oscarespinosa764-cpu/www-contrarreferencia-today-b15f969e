@@ -674,6 +674,48 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
           motivos_negacion_direccionamiento: tipo === "CRUE_NEG" ? motivosCrueVals : [],
           observaciones: obs || null,
         };
+      } else if (isSinGestion) {
+        // Paciente ya ingresado físicamente sin gestión previa de referencia.
+        // La plantilla es editable; si el usuario no la tocó, se usa la de por defecto.
+        mensaje = (sgPlantilla.trim() || sgPlantillaDefault).trim();
+        especialidadCol = especialidad;
+        metadata = {
+          tipo_caso: "SIN_GESTION",
+          sin_gestion_previa: true,
+          procedencia: {
+            ips: ips || null,
+            ciudad: ciudad || null,
+            departamento: sgDepto.trim() || null,
+            direccion: sgDireccion.trim() || null,
+            telefono: sgTelProc.trim() || null,
+          },
+          ingreso: {
+            fecha: sgFechaIng || null,
+            hora: sgHoraIng || null,
+            sede: sgSede.trim() || null,
+            unidad: unidad || null,
+            cama: sgCama.trim() || null,
+            especialidad: especialidad || null,
+            diagnostico: sgDiagnostico.trim() || null,
+          },
+          traslado: {
+            empresa: sgEmpresa.trim() || null,
+            tipo_ambulancia: sgTipoAmb.trim() || null,
+            placa: sgPlaca.trim() || null,
+            tripulante: sgTripulante.trim() || null,
+            cargo: sgCargoTrip.trim() || null,
+            telefono: sgTelTrip.trim() || null,
+            placa_no_catalogada: placaNoCatalogada,
+            empresa_no_catalogada: empresaNoCatalogada,
+          },
+          crue: {
+            conocimiento: sgCrueConoce, // SI | NO | NV
+            codigo_crue: sgCrueConoce === "SI" ? sgCrueCodigo.trim() || null : null,
+            funcionario: sgCrueConoce === "SI" ? sgCrueFuncionario.trim() || null : null,
+            observacion: sgCrueConoce === "SI" ? sgCrueObs.trim() || null : null,
+          },
+          observaciones: obs || null,
+        };
       } else {
         // ACEPTACIÓN → plantilla del catálogo (comportamiento actual).
         mensaje = buildMensaje(plantillas, catalogos.medicos, rr, {
