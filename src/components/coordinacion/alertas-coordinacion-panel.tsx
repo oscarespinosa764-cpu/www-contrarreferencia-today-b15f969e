@@ -77,6 +77,7 @@ export function AlertasCoordinacionPanel() {
   const [fEstado, setFEstado] = useState("todas");
   const [fPrioridad, setFPrioridad] = useState("todas");
   const [fModulo, setFModulo] = useState("todos");
+  const [filtrosOpen, setFiltrosOpen] = useState(false);
 
   const { data: alertas, isLoading } = useQuery({
     queryKey: ["alertas-coordinacion"],
