@@ -149,6 +149,32 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const [espsCrue, setEspsCrue] = useState<DynItem[]>([newDyn()]);
   const [motivosCrueDyn, setMotivosCrueDyn] = useState<DynItem[]>([newDyn()]);
 
+  // ── PACIENTE SIN GESTIÓN DE REFERENCIA (paciente ya ingresado físicamente) ──
+  const nowHHMM = () => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  };
+  const [sgDepto, setSgDepto] = useState("");
+  const [sgDireccion, setSgDireccion] = useState("");
+  const [sgTelProc, setSgTelProc] = useState("");
+  const [sgFechaIng, setSgFechaIng] = useState(() => new Date().toISOString().slice(0, 10));
+  const [sgHoraIng, setSgHoraIng] = useState(nowHHMM);
+  const [sgSede, setSgSede] = useState("");
+  const [sgCama, setSgCama] = useState("");
+  const [sgDiagnostico, setSgDiagnostico] = useState("");
+  const [sgEmpresa, setSgEmpresa] = useState("");
+  const [sgTipoAmb, setSgTipoAmb] = useState("");
+  const [sgPlaca, setSgPlaca] = useState("");
+  const [sgTripulante, setSgTripulante] = useState("");
+  const [sgCargoTrip, setSgCargoTrip] = useState("");
+  const [sgTelTrip, setSgTelTrip] = useState("");
+  const [sgCrueConoce, setSgCrueConoce] = useState<"" | "SI" | "NO" | "NV">("");
+  const [sgCrueCodigo, setSgCrueCodigo] = useState("");
+  const [sgCrueFuncionario, setSgCrueFuncionario] = useState("");
+  const [sgCrueObs, setSgCrueObs] = useState("");
+  const [sgPlantilla, setSgPlantilla] = useState("");
+
+
   // Paciente reconsultante (autollenado) y ventana ADRES
   const [esReconsultante, setEsReconsultante] = useState(false);
   const adresWinRef = useRef<Window | null>(null);
