@@ -95,9 +95,16 @@ export function ReglaCoordinacionFormDialog({
     setUnidad(editing?.unidad ?? "horas");
     setPrioridad(editing?.prioridad ?? "MEDIO");
     setActivo(editing?.activo ?? true);
+    setNotificarExterno(editing?.notificar_externo ?? false);
+    setCanales(editing?.canales ?? []);
+    setRequiereCrue(editing?.requiere_crue ?? false);
   }, [open, editing]);
 
   const esBase = editing?.es_base ?? false;
+
+  const toggleCanal = (type: string) =>
+    setCanales((prev) => (prev.includes(type) ? prev.filter((c) => c !== type) : [...prev, type]));
+
 
   const guardar = async () => {
     if (!nombre.trim()) return toast.error("El nombre de la regla es obligatorio.");
