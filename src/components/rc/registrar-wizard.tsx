@@ -62,7 +62,7 @@ import {
 import type { Catalogos } from "@/lib/use-rc-data";
 import type { Plantilla } from "@/lib/rc-utils";
 
-type Tipo = "ACEP" | "NEG" | "CRUE_ACEP" | "CRUE_NR" | "CRUE_NEG";
+type Tipo = "ACEP" | "NEG" | "CRUE_ACEP" | "CRUE_NR" | "CRUE_NEG" | "SIN_GESTION";
 
 const CRUE_TIPOS: { value: Tipo; label: string }[] = [
   { value: "CRUE_ACEP", label: "ACEPTACIÓN DIRECCIONAMIENTO" },
