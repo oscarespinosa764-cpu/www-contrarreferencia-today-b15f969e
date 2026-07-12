@@ -23,11 +23,13 @@ export function Cie10Field({
   label = "CIE-10",
   required,
   defaultValue = "",
+  onValueChange,
 }: {
   name?: string;
   label?: string;
   required?: boolean;
   defaultValue?: string;
+  onValueChange?: (v: string) => void;
 }) {
   const [val, setVal] = useState(defaultValue);
   const [results, setResults] = useState<Cie[]>([]);
