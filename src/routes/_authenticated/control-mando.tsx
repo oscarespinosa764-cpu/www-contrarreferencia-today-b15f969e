@@ -7,6 +7,7 @@ import { AlmacenamientoPanel } from "@/components/coordinacion/almacenamiento-pa
 import { UsuariosPanel } from "@/components/coordinacion/usuarios-panel";
 import { DictadoPanel } from "@/components/coordinacion/dictado-panel";
 import { NotificacionesExternasPanel } from "@/components/coordinacion/notificaciones-externas-panel";
+import { AlertasAvisosAdmin } from "@/components/coordinacion/alertas-avisos-admin";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/_authenticated/control-mando")({
