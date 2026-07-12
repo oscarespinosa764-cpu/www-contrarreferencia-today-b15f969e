@@ -19,7 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Zap, Info, Plus, Pencil, Archive } from "lucide-react";
+import { Zap, Info, Plus, Pencil, Archive, Send, Siren } from "lucide-react";
 import { toast } from "sonner";
 import {
   ReglaCoordinacionFormDialog,
