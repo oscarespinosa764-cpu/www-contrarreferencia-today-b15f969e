@@ -76,6 +76,20 @@ const UNIDADES_CRUE = ["URGENCIAS", "UCI"];
 
 const COMPLEJIDADES = ["MAYOR COMPLEJIDAD", "MENOR COMPLEJIDAD"];
 
+// ── Catálogo institucional para "Paciente sin gestión de referencia" ──
+// No existe un catálogo dedicado de SEDES ni de TIPO_AMBULANCIA en la tabla
+// catalogos; se usa la nomenclatura institucional vigente como respaldo.
+const SEDES_SG = [
+  "CLÍNICA GLORIA PATRICIA PINZÓN",
+  "PRINCIPAL",
+  "CONSULTA ESPECIALIZADA",
+  "SALA ROSA",
+  "SAN VICENTE DEL CAGUÁN",
+];
+const SEDE_SG_DEFAULT = "CLÍNICA GLORIA PATRICIA PINZÓN";
+const TIPOS_AMB_SG = ["TAB", "TAM", "TAM-N"];
+const UNIDAD_SG_DEFAULT = "URGENCIAS";
+
 const ENTIDAD_TIPOS: { value: EntidadTipo; label: string }[] = [
   { value: "EPS", label: "EPS" },
   { value: "SOAT-ADRES", label: "SOAT / ADRES" },
