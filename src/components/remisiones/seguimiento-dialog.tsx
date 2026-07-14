@@ -581,6 +581,26 @@ export function SeguimientoDialog({
   );
   const espHayCambio = espCierreList.length > 0 || espNuevasLimpias.length > 0;
   const esCambioEsp = esSaliente && tipoSeg === T.CAMBIO_ESPECIALIDAD;
+  const esCambioUnidad = esSaliente && tipoSeg === T.CAMBIO_UNIDAD;
+  // Ubicación institucional actual (unidad = servicio de la remisión, cama del caso).
+  const unidadActual = (caso?.servicio ?? "").trim();
+  const camaActual = (caso?.cama ?? "").trim();
+  // Sanitiza la cama: mayúsculas, sin espacios extremos, sin HTML, máximo 30 chars.
+  const sanitizarCama = (raw: string) =>
+    raw
+      .replace(/<[^>]*>/g, "")
+      .replace(/[^0-9A-Za-zÁÉÍÓÚÜÑáéíóúüñ\-\s/.]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toUpperCase()
+      .slice(0, 30);
+  const nuevaUnidadNorm = nuevaUnidad.trim().toUpperCase();
+  const nuevaCamaNorm = sanitizarCama(nuevaCama);
+  const hayCambioUnidad =
+    !!nuevaUnidadNorm &&
+    !!nuevaCamaNorm &&
+    (nuevaUnidadNorm !== unidadActual.toUpperCase() ||
+      nuevaCamaNorm !== camaActual.toUpperCase());
   const toggleEspCierre = (esp: string) =>
     setEspCierres((prev) => ({ ...prev, [esp]: !prev[esp] }));
   const setEspNuevaAt = (i: number, v: string) =>
