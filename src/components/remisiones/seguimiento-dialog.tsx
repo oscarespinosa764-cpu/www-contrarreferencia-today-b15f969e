@@ -1508,6 +1508,8 @@ export function SeguimientoDialog({
     setEvoEsp({});
     setEspCierres({});
     setEspNuevas([""]);
+    setNuevaUnidad("");
+    setNuevaCama("");
     setCierreEgreso("");
     setEvoMotivoPend("");
     setFisNombre("");
