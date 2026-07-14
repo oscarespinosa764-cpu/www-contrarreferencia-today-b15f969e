@@ -1646,6 +1646,12 @@ export function SeguimientoDialog({
         if ((espCierreList.length > 0 || espReactivadas.length > 0) && !detalle.trim())
           return toast.error("Registra las observaciones del cambio.");
       }
+      if (esCambioUnidad) {
+        if (!nuevaUnidadNorm) return toast.error("Selecciona la nueva unidad.");
+        if (!nuevaCamaNorm) return toast.error("Indica la nueva cama del paciente.");
+        if (!hayCambioUnidad)
+          return toast.error("NO SE IDENTIFICARON CAMBIOS EN LA UBICACIÓN DEL PACIENTE.");
+      }
       if (evoRequiereMotivo && !evoMotivoPend.trim())
         return toast.error("Indica el motivo del pendiente");
       // 9.8 · Advertir si no se marcó ninguna especialidad ni se dejó observación.
