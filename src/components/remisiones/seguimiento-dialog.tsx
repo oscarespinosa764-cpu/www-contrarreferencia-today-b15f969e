@@ -2421,6 +2421,71 @@ export function SeguimientoDialog({
                 </div>
               )}
 
+              {/* CAMBIO DE UNIDAD */}
+              {esCambioUnidad && (
+                <div className={sectionCls}>
+                  <p className={labelCls}>Cambio de unidad</p>
+
+                  {/* Ubicación actual (solo lectura) */}
+                  <div className="space-y-1 rounded-lg border border-border/60 bg-background/40 p-3">
+                    <p className={labelCls}>Ubicación actual del paciente</p>
+                    <div className="grid grid-cols-1 gap-1 text-sm sm:grid-cols-2">
+                      <div>
+                        <span className="text-[11px] font-semibold uppercase text-muted-foreground">Unidad actual: </span>
+                        <span className="font-medium">{unidadActual || "SIN UNIDAD REGISTRADA"}</span>
+                      </div>
+                      <div>
+                        <span className="text-[11px] font-semibold uppercase text-muted-foreground">Cama actual: </span>
+                        <span className="font-medium">{camaActual || "SIN CAMA REGISTRADA"}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Nueva unidad + nueva cama */}
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Nueva unidad *</Label>
+                      <Select value={nuevaUnidad} onValueChange={setNuevaUnidad}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar unidad…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {catUnidades.length === 0 ? (
+                            <SelectItem value="__none" disabled>
+                              No hay unidades activas en el catálogo
+                            </SelectItem>
+                          ) : (
+                            catUnidades.map((u) => (
+                              <SelectItem key={u} value={u} className="whitespace-normal">
+                                {u}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Nueva cama *</Label>
+                      <Input
+                        value={nuevaCama}
+                        onChange={(e) => setNuevaCama(sanitizarCama(e.target.value))}
+                        placeholder="Ej. 203-A, UCI-04, OBS-2"
+                        maxLength={30}
+                      />
+                    </div>
+                  </div>
+
+                  {nuevaUnidadNorm && nuevaCamaNorm && !hayCambioUnidad && (
+                    <p className="text-[11px] text-status-amber">
+                      NO SE IDENTIFICARON CAMBIOS EN LA UBICACIÓN DEL PACIENTE.
+                    </p>
+                  )}
+                </div>
+              )}
+
+
+
+
 
 
               {/* FÍSICO O PRESENCIAL */}
