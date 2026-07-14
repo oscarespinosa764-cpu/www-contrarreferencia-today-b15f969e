@@ -692,6 +692,8 @@ export function SeguimientoDialog({
       ...(mostrarCambioEapb ? [T.CAMBIO_EAPB] : []),
       // CAMBIO EN ESPECIALIDAD: solo disponible mientras el caso siga activo.
       ...(casoActivo ? [T.CAMBIO_ESPECIALIDAD] : []),
+      // CAMBIO DE UNIDAD: mientras el caso siga activo, actualiza la ubicación institucional.
+      ...(casoActivo ? [T.CAMBIO_UNIDAD] : []),
       T.CANCELACION,
       T.PERTINENCIA,
       T.NOVEDADES,
