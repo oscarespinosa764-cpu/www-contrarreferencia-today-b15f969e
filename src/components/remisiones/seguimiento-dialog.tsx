@@ -340,7 +340,7 @@ export function SeguimientoDialog({
       const { data } = await supabase
         .from((tabla ?? "remisiones") as "remisiones")
         .select(
-          "eapb, asegurador, tipo_tramite, eapb_tiene_plataforma, eapb_genera_codigo, plataforma_funcionando, ips_receptora, codigo_radicacion, tipo_documento, cie10, tipo_ambulancia, servicio, prestador_traslado",
+          "eapb, asegurador, tipo_tramite, eapb_tiene_plataforma, eapb_genera_codigo, plataforma_funcionando, ips_receptora, codigo_radicacion, tipo_documento, cie10, tipo_ambulancia, servicio, cama, prestador_traslado",
         )
         .eq("id", casoId)
         .maybeSingle();
