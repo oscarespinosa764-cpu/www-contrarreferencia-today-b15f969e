@@ -238,6 +238,10 @@ export function SeguimientoDialog({
   const [espCierres, setEspCierres] = useState<Record<string, boolean>>({});
   const [espNuevas, setEspNuevas] = useState<string[]>([""]);
 
+  // Cambio de unidad (ubicación institucional del paciente).
+  const [nuevaUnidad, setNuevaUnidad] = useState("");
+  const [nuevaCama, setNuevaCama] = useState("");
+
   // Físico / presencial
   const [acercamiento, setAcercamiento] = useState<AcercamientoTipo>("FAMILIAR");
   const [fisNombre, setFisNombre] = useState("");
