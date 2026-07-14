@@ -777,7 +777,8 @@ export function SeguimientoDialog({
       tipoSeg === T.RADICADO ||
       tipoSeg === T.CANCELACION ||
       tipoSeg === T.CAMBIO_EAPB ||
-      tipoSeg === T.CAMBIO_ESPECIALIDAD
+      tipoSeg === T.CAMBIO_ESPECIALIDAD ||
+      tipoSeg === T.CAMBIO_UNIDAD
     )
       setEstadoSolicitud("No aplica");
     else if (tipoSeg === T.ACEPTACION || tipoSeg === T.AMBULANCIA) setEstadoSolicitud("Sí acepta");
