@@ -491,6 +491,7 @@ export function SeguimientoDialog({
     },
   });
 
+  // Historial de especialidades del caso: permite conocer las especialidades
   // que fueron cerradas (para ofrecer reactivación) sin duplicar información.
   const { data: espHistorial = [], refetch: refetchEspHist } = useQuery({
     queryKey: ["esp-historial", casoId],
