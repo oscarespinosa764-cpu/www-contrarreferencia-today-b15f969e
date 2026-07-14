@@ -739,6 +739,8 @@ export function SeguimientoDialog({
     setEvoEsp({});
     setEspCierres({});
     setEspNuevas([""]);
+    setNuevaUnidad("");
+    setNuevaCama("");
   }, [open, evolucionDetalle, especialidadesList, estadoActual]);
 
   // Prefill desde el caso.
