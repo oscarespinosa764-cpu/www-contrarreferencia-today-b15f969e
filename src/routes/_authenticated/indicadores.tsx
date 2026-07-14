@@ -1,10 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/app-header";
-import { StatCard, Panel } from "@/components/stat-card";
+import { Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,8 +16,45 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Search, Pencil, Archive } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Plus,
+  Search,
+  Pencil,
+  Archive,
+  Filter,
+  Info,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  CircleDashed,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  X as XIcon,
+} from "lucide-react";
 import { toast } from "sonner";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ReferenceLine,
+  AreaChart,
+  Area,
+} from "recharts";
 import {
   type Indicador,
   type Medicion,
@@ -29,8 +66,6 @@ import {
   calcularSemaforo,
   ultimaMedicionPorIndicador,
   historialIndicador,
-  tendenciaTexto,
-  lecturaBrecha,
   avanceContraMeta,
   formatearPeriodo,
   SEMAFORO_LABEL,
@@ -40,8 +75,20 @@ export const Route = createFileRoute("/_authenticated/indicadores")({
   component: IndicadoresPage,
 });
 
+// ── Estilos y colores semánticos ──────────────────────────────────────────
 const selectCls =
   "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+// Usamos tokens del design system a través de hsl(var(--...)) para las gráficas
+// (Recharts recibe strings CSS; los tokens permiten mantener dark/light mode).
+const COLOR = {
+  green: "hsl(var(--status-green))",
+  amber: "hsl(var(--status-amber))",
+  red: "hsl(var(--status-red))",
+  sky: "hsl(var(--primary))",
+  muted: "hsl(var(--muted-foreground))",
+  border: "hsl(var(--border))",
+};
 
 const pillCls: Record<Semaforo, string> = {
   VERDE: "bg-status-green/15 text-status-green",
@@ -57,13 +104,67 @@ const borderCls: Record<Semaforo, string> = {
   GRIS: "border-l-border",
 };
 
+const norm = (s: unknown) =>
+  String(s ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+// Sentido "MENOR_ES_MEJOR" ⇒ una reducción es una mejora.
+function esMenorEsMejor(ind: Indicador) {
+  return String(ind.sentido || "MAYOR_ES_MEJOR").toUpperCase() === "MENOR_ES_MEJOR";
+}
+
+// Cumplimiento porcentual individual respetando el sentido.
+function cumplimientoIndividual(ind: Indicador, med: Medicion | undefined): number | null {
+  if (!med || med.resultado === null || med.resultado === undefined) return null;
+  const meta = Number(med.meta ?? ind.meta ?? 0);
+  const r = Number(med.resultado);
+  if (!meta || Number.isNaN(r)) return null;
+  if (esMenorEsMejor(ind)) return (meta / Math.max(r, 0.0001)) * 100;
+  return (r / meta) * 100;
+}
+
+// ── Filtros ───────────────────────────────────────────────────────────────
+type Filtros = {
+  fechaInicio: string;
+  fechaFin: string;
+  turno: string;
+  area: string;
+  responsable: string;
+  estado: "" | Semaforo;
+  frecuencia: string;
+  tipo: string;
+};
+const FILTROS_INICIAL: Filtros = {
+  fechaInicio: "",
+  fechaFin: "",
+  turno: "",
+  area: "",
+  responsable: "",
+  estado: "",
+  frecuencia: "",
+  tipo: "",
+};
+
+// ── Página ────────────────────────────────────────────────────────────────
 function IndicadoresPage() {
   const { isAdmin, canEdit } = useAuth();
   const qc = useQueryClient();
+
   const [q, setQ] = useState("");
+  const [qDebounced, setQDebounced] = useState("");
+  useEffect(() => {
+    const id = setTimeout(() => setQDebounced(q), 250);
+    return () => clearTimeout(id);
+  }, [q]);
+
+  const [filtros, setFiltros] = useState<Filtros>(FILTROS_INICIAL);
+  const [filtrosOpen, setFiltrosOpen] = useState(false);
+  const [orden, setOrden] = useState<"estado" | "nombre" | "cumplimiento" | "reciente">("estado");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Indicador | null>(null);
-  
+  const [detalleId, setDetalleId] = useState<string | null>(null);
 
   const { data: indicadores, isLoading } = useQuery({
     queryKey: ["indicadores-cfg"],
@@ -92,48 +193,159 @@ function IndicadoresPage() {
 
   const inds = useMemo(() => indicadores ?? [], [indicadores]);
   const meds = useMemo(() => mediciones ?? [], [mediciones]);
-  const ultimas = useMemo(() => ultimaMedicionPorIndicador(meds), [meds]);
 
+  // Mediciones filtradas por rango de fechas (aplican a tarjetas, tendencia y ranking).
+  const medsFiltradas = useMemo(() => {
+    const ini = filtros.fechaInicio;
+    const fin = filtros.fechaFin;
+    if (!ini && !fin) return meds;
+    return meds.filter((m) => {
+      const p = String(m.periodo || m.created_at || "").slice(0, 10);
+      if (ini && p < ini) return false;
+      if (fin && p > fin) return false;
+      return true;
+    });
+  }, [meds, filtros.fechaInicio, filtros.fechaFin]);
+
+  const ultimas = useMemo(() => ultimaMedicionPorIndicador(medsFiltradas), [medsFiltradas]);
+
+  // Opciones dinámicas para filtros (derivadas de datos reales).
+  const opcionesArea = useMemo(
+    () => Array.from(new Set(inds.map((i) => (i.responsable || "").trim()).filter(Boolean))).sort(),
+    [inds],
+  );
+  const opcionesFrecuencia = useMemo(
+    () => Array.from(new Set(inds.map((i) => (i.fuente || "").trim()).filter(Boolean))).sort(),
+    [inds],
+  );
+
+  // Aplicar filtros + búsqueda a los indicadores activos.
+  const indsFiltrados = useMemo(() => {
+    const t = qDebounced.trim().toLowerCase();
+    return inds.filter((i) => {
+      if (!i.activo) return false;
+      if (filtros.area && (i.responsable || "").trim() !== filtros.area) return false;
+      if (filtros.responsable && (i.responsable || "").trim() !== filtros.responsable) return false;
+      if (filtros.frecuencia && (i.fuente || "").trim() !== filtros.frecuencia) return false;
+      if (filtros.tipo && (i.tipo || "").trim() !== filtros.tipo) return false;
+      if (filtros.estado) {
+        const sem = (ultimas[i.id]?.semaforo as Semaforo) || "GRIS";
+        if (sem !== filtros.estado) return false;
+      }
+      if (t) {
+        const hay = [i.nombre, i.codigo, i.tipo, i.responsable, i.fuente]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (!hay.includes(t)) return false;
+      }
+      return true;
+    });
+  }, [inds, filtros, ultimas, qDebounced]);
+
+  // ── Resumen ────────────────────────────────────────────────────────────
   const resumen = useMemo(() => {
-    const activos = inds.filter((i) => i.activo);
+    const activos = indsFiltrados;
     let verdes = 0,
       amarillos = 0,
       rojos = 0,
       sinDato = 0;
     for (const ind of activos) {
-      const m = ultimas[ind.id];
-      switch (m?.semaforo) {
-        case "VERDE":
-          verdes++;
-          break;
-        case "AMARILLO":
-          amarillos++;
-          break;
-        case "ROJO":
-          rojos++;
-          break;
-        default:
-          sinDato++;
-      }
+      const sem = (ultimas[ind.id]?.semaforo as Semaforo) || "GRIS";
+      if (sem === "VERDE") verdes++;
+      else if (sem === "AMARILLO") amarillos++;
+      else if (sem === "ROJO") rojos++;
+      else sinDato++;
     }
-    return { total: activos.length, verdes, amarillos, rojos, sinDato };
-  }, [inds, ultimas]);
+    const total = activos.length;
+    const pct = (n: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
+    // Cumplimiento general = promedio del cumplimiento individual (capado a 100)
+    // de indicadores con medición vigente. Documentado a nivel de código.
+    const cumplimientos: number[] = [];
+    for (const ind of activos) {
+      const c = cumplimientoIndividual(ind, ultimas[ind.id]);
+      if (c !== null) cumplimientos.push(Math.min(100, Math.max(0, c)));
+    }
+    const cumplimientoGeneral =
+      cumplimientos.length > 0
+        ? Math.round(cumplimientos.reduce((a, b) => a + b, 0) / cumplimientos.length)
+        : 0;
+    return {
+      total,
+      verdes,
+      amarillos,
+      rojos,
+      sinDato,
+      pctVerdes: pct(verdes),
+      pctAmarillos: pct(amarillos),
+      pctRojos: pct(rojos),
+      pctSin: pct(sinDato),
+      cumplimientoGeneral,
+    };
+  }, [indsFiltrados, ultimas]);
 
-  const term = q.trim().toLowerCase();
-  const indsF = useMemo(
-    () =>
-      inds.filter((i) =>
-        term
-          ? [i.nombre, i.codigo, i.tipo, i.responsable]
-              .filter(Boolean)
-              .join(" ")
-              .toLowerCase()
-              .includes(term)
-          : true,
-      ),
-    [inds, term],
-  );
+  // ── Tendencia general por periodo (mes) ────────────────────────────────
+  const tendenciaGeneral = useMemo(() => {
+    // Agrupa mediciones por periodo (YYYY-MM). Para cada periodo calcula el
+    // cumplimiento promedio y los conteos por semáforo.
+    const porPeriodo = new Map<
+      string,
+      { cumplimiento: number[]; v: number; a: number; r: number; s: number }
+    >();
+    for (const m of medsFiltradas) {
+      const per = String(m.periodo || m.created_at || "").slice(0, 7);
+      if (!per) continue;
+      const ind = inds.find((i) => i.id === m.indicador_id);
+      if (!ind || !ind.activo) continue;
+      const c = cumplimientoIndividual(ind, m);
+      const entry = porPeriodo.get(per) || { cumplimiento: [], v: 0, a: 0, r: 0, s: 0 };
+      if (c !== null) entry.cumplimiento.push(Math.min(100, Math.max(0, c)));
+      const sem = (m.semaforo as Semaforo) || "GRIS";
+      if (sem === "VERDE") entry.v++;
+      else if (sem === "AMARILLO") entry.a++;
+      else if (sem === "ROJO") entry.r++;
+      else entry.s++;
+      porPeriodo.set(per, entry);
+    }
+    return Array.from(porPeriodo.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([per, v]) => ({
+        periodo: per,
+        cumplimiento:
+          v.cumplimiento.length > 0
+            ? Math.round(v.cumplimiento.reduce((a, b) => a + b, 0) / v.cumplimiento.length)
+            : null,
+        enMeta: v.v,
+        alerta: v.a,
+        critico: v.r,
+        sinMedicion: v.s,
+      }));
+  }, [medsFiltradas, inds]);
 
+  // ── Ranking ────────────────────────────────────────────────────────────
+  const ranking = useMemo(() => {
+    const rows = indsFiltrados.map((ind) => {
+      const med = ultimas[ind.id];
+      const sem = (med?.semaforo as Semaforo) || "GRIS";
+      const cumpl = cumplimientoIndividual(ind, med);
+      return { ind, med, sem, cumpl };
+    });
+    const rank: Record<Semaforo, number> = { ROJO: 0, AMARILLO: 1, GRIS: 2, VERDE: 3 };
+    const cmp = (a: (typeof rows)[number], b: (typeof rows)[number]) => {
+      if (orden === "nombre") return String(a.ind.nombre).localeCompare(String(b.ind.nombre));
+      if (orden === "cumplimiento") return (b.cumpl ?? -1) - (a.cumpl ?? -1);
+      if (orden === "reciente") {
+        return String(b.med?.periodo ?? "").localeCompare(String(a.med?.periodo ?? ""));
+      }
+      // "estado" por defecto: Crítico → Alerta → Sin medición → En meta, luego cumplimiento asc
+      const dr = rank[a.sem] - rank[b.sem];
+      if (dr !== 0) return dr;
+      return (a.cumpl ?? Infinity) - (b.cumpl ?? Infinity);
+    };
+    return rows.sort(cmp);
+  }, [indsFiltrados, ultimas, orden]);
+
+  // ── Guardado / edición ────────────────────────────────────────────────
   const onGuardarIndicador = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -152,7 +364,6 @@ function IndicadoresPage() {
       activo: String(f.get("activo") || "SI") === "SI",
     };
     if (!payload.nombre) return toast.error("El nombre del indicador es obligatorio.");
-
     const { error } = editing
       ? await supabase.from("indicadores").update(payload).eq("id", editing.id)
       : await supabase.from("indicadores").insert(payload);
@@ -204,73 +415,215 @@ function IndicadoresPage() {
     qc.invalidateQueries({ queryKey: ["mediciones-ind"] });
   };
 
-  const abrirNuevo = () => {
-    setEditing(null);
-    setFormOpen(true);
-  };
-  const abrirEditar = (ind: Indicador) => {
-    setEditing(ind);
-    setFormOpen(true);
-  };
+  const indicadorDetalle = useMemo(
+    () => inds.find((i) => i.id === detalleId) || null,
+    [inds, detalleId],
+  );
+
+  const activeFiltros = Object.values(filtros).filter(Boolean).length;
+  const sparkAll = tendenciaGeneral.map((p) => ({ v: p.cumplimiento ?? 0 }));
 
   return (
     <div>
-      <AppHeader title="Indicadores" subtitle="Panel de KPIs · Mediciones y semáforo de cumplimiento." />
+      <AppHeader title="Indicadores" subtitle="Panel ejecutivo · KPIs, tendencias y cumplimiento." />
 
-      {/* Resumen / semáforo */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
-        <StatCard title="Indicadores activos" value={resumen.total} caption="Configurados" color="blue" />
-        <StatCard title="En meta (verde)" value={resumen.verdes} caption="Cumplen objetivo" color="green" />
-        <StatCard title="Alerta (amarillo)" value={resumen.amarillos} caption="Cerca del umbral" color="amber" />
-        <StatCard title="Crítico (rojo)" value={resumen.rojos} caption="Fuera de meta" color="red" />
-        <StatCard title="Sin medición" value={resumen.sinDato} caption="Pendientes de registrar" color="sky" />
+      {/* Aviso discreto */}
+      <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <Info className="h-3.5 w-3.5" />
+        Haz clic en un indicador para ver más detalles
       </div>
 
-
-
-      {/* Buscador + nuevo indicador */}
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+      {/* Barra de acciones (buscador + filtros + nuevo) */}
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="rounded-full pl-9"
-            placeholder="Buscar indicador…"
+            placeholder="Buscar por nombre, código, área o responsable…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
         </div>
+        <Popover open={filtrosOpen} onOpenChange={setFiltrosOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="rounded-full">
+              <Filter className="mr-1.5 h-4 w-4" />
+              Filtrar
+              {activeFiltros > 0 && (
+                <span className="ml-1.5 rounded-full bg-primary/15 px-1.5 text-[10px] font-bold text-primary">
+                  {activeFiltros}
+                </span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-[22rem] p-4">
+            <FiltrosPanel
+              filtros={filtros}
+              setFiltros={setFiltros}
+              areas={opcionesArea}
+              frecuencias={opcionesFrecuencia}
+              onClear={() => setFiltros(FILTROS_INICIAL)}
+              onClose={() => setFiltrosOpen(false)}
+            />
+          </PopoverContent>
+        </Popover>
         {canEdit && (
-          <Button className="rounded-full" onClick={abrirNuevo}>
+          <Button className="rounded-full" onClick={() => { setEditing(null); setFormOpen(true); }}>
             <Plus className="mr-1.5 h-4 w-4" /> Nuevo indicador
           </Button>
         )}
       </div>
 
-      {/* Tarjetas de indicadores */}
-      {isLoading ? (
-        <p className="py-10 text-center text-sm text-muted-foreground">Cargando indicadores…</p>
-      ) : indsF.length === 0 ? (
-        <p className="py-10 text-center text-sm text-muted-foreground">
-          {inds.length === 0 ? "Sin indicadores configurados." : "Sin resultados para la búsqueda."}
+      {/* Sección 1 · Resumen */}
+      <section aria-label="Resumen de indicadores" className="mt-5">
+        <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+          Resumen de indicadores
         </p>
-      ) : (
-        <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-          {indsF.map((ind) => (
-            <IndicadorCard
-              key={ind.id}
-              ind={ind}
-              med={ultimas[ind.id]}
-              historial={historialIndicador(meds, ind.id)}
-              canEdit={canEdit}
-              isAdmin={isAdmin}
-              onEdit={() => abrirEditar(ind)}
-              onArchive={() => onArchivar(ind)}
-            />
-          ))}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+          <ResumenCard
+            titulo="Indicadores activos"
+            valor={resumen.total}
+            porcentaje={100}
+            color={COLOR.sky}
+            icon={<Info className="h-4 w-4" />}
+            spark={sparkAll}
+          />
+          <ResumenCard
+            titulo="En meta"
+            valor={resumen.verdes}
+            porcentaje={resumen.pctVerdes}
+            color={COLOR.green}
+            icon={<CheckCircle2 className="h-4 w-4 text-status-green" />}
+            spark={tendenciaGeneral.map((p) => ({ v: p.enMeta }))}
+          />
+          <ResumenCard
+            titulo="Alerta"
+            valor={resumen.amarillos}
+            porcentaje={resumen.pctAmarillos}
+            color={COLOR.amber}
+            icon={<AlertTriangle className="h-4 w-4 text-status-amber" />}
+            spark={tendenciaGeneral.map((p) => ({ v: p.alerta }))}
+          />
+          <ResumenCard
+            titulo="Crítico"
+            valor={resumen.rojos}
+            porcentaje={resumen.pctRojos}
+            color={COLOR.red}
+            icon={<XCircle className="h-4 w-4 text-status-red" />}
+            spark={tendenciaGeneral.map((p) => ({ v: p.critico }))}
+          />
+          <ResumenCard
+            titulo="Sin medición"
+            valor={resumen.sinDato}
+            porcentaje={resumen.pctSin}
+            color={COLOR.sky}
+            icon={<CircleDashed className="h-4 w-4 text-muted-foreground" />}
+            spark={tendenciaGeneral.map((p) => ({ v: p.sinMedicion }))}
+          />
         </div>
-      )}
+      </section>
 
-      {/* Captura mensual */}
+      {/* Sección 2 · Desempeño general */}
+      <section aria-label="Desempeño general" className="mt-6">
+        <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+          Desempeño general
+        </p>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+          <DonutCumplimiento resumen={resumen} />
+          <TendenciaCumplimientoChart data={tendenciaGeneral} />
+          <DonutPorEstado resumen={resumen} />
+        </div>
+      </section>
+
+      {/* Sección 3 · Ranking */}
+      <section aria-label="Ranking de indicadores" className="mt-6">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+            Ranking de indicadores
+          </p>
+          <div className="flex items-center gap-2 text-xs">
+            <Label className="text-[11px] uppercase text-muted-foreground">Orden</Label>
+            <select
+              value={orden}
+              onChange={(e) => setOrden(e.target.value as typeof orden)}
+              className={selectCls + " h-8 w-auto text-xs"}
+            >
+              <option value="estado">Estado (crítico primero)</option>
+              <option value="cumplimiento">Cumplimiento</option>
+              <option value="nombre">Nombre</option>
+              <option value="reciente">Última actualización</option>
+            </select>
+          </div>
+        </div>
+        {isLoading ? (
+          <p className="py-10 text-center text-sm text-muted-foreground">Cargando indicadores…</p>
+        ) : ranking.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
+            {inds.length === 0
+              ? "Sin indicadores configurados."
+              : "Sin resultados para los filtros aplicados."}
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-2xl border border-border bg-card">
+            {/* Cabecera oculta en móvil */}
+            <div className="hidden grid-cols-12 gap-2 border-b border-border/60 bg-muted/30 px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground sm:grid">
+              <div className="col-span-5">Indicador</div>
+              <div className="col-span-2">Resultado</div>
+              <div className="col-span-3">Cumplimiento</div>
+              <div className="col-span-2 text-right">Estado</div>
+            </div>
+            <ul className="divide-y divide-border/60">
+              {ranking.map(({ ind, med, sem, cumpl }) => (
+                <li key={ind.id}>
+                  <button
+                    type="button"
+                    onClick={() => setDetalleId(ind.id)}
+                    className={`grid w-full grid-cols-1 gap-2 border-l-4 px-4 py-3 text-left transition-colors hover:bg-muted/40 sm:grid-cols-12 sm:items-center ${borderCls[sem]}`}
+                  >
+                    <div className="sm:col-span-5">
+                      <p className="truncate text-sm font-bold text-foreground">{ind.nombre}</p>
+                      <p className="truncate text-[11px] uppercase tracking-wide text-muted-foreground">
+                        {ind.codigo || "Sin código"} · {ind.responsable || "Coordinación"}
+                      </p>
+                    </div>
+                    <div className="text-sm sm:col-span-2">
+                      {med?.resultado !== null && med?.resultado !== undefined ? (
+                        <span className="font-bold text-foreground">
+                          {med.resultado} {med.unidad || ind.unidad || ""}
+                        </span>
+                      ) : (
+                        <span className="text-xs italic text-muted-foreground">Sin datos</span>
+                      )}
+                    </div>
+                    <div className="sm:col-span-3">
+                      <div className="flex items-center gap-2">
+                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="h-full rounded-full bg-primary"
+                            style={{ width: `${Math.min(100, Math.max(0, cumpl ?? 0))}%` }}
+                          />
+                        </div>
+                        <span className="w-10 text-right text-[11px] font-semibold text-muted-foreground">
+                          {cumpl !== null ? `${Math.round(cumpl)}%` : "—"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="sm:col-span-2 sm:text-right">
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${pillCls[sem]}`}
+                      >
+                        {SEMAFORO_LABEL[sem]}
+                      </span>
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
+
+      {/* Captura mensual (rol) */}
       {canEdit && (
         <div className="mt-6">
           <Panel title="Captura mensual de indicadores" bodyMaxHeight={null}>
@@ -311,19 +664,30 @@ function IndicadoresPage() {
                 <Label>Comentario</Label>
                 <Input name="comentario" placeholder="Análisis breve o compromiso de mejora" />
               </div>
-              <div className="md:col-span-3 flex justify-end">
+              <div className="flex justify-end md:col-span-3">
                 <Button type="submit">Guardar medición</Button>
               </div>
             </form>
-
-            <div className="mt-5">
-              <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                Últimas mediciones
-              </p>
-              <MedicionesList mediciones={meds} indicadores={inds} />
-            </div>
           </Panel>
         </div>
+      )}
+
+      {/* Modal detalle */}
+      {indicadorDetalle && (
+        <IndicadorDetalleModal
+          open={!!detalleId}
+          onOpenChange={(v) => !v && setDetalleId(null)}
+          ind={indicadorDetalle}
+          historial={historialIndicador(meds, indicadorDetalle.id)}
+          medActual={ultimas[indicadorDetalle.id]}
+          canEdit={canEdit}
+          isAdmin={isAdmin}
+          onEdit={() => {
+            setEditing(indicadorDetalle);
+            setFormOpen(true);
+          }}
+          onArchive={() => onArchivar(indicadorDetalle)}
+        />
       )}
 
       <IndicadorFormDialog
@@ -336,180 +700,687 @@ function IndicadoresPage() {
         onSubmit={onGuardarIndicador}
       />
     </div>
-
   );
 }
 
-function IndicadorCard({
-  ind,
-  med,
-  historial,
-  canEdit,
-  isAdmin,
-  onEdit,
-  onArchive,
+// ── Componentes ─────────────────────────────────────────────────────────
+
+function ResumenCard({
+  titulo,
+  valor,
+  porcentaje,
+  color,
+  icon,
+  spark,
 }: {
-  ind: Indicador;
-  med: Medicion | undefined;
-  historial: Medicion[];
-  canEdit: boolean;
-  isAdmin: boolean;
-  onEdit: () => void;
-  onArchive: () => void;
+  titulo: string;
+  valor: number;
+  porcentaje: number;
+  color: string;
+  icon: React.ReactNode;
+  spark: { v: number }[];
 }) {
-  const sem = (med?.semaforo as Semaforo) || "GRIS";
-  const tieneResultado =
-    med?.resultado !== undefined && med?.resultado !== null && !Number.isNaN(Number(med?.resultado));
-  const unidad = med?.unidad || ind.unidad || "";
-  const { ancho, etiqueta } = avanceContraMeta(ind, med);
-  const vals = historial.map((m) => Number(m.resultado)).filter((v) => !Number.isNaN(v));
-  const maxSpark = Math.max(1, ...vals);
-
+  const donutData = [
+    { name: "v", value: porcentaje },
+    { name: "r", value: Math.max(0, 100 - porcentaje) },
+  ];
   return (
-    <div className={`flex flex-col rounded-2xl border border-border border-l-4 ${borderCls[sem]} bg-card p-4 shadow-sm`}>
+    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="flex items-start justify-between gap-2">
-        <h3 className="text-sm font-extrabold leading-snug text-foreground">{ind.nombre}</h3>
-        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${pillCls[sem]}`}>
-          {SEMAFORO_LABEL[sem]}
-        </span>
-      </div>
-      <p className="mt-1 text-[11px] uppercase tracking-wide text-muted-foreground">
-        {ind.codigo || "Sin código"} · {ind.tipo} · {ind.responsable || "Coordinación"}
-      </p>
-
-      {/* KPIs */}
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <div className="rounded-lg border border-border/60 bg-background/40 p-2.5">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Resultado</p>
-          <p className="text-lg font-extrabold text-foreground">
-            {tieneResultado ? `${med?.resultado} ${unidad}` : "Sin dato"}
+        <div className="min-w-0">
+          <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+            {icon} <span className="truncate">{titulo}</span>
           </p>
-          <p className="text-[10px] text-muted-foreground">
-            {med?.periodo ? formatearPeriodo(med.periodo) : "Sin periodo registrado"}
-          </p>
+          <p className="mt-1 text-3xl font-extrabold text-foreground">{valor}</p>
+          <p className="text-[11px] text-muted-foreground">{porcentaje}% del total</p>
         </div>
-        <div className="rounded-lg border border-border/60 bg-background/40 p-2.5">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Meta</p>
-          <p className="text-lg font-extrabold text-foreground">
-            {ind.meta != null ? `${ind.meta} ${ind.unidad || ""}` : "Pendiente"}
-          </p>
-          <p className="text-[10px] text-muted-foreground">
-            {etiqueta !== "Pendiente" ? `Cumplimiento ${etiqueta}` : "Sin cumplimiento"}
-          </p>
-        </div>
-      </div>
-
-      {/* Avance contra meta */}
-      <div className="mt-3">
-        <div className="flex justify-between text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          <span>Avance contra meta</span>
-          <span>{etiqueta}</span>
-        </div>
-        <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-muted">
-          <div className="h-full rounded-full bg-primary" style={{ width: `${ancho}%` }} />
-        </div>
-      </div>
-
-      {/* Tendencia */}
-      <div className="mt-3 flex h-12 items-end gap-1 rounded-lg border border-border/60 bg-background/40 p-2">
-        {vals.length === 0 ? (
-          <p className="w-full text-center text-[11px] italic text-muted-foreground">
-            Sin tendencia mensual registrada.
-          </p>
-        ) : (
-          vals.map((v, i) => (
-            <span
-              key={i}
-              className="flex-1 rounded-sm bg-primary/60"
-              style={{ height: `${Math.max(15, Math.round((v / maxSpark) * 100))}%` }}
-            />
-          ))
-        )}
-      </div>
-
-      <p className="mt-3 text-xs text-muted-foreground">
-        <span className="font-bold text-foreground">Lectura: </span>
-        {lecturaBrecha(ind, med)}
-      </p>
-
-      <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
-        <div className="rounded-lg border border-border/60 bg-background/40 p-2">
-          <p className="font-bold uppercase tracking-wide text-muted-foreground">Numerador</p>
-          <p className="text-foreground">{ind.numerador || "Pendiente"}</p>
-        </div>
-        <div className="rounded-lg border border-border/60 bg-background/40 p-2">
-          <p className="font-bold uppercase tracking-wide text-muted-foreground">Denominador</p>
-          <p className="text-foreground">{ind.denominador || "Pendiente"}</p>
-        </div>
-      </div>
-
-      <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-3">
-        <span className="text-[11px] text-muted-foreground">{tendenciaTexto(historial, ind.sentido)}</span>
-        {canEdit && (
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" className="h-8 rounded-full px-3 text-xs" onClick={onEdit}>
-              <Pencil className="mr-1 h-3.5 w-3.5" /> Editar
-            </Button>
-            {isAdmin && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 rounded-full px-3 text-xs text-status-red hover:text-status-red"
-                onClick={onArchive}
+        <div className="h-12 w-12 shrink-0">
+          <ResponsiveContainer>
+            <PieChart>
+              <Pie
+                data={donutData}
+                dataKey="value"
+                cx="50%"
+                cy="50%"
+                innerRadius={12}
+                outerRadius={22}
+                startAngle={90}
+                endAngle={-270}
+                stroke="none"
               >
-                <Archive className="mr-1 h-3.5 w-3.5" /> Archivar
-              </Button>
-            )}
-          </div>
+                <Cell fill={color} />
+                <Cell fill="hsl(var(--muted))" />
+              </Pie>
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+      <div className="mt-2 h-10">
+        {spark.length === 0 ? (
+          <p className="text-center text-[10px] italic text-muted-foreground">Sin tendencia</p>
+        ) : (
+          <ResponsiveContainer>
+            <AreaChart data={spark} margin={{ top: 2, bottom: 2, left: 0, right: 0 }}>
+              <Area type="monotone" dataKey="v" stroke={color} fill={color} fillOpacity={0.2} strokeWidth={1.5} />
+            </AreaChart>
+          </ResponsiveContainer>
         )}
       </div>
     </div>
   );
 }
 
-function MedicionesList({
-  mediciones,
-  indicadores,
+function DonutCumplimiento({
+  resumen,
 }: {
-  mediciones: Medicion[];
-  indicadores: Indicador[];
-}) {
-  const nombre = (id: string) => indicadores.find((i) => i.id === id)?.nombre || id;
-  const items = [...mediciones].reverse().slice(0, 15);
-  if (items.length === 0) {
-    return <p className="py-4 text-center text-sm italic text-muted-foreground">Sin mediciones registradas.</p>;
-  }
-  const pill: Record<string, string> = {
-    VERDE: "bg-status-green/15 text-status-green",
-    AMARILLO: "bg-status-amber/15 text-status-amber",
-    ROJO: "bg-status-red/15 text-status-red",
+  resumen: ReturnType<typeof useMemo> extends never ? never : {
+    verdes: number;
+    amarillos: number;
+    rojos: number;
+    sinDato: number;
+    pctVerdes: number;
+    pctAmarillos: number;
+    pctRojos: number;
+    pctSin: number;
+    cumplimientoGeneral: number;
   };
+}) {
+  const data = [
+    { name: "En meta", value: resumen.verdes, color: COLOR.green },
+    { name: "Alerta", value: resumen.amarillos, color: COLOR.amber },
+    { name: "Crítico", value: resumen.rojos, color: COLOR.red },
+    { name: "Sin medición", value: resumen.sinDato, color: COLOR.muted },
+  ];
   return (
-    <div className="space-y-2">
-      {items.map((m) => (
-        <div
-          key={m.id}
-          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-background/40 px-3 py-2 text-xs"
-        >
-          <div className="min-w-0">
-            <p className="truncate font-semibold text-foreground">{nombre(m.indicador_id)}</p>
-            <p className="text-muted-foreground">
-              {formatearPeriodo(m.periodo)}
-              {m.comentario ? ` · ${m.comentario}` : ""}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-foreground">
-              {m.resultado ?? "—"} {m.unidad || ""}
+    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+        Cumplimiento de metas
+      </p>
+      <div className="mt-2 grid grid-cols-2 gap-2 items-center">
+        <div className="relative h-40">
+          <ResponsiveContainer>
+            <PieChart>
+              <Pie data={data} dataKey="value" innerRadius={44} outerRadius={64} stroke="none">
+                {data.map((d) => (
+                  <Cell key={d.name} fill={d.color} />
+                ))}
+              </Pie>
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-2xl font-extrabold text-foreground">
+              {resumen.cumplimientoGeneral}%
             </span>
-            <span
-              className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${pill[m.semaforo || ""] || "bg-muted text-muted-foreground"}`}
-            >
-              {m.semaforo || "SIN DATO"}
-            </span>
+            <span className="text-[9px] uppercase text-muted-foreground">Cumplimiento general</span>
           </div>
         </div>
-      ))}
+        <ul className="space-y-1.5 text-xs">
+          <LegendItem color={COLOR.green} label="En meta" n={resumen.verdes} p={resumen.pctVerdes} />
+          <LegendItem color={COLOR.amber} label="Alerta" n={resumen.amarillos} p={resumen.pctAmarillos} />
+          <LegendItem color={COLOR.red} label="Crítico" n={resumen.rojos} p={resumen.pctRojos} />
+          <LegendItem color={COLOR.muted} label="Sin medición" n={resumen.sinDato} p={resumen.pctSin} />
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function LegendItem({ color, label, n, p }: { color: string; label: string; n: number; p: number }) {
+  return (
+    <li className="flex items-center justify-between gap-2">
+      <span className="flex items-center gap-1.5">
+        <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+        {label}
+      </span>
+      <span className="font-semibold text-foreground">{n} ({p}%)</span>
+    </li>
+  );
+}
+
+function DonutPorEstado({ resumen }: { resumen: Parameters<typeof DonutCumplimiento>[0]["resumen"] }) {
+  const data = [
+    { name: "En meta", value: resumen.verdes, color: COLOR.green },
+    { name: "Alerta", value: resumen.amarillos, color: COLOR.amber },
+    { name: "Crítico", value: resumen.rojos, color: COLOR.red },
+    { name: "Sin medición", value: resumen.sinDato, color: COLOR.muted },
+  ];
+  const total = resumen.verdes + resumen.amarillos + resumen.rojos + resumen.sinDato;
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+        Indicadores por estado
+      </p>
+      <div className="mt-2 grid grid-cols-2 gap-2 items-center">
+        <div className="relative h-40">
+          <ResponsiveContainer>
+            <PieChart>
+              <Pie data={data} dataKey="value" innerRadius={44} outerRadius={64} stroke="none">
+                {data.map((d) => (
+                  <Cell key={d.name} fill={d.color} />
+                ))}
+              </Pie>
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-2xl font-extrabold text-foreground">{total}</span>
+            <span className="text-[9px] uppercase text-muted-foreground">Total</span>
+          </div>
+        </div>
+        <ul className="space-y-1.5 text-xs">
+          {data.map((d) => (
+            <li key={d.name} className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ background: d.color }} />
+                {d.name}
+              </span>
+              <span className="font-semibold text-foreground">
+                {d.value} ({total > 0 ? Math.round((d.value / total) * 100) : 0}%)
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function TendenciaCumplimientoChart({
+  data,
+}: {
+  data: {
+    periodo: string;
+    cumplimiento: number | null;
+    enMeta: number;
+    alerta: number;
+    critico: number;
+    sinMedicion: number;
+  }[];
+}) {
+  const conDatos = data.filter((d) => d.cumplimiento !== null);
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+        Tendencia de cumplimiento
+      </p>
+      <div className="mt-2 h-40">
+        {conDatos.length < 2 ? (
+          <p className="flex h-full items-center justify-center text-center text-[11px] italic text-muted-foreground">
+            SIN TENDENCIA SUFICIENTE PARA EL PERIODO SELECCIONADO.
+          </p>
+        ) : (
+          <ResponsiveContainer>
+            <LineChart data={data} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={COLOR.border} />
+              <XAxis
+                dataKey="periodo"
+                tickFormatter={(v) => v.slice(5)}
+                tick={{ fontSize: 10, fill: COLOR.muted }}
+              />
+              <YAxis
+                domain={[0, 100]}
+                tick={{ fontSize: 10, fill: COLOR.muted }}
+                tickFormatter={(v) => `${v}%`}
+              />
+              <Tooltip
+                contentStyle={{
+                  background: "hsl(var(--popover))",
+                  border: "1px solid hsl(var(--border))",
+                  fontSize: 12,
+                }}
+                formatter={(v: number) => [`${v}%`, "Cumplimiento"]}
+                labelFormatter={(l) => formatearPeriodo(String(l))}
+              />
+              <Line
+                type="monotone"
+                dataKey="cumplimiento"
+                stroke={COLOR.sky}
+                strokeWidth={2}
+                dot={{ r: 3 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FiltrosPanel({
+  filtros,
+  setFiltros,
+  areas,
+  frecuencias,
+  onClear,
+  onClose,
+}: {
+  filtros: Filtros;
+  setFiltros: (f: Filtros) => void;
+  areas: string[];
+  frecuencias: string[];
+  onClear: () => void;
+  onClose: () => void;
+}) {
+  const update = <K extends keyof Filtros>(k: K, v: Filtros[K]) =>
+    setFiltros({ ...filtros, [k]: v });
+  return (
+    <div className="space-y-3">
+      <p className="text-[11px] font-bold uppercase text-muted-foreground">Filtros</p>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <Label className="text-[10px] uppercase">Desde</Label>
+          <Input type="date" value={filtros.fechaInicio} onChange={(e) => update("fechaInicio", e.target.value)} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-[10px] uppercase">Hasta</Label>
+          <Input type="date" value={filtros.fechaFin} onChange={(e) => update("fechaFin", e.target.value)} />
+        </div>
+      </div>
+      <div className="space-y-1">
+        <Label className="text-[10px] uppercase">Área / responsable</Label>
+        <select className={selectCls} value={filtros.area} onChange={(e) => update("area", e.target.value)}>
+          <option value="">Todas</option>
+          {areas.map((a) => (
+            <option key={a} value={a}>{a}</option>
+          ))}
+        </select>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <Label className="text-[10px] uppercase">Estado</Label>
+          <select
+            className={selectCls}
+            value={filtros.estado}
+            onChange={(e) => update("estado", e.target.value as Filtros["estado"])}
+          >
+            <option value="">Todos</option>
+            <option value="VERDE">En meta</option>
+            <option value="AMARILLO">Alerta</option>
+            <option value="ROJO">Crítico</option>
+            <option value="GRIS">Sin medición</option>
+          </select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-[10px] uppercase">Tipo</Label>
+          <select className={selectCls} value={filtros.tipo} onChange={(e) => update("tipo", e.target.value)}>
+            <option value="">Todos</option>
+            {TIPOS_INDICADOR.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div className="space-y-1">
+        <Label className="text-[10px] uppercase">Frecuencia / fuente</Label>
+        <select className={selectCls} value={filtros.frecuencia} onChange={(e) => update("frecuencia", e.target.value)}>
+          <option value="">Todas</option>
+          {frecuencias.map((f) => (
+            <option key={f} value={f}>{f}</option>
+          ))}
+        </select>
+      </div>
+      <div className="flex justify-between pt-2">
+        <Button type="button" variant="ghost" size="sm" onClick={onClear}>
+          Limpiar filtros
+        </Button>
+        <Button type="button" size="sm" onClick={onClose}>
+          Aplicar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function IndicadorDetalleModal({
+  open,
+  onOpenChange,
+  ind,
+  historial,
+  medActual,
+  canEdit,
+  isAdmin,
+  onEdit,
+  onArchive,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  ind: Indicador;
+  historial: Medicion[];
+  medActual: Medicion | undefined;
+  canEdit: boolean;
+  isAdmin: boolean;
+  onEdit: () => void;
+  onArchive: () => void;
+}) {
+  const sem = (medActual?.semaforo as Semaforo) || "GRIS";
+  const cumpl = cumplimientoIndividual(ind, medActual);
+  const { ancho } = avanceContraMeta(ind, medActual);
+  const menorMejor = esMenorEsMejor(ind);
+  const vals = historial.map((h) => Number(h.resultado)).filter((v) => !Number.isNaN(v));
+  const last = vals.at(-1);
+  const prev = vals.at(-2);
+  const tendVariacion =
+    last !== undefined && prev !== undefined && prev !== 0
+      ? Math.round(((last - prev) / prev) * 100)
+      : null;
+  const mejora =
+    tendVariacion === null
+      ? null
+      : menorMejor
+        ? tendVariacion < 0
+        : tendVariacion > 0;
+
+  const [pagina, setPagina] = useState(1);
+  const PAGE = 6;
+  const historialDesc = useMemo(() => [...historial].reverse(), [historial]);
+  const totalPag = Math.max(1, Math.ceil(historialDesc.length / PAGE));
+  const pagRows = historialDesc.slice((pagina - 1) * PAGE, pagina * PAGE);
+
+  const chartData = historial.map((h) => ({
+    periodo: h.periodo ?? "",
+    resultado: h.resultado ?? null,
+    meta: h.meta ?? ind.meta ?? null,
+    cumplimiento: cumplimientoIndividual(ind, h),
+  }));
+
+  const showOr = (v: string | number | null | undefined) =>
+    v === null || v === undefined || String(v).trim() === "" ? (
+      <span className="italic text-muted-foreground">NO CONFIGURADO</span>
+    ) : (
+      String(v)
+    );
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] min-w-0 flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl">
+        <DialogHeader className="shrink-0 border-b border-border/60 px-4 py-3 pr-10 text-left sm:px-6">
+          <DialogTitle className="break-words text-base leading-snug">
+            {ind.nombre}
+          </DialogTitle>
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            {ind.codigo || "Sin código"} · {ind.responsable || "Coordinación"}
+            {medActual?.created_at
+              ? ` · Última actualización: ${new Date(medActual.created_at).toLocaleString("es-CO")}`
+              : ""}
+          </p>
+        </DialogHeader>
+
+        <div className="min-w-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-4 py-4 scrollbar-invisible sm:px-6">
+          {/* KPIs */}
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <KPI
+              label="Cumplimiento actual"
+              value={cumpl !== null ? `${Math.round(cumpl)}%` : "—"}
+              caption={SEMAFORO_LABEL[sem]}
+              tone={sem}
+            />
+            <KPI
+              label="Meta"
+              value={ind.meta != null ? `${ind.meta} ${ind.unidad || ""}` : "—"}
+              caption={menorMejor ? "Máximo permitido" : "Objetivo mínimo"}
+            />
+            <KPI
+              label="Resultado"
+              value={
+                medActual?.resultado !== null && medActual?.resultado !== undefined
+                  ? `${medActual.resultado} ${medActual.unidad || ind.unidad || ""}`
+                  : "SIN DATOS"
+              }
+              caption={medActual?.periodo ? formatearPeriodo(medActual.periodo) : "Sin periodo"}
+            />
+            <KPI
+              label="Tendencia"
+              value={
+                tendVariacion === null
+                  ? "Sin cambio"
+                  : `${tendVariacion > 0 ? "+" : ""}${tendVariacion}%`
+              }
+              caption={mejora === null ? "Sin comparativo" : mejora ? "Mejora" : "Por revisar"}
+              icon={
+                mejora === null ? (
+                  <Minus className="h-4 w-4" />
+                ) : mejora ? (
+                  <TrendingUp className="h-4 w-4 text-status-green" />
+                ) : (
+                  <TrendingDown className="h-4 w-4 text-status-red" />
+                )
+              }
+            />
+          </div>
+
+          {/* Avance vs meta */}
+          <div className="rounded-2xl border border-border bg-card p-3">
+            <div className="mb-1 flex items-center justify-between text-[11px] uppercase text-muted-foreground">
+              <span>Avance contra meta</span>
+              <span>{cumpl !== null ? `${Math.round(cumpl)}%` : "—"}</span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div className="h-full rounded-full bg-primary" style={{ width: `${ancho}%` }} />
+            </div>
+            {cumpl !== null && cumpl > 100 && (
+              <p className="mt-1 text-[11px] text-status-green">
+                RESULTADO {Math.round(cumpl - 100)}% MEJOR QUE LA META
+              </p>
+            )}
+          </div>
+
+          {/* Gráficas */}
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <div className="rounded-2xl border border-border bg-card p-3">
+              <p className="mb-1 text-[10px] font-bold uppercase text-muted-foreground">
+                Evolución del cumplimiento
+              </p>
+              <div className="h-56">
+                {chartData.filter((c) => c.cumplimiento !== null).length < 2 ? (
+                  <p className="flex h-full items-center justify-center text-center text-[11px] italic text-muted-foreground">
+                    SIN TENDENCIA SUFICIENTE PARA EL PERIODO SELECCIONADO.
+                  </p>
+                ) : (
+                  <ResponsiveContainer>
+                    <LineChart data={chartData} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={COLOR.border} />
+                      <XAxis dataKey="periodo" tickFormatter={(v) => v.slice(5)} tick={{ fontSize: 10, fill: COLOR.muted }} />
+                      <YAxis tick={{ fontSize: 10, fill: COLOR.muted }} tickFormatter={(v) => `${v}%`} />
+                      <Tooltip
+                        contentStyle={{
+                          background: "hsl(var(--popover))",
+                          border: "1px solid hsl(var(--border))",
+                          fontSize: 12,
+                        }}
+                        formatter={(v: number, name: string) => [
+                          name === "cumplimiento" ? `${Math.round(Number(v))}%` : v,
+                          name,
+                        ]}
+                        labelFormatter={(l) => formatearPeriodo(String(l))}
+                      />
+                      <Line type="monotone" dataKey="cumplimiento" stroke={COLOR.sky} strokeWidth={2} dot={{ r: 3 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-border bg-card p-3">
+              <p className="mb-1 text-[10px] font-bold uppercase text-muted-foreground">
+                Resultado vs meta
+              </p>
+              <div className="h-56">
+                {chartData.length === 0 ? (
+                  <p className="flex h-full items-center justify-center text-center text-[11px] italic text-muted-foreground">
+                    Sin mediciones registradas.
+                  </p>
+                ) : (
+                  <ResponsiveContainer>
+                    <BarChart data={chartData} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={COLOR.border} />
+                      <XAxis dataKey="periodo" tickFormatter={(v) => v.slice(5)} tick={{ fontSize: 10, fill: COLOR.muted }} />
+                      <YAxis tick={{ fontSize: 10, fill: COLOR.muted }} />
+                      <Tooltip
+                        contentStyle={{
+                          background: "hsl(var(--popover))",
+                          border: "1px solid hsl(var(--border))",
+                          fontSize: 12,
+                        }}
+                        labelFormatter={(l) => formatearPeriodo(String(l))}
+                      />
+                      <Bar dataKey="resultado" radius={[4, 4, 0, 0]}>
+                        {chartData.map((c, i) => {
+                          const s = calcularSemaforo(c.resultado ?? null, c.meta ?? null, ind.sentido);
+                          const color =
+                            s === "VERDE" ? COLOR.green : s === "AMARILLO" ? COLOR.amber : s === "ROJO" ? COLOR.red : COLOR.muted;
+                          return <Cell key={i} fill={color} />;
+                        })}
+                      </Bar>
+                      {ind.meta != null && (
+                        <ReferenceLine
+                          y={ind.meta}
+                          stroke={COLOR.sky}
+                          strokeDasharray="4 4"
+                          label={{ value: `Meta ${ind.meta}`, fill: COLOR.sky, fontSize: 10, position: "insideTopRight" }}
+                        />
+                      )}
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Detalle técnico */}
+          <div className="rounded-2xl border border-border bg-card p-3">
+            <p className="mb-2 text-[10px] font-bold uppercase text-muted-foreground">Detalle del indicador</p>
+            <dl className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+              <Field label="Numerador">{showOr(ind.numerador)}</Field>
+              <Field label="Denominador">{showOr(ind.denominador)}</Field>
+              <Field label="Fórmula">{showOr(ind.tipo)}</Field>
+              <Field label="Unidad">{showOr(ind.unidad)}</Field>
+              <Field label="Frecuencia / fuente">{showOr(ind.fuente)}</Field>
+              <Field label="Responsable">{showOr(ind.responsable)}</Field>
+              <Field label="Tipo de evaluación">{menorMejor ? "MENOR ES MEJOR" : "MAYOR ES MEJOR"}</Field>
+              <Field label="Descripción">{showOr(ind.descripcion)}</Field>
+            </dl>
+          </div>
+
+          {/* Historial */}
+          <div className="rounded-2xl border border-border bg-card p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-[10px] font-bold uppercase text-muted-foreground">Historial de resultados</p>
+              {totalPag > 1 && (
+                <div className="flex items-center gap-1 text-[11px]">
+                  <Button size="sm" variant="ghost" onClick={() => setPagina(Math.max(1, pagina - 1))} disabled={pagina === 1}>
+                    ‹
+                  </Button>
+                  <span>{pagina} / {totalPag}</span>
+                  <Button size="sm" variant="ghost" onClick={() => setPagina(Math.min(totalPag, pagina + 1))} disabled={pagina === totalPag}>
+                    ›
+                  </Button>
+                </div>
+              )}
+            </div>
+            {historial.length === 0 ? (
+              <p className="py-4 text-center text-xs italic text-muted-foreground">Sin mediciones registradas.</p>
+            ) : (
+              <div className="overflow-x-auto scrollbar-invisible">
+                <table className="w-full min-w-[520px] text-xs">
+                  <thead>
+                    <tr className="border-b border-border/60 text-left uppercase text-muted-foreground">
+                      <th className="py-1.5 pr-2">Periodo</th>
+                      <th className="py-1.5 pr-2">Resultado</th>
+                      <th className="py-1.5 pr-2">Meta</th>
+                      <th className="py-1.5 pr-2">Cumplimiento</th>
+                      <th className="py-1.5 pr-2">Estado</th>
+                      <th className="py-1.5 pr-2">Registro</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pagRows.map((m) => {
+                      const c = cumplimientoIndividual(ind, m);
+                      const s = (m.semaforo as Semaforo) || "GRIS";
+                      return (
+                        <tr key={m.id} className="border-b border-border/40">
+                          <td className="py-1.5 pr-2">{m.periodo ? formatearPeriodo(m.periodo) : "—"}</td>
+                          <td className="py-1.5 pr-2 font-semibold">{m.resultado ?? "—"} {m.unidad || ""}</td>
+                          <td className="py-1.5 pr-2">{m.meta ?? ind.meta ?? "—"}</td>
+                          <td className="py-1.5 pr-2">{c !== null ? `${Math.round(c)}%` : "—"}</td>
+                          <td className="py-1.5 pr-2">
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${pillCls[s]}`}>
+                              {SEMAFORO_LABEL[s]}
+                            </span>
+                          </td>
+                          <td className="py-1.5 pr-2 text-muted-foreground">
+                            {m.created_at ? new Date(m.created_at).toLocaleDateString("es-CO") : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <DialogFooter className="shrink-0 border-t border-border/60 px-4 py-3 sm:px-6">
+          {canEdit && (
+            <>
+              <Button variant="outline" size="sm" onClick={onEdit}>
+                <Pencil className="mr-1 h-3.5 w-3.5" /> Editar
+              </Button>
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-status-red hover:text-status-red"
+                  onClick={onArchive}
+                >
+                  <Archive className="mr-1 h-3.5 w-3.5" /> Archivar
+                </Button>
+              )}
+            </>
+          )}
+          <Button size="sm" onClick={() => onOpenChange(false)}>
+            <XIcon className="mr-1 h-3.5 w-3.5" /> Cerrar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function KPI({
+  label,
+  value,
+  caption,
+  tone,
+  icon,
+}: {
+  label: string;
+  value: React.ReactNode;
+  caption?: string;
+  tone?: Semaforo;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-3">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-1 text-xl font-extrabold text-foreground">{value}</p>
+      <p className={`mt-0.5 flex items-center gap-1 text-[11px] ${tone ? "" : "text-muted-foreground"}`}>
+        {icon}
+        {tone ? (
+          <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${pillCls[tone]}`}>
+            {caption ?? SEMAFORO_LABEL[tone]}
+          </span>
+        ) : (
+          caption
+        )}
+      </p>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-md border border-border/60 bg-background/40 px-2.5 py-1.5">
+      <dt className="text-[10px] font-bold uppercase text-muted-foreground">{label}</dt>
+      <dd className="text-foreground">{children}</dd>
     </div>
   );
 }
@@ -595,11 +1466,11 @@ function IndicadorFormDialog({
           </div>
           <div className="space-y-1.5">
             <Label>Responsable</Label>
-            <Input name="responsable" defaultValue={editing?.responsable ?? "Coordinacion de referencia"} />
+            <Input name="responsable" defaultValue={editing?.responsable ?? "Coordinación de referencia"} />
           </div>
           <div className="space-y-1.5">
             <Label>Fuente</Label>
-            <Input name="fuente" defaultValue={editing?.fuente ?? "Bitacora operativa"} />
+            <Input name="fuente" defaultValue={editing?.fuente ?? "Bitácora operativa"} />
           </div>
           <DialogFooter className="sm:col-span-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>

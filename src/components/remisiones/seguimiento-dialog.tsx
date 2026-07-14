@@ -112,6 +112,7 @@ const T = {
   TRASLADO: "CIERRE DE CASO POR TRASLADO EFECTIVO",
   CAMBIO_EAPB: "CAMBIO DE ASEGURADOR A EAPB",
   CAMBIO_ESPECIALIDAD: "CAMBIO EN ESPECIALIDAD",
+  CAMBIO_UNIDAD: "CAMBIO DE UNIDAD",
   CANCELACION: "CANCELACIÓN DE TRÁMITE DE REMISIÓN",
   PERTINENCIA: "REVISIÓN AUTORIZACIÓN ESTANCIA (CANCELACIÓN)",
   NOVEDADES: "NOVEDADES",
@@ -237,6 +238,10 @@ export function SeguimientoDialog({
   const [espCierres, setEspCierres] = useState<Record<string, boolean>>({});
   const [espNuevas, setEspNuevas] = useState<string[]>([""]);
 
+  // Cambio de unidad (ubicación institucional del paciente).
+  const [nuevaUnidad, setNuevaUnidad] = useState("");
+  const [nuevaCama, setNuevaCama] = useState("");
+
   // Físico / presencial
   const [acercamiento, setAcercamiento] = useState<AcercamientoTipo>("FAMILIAR");
   const [fisNombre, setFisNombre] = useState("");
@@ -339,7 +344,7 @@ export function SeguimientoDialog({
       const { data } = await supabase
         .from((tabla ?? "remisiones") as "remisiones")
         .select(
-          "eapb, asegurador, tipo_tramite, eapb_tiene_plataforma, eapb_genera_codigo, plataforma_funcionando, ips_receptora, codigo_radicacion, tipo_documento, cie10, tipo_ambulancia, servicio, prestador_traslado",
+          "eapb, asegurador, tipo_tramite, eapb_tiene_plataforma, eapb_genera_codigo, plataforma_funcionando, ips_receptora, codigo_radicacion, tipo_documento, cie10, tipo_ambulancia, servicio, cama, prestador_traslado",
         )
         .eq("id", casoId)
         .maybeSingle();
@@ -356,6 +361,7 @@ export function SeguimientoDialog({
         cie10: string | null;
         tipo_ambulancia: string | null;
         servicio: string | null;
+        cama: string | null;
         prestador_traslado: string | null;
       } | null;
     },
@@ -458,6 +464,33 @@ export function SeguimientoDialog({
     },
   });
 
+  // Catálogo de unidades / servicios activos (para CAMBIO DE UNIDAD).
+  const { data: catUnidades = [] } = useQuery({
+    queryKey: ["cat-unidad-seg"],
+    enabled: open && esSaliente,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor")
+        .eq("tipo", "UNIDAD")
+        .eq("activo", true)
+        .order("valor");
+      // Normaliza (trim + upper) y deduplica ignorando tildes/espacios extra.
+      const seen = new Set<string>();
+      const out: string[] = [];
+      const norm = (s: string) =>
+        s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+      for (const r of data ?? []) {
+        const v = String(r.valor ?? "").trim().toUpperCase();
+        const k = norm(v);
+        if (!v || seen.has(k)) continue;
+        seen.add(k);
+        out.push(v);
+      }
+      return out;
+    },
+  });
+
   // Historial de especialidades del caso: permite conocer las especialidades
   // que fueron cerradas (para ofrecer reactivación) sin duplicar información.
   const { data: espHistorial = [], refetch: refetchEspHist } = useQuery({
@@ -548,6 +581,26 @@ export function SeguimientoDialog({
   );
   const espHayCambio = espCierreList.length > 0 || espNuevasLimpias.length > 0;
   const esCambioEsp = esSaliente && tipoSeg === T.CAMBIO_ESPECIALIDAD;
+  const esCambioUnidad = esSaliente && tipoSeg === T.CAMBIO_UNIDAD;
+  // Ubicación institucional actual (unidad = servicio de la remisión, cama del caso).
+  const unidadActual = (caso?.servicio ?? "").trim();
+  const camaActual = (caso?.cama ?? "").trim();
+  // Sanitiza la cama: mayúsculas, sin espacios extremos, sin HTML, máximo 30 chars.
+  const sanitizarCama = (raw: string) =>
+    raw
+      .replace(/<[^>]*>/g, "")
+      .replace(/[^0-9A-Za-zÁÉÍÓÚÜÑáéíóúüñ\-\s/.]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toUpperCase()
+      .slice(0, 30);
+  const nuevaUnidadNorm = nuevaUnidad.trim().toUpperCase();
+  const nuevaCamaNorm = sanitizarCama(nuevaCama);
+  const hayCambioUnidad =
+    !!nuevaUnidadNorm &&
+    !!nuevaCamaNorm &&
+    (nuevaUnidadNorm !== unidadActual.toUpperCase() ||
+      nuevaCamaNorm !== camaActual.toUpperCase());
   const toggleEspCierre = (esp: string) =>
     setEspCierres((prev) => ({ ...prev, [esp]: !prev[esp] }));
   const setEspNuevaAt = (i: number, v: string) =>
@@ -639,6 +692,8 @@ export function SeguimientoDialog({
       ...(mostrarCambioEapb ? [T.CAMBIO_EAPB] : []),
       // CAMBIO EN ESPECIALIDAD: solo disponible mientras el caso siga activo.
       ...(casoActivo ? [T.CAMBIO_ESPECIALIDAD] : []),
+      // CAMBIO DE UNIDAD: mientras el caso siga activo, actualiza la ubicación institucional.
+      ...(casoActivo ? [T.CAMBIO_UNIDAD] : []),
       T.CANCELACION,
       T.PERTINENCIA,
       T.NOVEDADES,
@@ -684,6 +739,8 @@ export function SeguimientoDialog({
     setEvoEsp({});
     setEspCierres({});
     setEspNuevas([""]);
+    setNuevaUnidad("");
+    setNuevaCama("");
   }, [open, evolucionDetalle, especialidadesList, estadoActual]);
 
   // Prefill desde el caso.
@@ -722,7 +779,8 @@ export function SeguimientoDialog({
       tipoSeg === T.RADICADO ||
       tipoSeg === T.CANCELACION ||
       tipoSeg === T.CAMBIO_EAPB ||
-      tipoSeg === T.CAMBIO_ESPECIALIDAD
+      tipoSeg === T.CAMBIO_ESPECIALIDAD ||
+      tipoSeg === T.CAMBIO_UNIDAD
     )
       setEstadoSolicitud("No aplica");
     else if (tipoSeg === T.ACEPTACION || tipoSeg === T.AMBULANCIA) setEstadoSolicitud("Sí acepta");
@@ -1029,6 +1087,15 @@ export function SeguimientoDialog({
           observacion: detalle,
         });
         break;
+      case T.CAMBIO_UNIDAD: {
+        const uAnt = unidadActual || "[UNIDAD ANTERIOR]";
+        const uNue = nuevaUnidadNorm || "[NUEVA UNIDAD]";
+        const cNue = nuevaCamaNorm || "[NUEVA CAMA]";
+        base = camaActual
+          ? `SE REALIZA CAMBIO DE UBICACIÓN DEL PACIENTE, QUIEN PASA DE LA UNIDAD DE ${uAnt}, CAMA ${camaActual}, A LA UNIDAD DE ${uNue}, CAMA ${cNue}. SE ACTUALIZA LA INFORMACIÓN DEL CASO Y SE DEJA TRAZABILIDAD PARA LA CONTINUIDAD DEL PROCESO DE REMISIÓN.`
+          : `SE REALIZA CAMBIO DE UBICACIÓN DEL PACIENTE, QUIEN PASA DE LA UNIDAD DE ${uAnt}, SIN CAMA PREVIAMENTE REGISTRADA, A LA UNIDAD DE ${uNue}, CAMA ${cNue}. SE ACTUALIZA LA INFORMACIÓN DEL CASO Y SE DEJA TRAZABILIDAD PARA LA CONTINUIDAD DEL PROCESO DE REMISIÓN.`;
+        break;
+      }
       case T.ENTREGA_DOC:
         base = "";
         break;
@@ -1139,6 +1206,10 @@ export function SeguimientoDialog({
     novDesistIps,
     novDesistAmb,
     detalle,
+    unidadActual,
+    camaActual,
+    nuevaUnidadNorm,
+    nuevaCamaNorm,
   ]);
 
   useEffect(() => {
@@ -1391,6 +1462,13 @@ export function SeguimientoDialog({
           continuan: espContinuan,
           activas_resultantes: espActivasFinal,
         };
+      case T.CAMBIO_UNIDAD:
+        return {
+          unidad_anterior: unidadActual || null,
+          cama_anterior: camaActual || null,
+          unidad_nueva: nuevaUnidadNorm || null,
+          cama_nueva: nuevaCamaNorm || null,
+        };
       case T.OTRO:
         return { cual: otroCual.trim() };
       case T.NOVEDADES:
@@ -1432,6 +1510,8 @@ export function SeguimientoDialog({
     setEvoEsp({});
     setEspCierres({});
     setEspNuevas([""]);
+    setNuevaUnidad("");
+    setNuevaCama("");
     setCierreEgreso("");
     setEvoMotivoPend("");
     setFisNombre("");
@@ -1569,6 +1649,12 @@ export function SeguimientoDialog({
           );
         if ((espCierreList.length > 0 || espReactivadas.length > 0) && !detalle.trim())
           return toast.error("Registra las observaciones del cambio.");
+      }
+      if (esCambioUnidad) {
+        if (!nuevaUnidadNorm) return toast.error("Selecciona la nueva unidad.");
+        if (!nuevaCamaNorm) return toast.error("Indica la nueva cama del paciente.");
+        if (!hayCambioUnidad)
+          return toast.error("NO SE IDENTIFICARON CAMBIOS EN LA UBICACIÓN DEL PACIENTE.");
       }
       if (evoRequiereMotivo && !evoMotivoPend.trim())
         return toast.error("Indica el motivo del pendiente");
@@ -1726,11 +1812,18 @@ export function SeguimientoDialog({
         prestador_traslado?: string;
         tipo_ambulancia?: string;
         especialidades_tratantes?: string;
+        servicio?: string;
+        cama?: string;
       } = {};
       // Cambio en especialidad: actualiza la lista de especialidades activas del
       // caso (sin tocar el estado). El historial completo queda en la tabla aparte.
       if (esCambioEsp) {
         update.especialidades_tratantes = espActivasFinal.join(", ");
+      }
+      // Cambio de unidad: actualiza servicio (unidad) y cama sin tocar estado / aceptación.
+      if (esCambioUnidad) {
+        update.servicio = nuevaUnidadNorm;
+        update.cama = nuevaCamaNorm;
       }
       // Evolución diaria salientes v2: refleja estado en la tarjeta.
       if (esEvolucionSal) {
@@ -2327,6 +2420,71 @@ export function SeguimientoDialog({
                   )}
                 </div>
               )}
+
+              {/* CAMBIO DE UNIDAD */}
+              {esCambioUnidad && (
+                <div className={sectionCls}>
+                  <p className={labelCls}>Cambio de unidad</p>
+
+                  {/* Ubicación actual (solo lectura) */}
+                  <div className="space-y-1 rounded-lg border border-border/60 bg-background/40 p-3">
+                    <p className={labelCls}>Ubicación actual del paciente</p>
+                    <div className="grid grid-cols-1 gap-1 text-sm sm:grid-cols-2">
+                      <div>
+                        <span className="text-[11px] font-semibold uppercase text-muted-foreground">Unidad actual: </span>
+                        <span className="font-medium">{unidadActual || "SIN UNIDAD REGISTRADA"}</span>
+                      </div>
+                      <div>
+                        <span className="text-[11px] font-semibold uppercase text-muted-foreground">Cama actual: </span>
+                        <span className="font-medium">{camaActual || "SIN CAMA REGISTRADA"}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Nueva unidad + nueva cama */}
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Nueva unidad *</Label>
+                      <Select value={nuevaUnidad} onValueChange={setNuevaUnidad}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar unidad…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {catUnidades.length === 0 ? (
+                            <SelectItem value="__none" disabled>
+                              No hay unidades activas en el catálogo
+                            </SelectItem>
+                          ) : (
+                            catUnidades.map((u) => (
+                              <SelectItem key={u} value={u} className="whitespace-normal">
+                                {u}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Nueva cama *</Label>
+                      <Input
+                        value={nuevaCama}
+                        onChange={(e) => setNuevaCama(sanitizarCama(e.target.value))}
+                        placeholder="Ej. 203-A, UCI-04, OBS-2"
+                        maxLength={30}
+                      />
+                    </div>
+                  </div>
+
+                  {nuevaUnidadNorm && nuevaCamaNorm && !hayCambioUnidad && (
+                    <p className="text-[11px] text-status-amber">
+                      NO SE IDENTIFICARON CAMBIOS EN LA UBICACIÓN DEL PACIENTE.
+                    </p>
+                  )}
+                </div>
+              )}
+
+
+
 
 
 
