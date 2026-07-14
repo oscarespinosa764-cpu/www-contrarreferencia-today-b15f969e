@@ -1085,6 +1085,15 @@ export function SeguimientoDialog({
           observacion: detalle,
         });
         break;
+      case T.CAMBIO_UNIDAD: {
+        const uAnt = unidadActual || "[UNIDAD ANTERIOR]";
+        const uNue = nuevaUnidadNorm || "[NUEVA UNIDAD]";
+        const cNue = nuevaCamaNorm || "[NUEVA CAMA]";
+        base = camaActual
+          ? `SE REALIZA CAMBIO DE UBICACIÓN DEL PACIENTE, QUIEN PASA DE LA UNIDAD DE ${uAnt}, CAMA ${camaActual}, A LA UNIDAD DE ${uNue}, CAMA ${cNue}. SE ACTUALIZA LA INFORMACIÓN DEL CASO Y SE DEJA TRAZABILIDAD PARA LA CONTINUIDAD DEL PROCESO DE REMISIÓN.`
+          : `SE REALIZA CAMBIO DE UBICACIÓN DEL PACIENTE, QUIEN PASA DE LA UNIDAD DE ${uAnt}, SIN CAMA PREVIAMENTE REGISTRADA, A LA UNIDAD DE ${uNue}, CAMA ${cNue}. SE ACTUALIZA LA INFORMACIÓN DEL CASO Y SE DEJA TRAZABILIDAD PARA LA CONTINUIDAD DEL PROCESO DE REMISIÓN.`;
+        break;
+      }
       case T.ENTREGA_DOC:
         base = "";
         break;
