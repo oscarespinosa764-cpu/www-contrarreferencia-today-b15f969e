@@ -464,7 +464,33 @@ export function SeguimientoDialog({
     },
   });
 
-  // Historial de especialidades del caso: permite conocer las especialidades
+  // Catálogo de unidades / servicios activos (para CAMBIO DE UNIDAD).
+  const { data: catUnidades = [] } = useQuery({
+    queryKey: ["cat-unidad-seg"],
+    enabled: open && esSaliente,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor")
+        .eq("tipo", "UNIDAD")
+        .eq("activo", true)
+        .order("valor");
+      // Normaliza (trim + upper) y deduplica ignorando tildes/espacios extra.
+      const seen = new Set<string>();
+      const out: string[] = [];
+      const norm = (s: string) =>
+        s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim().toUpperCase();
+      for (const r of data ?? []) {
+        const v = String(r.valor ?? "").trim().toUpperCase();
+        const k = norm(v);
+        if (!v || seen.has(k)) continue;
+        seen.add(k);
+        out.push(v);
+      }
+      return out;
+    },
+  });
+
   // que fueron cerradas (para ofrecer reactivación) sin duplicar información.
   const { data: espHistorial = [], refetch: refetchEspHist } = useQuery({
     queryKey: ["esp-historial", casoId],
