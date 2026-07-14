@@ -357,6 +357,7 @@ export function SeguimientoDialog({
         cie10: string | null;
         tipo_ambulancia: string | null;
         servicio: string | null;
+        cama: string | null;
         prestador_traslado: string | null;
       } | null;
     },
