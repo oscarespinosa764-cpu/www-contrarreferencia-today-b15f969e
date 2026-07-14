@@ -1204,6 +1204,10 @@ export function SeguimientoDialog({
     novDesistIps,
     novDesistAmb,
     detalle,
+    unidadActual,
+    camaActual,
+    nuevaUnidadNorm,
+    nuevaCamaNorm,
   ]);
 
   useEffect(() => {
