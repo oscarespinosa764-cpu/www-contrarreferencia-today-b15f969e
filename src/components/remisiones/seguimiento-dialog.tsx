@@ -1808,11 +1808,18 @@ export function SeguimientoDialog({
         prestador_traslado?: string;
         tipo_ambulancia?: string;
         especialidades_tratantes?: string;
+        servicio?: string;
+        cama?: string;
       } = {};
       // Cambio en especialidad: actualiza la lista de especialidades activas del
       // caso (sin tocar el estado). El historial completo queda en la tabla aparte.
       if (esCambioEsp) {
         update.especialidades_tratantes = espActivasFinal.join(", ");
+      }
+      // Cambio de unidad: actualiza servicio (unidad) y cama sin tocar estado / aceptación.
+      if (esCambioUnidad) {
+        update.servicio = nuevaUnidadNorm;
+        update.cama = nuevaCamaNorm;
       }
       // Evolución diaria salientes v2: refleja estado en la tarjeta.
       if (esEvolucionSal) {
