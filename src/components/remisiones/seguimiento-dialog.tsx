@@ -1460,6 +1460,13 @@ export function SeguimientoDialog({
           continuan: espContinuan,
           activas_resultantes: espActivasFinal,
         };
+      case T.CAMBIO_UNIDAD:
+        return {
+          unidad_anterior: unidadActual || null,
+          cama_anterior: camaActual || null,
+          unidad_nueva: nuevaUnidadNorm || null,
+          cama_nueva: nuevaCamaNorm || null,
+        };
       case T.OTRO:
         return { cual: otroCual.trim() };
       case T.NOVEDADES:
