@@ -1,62 +1,60 @@
-## Alcance y verificación previa
+# Auditoría y corrección de plantillas / importadores / exportadores
 
-Revisé el código existente:
+## Alcance
+Ajustar únicamente la compatibilidad **plantilla vacía ↔ importador ↔ exportación reimportable** dentro de cada módulo, sin rediseños, sin plantilla universal, sin tocar reportes institucionales.
 
-- `src/components/remisiones/seguimiento-dialog.tsx` (3.573 líneas) — ya contiene `CAMBIO_ESPECIALIDAD` con la mecánica exacta (catálogo, plantilla Índigo, validación, guardado). El nuevo tipo `CAMBIO_UNIDAD` sigue el mismo patrón.
-- `src/routes/_authenticated/indicadores.tsx` (614 líneas) + `src/lib/indicadores-utils.ts` (162 líneas) + `src/components/coordinacion/indicadores-datos.tsx` (608 líneas) — el módulo Indicadores ya tiene tarjetas, avance vs meta, tendencia, formularios y captura mensual reales. El rediseño reutiliza estas fuentes de datos.
-- Recharts ya está en `package.json` → sin nuevas dependencias.
-- Catálogo `UNIDADES_SERVICIOS` ya existe en `catalogos` (mismo usado por el wizard).
+## 1. Matriz de auditoría (estado actual detectado)
 
-No se harán migraciones destructivas ni tablas nuevas. Todo se hace en frontend salvo un helper opcional de agregación.
+| Módulo | Plantilla | Importador | Exportación reimportable | Estado |
+|---|---|---|---|---|
+| Remisiones salientes | `columnasDe("remisiones")` en `importar-dialog.tsx` | `importarMasivo` destino `remisiones` (whitelist 29 cols) | Mismo destino → OK | ✅ Coincide |
+| PHD/PAD/O2/Especiales | destino `domiciliarios` | idem | idem | ✅ Coincide |
+| Referencias Internas | destino `referencia_interna` | idem | idem | ✅ Coincide |
+| Pendientes | destino `pendientes` | idem | idem | ✅ Coincide |
+| Red/Disponibilidad (flat) | destino `red_operativa` | idem | idem | ✅ Coincide (multi-hoja usa `importar-red-dialog` aparte) |
+| Red/Disponibilidad (multi-hoja) | `importar-red-dialog` + `importar-red.functions` | idem | Export multi-hoja separado | Revisar ida/vuelta |
+| Históricos Entrantes | destino `historicos_entrante` | idem, `fijos.seccion="entrante"` | Mismo → OK | ✅ |
+| Históricos Salientes | destino `historicos_saliente` | idem | Mismo → OK | ✅ |
+| Catálogos | destino `catalogos` | idem | idem | ✅ |
+| Plantillas textuales | destino `plantillas` | idem | idem | ✅ |
+| Cuadro de Turno TH-FR-10 | `exportarPlantillaCuadro` / `exportarCuadroMensual` / `importarCuadroExcel` | Reutilizan mismo builder (`construirLibro`) con `incluirDatos` bool | ✅ Coincide, TH-FR-10 preservado |
+| Ausentismo TH-FR-48 | `exportarAusentismoTH48` (reporte institucional) | Sin importador reimportable | Reporte institucional → **no** debe ser reimportable | ✅ Correcto (etiquetar) |
+| Solicitudes turno (TH-FR-09) | PDF individual (`solicitud-pdf`) | Sin importador | Documento institucional | ✅ Correcto |
+| Indicadores (mediciones) | Sin plantilla dedicada | Sin importador dedicado | Reporte ejecutivo | ⚠️ Falta plantilla + importador reimportable |
+
+## 2. Correcciones puntuales
+
+### A. Añadir hoja oculta `METADATOS` (template_id + version) a plantillas y exportaciones reimportables
+Modificar `columnasDe()` + generadores para inyectar metadatos por destino en `src/lib/importar.functions.ts` y `src/components/coordinacion/importar-dialog.tsx`. Cada destino recibe `template_id` distinto: `REMISIONES_V1`, `DOMICILIARIOS_V1`, `REFERENCIAS_INTERNAS_V1`, `PENDIENTES_V1`, `RED_OPERATIVA_V1`, `HISTORICOS_ENTRANTE_V1`, `HISTORICOS_SALIENTE_V1`, `CATALOGOS_V1`, `PLANTILLAS_V1`.
+
+### B. Detección de módulo al importar
+En `importar-dialog.tsx`, al cargar archivo leer hoja `METADATOS`; si `template_id` no corresponde al destino actual, bloquear con mensaje: *"El archivo seleccionado corresponde a [X] y no puede importarse en [Y]."*
+
+Compatibilidad hacia atrás: si no hay `METADATOS`, seguir el flujo actual (validación por encabezados).
+
+### C. Mensaje "sin registros" en exportación
+En `exportarDatos()` de `importar-dialog.tsx`: si `res.filas.length === 0`, mostrar toast `"No hay registros para exportar."` y no generar archivo.
+
+### D. Nombres de archivo consistentes
+- Plantilla: `PLANTILLA_[MODULO]_V[N].xlsx`
+- Export reimportable: `[MODULO]_DATOS_[YYYY-MM-DD].xlsx`
+(Cuadro de Turno TH-FR-10 y TH-FR-48 conservan nombre institucional actual.)
+
+### E. Añadir plantilla + importador/exportador reimportable para Mediciones de Indicadores
+Nuevo destino `mediciones_indicadores` en `DESTINOS` con columnas: `indicador_id, codigo, nombre, periodo, fecha, numerador, denominador, resultado, meta, unidad, responsable, observaciones, estado`. Sin tocar el panel ejecutivo.
+
+## 3. Fuera de alcance (NO se toca)
+Rutas, menú, roles, RLS, autenticación, reportes PDF, TH-FR-10/48/09 (formato institucional), plantillas Índigo, oficios, alertas, avisos, notificaciones externas, Reporte General Operativo Salientes, Entrega de Turno, colores, layout.
+
+## 4. Archivos a modificar
+- `src/lib/importar.functions.ts` — añadir `template_id`/`version` por destino; helper `metadatosDe()`; añadir destino `mediciones_indicadores`.
+- `src/components/coordinacion/importar-dialog.tsx` — inyectar hoja `METADATOS` en plantilla y export; leer `METADATOS` al importar y validar `template_id`; toast "sin registros"; nombres de archivo estandarizados.
+- (Opcional, si aplica) `src/components/coordinacion/importar-red-dialog.tsx` — mismo tratamiento de `METADATOS` para el flujo multi-hoja.
+
+## 5. Pruebas round-trip
+Descargar plantilla → llenar 2 filas → importar → exportar → reimportar por cada destino. Cargar plantilla de Entrantes en Salientes → debe bloquear con mensaje de módulo.
 
 ---
+**Créditos**: cambio mínimo, reutilizando `DESTINOS`, `importarMasivo` y `exportarMasivo`. Sin migraciones, sin nuevas librerías, sin refactor.
 
-## Bloque A · CAMBIO DE UNIDAD (Salientes → Seguimiento)
-
-Archivos:
-- `src/components/remisiones/seguimiento-dialog.tsx` (edición focalizada).
-
-Pasos:
-1. Añadir constante `CAMBIO_UNIDAD: "CAMBIO DE UNIDAD"` al mapa `T` (junto a `CAMBIO_ESPECIALIDAD`).
-2. Insertar el tipo en la lista renderizada cuando `casoActivo`, justo después de `CAMBIO_ESPECIALIDAD`.
-3. Estado local: `nuevaUnidad`, `nuevaCama`, derivar `unidadActual`/`camaActual` del caso vigente (`caso.unidad`, `caso.cama` / metadata equivalente).
-4. UI del bloque:
-   - Info de solo lectura: "UBICACIÓN ACTUAL DEL PACIENTE" con Unidad y Cama (o "SIN CAMA REGISTRADA").
-   - Dropdown "NUEVA UNIDAD" alimentado desde `catalogos` categoría unidades/servicios, filtrado activo, normalizado (upper/trim/sin tildes) para deduplicar.
-   - Input "NUEVA CAMA" con normalización (upper, trim, sanitización básica, longitud razonable, requerido).
-5. Validación: si `(nuevaUnidad === unidadActual) && (nuevaCama === camaActual)` mostrar toast "NO SE IDENTIFICARON CAMBIOS EN LA UBICACIÓN DEL PACIENTE." y abortar.
-6. Plantilla Índigo (auto, editable, botones Regenerar + Copiar reutilizados): texto con/sin cama previa según prompt.
-7. Guardado en `handleGuardar`: crear seguimiento con `tipo_seguimiento="CAMBIO DE UNIDAD"`, `detalles: { unidad_anterior, cama_anterior, unidad_nueva, cama_nueva, observaciones, plantilla }`; luego `UPDATE` del caso activo (`unidad`, `cama` / metadata) sin tocar aceptación, IPS receptora ni estado. Auditar como el resto de seguimientos.
-8. Reflejo: tarjeta, Ver caso, entrega de turno, PDF y Historial ya leen `caso.unidad`/`cama`; no requiere cambios adicionales.
-
-## Bloque B · Rediseño de INDICADORES
-
-Reutilizo: `Indicador`, `Medicion`, `calcularResultado`, `calcularSemaforo`, `ultimaMedicionPorIndicador`, `historialIndicador`, `avanceContraMeta`, `tendenciaTexto` (todo en `indicadores-utils.ts`). Uso Recharts (ya instalado).
-
-Nuevos archivos (pequeños, para no inflar el route):
-- `src/components/indicadores/resumen-cards.tsx` — 5 tarjetas (Activos, En meta, Alerta, Crítico, Sin medición) con mini donut + sparkline.
-- `src/components/indicadores/desempeno-general.tsx` — 3 gráficas Recharts: donut de cumplimiento (con % general al centro), línea de tendencia agregada por mes, donut por estado.
-- `src/components/indicadores/ranking-indicadores.tsx` — tabla/lista clickeable, orden por defecto Crítico→Alerta→Sin medición→En meta, con orden alternativo.
-- `src/components/indicadores/indicador-detalle-modal.tsx` — modal responsivo con 4 KPIs (Cumplimiento, Meta, Resultado, Tendencia con sentido), gráfica evolución (line), gráfica resultado vs meta (bar + ref line), bloque Detalle técnico ("NO CONFIGURADO" cuando falte) e historial paginado.
-- `src/components/indicadores/filtros-panel.tsx` — botón compacto "Filtrar" que despliega Popover con fecha inicial/final, turno, área, responsable, estado, frecuencia, tipo + Limpiar. Buscador con debounce 250 ms.
-
-Refactor de `src/routes/_authenticated/indicadores.tsx`:
-- Sustituye tarjetas actuales por `<ResumenCards>` + `<DesempenoGeneral>` + `<RankingIndicadores>`.
-- Estado central `{ filtros, busqueda, indicadorAbierto }`.
-- Conserva "Nuevo indicador", edición, archivar y "Captura mensual" para roles autorizados.
-- Todos los cálculos se derivan de `indicadores` y `mediciones` reales ya consultadas (sin hardcode). Cumplimiento general = promedio del cumplimiento individual de indicadores activos con medición vigente (fórmula documentada en un comentario). División por cero protegida.
-
-Sentido de mejora respeta `sentido` del indicador (MAYOR/MENOR es mejor). Sin datos → "SIN MEDICIÓN" y "SIN TENDENCIA SUFICIENTE PARA EL PERIODO SELECCIONADO." donde aplique.
-
-## Fuera de alcance (no se toca)
-Rutas, roles, RLS, otros módulos, migraciones, catálogos, notificaciones, importaciones/exportaciones actuales.
-
-## Verificación
-- `tsgo --noEmit`.
-- Recorrido manual (Playwright headless) del route `/indicadores` verificando 5 tarjetas y apertura de modal.
-- Recorrido del modal de seguimiento eligiendo "CAMBIO DE UNIDAD" y guardando.
-
-## Nota sobre créditos
-El cambio es grande pero focalizado: 1 edición al diálogo de seguimiento + 5 componentes nuevos pequeños + reescritura del route de indicadores. Sin nuevas dependencias, sin migraciones, sin duplicar catálogos.
-
-¿Confirmas para proceder con la implementación tal como está descrita?
+¿Apruebo y ejecuto?
