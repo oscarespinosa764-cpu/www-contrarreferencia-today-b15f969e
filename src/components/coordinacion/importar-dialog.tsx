@@ -55,7 +55,23 @@ export function ImportarDialog({
     try {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array", cellDates: false });
-      const ws = wb.Sheets[wb.SheetNames[0]];
+
+      // Validar METADATOS (template_id) si la plantilla lo trae. Bloquea
+      // importar el archivo de un módulo dentro de otro.
+      const metaSheet = wb.Sheets["METADATOS"];
+      if (metaSheet) {
+        const metaRows = XLSX.utils.sheet_to_json<[string, string]>(metaSheet, { header: 1, defval: "" });
+        const metaMap = new Map(metaRows.map((r) => [String(r[0] ?? "").trim(), String(r[1] ?? "").trim()]));
+        const tplId = metaMap.get("template_id");
+        const expected = TEMPLATE_META[destino].template_id;
+        if (tplId && tplId !== expected) {
+          const otroModulo = Object.values(TEMPLATE_META).find((m) => m.template_id === tplId)?.module ?? tplId;
+          toast.error(`El archivo seleccionado corresponde a "${otroModulo}" y no puede importarse en "${TEMPLATE_META[destino].module}".`);
+          return;
+        }
+      }
+
+      const ws = wb.Sheets[wb.SheetNames.find((n) => n !== "METADATOS") ?? wb.SheetNames[0]];
       const json = XLSX.utils.sheet_to_json<FilaImport>(ws, { defval: "" });
       if (json.length === 0) {
         toast.error("El archivo no contiene filas.");
@@ -71,6 +87,15 @@ export function ImportarDialog({
   };
 
   const descargarPlantilla = () => {
+    const cols = columnasDe(destino);
+    const ws = XLSX.utils.aoa_to_sheet([cols]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Plantilla");
+    const wsMeta = XLSX.utils.aoa_to_sheet(metadatosDe(destino));
+    XLSX.utils.book_append_sheet(wb, wsMeta, "METADATOS");
+    const meta = TEMPLATE_META[destino];
+    XLSX.writeFile(wb, `PLANTILLA_${meta.template_id}.xlsx`);
+  };
     const cols = columnasDe(destino);
     const ws = XLSX.utils.aoa_to_sheet([cols]);
     const wb = XLSX.utils.book_new();
