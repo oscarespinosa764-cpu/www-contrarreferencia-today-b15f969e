@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Upload, Download, FileSpreadsheet, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { importarMasivo, exportarMasivo, columnasDe, type DestinoKey } from "@/lib/importar.functions";
+import { importarMasivo, exportarMasivo, columnasDe, metadatosDe, TEMPLATE_META, type DestinoKey } from "@/lib/importar.functions";
 
 type FilaImport = Record<string, unknown>;
 
