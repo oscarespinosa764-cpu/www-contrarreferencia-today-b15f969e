@@ -71,13 +71,21 @@ export function ImportarRedDialog({
     onOpenChange(v);
   };
 
+  const RED_META = [
+    ["template_id", "RED_OPERATIVA_V1"],
+    ["version", "1"],
+    ["module", "Red / Disponibilidad"],
+  ];
+
   const descargarPlantilla = () => {
     const wb = XLSX.utils.book_new();
     for (const hoja of HOJAS_RED_ORDEN) {
       const ws = XLSX.utils.aoa_to_sheet([COLUMNAS_RED[hoja]]);
       XLSX.utils.book_append_sheet(wb, ws, hoja);
     }
-    XLSX.writeFile(wb, "plantilla_red_disponibilidad.xlsx");
+    const wsMeta = XLSX.utils.aoa_to_sheet([...RED_META, ["generated_at", new Date().toISOString()]]);
+    XLSX.utils.book_append_sheet(wb, wsMeta, "METADATOS");
+    XLSX.writeFile(wb, "PLANTILLA_RED_OPERATIVA_V1.xlsx");
   };
 
   const exportarDatos = async () => {
@@ -96,8 +104,14 @@ export function ImportarRedDialog({
         XLSX.utils.book_append_sheet(wb, ws, h.hoja);
         total += h.filas.length;
       }
+      if (total === 0) {
+        toast.info("No hay registros para exportar.");
+        return;
+      }
+      const wsMeta = XLSX.utils.aoa_to_sheet([...RED_META, ["generated_at", new Date().toISOString()]]);
+      XLSX.utils.book_append_sheet(wb, wsMeta, "METADATOS");
       const fecha = new Date().toISOString().slice(0, 10);
-      XLSX.writeFile(wb, `red_disponibilidad_export_${fecha}.xlsx`);
+      XLSX.writeFile(wb, `RED_OPERATIVA_V1_DATOS_${fecha}.xlsx`);
       toast.success(`${total} registro(s) exportado(s).`);
     } catch (e) {
       console.error(e);
