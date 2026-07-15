@@ -96,12 +96,6 @@ export function ImportarDialog({
     const meta = TEMPLATE_META[destino];
     XLSX.writeFile(wb, `PLANTILLA_${meta.template_id}.xlsx`);
   };
-    const cols = columnasDe(destino);
-    const ws = XLSX.utils.aoa_to_sheet([cols]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Plantilla");
-    XLSX.writeFile(wb, `plantilla_${destino}.xlsx`);
-  };
 
   const exportarDatos = async () => {
     setExportando(true);
@@ -111,12 +105,20 @@ export function ImportarDialog({
         toast.error(res.error ?? "No se pudo exportar.");
         return;
       }
+      if (res.filas.length === 0) {
+        toast.info("No hay registros para exportar con los filtros seleccionados.");
+        return;
+      }
       const cols = res.columnas;
       const matriz = [cols, ...res.filas.map((f) => cols.map((c) => f[c] ?? ""))];
       const ws = XLSX.utils.aoa_to_sheet(matriz);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Datos");
-      XLSX.writeFile(wb, `export_${destino}.xlsx`);
+      const wsMeta = XLSX.utils.aoa_to_sheet(metadatosDe(destino));
+      XLSX.utils.book_append_sheet(wb, wsMeta, "METADATOS");
+      const meta = TEMPLATE_META[destino];
+      const fecha = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `${meta.template_id}_DATOS_${fecha}.xlsx`);
       toast.success(`${res.filas.length} registro(s) exportado(s).`);
     } catch (e) {
       console.error(e);
@@ -125,6 +127,7 @@ export function ImportarDialog({
       setExportando(false);
     }
   };
+
 
 
   const confirmar = async () => {
