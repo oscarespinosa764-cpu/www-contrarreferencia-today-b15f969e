@@ -127,6 +127,18 @@ export function ImportarRedDialog({
     try {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array", cellDates: false });
+
+      // Validar METADATOS si el archivo lo trae.
+      const metaSheet = wb.Sheets["METADATOS"];
+      if (metaSheet) {
+        const metaRows = XLSX.utils.sheet_to_json<[string, string]>(metaSheet, { header: 1, defval: "" });
+        const tplId = String(metaRows.find((r) => String(r[0]).trim() === "template_id")?.[1] ?? "").trim();
+        if (tplId && tplId !== "RED_OPERATIVA_V1") {
+          toast.error(`El archivo seleccionado no corresponde a Red / Disponibilidad (template_id=${tplId}).`);
+          return;
+        }
+      }
+
       const encontradas: HojasData = {};
       const push = (hoja: HojaRedKey, filas: Record<string, unknown>[]) => {
         if (filas.length === 0) return;
