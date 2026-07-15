@@ -103,6 +103,15 @@ export const DESTINOS = {
     booleanos: ["activo"],
     requeridas: ["nombre", "mensaje"],
   },
+  mediciones_indicadores: {
+    tabla: "mediciones_indicadores",
+    columnas: [
+      "indicador_id", "periodo", "fecha", "numerador_valor", "denominador_valor",
+      "resultado", "meta", "unidad", "comentario",
+    ],
+    fechas: ["fecha"],
+    requeridas: ["indicador_id", "fecha"],
+  },
 } satisfies Record<string, DestinoDef>;
 
 export type DestinoKey = keyof typeof DESTINOS;
@@ -110,6 +119,32 @@ export type DestinoKey = keyof typeof DESTINOS;
 // Etiquetas de columna por destino para generar la plantilla descargable.
 export function columnasDe(destino: DestinoKey): string[] {
   return [...DESTINOS[destino].columnas];
+}
+
+// Identificación de plantilla por módulo. Se usa para inyectar la hoja
+// "METADATOS" en la plantilla vacía y en la exportación reimportable, y para
+// bloquear importaciones de un módulo dentro de otro.
+export const TEMPLATE_META: Record<DestinoKey, { template_id: string; version: string; module: string }> = {
+  remisiones: { template_id: "REMISIONES_V1", version: "1", module: "Remisiones salientes" },
+  domiciliarios: { template_id: "DOMICILIARIOS_V1", version: "1", module: "PHD/PAD/O2/Especiales" },
+  referencia_interna: { template_id: "REFERENCIAS_INTERNAS_V1", version: "1", module: "Referencias internas" },
+  pendientes: { template_id: "PENDIENTES_V1", version: "1", module: "Pendientes" },
+  red_operativa: { template_id: "RED_OPERATIVA_V1", version: "1", module: "Red / Disponibilidad" },
+  historicos_entrante: { template_id: "HISTORICOS_ENTRANTE_V1", version: "1", module: "Históricos entrantes" },
+  historicos_saliente: { template_id: "HISTORICOS_SALIENTE_V1", version: "1", module: "Históricos salientes" },
+  catalogos: { template_id: "CATALOGOS_V1", version: "1", module: "Catálogos" },
+  plantillas: { template_id: "PLANTILLAS_V1", version: "1", module: "Plantillas textuales" },
+  mediciones_indicadores: { template_id: "MEDICIONES_INDICADORES_V1", version: "1", module: "Mediciones de indicadores" },
+};
+
+export function metadatosDe(destino: DestinoKey): (string | number)[][] {
+  const m = TEMPLATE_META[destino];
+  return [
+    ["template_id", m.template_id],
+    ["version", m.version],
+    ["module", m.module],
+    ["generated_at", new Date().toISOString()],
+  ];
 }
 
 const norm = (v: unknown) =>
