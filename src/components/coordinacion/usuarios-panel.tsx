@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/lib/backend-client";
@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, UserPlus, Loader2, Activity, Pencil, Eye, EyeOff, Copy, KeyRound, ShieldAlert } from "lucide-react";
+import { Search, UserPlus, Loader2, Activity, Pencil, Eye, EyeOff, Copy, KeyRound, ShieldAlert, Mail, RefreshCcw } from "lucide-react";
 import { toast } from "sonner";
 import {
   crearUsuario,
@@ -33,6 +33,10 @@ import {
   cambiarEmailUsuario,
   cambiarPasswordUsuario,
   generarPasswordTemporalUsuario,
+  invitarUsuario,
+  reenviarInvitacion,
+  enviarResetPasswordUsuario,
+  obtenerEstadoAccesoUsuario,
 } from "@/lib/usuarios.functions";
 import { UsuarioActividadDialog } from "@/components/coordinacion/usuario-actividad-dialog";
 import { FirmaFuncionarioSection } from "@/components/coordinacion/firma-funcionario-section";
@@ -56,10 +60,28 @@ const emptyForm = {
   email: "",
   cargo: "",
   telefono: "",
-  password: "",
   rol: "operativa" as Rol,
   activo: true,
 };
+
+const fmtFecha = (iso: string | null | undefined) => {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" });
+  } catch {
+    return "—";
+  }
+};
+
+type EstadoAcceso = {
+  email: string | null;
+  estadoCuenta: string;
+  estadoPassword: string;
+  activationAt: string | null;
+  lastAdminChangeAt: string | null;
+  lastResetSentAt: string | null;
+};
+
 
 type EditForm = {
   userId: string;
