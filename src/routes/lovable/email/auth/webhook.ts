@@ -12,12 +12,12 @@ import { EmailChangeEmail } from '@/lib/email-templates/email-change'
 import { ReauthenticationEmail } from '@/lib/email-templates/reauthentication'
 
 const EMAIL_SUBJECTS: Record<string, string> = {
-  signup: 'Confirm your email',
-  invite: "You've been invited",
-  magiclink: 'Your login link',
-  recovery: 'Reset your password',
-  email_change: 'Confirm your new email',
-  reauthentication: 'Your verification code',
+  signup: 'CONFIRMACIÓN DE CORREO — CEDIM IPS',
+  invite: 'ACTIVACIÓN DE USUARIO — CEDIM IPS',
+  magiclink: 'ENLACE DE ACCESO — CEDIM IPS',
+  recovery: 'RESTABLECIMIENTO DE CONTRASEÑA — CEDIM IPS',
+  email_change: 'CONFIRMACIÓN DE CAMBIO DE CORREO — CEDIM IPS',
+  reauthentication: 'CÓDIGO DE VERIFICACIÓN — CEDIM IPS',
 }
 
 // Template mapping
@@ -31,10 +31,11 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "www-contrarreferencia-today"
+const SITE_NAME = "CEDIM IPS — REFERENCIA Y CONTRARREFERENCIA"
 const SENDER_DOMAIN = "notify.contrarreferencia.today"
-const ROOT_DOMAIN = "contrarreferencia.today"
+const ROOT_DOMAIN = "www.contrarreferencia.today"
 const FROM_DOMAIN = "notify.contrarreferencia.today"
+
 
 function redactEmail(email: string | null | undefined): string {
   if (!email) return '***'

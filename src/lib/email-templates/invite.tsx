@@ -7,8 +7,8 @@ import {
   Head,
   Heading,
   Html,
-  Link,
   Preview,
+  Section,
   Text,
 } from '@react-email/components'
 
@@ -16,33 +16,46 @@ interface InviteEmailProps {
   siteName: string
   siteUrl: string
   confirmationUrl: string
+  email?: string
 }
 
 export const InviteEmail = ({
   siteName,
-  siteUrl,
   confirmationUrl,
+  email,
 }: InviteEmailProps) => (
-  <Html lang="en" dir="ltr">
+  <Html lang="es" dir="ltr">
     <Head />
-    <Preview>You've been invited to join {siteName}</Preview>
+    <Preview>Activación de usuario — {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>You've been invited</Heading>
+        <Section style={header}>
+          <Heading style={brand}>CEDIM IPS</Heading>
+          <Text style={subBrand}>REFERENCIA Y CONTRARREFERENCIA</Text>
+        </Section>
+        <Heading style={h1}>ACTIVACIÓN DE USUARIO</Heading>
+        <Text style={text}>HOLA:</Text>
         <Text style={text}>
-          You've been invited to join{' '}
-          <Link href={siteUrl} style={link}>
-            <strong>{siteName}</strong>
-          </Link>
-          . Click the button below to accept the invitation and create your
-          account.
+          SE HA CREADO UNA CUENTA PARA USTED EN LA PLATAFORMA DE REFERENCIA Y
+          CONTRARREFERENCIA DE CEDIM IPS.
         </Text>
-        <Button style={button} href={confirmationUrl}>
-          Accept Invitation
-        </Button>
+        {email && (
+          <Text style={text}>
+            <strong>USUARIO DE ACCESO:</strong> {email}
+          </Text>
+        )}
+        <Text style={text}>
+          PARA ACTIVAR SU CUENTA Y ESTABLECER SU CONTRASEÑA, PRESIONE EL
+          SIGUIENTE BOTÓN:
+        </Text>
+        <Section style={{ textAlign: 'center', margin: '28px 0' }}>
+          <Button style={button} href={confirmationUrl}>
+            ACTIVAR CUENTA
+          </Button>
+        </Section>
         <Text style={footer}>
-          If you weren't expecting this invitation, you can safely ignore this
-          email.
+          ESTE ENLACE ES PERSONAL, TEMPORAL Y NO DEBE COMPARTIRSE. SI USTED NO
+          RECONOCE ESTA SOLICITUD, COMUNÍQUESE CON LA COORDINACIÓN RESPONSABLE.
         </Text>
       </Container>
     </Body>
@@ -52,26 +65,20 @@ export const InviteEmail = ({
 export default InviteEmail
 
 const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
-const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: '#000000',
-  margin: '0 0 20px',
-}
-const text = {
-  fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
-}
-const link = { color: 'inherit', textDecoration: 'underline' }
+const container = { padding: '24px 28px', maxWidth: '560px' }
+const header = { borderBottom: '2px solid #0f4c81', paddingBottom: '12px', marginBottom: '20px' }
+const brand = { fontSize: '20px', fontWeight: 'bold' as const, color: '#0f4c81', margin: 0 }
+const subBrand = { fontSize: '11px', color: '#0f4c81', letterSpacing: '1px', margin: '2px 0 0' }
+const h1 = { fontSize: '20px', fontWeight: 'bold' as const, color: '#111827', margin: '0 0 20px' }
+const text = { fontSize: '14px', color: '#374151', lineHeight: '1.6', margin: '0 0 14px' }
 const button = {
-  backgroundColor: '#000000',
+  backgroundColor: '#0f4c81',
   color: '#ffffff',
   fontSize: '14px',
-  borderRadius: '8px',
-  padding: '12px 20px',
+  fontWeight: 'bold' as const,
+  borderRadius: '6px',
+  padding: '12px 24px',
   textDecoration: 'none',
+  display: 'inline-block',
 }
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
+const footer = { fontSize: '12px', color: '#6b7280', margin: '24px 0 0', lineHeight: '1.5' }
