@@ -632,10 +632,10 @@ export function UsuariosPanel() {
             <Button onClick={guardarNuevo} disabled={guardando}>
               {guardando ? (
                 <>
-                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Creando…
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Enviando…
                 </>
               ) : (
-                "Crear usuario"
+                "Enviar invitación"
               )}
             </Button>
           </DialogFooter>
