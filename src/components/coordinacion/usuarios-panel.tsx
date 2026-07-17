@@ -86,6 +86,16 @@ export function UsuariosPanel() {
   const [guardando, setGuardando] = useState(false);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [editando, setEditando] = useState(false);
+  const [emailOriginal, setEmailOriginal] = useState<string>("");
+  const [emailCargando, setEmailCargando] = useState(false);
+  const [nuevoPass, setNuevoPass] = useState("");
+  const [confirmarPass, setConfirmarPass] = useState("");
+  const [mostrarPass, setMostrarPass] = useState(false);
+  const [guardandoPass, setGuardandoPass] = useState(false);
+  const [credencialesOpen, setCredencialesOpen] = useState(false);
+  const [tempPass, setTempPass] = useState<string | null>(null);
+  const [generandoTemp, setGenerandoTemp] = useState(false);
+  const [confirmGenerar, setConfirmGenerar] = useState(false);
   const [confirmDesactivar, setConfirmDesactivar] = useState<{
     userId: string;
     nombre: string;
@@ -101,6 +111,10 @@ export function UsuariosPanel() {
   const cambiarRolFn = useServerFn(cambiarRolUsuario);
   const cambiarEstadoFn = useServerFn(cambiarEstadoUsuario);
   const editarFn = useServerFn(editarUsuario);
+  const obtenerEmailFn = useServerFn(obtenerEmailUsuario);
+  const cambiarEmailFn = useServerFn(cambiarEmailUsuario);
+  const cambiarPassFn = useServerFn(cambiarPasswordUsuario);
+  const generarTempFn = useServerFn(generarPasswordTemporalUsuario);
 
 
   const { data: usuarios, isLoading } = useQuery({
