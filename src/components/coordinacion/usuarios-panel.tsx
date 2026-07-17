@@ -779,51 +779,9 @@ export function UsuariosPanel() {
                 </p>
               </div>
 
-              <div className="rounded-lg border border-border/60 bg-muted/30 p-3 space-y-2">
-                <div className="flex items-center gap-2 text-sm font-semibold">
-                  <KeyRound className="h-4 w-4" /> Restablecer contraseña
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="e-pass">Nueva contraseña</Label>
-                  <div className="relative">
-                    <Input
-                      id="e-pass"
-                      type={mostrarPass ? "text" : "password"}
-                      value={nuevoPass}
-                      onChange={(e) => setNuevoPass(e.target.value)}
-                      placeholder="Mín. 10, Mayús/minús/número/símbolo"
-                      className="pr-9"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setMostrarPass((v) => !v)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      aria-label={mostrarPass ? "Ocultar contraseña" : "Mostrar contraseña"}
-                    >
-                      {mostrarPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="e-pass2">Confirmar contraseña</Label>
-                  <Input
-                    id="e-pass2"
-                    type={mostrarPass ? "text" : "password"}
-                    value={confirmarPass}
-                    onChange={(e) => setConfirmarPass(e.target.value)}
-                  />
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="rounded-full"
-                  disabled={guardandoPass || !nuevoPass || !confirmarPass}
-                  onClick={cambiarPassword}
-                >
-                  {guardandoPass ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <KeyRound className="mr-1.5 h-4 w-4" />}
-                  Actualizar contraseña
-                </Button>
-              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Para gestionar la contraseña (enlace de restablecimiento, cambio manual o clave temporal), abre "Datos básicos de acceso".
+              </p>
 
               <Button
                 type="button"
