@@ -862,6 +862,97 @@ export function UsuariosPanel() {
         </DialogContent>
       </Dialog>
 
+      {/* Datos básicos de acceso */}
+      <Dialog
+        open={credencialesOpen}
+        onOpenChange={(v) => {
+          if (!v) {
+            setCredencialesOpen(false);
+            setTempPass(null);
+            setConfirmGenerar(false);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Datos básicos de acceso</DialogTitle>
+            <DialogDescription>
+              Información de credenciales del usuario. Por seguridad, la contraseña actual no se muestra.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Correo de autenticación</Label>
+              <div className="flex items-center gap-2">
+                <Input value={emailOriginal || "—"} readOnly />
+                {emailOriginal && (
+                  <Button size="icon" variant="outline" onClick={() => copiar(emailOriginal, "Correo")}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Contraseña</Label>
+              {tempPass ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Input value={tempPass} readOnly className="font-mono" />
+                    <Button size="icon" variant="outline" onClick={() => copiar(tempPass, "Contraseña")}>
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-[11px] font-semibold text-status-amber">
+                    Cópiala ahora. Al cerrar esta ventana no volverá a mostrarse.
+                  </p>
+                </>
+              ) : (
+                <Input value="•••••••• (no disponible por seguridad)" readOnly disabled />
+              )}
+            </div>
+
+            {confirmGenerar ? (
+              <div className="rounded-lg border border-status-amber/40 bg-status-amber/10 p-3 space-y-2">
+                <p className="text-sm">
+                  Se reemplazará la contraseña actual del usuario. Esta acción queda auditada.
+                </p>
+                <div className="flex justify-end gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => setConfirmGenerar(false)}>
+                    Cancelar
+                  </Button>
+                  <Button size="sm" onClick={generarTemporal} disabled={generandoTemp}>
+                    {generandoTemp ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
+                    Sí, generar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full rounded-full"
+                onClick={() => setConfirmGenerar(true)}
+              >
+                <KeyRound className="mr-1.5 h-4 w-4" /> Generar contraseña temporal
+              </Button>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setCredencialesOpen(false);
+                setTempPass(null);
+                setConfirmGenerar(false);
+              }}
+            >
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
       <UsuarioActividadDialog
         open={Boolean(actividadDe)}
         onOpenChange={(v) => !v && setActividadDe(null)}
