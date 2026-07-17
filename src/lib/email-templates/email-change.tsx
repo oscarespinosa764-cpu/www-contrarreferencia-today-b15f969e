@@ -7,17 +7,13 @@ import {
   Head,
   Heading,
   Html,
-  Link,
   Preview,
+  Section,
   Text,
 } from '@react-email/components'
 
 interface EmailChangeEmailProps {
   siteName: string
-  // oldEmail is the user's current address (HookData.OldEmail). For the
-  // NEW-recipient half of a secure email_change fanout, `email` equals the
-  // recipient (NEW), so the "from" line must render oldEmail to read
-  // "from OLD to NEW" instead of "from NEW to NEW".
   oldEmail: string
   email: string
   newEmail: string
@@ -25,37 +21,33 @@ interface EmailChangeEmailProps {
 }
 
 export const EmailChangeEmail = ({
-  siteName,
   oldEmail,
   newEmail,
   confirmationUrl,
 }: EmailChangeEmailProps) => (
-  <Html lang="en" dir="ltr">
+  <Html lang="es" dir="ltr">
     <Head />
-    <Preview>Confirm your email change for {siteName}</Preview>
+    <Preview>Confirmación de cambio de correo — CEDIM IPS</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Confirm your email change</Heading>
+        <Section style={header}>
+          <Heading style={brand}>CEDIM IPS</Heading>
+          <Text style={subBrand}>REFERENCIA Y CONTRARREFERENCIA</Text>
+        </Section>
+        <Heading style={h1}>CONFIRMACIÓN DE CAMBIO DE CORREO</Heading>
         <Text style={text}>
-          You requested to change your email address for {siteName} from{' '}
-          <Link href={`mailto:${oldEmail}`} style={link}>
-            {oldEmail}
-          </Link>{' '}
-          to{' '}
-          <Link href={`mailto:${newEmail}`} style={link}>
-            {newEmail}
-          </Link>
-          .
+          SE SOLICITÓ EL CAMBIO DEL CORREO DE ACCESO DE <strong>{oldEmail}</strong>{' '}
+          A <strong>{newEmail}</strong>.
         </Text>
-        <Text style={text}>
-          Click the button below to confirm this change:
-        </Text>
-        <Button style={button} href={confirmationUrl}>
-          Confirm Email Change
-        </Button>
+        <Text style={text}>PARA CONFIRMAR ESTE CAMBIO, PRESIONE EL SIGUIENTE BOTÓN:</Text>
+        <Section style={{ textAlign: 'center', margin: '28px 0' }}>
+          <Button style={button} href={confirmationUrl}>
+            CONFIRMAR CAMBIO DE CORREO
+          </Button>
+        </Section>
         <Text style={footer}>
-          If you didn't request this change, please secure your account
-          immediately.
+          SI USTED NO SOLICITÓ ESTE CAMBIO, COMUNÍQUESE INMEDIATAMENTE CON LA
+          COORDINACIÓN RESPONSABLE.
         </Text>
       </Container>
     </Body>
@@ -65,26 +57,20 @@ export const EmailChangeEmail = ({
 export default EmailChangeEmail
 
 const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
-const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: '#000000',
-  margin: '0 0 20px',
-}
-const text = {
-  fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
-}
-const link = { color: 'inherit', textDecoration: 'underline' }
+const container = { padding: '24px 28px', maxWidth: '560px' }
+const header = { borderBottom: '2px solid #0f4c81', paddingBottom: '12px', marginBottom: '20px' }
+const brand = { fontSize: '20px', fontWeight: 'bold' as const, color: '#0f4c81', margin: 0 }
+const subBrand = { fontSize: '11px', color: '#0f4c81', letterSpacing: '1px', margin: '2px 0 0' }
+const h1 = { fontSize: '20px', fontWeight: 'bold' as const, color: '#111827', margin: '0 0 20px' }
+const text = { fontSize: '14px', color: '#374151', lineHeight: '1.6', margin: '0 0 14px' }
 const button = {
-  backgroundColor: '#000000',
+  backgroundColor: '#0f4c81',
   color: '#ffffff',
   fontSize: '14px',
-  borderRadius: '8px',
-  padding: '12px 20px',
+  fontWeight: 'bold' as const,
+  borderRadius: '6px',
+  padding: '12px 24px',
   textDecoration: 'none',
+  display: 'inline-block',
 }
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
+const footer = { fontSize: '12px', color: '#6b7280', margin: '24px 0 0', lineHeight: '1.5' }
