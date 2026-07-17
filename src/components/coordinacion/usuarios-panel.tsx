@@ -579,18 +579,14 @@ export function UsuariosPanel() {
                 placeholder="+57 300 000 0000"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="n-pass">Contraseña inicial</Label>
-              <Input
-                id="n-pass"
-                type="text"
-                value={form.password}
-                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                placeholder="Mínimo 12 caracteres, con mayúsculas, minúsculas y números"
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Comunícasela al usuario por un canal seguro. Mínimo 12 caracteres.
-              </p>
+            <div className="rounded-md border border-status-blue/30 bg-status-blue/5 p-3 text-xs text-muted-foreground">
+              <div className="flex items-start gap-2">
+                <Mail className="h-4 w-4 mt-0.5 text-status-blue shrink-0" />
+                <div>
+                  Se enviará un correo de invitación a este usuario para que active su cuenta y establezca su contraseña.
+                  El administrador NO define la contraseña inicial.
+                </div>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
