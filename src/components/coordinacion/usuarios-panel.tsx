@@ -912,73 +912,197 @@ export function UsuariosPanel() {
             setCredencialesOpen(false);
             setTempPass(null);
             setConfirmGenerar(false);
+            setMostrarCambioManual(false);
+            setNuevoPass("");
+            setConfirmarPass("");
+            setEstadoAcceso(null);
           }
         }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Datos básicos de acceso</DialogTitle>
             <DialogDescription>
-              Información de credenciales del usuario. Por seguridad, la contraseña actual no se muestra.
+              Gestión segura de credenciales. La contraseña actual nunca es consultable.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <Label className="text-xs">Correo de autenticación</Label>
-              <div className="flex items-center gap-2">
-                <Input value={emailOriginal || "—"} readOnly />
-                {emailOriginal && (
-                  <Button size="icon" variant="outline" onClick={() => copiar(emailOriginal, "Correo")}>
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Contraseña</Label>
-              {tempPass ? (
-                <>
-                  <div className="flex items-center gap-2">
-                    <Input value={tempPass} readOnly className="font-mono" />
-                    <Button size="icon" variant="outline" onClick={() => copiar(tempPass, "Contraseña")}>
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <p className="text-[11px] font-semibold text-status-amber">
-                    Cópiala ahora. Al cerrar esta ventana no volverá a mostrarse.
-                  </p>
-                </>
-              ) : (
-                <Input value="•••••••• (no disponible por seguridad)" readOnly disabled />
-              )}
-            </div>
 
-            {confirmGenerar ? (
-              <div className="rounded-lg border border-status-amber/40 bg-status-amber/10 p-3 space-y-2">
-                <p className="text-sm">
-                  Se reemplazará la contraseña actual del usuario. Esta acción queda auditada.
-                </p>
-                <div className="flex justify-end gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => setConfirmGenerar(false)}>
-                    Cancelar
-                  </Button>
-                  <Button size="sm" onClick={generarTemporal} disabled={generandoTemp}>
-                    {generandoTemp ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
-                    Sí, generar
-                  </Button>
-                </div>
+          <div className="max-h-[65vh] overflow-y-auto pr-1 space-y-3">
+            {estadoCargando && !estadoAcceso ? (
+              <div className="flex items-center justify-center py-6 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin mr-2" /> Cargando estado de acceso…
               </div>
             ) : (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full rounded-full"
-                onClick={() => setConfirmGenerar(true)}
-              >
-                <KeyRound className="mr-1.5 h-4 w-4" /> Generar contraseña temporal
-              </Button>
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-md border border-border/60 bg-muted/30 p-2">
+                    <div className="text-[10px] uppercase text-muted-foreground">Estado cuenta</div>
+                    <div className="text-sm font-semibold">{estadoAcceso?.estadoCuenta ?? "—"}</div>
+                  </div>
+                  <div className="rounded-md border border-border/60 bg-muted/30 p-2">
+                    <div className="text-[10px] uppercase text-muted-foreground">Estado contraseña</div>
+                    <div className="text-sm font-semibold">{estadoAcceso?.estadoPassword ?? "—"}</div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
+                  <div>Activación: <span className="text-foreground">{fmtFecha(estadoAcceso?.activationAt)}</span></div>
+                  <div>Últ. cambio admin: <span className="text-foreground">{fmtFecha(estadoAcceso?.lastAdminChangeAt)}</span></div>
+                  <div className="col-span-2">Últ. enlace de restablecimiento: <span className="text-foreground">{fmtFecha(estadoAcceso?.lastResetSentAt)}</span></div>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs">Correo de autenticación</Label>
+                  <div className="flex items-center gap-2">
+                    <Input value={emailOriginal || estadoAcceso?.email || "—"} readOnly />
+                    {(emailOriginal || estadoAcceso?.email) && (
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        onClick={() => copiar(emailOriginal || estadoAcceso?.email || "", "Correo")}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {tempPass && (
+                  <div className="rounded-lg border border-status-amber/40 bg-status-amber/10 p-3 space-y-1">
+                    <Label className="text-xs">Contraseña temporal generada</Label>
+                    <div className="flex items-center gap-2">
+                      <Input value={tempPass} readOnly className="font-mono" />
+                      <Button size="icon" variant="outline" onClick={() => copiar(tempPass, "Contraseña")}>
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-[11px] font-semibold text-status-amber">
+                      Cópiala ahora y comunícasela al usuario por un canal seguro. Al cerrar esta ventana no volverá a mostrarse.
+                    </p>
+                  </div>
+                )}
+
+                <div className="rounded-lg border border-border/60 bg-muted/20 p-3 space-y-2">
+                  <div className="text-xs font-semibold uppercase text-muted-foreground">Acciones administrativas</div>
+
+                  {estadoAcceso?.estadoCuenta === "INVITACIÓN PENDIENTE" && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-start rounded-md"
+                      onClick={handleReenviarInvitacion}
+                      disabled={reenviando}
+                    >
+                      {reenviando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
+                      Reenviar invitación de activación
+                    </Button>
+                  )}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-start rounded-md"
+                    onClick={handleEnviarResetLink}
+                    disabled={enviandoReset}
+                  >
+                    {enviandoReset ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
+                    Enviar enlace de restablecimiento
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-start rounded-md"
+                    onClick={() => setMostrarCambioManual((v) => !v)}
+                  >
+                    <KeyRound className="mr-2 h-4 w-4" />
+                    Cambiar contraseña manualmente
+                  </Button>
+
+                  {mostrarCambioManual && (
+                    <div className="rounded-md border border-border/60 bg-background p-3 space-y-2">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="cm-pass">Nueva contraseña</Label>
+                        <div className="relative">
+                          <Input
+                            id="cm-pass"
+                            type={mostrarPass ? "text" : "password"}
+                            value={nuevoPass}
+                            onChange={(e) => setNuevoPass(e.target.value)}
+                            placeholder="Mín. 10, Mayús/minús/número/símbolo"
+                            className="pr-9"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setMostrarPass((v) => !v)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            aria-label={mostrarPass ? "Ocultar" : "Mostrar"}
+                          >
+                            {mostrarPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="cm-pass2">Confirmar</Label>
+                        <Input
+                          id="cm-pass2"
+                          type={mostrarPass ? "text" : "password"}
+                          value={confirmarPass}
+                          onChange={(e) => setConfirmarPass(e.target.value)}
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        className="rounded-full"
+                        disabled={guardandoPass || !nuevoPass || !confirmarPass}
+                        onClick={async () => {
+                          await cambiarPassword();
+                          recargarEstadoAcceso();
+                        }}
+                      >
+                        {guardandoPass ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <KeyRound className="mr-1.5 h-4 w-4" />}
+                        Actualizar contraseña
+                      </Button>
+                    </div>
+                  )}
+
+                  {confirmGenerar ? (
+                    <div className="rounded-lg border border-status-amber/40 bg-status-amber/10 p-3 space-y-2">
+                      <p className="text-sm">
+                        Se reemplazará la contraseña actual. La contraseña anterior deja de funcionar inmediatamente. Esta acción queda auditada.
+                      </p>
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => setConfirmGenerar(false)}>
+                          Cancelar
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={async () => {
+                            await generarTemporal();
+                            recargarEstadoAcceso();
+                          }}
+                          disabled={generandoTemp}
+                        >
+                          {generandoTemp ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
+                          Sí, generar
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-start rounded-md"
+                      onClick={() => setConfirmGenerar(true)}
+                    >
+                      <ShieldAlert className="mr-2 h-4 w-4" /> Generar contraseña temporal
+                    </Button>
+                  )}
+                </div>
+              </>
             )}
           </div>
+
           <DialogFooter>
             <Button
               variant="ghost"
@@ -986,6 +1110,10 @@ export function UsuariosPanel() {
                 setCredencialesOpen(false);
                 setTempPass(null);
                 setConfirmGenerar(false);
+                setMostrarCambioManual(false);
+                setNuevoPass("");
+                setConfirmarPass("");
+                setEstadoAcceso(null);
               }}
             >
               Cerrar
@@ -993,6 +1121,7 @@ export function UsuariosPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
 
 
       <UsuarioActividadDialog
