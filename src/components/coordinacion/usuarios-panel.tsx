@@ -320,35 +320,33 @@ export function UsuariosPanel() {
   const guardarNuevo = async () => {
     if (!form.nombre.trim()) return toast.error("Ingresa el nombre.");
     if (!form.email.trim()) return toast.error("Ingresa el correo.");
-    if (form.password.length < 12)
-      return toast.error("La contraseña debe tener al menos 12 caracteres.");
     setGuardando(true);
     try {
-      const res = await crear({
+      const res = await invitarFn({
         data: {
           nombre: form.nombre.trim(),
           email: form.email.trim(),
           cargo: form.cargo.trim(),
           telefono: form.telefono.trim(),
-          password: form.password,
           rol: form.rol,
           activo: form.activo,
         },
       });
       if (!res.ok) {
-        toast.error(res.error ?? "No se pudo crear el usuario.");
+        toast.error(res.error ?? "No se pudo enviar la invitación.");
         return;
       }
-      toast.success("Usuario creado correctamente.");
+      toast.success("Invitación enviada. El usuario recibirá un correo para activar su cuenta.");
       setForm(emptyForm);
       setDialogOpen(false);
       qc.invalidateQueries({ queryKey: ["usuarios"] });
     } catch {
-      toast.error("Error al crear el usuario. Intenta de nuevo.");
+      toast.error("Error al enviar la invitación. Intenta de nuevo.");
     } finally {
       setGuardando(false);
     }
   };
+
 
   const term = q.trim().toLowerCase();
   const filtrados = useMemo(
