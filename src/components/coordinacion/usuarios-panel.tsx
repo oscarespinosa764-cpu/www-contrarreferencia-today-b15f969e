@@ -130,6 +130,10 @@ export function UsuariosPanel() {
   } | null>(null);
 
   const crear = useServerFn(crearUsuario);
+  const invitarFn = useServerFn(invitarUsuario);
+  const reenviarFn = useServerFn(reenviarInvitacion);
+  const resetLinkFn = useServerFn(enviarResetPasswordUsuario);
+  const estadoAccesoFn = useServerFn(obtenerEstadoAccesoUsuario);
   const cambiarRolFn = useServerFn(cambiarRolUsuario);
   const cambiarEstadoFn = useServerFn(cambiarEstadoUsuario);
   const editarFn = useServerFn(editarUsuario);
@@ -137,6 +141,7 @@ export function UsuariosPanel() {
   const cambiarEmailFn = useServerFn(cambiarEmailUsuario);
   const cambiarPassFn = useServerFn(cambiarPasswordUsuario);
   const generarTempFn = useServerFn(generarPasswordTemporalUsuario);
+  void crear; // legado: reemplazado por invitación
 
 
   const { data: usuarios, isLoading } = useQuery({
