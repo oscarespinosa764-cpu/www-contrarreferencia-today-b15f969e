@@ -22,13 +22,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, UserPlus, Loader2, Activity, Pencil } from "lucide-react";
+import { Search, UserPlus, Loader2, Activity, Pencil, Eye, EyeOff, Copy, KeyRound, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import {
   crearUsuario,
   cambiarRolUsuario,
   cambiarEstadoUsuario,
   editarUsuario,
+  obtenerEmailUsuario,
+  cambiarEmailUsuario,
+  cambiarPasswordUsuario,
+  generarPasswordTemporalUsuario,
 } from "@/lib/usuarios.functions";
 import { UsuarioActividadDialog } from "@/components/coordinacion/usuario-actividad-dialog";
 import { FirmaFuncionarioSection } from "@/components/coordinacion/firma-funcionario-section";
