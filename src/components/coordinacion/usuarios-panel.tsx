@@ -744,12 +744,76 @@ export function UsuariosPanel() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label>Correo de autenticación</Label>
-                <Input value="No se puede modificar desde aquí" readOnly disabled />
+                <Label htmlFor="e-email">Correo de autenticación</Label>
+                <Input
+                  id="e-email"
+                  type="email"
+                  value={editForm.email}
+                  disabled={emailCargando}
+                  onChange={(e) => setEditForm((f) => (f ? { ...f, email: e.target.value } : f))}
+                  placeholder={emailCargando ? "Cargando…" : "correo@dominio.com"}
+                />
                 <p className="text-[11px] text-muted-foreground">
-                  El correo de autenticación no se puede modificar desde aquí.
+                  Al cambiarlo, el usuario deberá iniciar sesión con el nuevo correo. La acción queda auditada.
                 </p>
               </div>
+
+              <div className="rounded-lg border border-border/60 bg-muted/30 p-3 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <KeyRound className="h-4 w-4" /> Restablecer contraseña
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="e-pass">Nueva contraseña</Label>
+                  <div className="relative">
+                    <Input
+                      id="e-pass"
+                      type={mostrarPass ? "text" : "password"}
+                      value={nuevoPass}
+                      onChange={(e) => setNuevoPass(e.target.value)}
+                      placeholder="Mín. 10, Mayús/minús/número/símbolo"
+                      className="pr-9"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setMostrarPass((v) => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      aria-label={mostrarPass ? "Ocultar contraseña" : "Mostrar contraseña"}
+                    >
+                      {mostrarPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="e-pass2">Confirmar contraseña</Label>
+                  <Input
+                    id="e-pass2"
+                    type={mostrarPass ? "text" : "password"}
+                    value={confirmarPass}
+                    onChange={(e) => setConfirmarPass(e.target.value)}
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-full"
+                  disabled={guardandoPass || !nuevoPass || !confirmarPass}
+                  onClick={cambiarPassword}
+                >
+                  {guardandoPass ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <KeyRound className="mr-1.5 h-4 w-4" />}
+                  Actualizar contraseña
+                </Button>
+              </div>
+
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="w-full rounded-full"
+                onClick={() => setCredencialesOpen(true)}
+              >
+                <ShieldAlert className="mr-1.5 h-4 w-4" /> Datos básicos de acceso
+              </Button>
+
               {editForm.esYo && (
                 <p className="rounded-md bg-status-amber/10 px-3 py-2 text-[11px] font-medium text-status-amber">
                   No puedes cambiar tu propio rol ni tu propio estado.
