@@ -118,6 +118,11 @@ export function UsuariosPanel() {
   const [tempPass, setTempPass] = useState<string | null>(null);
   const [generandoTemp, setGenerandoTemp] = useState(false);
   const [confirmGenerar, setConfirmGenerar] = useState(false);
+  const [estadoAcceso, setEstadoAcceso] = useState<EstadoAcceso | null>(null);
+  const [estadoCargando, setEstadoCargando] = useState(false);
+  const [mostrarCambioManual, setMostrarCambioManual] = useState(false);
+  const [enviandoReset, setEnviandoReset] = useState(false);
+  const [reenviando, setReenviando] = useState(false);
   const [confirmDesactivar, setConfirmDesactivar] = useState<{
     userId: string;
     nombre: string;
