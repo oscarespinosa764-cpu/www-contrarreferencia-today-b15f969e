@@ -430,3 +430,255 @@ export const generarPasswordTemporalUsuario = createServerFn({ method: "POST" })
     });
     return { ok: true, password, error: null as string | null };
   });
+
+// ---------------------------------------------------------------------------
+// FLUJO DE INVITACIÓN Y ACTIVACIÓN
+// ---------------------------------------------------------------------------
+
+function getSiteUrl(): string {
+  return (process.env.PUBLIC_SITE_URL || "https://www.contrarreferencia.today").replace(/\/$/, "");
+}
+
+// Rate-limit simple en memoria: máx 1 reenvío por 60 s por userId.
+const lastInviteResendAt = new Map<string, number>();
+
+// --- Invitar usuario (envía correo con enlace de activación) -----------------
+const invitarSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Correo inválido.").max(255),
+  nombre: z.string().trim().min(1, "Ingresa el nombre.").max(120),
+  cargo: z.string().trim().max(120).optional().default(""),
+  telefono: z.string().trim().max(40).optional().default(""),
+  sede: z.string().trim().max(120).optional().default(""),
+  observaciones: z.string().trim().max(500).optional().default(""),
+  rol: z.enum(ROLES),
+  activo: z.boolean().default(true),
+});
+
+export const invitarUsuario = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => invitarSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    if (!(await assertAdmin(supabase, userId))) {
+      return { ok: false, error: "Acción reservada al administrador." as string | null };
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const redirectTo = `${getSiteUrl()}/activar-cuenta`;
+
+    const { data: invited, error } = await (supabaseAdmin as any).auth.admin.inviteUserByEmail(
+      data.email,
+      { redirectTo, data: { nombre: data.nombre } },
+    );
+
+    if (error || !invited?.user) {
+      const msg = (error?.message ?? "").toLowerCase();
+      const dup = msg.includes("already") || msg.includes("registered") || msg.includes("exists");
+      return {
+        ok: false,
+        error: (dup
+          ? "El correo electrónico ya está asociado a otro usuario."
+          : "No fue posible enviar la invitación.") as string | null,
+      };
+    }
+
+    const newId = invited.user.id;
+
+    // El trigger handle_new_user creó el perfil. Complementamos datos.
+    await (supabaseAdmin as any)
+      .from("profiles")
+      .update({
+        nombre: data.nombre,
+        cargo: data.cargo || null,
+        telefono: data.telefono || null,
+        sede: data.sede || null,
+        observaciones: data.observaciones || null,
+        activo: data.activo,
+      })
+      .eq("user_id", newId);
+
+    await (supabaseAdmin as any).from("user_roles").delete().eq("user_id", newId);
+    await (supabaseAdmin as any).from("user_roles").insert({ user_id: newId, role: data.rol });
+
+    await (supabaseAdmin as any).from("audit_logs").insert({
+      user_id: userId,
+      accion: "USER_INVITED",
+      modulo: "usuarios",
+      tabla: "auth.users",
+      registro_id: newId,
+      resultado: "exito",
+      detalles: { email: maskEmail(data.email), rol: data.rol },
+    });
+
+    lastInviteResendAt.set(newId, Date.now());
+    return { ok: true, error: null as string | null };
+  });
+
+// --- Reenviar invitación -----------------------------------------------------
+export const reenviarInvitacion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { userId: string }) => z.object({ userId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    if (!(await assertAdmin(supabase, userId))) {
+      return { ok: false, error: "Acción reservada al administrador." as string | null };
+    }
+    const prev = lastInviteResendAt.get(data.userId) ?? 0;
+    if (Date.now() - prev < 60_000) {
+      return { ok: false, error: "Espera unos segundos antes de reenviar la invitación." as string | null };
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: current } = await (supabaseAdmin as any).auth.admin.getUserById(data.userId);
+    const email = current?.user?.email as string | undefined;
+    if (!email) return { ok: false, error: "No se encontró el correo del usuario." as string | null };
+
+    const redirectTo = `${getSiteUrl()}/activar-cuenta`;
+    const { error } = await (supabaseAdmin as any).auth.admin.inviteUserByEmail(email, { redirectTo });
+    if (error) {
+      // Si ya existe/activo, intentamos con recovery en su lugar.
+      const { error: err2 } = await (supabaseAdmin as any).auth.admin.generateLink({
+        type: "recovery",
+        email,
+        options: { redirectTo },
+      });
+      if (err2) return { ok: false, error: "No fue posible enviar la invitación." as string | null };
+    }
+
+    lastInviteResendAt.set(data.userId, Date.now());
+    await (supabaseAdmin as any).from("audit_logs").insert({
+      user_id: userId,
+      accion: "USER_INVITATION_RESENT",
+      modulo: "usuarios",
+      tabla: "auth.users",
+      registro_id: data.userId,
+      resultado: "exito",
+      detalles: { email: maskEmail(email) },
+    });
+    return { ok: true, error: null as string | null };
+  });
+
+// --- Enviar enlace de restablecimiento ---------------------------------------
+export const enviarResetPasswordUsuario = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { userId: string }) => z.object({ userId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    if (!(await assertAdmin(supabase, userId))) {
+      return { ok: false, error: "No tienes permiso para administrar las credenciales de este usuario." as string | null };
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: current } = await (supabaseAdmin as any).auth.admin.getUserById(data.userId);
+    const email = current?.user?.email as string | undefined;
+    if (!email) return { ok: false, error: "No se encontró el correo del usuario." as string | null };
+
+    const redirectTo = `${getSiteUrl()}/activar-cuenta`;
+    const { error } = await (supabaseAdmin as any).auth.admin.generateLink({
+      type: "recovery",
+      email,
+      options: { redirectTo },
+    });
+    if (error) {
+      return { ok: false, error: "No fue posible enviar el enlace de restablecimiento." as string | null };
+    }
+
+    await (supabaseAdmin as any).from("audit_logs").insert({
+      user_id: userId,
+      accion: "USER_PASSWORD_RESET_LINK_SENT",
+      modulo: "usuarios",
+      tabla: "auth.users",
+      registro_id: data.userId,
+      resultado: "exito",
+      detalles: { email: maskEmail(email) },
+    });
+    return { ok: true, error: null as string | null };
+  });
+
+// --- Estado de acceso (para modal "Datos básicos de acceso") -----------------
+export const obtenerEstadoAccesoUsuario = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { userId: string }) => z.object({ userId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    if (!(await assertAdmin(supabase, userId))) {
+      return {
+        ok: false,
+        info: null as null | {
+          email: string | null;
+          estadoCuenta: string;
+          estadoPassword: string;
+          activationAt: string | null;
+          lastAdminChangeAt: string | null;
+          lastResetSentAt: string | null;
+        },
+        error: "Acción reservada al administrador." as string | null,
+      };
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: res, error } = await (supabaseAdmin as any).auth.admin.getUserById(data.userId);
+    if (error || !res?.user) {
+      return { ok: false, info: null, error: "No fue posible cargar la información de acceso." as string | null };
+    }
+    const u = res.user;
+    const bannedUntil = u.banned_until ? new Date(u.banned_until) : null;
+    const isBanned = bannedUntil && bannedUntil.getTime() > Date.now();
+    const confirmed = !!u.email_confirmed_at || !!u.confirmed_at;
+    const lastSignIn = u.last_sign_in_at as string | null;
+
+    // Perfil (para saber si está activo administrativamente).
+    const { data: prof } = await (supabaseAdmin as any)
+      .from("profiles")
+      .select("activo")
+      .eq("user_id", data.userId)
+      .maybeSingle();
+
+    let estadoCuenta = "CUENTA ACTIVA";
+    if (prof && prof.activo === false) estadoCuenta = "CUENTA INACTIVA";
+    else if (isBanned) estadoCuenta = "CUENTA BLOQUEADA";
+    else if (!confirmed) estadoCuenta = "INVITACIÓN PENDIENTE";
+
+    // Auditoría de últimos eventos de credenciales.
+    const { data: logs } = await (supabaseAdmin as any)
+      .from("audit_logs")
+      .select("accion, created_at")
+      .eq("registro_id", data.userId)
+      .in("accion", [
+        "USER_ACCOUNT_ACTIVATED",
+        "USER_PASSWORD_RESET",
+        "USER_PASSWORD_RESET_LINK_SENT",
+        "USER_TEMP_PASSWORD_GENERATED",
+      ])
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    const findLatest = (accion: string) =>
+      (logs ?? []).find((l: any) => l.accion === accion)?.created_at ?? null;
+
+    const activationAt = findLatest("USER_ACCOUNT_ACTIVATED") ?? (confirmed ? u.confirmed_at ?? u.email_confirmed_at ?? null : null);
+    const lastAdminChangeAt =
+      findLatest("USER_PASSWORD_RESET") ?? findLatest("USER_TEMP_PASSWORD_GENERATED") ?? null;
+    const lastResetSentAt = findLatest("USER_PASSWORD_RESET_LINK_SENT");
+
+    let estadoPassword = "CONFIGURADA — NO CONSULTABLE POR SEGURIDAD";
+    if (!confirmed) estadoPassword = "PENDIENTE DE CONFIGURACIÓN";
+    else if (findLatest("USER_TEMP_PASSWORD_GENERATED") &&
+      (!lastSignIn || new Date(lastSignIn) < new Date(findLatest("USER_TEMP_PASSWORD_GENERATED")!))) {
+      estadoPassword = "CONTRASEÑA TEMPORAL GENERADA";
+    } else if (lastResetSentAt && (!lastSignIn || new Date(lastSignIn) < new Date(lastResetSentAt))) {
+      estadoPassword = "RESTABLECIMIENTO PENDIENTE";
+    }
+
+    return {
+      ok: true,
+      info: {
+        email: (u.email as string) ?? null,
+        estadoCuenta,
+        estadoPassword,
+        activationAt,
+        lastAdminChangeAt,
+        lastResetSentAt,
+      },
+      error: null as string | null,
+    };
+  });
+

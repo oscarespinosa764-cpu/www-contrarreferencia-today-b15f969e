@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/lib/backend-client";
@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, UserPlus, Loader2, Activity, Pencil, Eye, EyeOff, Copy, KeyRound, ShieldAlert } from "lucide-react";
+import { Search, UserPlus, Loader2, Activity, Pencil, Eye, EyeOff, Copy, KeyRound, ShieldAlert, Mail, RefreshCcw } from "lucide-react";
 import { toast } from "sonner";
 import {
   crearUsuario,
@@ -33,6 +33,10 @@ import {
   cambiarEmailUsuario,
   cambiarPasswordUsuario,
   generarPasswordTemporalUsuario,
+  invitarUsuario,
+  reenviarInvitacion,
+  enviarResetPasswordUsuario,
+  obtenerEstadoAccesoUsuario,
 } from "@/lib/usuarios.functions";
 import { UsuarioActividadDialog } from "@/components/coordinacion/usuario-actividad-dialog";
 import { FirmaFuncionarioSection } from "@/components/coordinacion/firma-funcionario-section";
@@ -56,10 +60,28 @@ const emptyForm = {
   email: "",
   cargo: "",
   telefono: "",
-  password: "",
   rol: "operativa" as Rol,
   activo: true,
 };
+
+const fmtFecha = (iso: string | null | undefined) => {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" });
+  } catch {
+    return "—";
+  }
+};
+
+type EstadoAcceso = {
+  email: string | null;
+  estadoCuenta: string;
+  estadoPassword: string;
+  activationAt: string | null;
+  lastAdminChangeAt: string | null;
+  lastResetSentAt: string | null;
+};
+
 
 type EditForm = {
   userId: string;
@@ -96,6 +118,11 @@ export function UsuariosPanel() {
   const [tempPass, setTempPass] = useState<string | null>(null);
   const [generandoTemp, setGenerandoTemp] = useState(false);
   const [confirmGenerar, setConfirmGenerar] = useState(false);
+  const [estadoAcceso, setEstadoAcceso] = useState<EstadoAcceso | null>(null);
+  const [estadoCargando, setEstadoCargando] = useState(false);
+  const [mostrarCambioManual, setMostrarCambioManual] = useState(false);
+  const [enviandoReset, setEnviandoReset] = useState(false);
+  const [reenviando, setReenviando] = useState(false);
   const [confirmDesactivar, setConfirmDesactivar] = useState<{
     userId: string;
     nombre: string;
@@ -108,6 +135,10 @@ export function UsuariosPanel() {
   } | null>(null);
 
   const crear = useServerFn(crearUsuario);
+  const invitarFn = useServerFn(invitarUsuario);
+  const reenviarFn = useServerFn(reenviarInvitacion);
+  const resetLinkFn = useServerFn(enviarResetPasswordUsuario);
+  const estadoAccesoFn = useServerFn(obtenerEstadoAccesoUsuario);
   const cambiarRolFn = useServerFn(cambiarRolUsuario);
   const cambiarEstadoFn = useServerFn(cambiarEstadoUsuario);
   const editarFn = useServerFn(editarUsuario);
@@ -115,6 +146,7 @@ export function UsuariosPanel() {
   const cambiarEmailFn = useServerFn(cambiarEmailUsuario);
   const cambiarPassFn = useServerFn(cambiarPasswordUsuario);
   const generarTempFn = useServerFn(generarPasswordTemporalUsuario);
+  void crear; // legado: reemplazado por invitación
 
 
   const { data: usuarios, isLoading } = useQuery({
@@ -132,6 +164,64 @@ export function UsuariosPanel() {
       return (profiles ?? []).map((p) => ({ ...p, roles: rolesByUser[p.user_id] ?? [] }));
     },
   });
+
+  // Cargar estado de acceso al abrir el modal
+  useEffect(() => {
+    let cancel = false;
+    if (!credencialesOpen || !editForm) return;
+    setEstadoAcceso(null);
+    setEstadoCargando(true);
+    (async () => {
+      try {
+        const res = await estadoAccesoFn({ data: { userId: editForm.userId } });
+        if (cancel) return;
+        if (res.ok && res.info) setEstadoAcceso(res.info);
+      } finally {
+        if (!cancel) setEstadoCargando(false);
+      }
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, [credencialesOpen, editForm, estadoAccesoFn]);
+
+  const recargarEstadoAcceso = async () => {
+    if (!editForm) return;
+    setEstadoCargando(true);
+    try {
+      const res = await estadoAccesoFn({ data: { userId: editForm.userId } });
+      if (res.ok && res.info) setEstadoAcceso(res.info);
+    } finally {
+      setEstadoCargando(false);
+    }
+  };
+
+  const handleReenviarInvitacion = async () => {
+    if (!editForm) return;
+    setReenviando(true);
+    try {
+      const res = await reenviarFn({ data: { userId: editForm.userId } });
+      if (!res.ok) return toast.error(res.error ?? "No fue posible reenviar la invitación.");
+      toast.success("Invitación reenviada al correo del usuario.");
+      recargarEstadoAcceso();
+    } finally {
+      setReenviando(false);
+    }
+  };
+
+  const handleEnviarResetLink = async () => {
+    if (!editForm) return;
+    setEnviandoReset(true);
+    try {
+      const res = await resetLinkFn({ data: { userId: editForm.userId } });
+      if (!res.ok) return toast.error(res.error ?? "No fue posible enviar el enlace.");
+      toast.success("Enlace de restablecimiento enviado al correo del usuario.");
+      recargarEstadoAcceso();
+    } finally {
+      setEnviandoReset(false);
+    }
+  };
+
 
   const cambiarRol = async (userId: string, nuevoRol: Rol) => {
     const res = await cambiarRolFn({ data: { userId, rol: nuevoRol } });
@@ -293,35 +383,33 @@ export function UsuariosPanel() {
   const guardarNuevo = async () => {
     if (!form.nombre.trim()) return toast.error("Ingresa el nombre.");
     if (!form.email.trim()) return toast.error("Ingresa el correo.");
-    if (form.password.length < 12)
-      return toast.error("La contraseña debe tener al menos 12 caracteres.");
     setGuardando(true);
     try {
-      const res = await crear({
+      const res = await invitarFn({
         data: {
           nombre: form.nombre.trim(),
           email: form.email.trim(),
           cargo: form.cargo.trim(),
           telefono: form.telefono.trim(),
-          password: form.password,
           rol: form.rol,
           activo: form.activo,
         },
       });
       if (!res.ok) {
-        toast.error(res.error ?? "No se pudo crear el usuario.");
+        toast.error(res.error ?? "No se pudo enviar la invitación.");
         return;
       }
-      toast.success("Usuario creado correctamente.");
+      toast.success("Invitación enviada. El usuario recibirá un correo para activar su cuenta.");
       setForm(emptyForm);
       setDialogOpen(false);
       qc.invalidateQueries({ queryKey: ["usuarios"] });
     } catch {
-      toast.error("Error al crear el usuario. Intenta de nuevo.");
+      toast.error("Error al enviar la invitación. Intenta de nuevo.");
     } finally {
       setGuardando(false);
     }
   };
+
 
   const term = q.trim().toLowerCase();
   const filtrados = useMemo(
@@ -554,18 +642,14 @@ export function UsuariosPanel() {
                 placeholder="+57 300 000 0000"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="n-pass">Contraseña inicial</Label>
-              <Input
-                id="n-pass"
-                type="text"
-                value={form.password}
-                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                placeholder="Mínimo 12 caracteres, con mayúsculas, minúsculas y números"
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Comunícasela al usuario por un canal seguro. Mínimo 12 caracteres.
-              </p>
+            <div className="rounded-md border border-status-blue/30 bg-status-blue/5 p-3 text-xs text-muted-foreground">
+              <div className="flex items-start gap-2">
+                <Mail className="h-4 w-4 mt-0.5 text-status-blue shrink-0" />
+                <div>
+                  Se enviará un correo de invitación a este usuario para que active su cuenta y establezca su contraseña.
+                  El administrador NO define la contraseña inicial.
+                </div>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -611,10 +695,10 @@ export function UsuariosPanel() {
             <Button onClick={guardarNuevo} disabled={guardando}>
               {guardando ? (
                 <>
-                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Creando…
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Enviando…
                 </>
               ) : (
-                "Crear usuario"
+                "Enviar invitación"
               )}
             </Button>
           </DialogFooter>
@@ -758,51 +842,9 @@ export function UsuariosPanel() {
                 </p>
               </div>
 
-              <div className="rounded-lg border border-border/60 bg-muted/30 p-3 space-y-2">
-                <div className="flex items-center gap-2 text-sm font-semibold">
-                  <KeyRound className="h-4 w-4" /> Restablecer contraseña
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="e-pass">Nueva contraseña</Label>
-                  <div className="relative">
-                    <Input
-                      id="e-pass"
-                      type={mostrarPass ? "text" : "password"}
-                      value={nuevoPass}
-                      onChange={(e) => setNuevoPass(e.target.value)}
-                      placeholder="Mín. 10, Mayús/minús/número/símbolo"
-                      className="pr-9"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setMostrarPass((v) => !v)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      aria-label={mostrarPass ? "Ocultar contraseña" : "Mostrar contraseña"}
-                    >
-                      {mostrarPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="e-pass2">Confirmar contraseña</Label>
-                  <Input
-                    id="e-pass2"
-                    type={mostrarPass ? "text" : "password"}
-                    value={confirmarPass}
-                    onChange={(e) => setConfirmarPass(e.target.value)}
-                  />
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="rounded-full"
-                  disabled={guardandoPass || !nuevoPass || !confirmarPass}
-                  onClick={cambiarPassword}
-                >
-                  {guardandoPass ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <KeyRound className="mr-1.5 h-4 w-4" />}
-                  Actualizar contraseña
-                </Button>
-              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Para gestionar la contraseña (enlace de restablecimiento, cambio manual o clave temporal), abre "Datos básicos de acceso".
+              </p>
 
               <Button
                 type="button"
@@ -870,73 +912,197 @@ export function UsuariosPanel() {
             setCredencialesOpen(false);
             setTempPass(null);
             setConfirmGenerar(false);
+            setMostrarCambioManual(false);
+            setNuevoPass("");
+            setConfirmarPass("");
+            setEstadoAcceso(null);
           }
         }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Datos básicos de acceso</DialogTitle>
             <DialogDescription>
-              Información de credenciales del usuario. Por seguridad, la contraseña actual no se muestra.
+              Gestión segura de credenciales. La contraseña actual nunca es consultable.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <Label className="text-xs">Correo de autenticación</Label>
-              <div className="flex items-center gap-2">
-                <Input value={emailOriginal || "—"} readOnly />
-                {emailOriginal && (
-                  <Button size="icon" variant="outline" onClick={() => copiar(emailOriginal, "Correo")}>
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Contraseña</Label>
-              {tempPass ? (
-                <>
-                  <div className="flex items-center gap-2">
-                    <Input value={tempPass} readOnly className="font-mono" />
-                    <Button size="icon" variant="outline" onClick={() => copiar(tempPass, "Contraseña")}>
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <p className="text-[11px] font-semibold text-status-amber">
-                    Cópiala ahora. Al cerrar esta ventana no volverá a mostrarse.
-                  </p>
-                </>
-              ) : (
-                <Input value="•••••••• (no disponible por seguridad)" readOnly disabled />
-              )}
-            </div>
 
-            {confirmGenerar ? (
-              <div className="rounded-lg border border-status-amber/40 bg-status-amber/10 p-3 space-y-2">
-                <p className="text-sm">
-                  Se reemplazará la contraseña actual del usuario. Esta acción queda auditada.
-                </p>
-                <div className="flex justify-end gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => setConfirmGenerar(false)}>
-                    Cancelar
-                  </Button>
-                  <Button size="sm" onClick={generarTemporal} disabled={generandoTemp}>
-                    {generandoTemp ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
-                    Sí, generar
-                  </Button>
-                </div>
+          <div className="max-h-[65vh] overflow-y-auto pr-1 space-y-3">
+            {estadoCargando && !estadoAcceso ? (
+              <div className="flex items-center justify-center py-6 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin mr-2" /> Cargando estado de acceso…
               </div>
             ) : (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full rounded-full"
-                onClick={() => setConfirmGenerar(true)}
-              >
-                <KeyRound className="mr-1.5 h-4 w-4" /> Generar contraseña temporal
-              </Button>
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-md border border-border/60 bg-muted/30 p-2">
+                    <div className="text-[10px] uppercase text-muted-foreground">Estado cuenta</div>
+                    <div className="text-sm font-semibold">{estadoAcceso?.estadoCuenta ?? "—"}</div>
+                  </div>
+                  <div className="rounded-md border border-border/60 bg-muted/30 p-2">
+                    <div className="text-[10px] uppercase text-muted-foreground">Estado contraseña</div>
+                    <div className="text-sm font-semibold">{estadoAcceso?.estadoPassword ?? "—"}</div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
+                  <div>Activación: <span className="text-foreground">{fmtFecha(estadoAcceso?.activationAt)}</span></div>
+                  <div>Últ. cambio admin: <span className="text-foreground">{fmtFecha(estadoAcceso?.lastAdminChangeAt)}</span></div>
+                  <div className="col-span-2">Últ. enlace de restablecimiento: <span className="text-foreground">{fmtFecha(estadoAcceso?.lastResetSentAt)}</span></div>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs">Correo de autenticación</Label>
+                  <div className="flex items-center gap-2">
+                    <Input value={emailOriginal || estadoAcceso?.email || "—"} readOnly />
+                    {(emailOriginal || estadoAcceso?.email) && (
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        onClick={() => copiar(emailOriginal || estadoAcceso?.email || "", "Correo")}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {tempPass && (
+                  <div className="rounded-lg border border-status-amber/40 bg-status-amber/10 p-3 space-y-1">
+                    <Label className="text-xs">Contraseña temporal generada</Label>
+                    <div className="flex items-center gap-2">
+                      <Input value={tempPass} readOnly className="font-mono" />
+                      <Button size="icon" variant="outline" onClick={() => copiar(tempPass, "Contraseña")}>
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-[11px] font-semibold text-status-amber">
+                      Cópiala ahora y comunícasela al usuario por un canal seguro. Al cerrar esta ventana no volverá a mostrarse.
+                    </p>
+                  </div>
+                )}
+
+                <div className="rounded-lg border border-border/60 bg-muted/20 p-3 space-y-2">
+                  <div className="text-xs font-semibold uppercase text-muted-foreground">Acciones administrativas</div>
+
+                  {estadoAcceso?.estadoCuenta === "INVITACIÓN PENDIENTE" && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-start rounded-md"
+                      onClick={handleReenviarInvitacion}
+                      disabled={reenviando}
+                    >
+                      {reenviando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
+                      Reenviar invitación de activación
+                    </Button>
+                  )}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-start rounded-md"
+                    onClick={handleEnviarResetLink}
+                    disabled={enviandoReset}
+                  >
+                    {enviandoReset ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
+                    Enviar enlace de restablecimiento
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-start rounded-md"
+                    onClick={() => setMostrarCambioManual((v) => !v)}
+                  >
+                    <KeyRound className="mr-2 h-4 w-4" />
+                    Cambiar contraseña manualmente
+                  </Button>
+
+                  {mostrarCambioManual && (
+                    <div className="rounded-md border border-border/60 bg-background p-3 space-y-2">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="cm-pass">Nueva contraseña</Label>
+                        <div className="relative">
+                          <Input
+                            id="cm-pass"
+                            type={mostrarPass ? "text" : "password"}
+                            value={nuevoPass}
+                            onChange={(e) => setNuevoPass(e.target.value)}
+                            placeholder="Mín. 10, Mayús/minús/número/símbolo"
+                            className="pr-9"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setMostrarPass((v) => !v)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            aria-label={mostrarPass ? "Ocultar" : "Mostrar"}
+                          >
+                            {mostrarPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="cm-pass2">Confirmar</Label>
+                        <Input
+                          id="cm-pass2"
+                          type={mostrarPass ? "text" : "password"}
+                          value={confirmarPass}
+                          onChange={(e) => setConfirmarPass(e.target.value)}
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        className="rounded-full"
+                        disabled={guardandoPass || !nuevoPass || !confirmarPass}
+                        onClick={async () => {
+                          await cambiarPassword();
+                          recargarEstadoAcceso();
+                        }}
+                      >
+                        {guardandoPass ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <KeyRound className="mr-1.5 h-4 w-4" />}
+                        Actualizar contraseña
+                      </Button>
+                    </div>
+                  )}
+
+                  {confirmGenerar ? (
+                    <div className="rounded-lg border border-status-amber/40 bg-status-amber/10 p-3 space-y-2">
+                      <p className="text-sm">
+                        Se reemplazará la contraseña actual. La contraseña anterior deja de funcionar inmediatamente. Esta acción queda auditada.
+                      </p>
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => setConfirmGenerar(false)}>
+                          Cancelar
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={async () => {
+                            await generarTemporal();
+                            recargarEstadoAcceso();
+                          }}
+                          disabled={generandoTemp}
+                        >
+                          {generandoTemp ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
+                          Sí, generar
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-start rounded-md"
+                      onClick={() => setConfirmGenerar(true)}
+                    >
+                      <ShieldAlert className="mr-2 h-4 w-4" /> Generar contraseña temporal
+                    </Button>
+                  )}
+                </div>
+              </>
             )}
           </div>
+
           <DialogFooter>
             <Button
               variant="ghost"
@@ -944,6 +1110,10 @@ export function UsuariosPanel() {
                 setCredencialesOpen(false);
                 setTempPass(null);
                 setConfirmGenerar(false);
+                setMostrarCambioManual(false);
+                setNuevoPass("");
+                setConfirmarPass("");
+                setEstadoAcceso(null);
               }}
             >
               Cerrar
@@ -951,6 +1121,7 @@ export function UsuariosPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
 
 
       <UsuarioActividadDialog

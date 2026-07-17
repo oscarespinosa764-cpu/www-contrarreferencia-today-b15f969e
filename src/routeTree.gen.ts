@@ -13,6 +13,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as PrivacidadRouteImport } from './routes/privacidad'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as FirmaEntregaRouteImport } from './routes/firma-entrega'
+import { Route as ActivarCuentaRouteImport } from './routes/activar-cuenta'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedSeguimientosRouteImport } from './routes/_authenticated/seguimientos'
@@ -46,6 +47,11 @@ const LoginRoute = LoginRouteImport.update({
 const FirmaEntregaRoute = FirmaEntregaRouteImport.update({
   id: '/firma-entrega',
   path: '/firma-entrega',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ActivarCuentaRoute = ActivarCuentaRouteImport.update({
+  id: '/activar-cuenta',
+  path: '/activar-cuenta',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
@@ -125,6 +131,7 @@ const ApiPublicHooksEvaluarAlertasCoordinacionRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/activar-cuenta': typeof ActivarCuentaRoute
   '/firma-entrega': typeof FirmaEntregaRoute
   '/login': typeof LoginRoute
   '/privacidad': typeof PrivacidadRoute
@@ -144,6 +151,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/activar-cuenta': typeof ActivarCuentaRoute
   '/firma-entrega': typeof FirmaEntregaRoute
   '/login': typeof LoginRoute
   '/privacidad': typeof PrivacidadRoute
@@ -165,6 +173,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/activar-cuenta': typeof ActivarCuentaRoute
   '/firma-entrega': typeof FirmaEntregaRoute
   '/login': typeof LoginRoute
   '/privacidad': typeof PrivacidadRoute
@@ -186,6 +195,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/activar-cuenta'
     | '/firma-entrega'
     | '/login'
     | '/privacidad'
@@ -205,6 +215,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/activar-cuenta'
     | '/firma-entrega'
     | '/login'
     | '/privacidad'
@@ -225,6 +236,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/activar-cuenta'
     | '/firma-entrega'
     | '/login'
     | '/privacidad'
@@ -246,6 +258,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  ActivarCuentaRoute: typeof ActivarCuentaRoute
   FirmaEntregaRoute: typeof FirmaEntregaRoute
   LoginRoute: typeof LoginRoute
   PrivacidadRoute: typeof PrivacidadRoute
@@ -281,6 +294,13 @@ declare module '@tanstack/react-router' {
       path: '/firma-entrega'
       fullPath: '/firma-entrega'
       preLoaderRoute: typeof FirmaEntregaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/activar-cuenta': {
+      id: '/activar-cuenta'
+      path: '/activar-cuenta'
+      fullPath: '/activar-cuenta'
+      preLoaderRoute: typeof ActivarCuentaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -419,6 +439,7 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  ActivarCuentaRoute: ActivarCuentaRoute,
   FirmaEntregaRoute: FirmaEntregaRoute,
   LoginRoute: LoginRoute,
   PrivacidadRoute: PrivacidadRoute,
