@@ -165,6 +165,64 @@ export function UsuariosPanel() {
     },
   });
 
+  // Cargar estado de acceso al abrir el modal
+  useEffect(() => {
+    let cancel = false;
+    if (!credencialesOpen || !editForm) return;
+    setEstadoAcceso(null);
+    setEstadoCargando(true);
+    (async () => {
+      try {
+        const res = await estadoAccesoFn({ data: { userId: editForm.userId } });
+        if (cancel) return;
+        if (res.ok && res.info) setEstadoAcceso(res.info);
+      } finally {
+        if (!cancel) setEstadoCargando(false);
+      }
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, [credencialesOpen, editForm, estadoAccesoFn]);
+
+  const recargarEstadoAcceso = async () => {
+    if (!editForm) return;
+    setEstadoCargando(true);
+    try {
+      const res = await estadoAccesoFn({ data: { userId: editForm.userId } });
+      if (res.ok && res.info) setEstadoAcceso(res.info);
+    } finally {
+      setEstadoCargando(false);
+    }
+  };
+
+  const handleReenviarInvitacion = async () => {
+    if (!editForm) return;
+    setReenviando(true);
+    try {
+      const res = await reenviarFn({ data: { userId: editForm.userId } });
+      if (!res.ok) return toast.error(res.error ?? "No fue posible reenviar la invitación.");
+      toast.success("Invitación reenviada al correo del usuario.");
+      recargarEstadoAcceso();
+    } finally {
+      setReenviando(false);
+    }
+  };
+
+  const handleEnviarResetLink = async () => {
+    if (!editForm) return;
+    setEnviandoReset(true);
+    try {
+      const res = await resetLinkFn({ data: { userId: editForm.userId } });
+      if (!res.ok) return toast.error(res.error ?? "No fue posible enviar el enlace.");
+      toast.success("Enlace de restablecimiento enviado al correo del usuario.");
+      recargarEstadoAcceso();
+    } finally {
+      setEnviandoReset(false);
+    }
+  };
+
+
   const cambiarRol = async (userId: string, nuevoRol: Rol) => {
     const res = await cambiarRolFn({ data: { userId, rol: nuevoRol } });
     if (!res.ok) return toast.error(res.error ?? "No se pudo actualizar el rol.");
