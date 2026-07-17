@@ -22,13 +22,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, UserPlus, Loader2, Activity, Pencil } from "lucide-react";
+import { Search, UserPlus, Loader2, Activity, Pencil, Eye, EyeOff, Copy, KeyRound, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import {
   crearUsuario,
   cambiarRolUsuario,
   cambiarEstadoUsuario,
   editarUsuario,
+  obtenerEmailUsuario,
+  cambiarEmailUsuario,
+  cambiarPasswordUsuario,
+  generarPasswordTemporalUsuario,
 } from "@/lib/usuarios.functions";
 import { UsuarioActividadDialog } from "@/components/coordinacion/usuario-actividad-dialog";
 import { FirmaFuncionarioSection } from "@/components/coordinacion/firma-funcionario-section";
@@ -82,6 +86,16 @@ export function UsuariosPanel() {
   const [guardando, setGuardando] = useState(false);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [editando, setEditando] = useState(false);
+  const [emailOriginal, setEmailOriginal] = useState<string>("");
+  const [emailCargando, setEmailCargando] = useState(false);
+  const [nuevoPass, setNuevoPass] = useState("");
+  const [confirmarPass, setConfirmarPass] = useState("");
+  const [mostrarPass, setMostrarPass] = useState(false);
+  const [guardandoPass, setGuardandoPass] = useState(false);
+  const [credencialesOpen, setCredencialesOpen] = useState(false);
+  const [tempPass, setTempPass] = useState<string | null>(null);
+  const [generandoTemp, setGenerandoTemp] = useState(false);
+  const [confirmGenerar, setConfirmGenerar] = useState(false);
   const [confirmDesactivar, setConfirmDesactivar] = useState<{
     userId: string;
     nombre: string;
@@ -97,6 +111,10 @@ export function UsuariosPanel() {
   const cambiarRolFn = useServerFn(cambiarRolUsuario);
   const cambiarEstadoFn = useServerFn(cambiarEstadoUsuario);
   const editarFn = useServerFn(editarUsuario);
+  const obtenerEmailFn = useServerFn(obtenerEmailUsuario);
+  const cambiarEmailFn = useServerFn(cambiarEmailUsuario);
+  const cambiarPassFn = useServerFn(cambiarPasswordUsuario);
+  const generarTempFn = useServerFn(generarPasswordTemporalUsuario);
 
 
   const { data: usuarios, isLoading } = useQuery({
@@ -162,6 +180,70 @@ export function UsuariosPanel() {
       activo: u.activo,
       esYo: u.user_id === user?.id,
     });
+    setEmailOriginal("");
+    setNuevoPass("");
+    setConfirmarPass("");
+    setMostrarPass(false);
+    setTempPass(null);
+    setEmailCargando(true);
+    obtenerEmailFn({ data: { userId: u.user_id } })
+      .then((res) => {
+        if (res.ok && res.email) {
+          setEmailOriginal(res.email);
+          setEditForm((f) => (f ? { ...f, email: res.email ?? "" } : f));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setEmailCargando(false));
+  };
+
+  const cambiarPassword = async () => {
+    if (!editForm) return;
+    if (nuevoPass !== confirmarPass) return toast.error("Las contraseñas no coinciden.");
+    if (nuevoPass.length < 10) return toast.error("Mínimo 10 caracteres.");
+    if (!/[A-Z]/.test(nuevoPass) || !/[a-z]/.test(nuevoPass) || !/[0-9]/.test(nuevoPass) || !/[^A-Za-z0-9]/.test(nuevoPass)) {
+      return toast.error("Debe incluir mayúsculas, minúsculas, un número y un símbolo.");
+    }
+    setGuardandoPass(true);
+    try {
+      const res = await cambiarPassFn({ data: { userId: editForm.userId, password: nuevoPass } });
+      if (!res.ok) {
+        toast.error(res.error ?? "No fue posible actualizar la contraseña.");
+        return;
+      }
+      toast.success("Contraseña actualizada correctamente.");
+      setNuevoPass("");
+      setConfirmarPass("");
+      setMostrarPass(false);
+    } finally {
+      setGuardandoPass(false);
+    }
+  };
+
+  const generarTemporal = async () => {
+    if (!editForm) return;
+    setGenerandoTemp(true);
+    try {
+      const res = await generarTempFn({ data: { userId: editForm.userId } });
+      if (!res.ok || !res.password) {
+        toast.error(res.error ?? "No fue posible generar la contraseña temporal.");
+        return;
+      }
+      setTempPass(res.password);
+      toast.success("Contraseña temporal generada.");
+    } finally {
+      setGenerandoTemp(false);
+      setConfirmGenerar(false);
+    }
+  };
+
+  const copiar = async (txt: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(txt);
+      toast.success(`${label} copiado al portapapeles.`);
+    } catch {
+      toast.error("No se pudo copiar.");
+    }
   };
 
   const guardarEdicion = async () => {
@@ -169,6 +251,17 @@ export function UsuariosPanel() {
     if (!editForm.nombre.trim()) return toast.error("Ingresa el nombre.");
     setEditando(true);
     try {
+      // Si el correo cambió, actualízalo primero.
+      const emailNuevo = editForm.email.trim().toLowerCase();
+      if (emailNuevo && emailNuevo !== emailOriginal.toLowerCase()) {
+        const resE = await cambiarEmailFn({ data: { userId: editForm.userId, email: emailNuevo } });
+        if (!resE.ok) {
+          toast.error(resE.error ?? "No fue posible actualizar el correo.");
+          setEditando(false);
+          return;
+        }
+        setEmailOriginal(emailNuevo);
+      }
       const res = await editarFn({
         data: {
           userId: editForm.userId,
@@ -651,12 +744,76 @@ export function UsuariosPanel() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label>Correo de autenticación</Label>
-                <Input value="No se puede modificar desde aquí" readOnly disabled />
+                <Label htmlFor="e-email">Correo de autenticación</Label>
+                <Input
+                  id="e-email"
+                  type="email"
+                  value={editForm.email}
+                  disabled={emailCargando}
+                  onChange={(e) => setEditForm((f) => (f ? { ...f, email: e.target.value } : f))}
+                  placeholder={emailCargando ? "Cargando…" : "correo@dominio.com"}
+                />
                 <p className="text-[11px] text-muted-foreground">
-                  El correo de autenticación no se puede modificar desde aquí.
+                  Al cambiarlo, el usuario deberá iniciar sesión con el nuevo correo. La acción queda auditada.
                 </p>
               </div>
+
+              <div className="rounded-lg border border-border/60 bg-muted/30 p-3 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <KeyRound className="h-4 w-4" /> Restablecer contraseña
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="e-pass">Nueva contraseña</Label>
+                  <div className="relative">
+                    <Input
+                      id="e-pass"
+                      type={mostrarPass ? "text" : "password"}
+                      value={nuevoPass}
+                      onChange={(e) => setNuevoPass(e.target.value)}
+                      placeholder="Mín. 10, Mayús/minús/número/símbolo"
+                      className="pr-9"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setMostrarPass((v) => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      aria-label={mostrarPass ? "Ocultar contraseña" : "Mostrar contraseña"}
+                    >
+                      {mostrarPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="e-pass2">Confirmar contraseña</Label>
+                  <Input
+                    id="e-pass2"
+                    type={mostrarPass ? "text" : "password"}
+                    value={confirmarPass}
+                    onChange={(e) => setConfirmarPass(e.target.value)}
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-full"
+                  disabled={guardandoPass || !nuevoPass || !confirmarPass}
+                  onClick={cambiarPassword}
+                >
+                  {guardandoPass ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <KeyRound className="mr-1.5 h-4 w-4" />}
+                  Actualizar contraseña
+                </Button>
+              </div>
+
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="w-full rounded-full"
+                onClick={() => setCredencialesOpen(true)}
+              >
+                <ShieldAlert className="mr-1.5 h-4 w-4" /> Datos básicos de acceso
+              </Button>
+
               {editForm.esYo && (
                 <p className="rounded-md bg-status-amber/10 px-3 py-2 text-[11px] font-medium text-status-amber">
                   No puedes cambiar tu propio rol ni tu propio estado.
@@ -704,6 +861,97 @@ export function UsuariosPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Datos básicos de acceso */}
+      <Dialog
+        open={credencialesOpen}
+        onOpenChange={(v) => {
+          if (!v) {
+            setCredencialesOpen(false);
+            setTempPass(null);
+            setConfirmGenerar(false);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Datos básicos de acceso</DialogTitle>
+            <DialogDescription>
+              Información de credenciales del usuario. Por seguridad, la contraseña actual no se muestra.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Correo de autenticación</Label>
+              <div className="flex items-center gap-2">
+                <Input value={emailOriginal || "—"} readOnly />
+                {emailOriginal && (
+                  <Button size="icon" variant="outline" onClick={() => copiar(emailOriginal, "Correo")}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Contraseña</Label>
+              {tempPass ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Input value={tempPass} readOnly className="font-mono" />
+                    <Button size="icon" variant="outline" onClick={() => copiar(tempPass, "Contraseña")}>
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-[11px] font-semibold text-status-amber">
+                    Cópiala ahora. Al cerrar esta ventana no volverá a mostrarse.
+                  </p>
+                </>
+              ) : (
+                <Input value="•••••••• (no disponible por seguridad)" readOnly disabled />
+              )}
+            </div>
+
+            {confirmGenerar ? (
+              <div className="rounded-lg border border-status-amber/40 bg-status-amber/10 p-3 space-y-2">
+                <p className="text-sm">
+                  Se reemplazará la contraseña actual del usuario. Esta acción queda auditada.
+                </p>
+                <div className="flex justify-end gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => setConfirmGenerar(false)}>
+                    Cancelar
+                  </Button>
+                  <Button size="sm" onClick={generarTemporal} disabled={generandoTemp}>
+                    {generandoTemp ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
+                    Sí, generar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full rounded-full"
+                onClick={() => setConfirmGenerar(true)}
+              >
+                <KeyRound className="mr-1.5 h-4 w-4" /> Generar contraseña temporal
+              </Button>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setCredencialesOpen(false);
+                setTempPass(null);
+                setConfirmGenerar(false);
+              }}
+            >
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       <UsuarioActividadDialog
         open={Boolean(actividadDe)}
