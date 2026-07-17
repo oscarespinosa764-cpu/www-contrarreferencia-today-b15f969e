@@ -180,6 +180,70 @@ export function UsuariosPanel() {
       activo: u.activo,
       esYo: u.user_id === user?.id,
     });
+    setEmailOriginal("");
+    setNuevoPass("");
+    setConfirmarPass("");
+    setMostrarPass(false);
+    setTempPass(null);
+    setEmailCargando(true);
+    obtenerEmailFn({ data: { userId: u.user_id } })
+      .then((res) => {
+        if (res.ok && res.email) {
+          setEmailOriginal(res.email);
+          setEditForm((f) => (f ? { ...f, email: res.email ?? "" } : f));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setEmailCargando(false));
+  };
+
+  const cambiarPassword = async () => {
+    if (!editForm) return;
+    if (nuevoPass !== confirmarPass) return toast.error("Las contraseñas no coinciden.");
+    if (nuevoPass.length < 10) return toast.error("Mínimo 10 caracteres.");
+    if (!/[A-Z]/.test(nuevoPass) || !/[a-z]/.test(nuevoPass) || !/[0-9]/.test(nuevoPass) || !/[^A-Za-z0-9]/.test(nuevoPass)) {
+      return toast.error("Debe incluir mayúsculas, minúsculas, un número y un símbolo.");
+    }
+    setGuardandoPass(true);
+    try {
+      const res = await cambiarPassFn({ data: { userId: editForm.userId, password: nuevoPass } });
+      if (!res.ok) {
+        toast.error(res.error ?? "No fue posible actualizar la contraseña.");
+        return;
+      }
+      toast.success("Contraseña actualizada correctamente.");
+      setNuevoPass("");
+      setConfirmarPass("");
+      setMostrarPass(false);
+    } finally {
+      setGuardandoPass(false);
+    }
+  };
+
+  const generarTemporal = async () => {
+    if (!editForm) return;
+    setGenerandoTemp(true);
+    try {
+      const res = await generarTempFn({ data: { userId: editForm.userId } });
+      if (!res.ok || !res.password) {
+        toast.error(res.error ?? "No fue posible generar la contraseña temporal.");
+        return;
+      }
+      setTempPass(res.password);
+      toast.success("Contraseña temporal generada.");
+    } finally {
+      setGenerandoTemp(false);
+      setConfirmGenerar(false);
+    }
+  };
+
+  const copiar = async (txt: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(txt);
+      toast.success(`${label} copiado al portapapeles.`);
+    } catch {
+      toast.error("No se pudo copiar.");
+    }
   };
 
   const guardarEdicion = async () => {
@@ -187,6 +251,17 @@ export function UsuariosPanel() {
     if (!editForm.nombre.trim()) return toast.error("Ingresa el nombre.");
     setEditando(true);
     try {
+      // Si el correo cambió, actualízalo primero.
+      const emailNuevo = editForm.email.trim().toLowerCase();
+      if (emailNuevo && emailNuevo !== emailOriginal.toLowerCase()) {
+        const resE = await cambiarEmailFn({ data: { userId: editForm.userId, email: emailNuevo } });
+        if (!resE.ok) {
+          toast.error(resE.error ?? "No fue posible actualizar el correo.");
+          setEditando(false);
+          return;
+        }
+        setEmailOriginal(emailNuevo);
+      }
       const res = await editarFn({
         data: {
           userId: editForm.userId,
