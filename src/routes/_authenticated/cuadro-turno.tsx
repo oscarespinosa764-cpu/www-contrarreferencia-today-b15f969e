@@ -18,8 +18,8 @@ function CuadroTurnoPage() {
   return (
     <div>
       <AppHeader
-        title="CUADRO DE TURNO"
-        subtitle="Programación mensual del equipo operativo de referencia y contrarreferencia"
+        title="CUADRO DE  TURNO"
+        subtitle="Programación Mensual del Equipo Referencia y Contrarreferencia"
       />
 
       <Tabs value={tab} onValueChange={setTab}>
