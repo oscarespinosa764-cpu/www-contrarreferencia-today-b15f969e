@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { AppHeader } from "@/components/app-header";
@@ -6,6 +6,7 @@ import { StatCard, SplitStatCard, MiniStat, SectionTitle, Panel } from "@/compon
 import { Button } from "@/components/ui/button";
 import { useAvisosOperativos } from "@/lib/use-avisos-operativos";
 import { NIVEL_BADGE } from "@/lib/avisos-reglas";
+import { useAuth } from "@/lib/auth";
 
 import {
   metricasRemisiones,
@@ -15,8 +16,15 @@ import {
 } from "@/lib/dashboard-metrics";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
-  component: Dashboard,
+  component: DashboardGate,
 });
+
+function DashboardGate() {
+  const { isAdmin, rolesLoaded } = useAuth();
+  if (!rolesLoaded) return null;
+  if (!isAdmin) return <Navigate to="/casos" replace />;
+  return <Dashboard />;
+}
 
 function fmtVence(min: number): string {
   const abs = Math.abs(Math.round(min));

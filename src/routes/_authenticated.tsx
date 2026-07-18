@@ -41,6 +41,7 @@ type NavItem = {
   label: string;
   icon: typeof LayoutDashboard;
   badge?: "seguimientos";
+  adminOnly?: boolean;
 };
 
 type NavGroup = { label: string; abbr: string; adminOnly?: boolean; items: NavItem[] };
@@ -50,7 +51,7 @@ const groups: NavGroup[] = [
     label: "Principal",
     abbr: "INI",
     items: [
-      { to: "/dashboard", label: "Dashboard General", icon: LayoutDashboard },
+      { to: "/dashboard", label: "Dashboard General", icon: LayoutDashboard, adminOnly: true },
       { to: "/historial", label: "Historial de Casos E & S", icon: Search },
       { to: "/red-ips", label: "RED/DISPONIBILIDAD", icon: Network },
       { to: "/cuadro-turno", label: "Cuadro de Turno", icon: CalendarDays },
@@ -162,7 +163,7 @@ function SidebarContent({
                 </p>
               )}
               <div className="space-y-0.5">
-                {group.items.map((item) => {
+                {group.items.filter((it) => !it.adminOnly || isAdmin).map((item) => {
                   const active = path === item.to;
                   return (
                     <Link
@@ -261,7 +262,8 @@ function AuthenticatedLayout() {
   // Monitor GLOBAL de vencimientos: genera las notificaciones del sistema
   // (visuales + sonido) de casos entrantes en cualquier ventana/módulo.
   const { data: casos } = useCasos();
-  useNotifVencimientosMonitor(casos);
+  // Operativa: alertas silenciosas (sin sonido ni notificación del sistema).
+  useNotifVencimientosMonitor(casos, { silent: !isAdmin });
 
 
 
