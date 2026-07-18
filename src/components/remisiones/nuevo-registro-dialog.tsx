@@ -1141,7 +1141,6 @@ export function NuevoRegistroDialog({
                       "CONFIRMACION CON IPS",
                       "RADICAR REMISION",
                       "EVOLUCIONAR",
-                      "NEGACIONES",
                       "ORDENES EXTRAMURALES",
                       "NEGACIONES",
                       "AVERIGUAR",
