@@ -31,6 +31,9 @@ type CatRow = {
   radica_oxigeno?: boolean | null;
   radica_unidad_especial?: boolean | null;
   seguimientos_en_plataforma?: boolean | null;
+  eapb_correo_radicacion?: string | null;
+  eapb_sla_horas?: number | null;
+  eapb_requisitos_radicacion?: string | null;
 };
 
 // Etiqueta legible + dónde se usa + módulo agrupador
