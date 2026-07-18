@@ -1147,6 +1147,11 @@ function IndicadorDetalleModal({
             />
           </div>
 
+          {/* Numerador / Denominador + conciliación oficial vs automático */}
+          <NumDenPanel historial={historial} medActual={medActual} ind={ind} />
+
+
+
           {/* Avance vs meta */}
           <div className="rounded-2xl border border-border bg-card p-3">
             <div className="mb-1 flex items-center justify-between text-[11px] uppercase text-muted-foreground">
