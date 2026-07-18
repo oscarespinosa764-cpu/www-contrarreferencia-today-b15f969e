@@ -163,7 +163,7 @@ function SidebarContent({
                 </p>
               )}
               <div className="space-y-0.5">
-                {group.items.map((item) => {
+                {group.items.filter((it) => !it.adminOnly || isAdmin).map((item) => {
                   const active = path === item.to;
                   return (
                     <Link
