@@ -2,9 +2,9 @@
 
 export function getSaludo(d: Date = new Date()): string {
   const h = d.getHours();
-  if (h < 12) return "Buenos días";
-  if (h < 19) return "Buenas tardes";
-  return "Buenas noches";
+  if (h < 12) return "Buenos Días";
+  if (h < 19) return "Buenas Tardes";
+  return "Buenas Noches";
 }
 
 export function getSaludoEmoji(d: Date = new Date()): string {
