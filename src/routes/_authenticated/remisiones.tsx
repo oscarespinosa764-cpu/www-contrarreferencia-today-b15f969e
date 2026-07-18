@@ -291,6 +291,7 @@ function RemisionesPage() {
         internas: stats.internas,
         pendientes: stats.generales,
         usuario: miNombreExport(),
+        domiciliarios: (domiciliarios ?? []) as unknown as Record<string, unknown>[],
         contadores: {
           acepPendiente: stats.acepPendiente,
           acepSinAmb: stats.acepPendiente,
@@ -303,6 +304,7 @@ function RemisionesPage() {
           }),
         },
       });
+
       auditarExport("exportar_reporte_general", { registros: remisiones?.length ?? 0 });
       toast.success("Reporte general generado");
     } catch (e) {
