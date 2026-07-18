@@ -81,6 +81,44 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
   const [asignar, setAsignar] = useState<ShiftMember | null>(null);
   const [asignarOpen, setAsignarOpen] = useState(false);
   const [vista, setVista] = useState<"matriz" | "calendario">("calendario");
+  const [busq, setBusq] = useState("");
+  const [cargoF, setCargoF] = useState("");
+  const [dayDetail, setDayDetail] = useState<number | null>(null);
+
+  const cargos = useMemo(() => {
+    const s = new Set<string>();
+    members.forEach((m) => m.role_name && s.add(m.role_name));
+    return Array.from(s).sort();
+  }, [members]);
+
+  const membersFiltrados = useMemo(() => {
+    const q = busq.trim().toLowerCase();
+    return members.filter((m) => {
+      if (cargoF && m.role_name !== cargoF) return false;
+      if (q && !m.full_name.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [members, busq, cargoF]);
+
+  const kpis = useMemo(() => {
+    const memberIds = new Set(membersFiltrados.map((m) => m.id));
+    const daysF = days.filter((d) => memberIds.has(d.member_id) && d.shift_code);
+    const turnosProg = daysF.length;
+    const ausenciaCodes = new Set(
+      tipos.filter((t) => ["AUSENCIA", "ausencia"].includes(t.kind) || ["A", "I", "P"].includes(t.code)).map((t) => t.code),
+    );
+    const novedades = daysF.filter((d) => d.shift_code && ausenciaCodes.has(d.shift_code)).length
+      + members.filter((m) => !days.some((d) => d.member_id === m.id && d.shift_code)).length;
+    const laboralCodes = new Set(tipos.filter((t) => t.sums_hours).map((t) => t.code));
+    const trabajando = daysF.filter((d) => d.shift_code && laboralCodes.has(d.shift_code)).length;
+    const cobertura = daysF.length > 0 ? Math.round((trabajando / daysF.length) * 100) : null;
+    const asignados = new Set(daysF.map((d) => d.member_id));
+    const disp = membersFiltrados.length > 0
+      ? Math.round((asignados.size / membersFiltrados.length) * 100)
+      : null;
+    return { turnosProg, cobertura, novedades, disp, totalMembers: membersFiltrados.length };
+  }, [membersFiltrados, days, members, tipos]);
+
 
   const exportarCuadro = () => {
     exportarCuadroMensual({ anio, mes, members, days, tipos, baseHoras: schedule?.base_hours });
