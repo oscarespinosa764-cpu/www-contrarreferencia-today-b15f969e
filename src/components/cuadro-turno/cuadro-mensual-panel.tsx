@@ -174,6 +174,54 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
         </div>
       </div>
 
+      {schedule && (
+        <>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Card className="p-3">
+              <p className="text-[11px] uppercase text-muted-foreground">Turnos programados</p>
+              <p className="mt-1 text-2xl font-bold">{kpis.turnosProg}</p>
+            </Card>
+            <Card className="p-3">
+              <p className="text-[11px] uppercase text-muted-foreground">Cobertura laboral</p>
+              <p className="mt-1 text-2xl font-bold">{kpis.cobertura == null ? "—" : `${kpis.cobertura}%`}</p>
+            </Card>
+            <Card className="p-3">
+              <p className="text-[11px] uppercase text-muted-foreground">Novedades</p>
+              <p className="mt-1 text-2xl font-bold">{kpis.novedades}</p>
+            </Card>
+            <Card className="p-3">
+              <p className="text-[11px] uppercase text-muted-foreground">Disponibilidad</p>
+              <p className="mt-1 text-2xl font-bold">{kpis.disp == null ? "—" : `${kpis.disp}%`}</p>
+              <p className="text-[10px] text-muted-foreground">{kpis.totalMembers} funcionario(s)</p>
+            </Card>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              placeholder="Buscar funcionario…"
+              value={busq}
+              onChange={(e) => setBusq(e.target.value)}
+              className="h-8 w-56 text-xs"
+            />
+            <Select value={cargoF || "__all"} onValueChange={(v) => setCargoF(v === "__all" ? "" : v)}>
+              <SelectTrigger className="h-8 w-48 text-xs"><SelectValue placeholder="Cargo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">Todos los cargos</SelectItem>
+                {cargos.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {(busq || cargoF) && (
+              <Button size="sm" variant="ghost" onClick={() => { setBusq(""); setCargoF(""); }}>
+                Limpiar filtros
+              </Button>
+            )}
+            <span className="ml-auto text-[11px] text-muted-foreground">
+              Mostrando {membersFiltrados.length} de {members.length}
+            </span>
+          </div>
+        </>
+      )}
+
+
       {!schedule ? (
         <Card className="p-8 text-center">
           <p className="text-sm text-muted-foreground">No hay cuadro para {MESES[mes - 1]} {anio}.</p>
