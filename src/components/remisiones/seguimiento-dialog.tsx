@@ -1767,6 +1767,23 @@ export function SeguimientoDialog({
         if (riHora.trim() && !isHoraValida(riHora))
           return toast.error("Hora del examen inválida (HH:MM)");
       }
+      if (esInterna && tipoSeg === TI.PROG_AMB) {
+        if (!riRecFecha.trim() || !isFechaValida(riRecFecha))
+          return toast.error("Fecha de recogida requerida (DD/MM/AAAA)");
+        if (!riRecHora.trim() || !isHoraValida(riRecHora))
+          return toast.error("Hora de recogida requerida (HH:MM)");
+        if (!riRecTipoAmb.trim()) return toast.error("Selecciona el tipo de ambulancia");
+      }
+      if (esInterna && tipoSeg === TI.LLEGADA_AMB) {
+        if (!riLlegFecha.trim() || !isFechaValida(riLlegFecha))
+          return toast.error("Fecha de llegada requerida (DD/MM/AAAA)");
+        if (!riLlegHora.trim() || !isHoraValida(riLlegHora))
+          return toast.error("Hora de llegada requerida (HH:MM)");
+      }
+      if (esInterna && tipoSeg === TI.TEP_ACTIVACION) {
+        if (!riTepProveedor.trim()) return toast.error("Selecciona el proveedor de TEP");
+      }
+
       // Cambio en especialidad: exige cambio real, conservar una activa y motivo.
       if (esCambioEsp) {
         if (!espHayCambio)
