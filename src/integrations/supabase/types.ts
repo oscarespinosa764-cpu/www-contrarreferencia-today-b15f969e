@@ -1054,50 +1054,86 @@ export type Database = {
       }
       mediciones_indicadores: {
         Row: {
+          calculado_at: string | null
+          calculado_by: string | null
           comentario: string | null
           created_at: string
           created_by: string | null
           denominador_valor: number | null
+          diferencia_conciliacion: number | null
           fecha: string | null
+          fuente_medicion: string | null
           id: string
           indicador_id: string
           meta: number | null
+          nota_metodologica: string | null
           numerador_valor: number | null
           periodo: string | null
+          periodo_fin: string | null
+          periodo_inicio: string | null
+          regla_version: string
           resultado: number | null
+          resultado_automatico_conciliacion: number | null
           semaforo: string | null
+          tipo_medicion: string
+          total_evaluables: number | null
+          total_excluidos: number | null
           unidad: string | null
           updated_at: string
         }
         Insert: {
+          calculado_at?: string | null
+          calculado_by?: string | null
           comentario?: string | null
           created_at?: string
           created_by?: string | null
           denominador_valor?: number | null
+          diferencia_conciliacion?: number | null
           fecha?: string | null
+          fuente_medicion?: string | null
           id?: string
           indicador_id: string
           meta?: number | null
+          nota_metodologica?: string | null
           numerador_valor?: number | null
           periodo?: string | null
+          periodo_fin?: string | null
+          periodo_inicio?: string | null
+          regla_version?: string
           resultado?: number | null
+          resultado_automatico_conciliacion?: number | null
           semaforo?: string | null
+          tipo_medicion?: string
+          total_evaluables?: number | null
+          total_excluidos?: number | null
           unidad?: string | null
           updated_at?: string
         }
         Update: {
+          calculado_at?: string | null
+          calculado_by?: string | null
           comentario?: string | null
           created_at?: string
           created_by?: string | null
           denominador_valor?: number | null
+          diferencia_conciliacion?: number | null
           fecha?: string | null
+          fuente_medicion?: string | null
           id?: string
           indicador_id?: string
           meta?: number | null
+          nota_metodologica?: string | null
           numerador_valor?: number | null
           periodo?: string | null
+          periodo_fin?: string | null
+          periodo_inicio?: string | null
+          regla_version?: string
           resultado?: number | null
+          resultado_automatico_conciliacion?: number | null
           semaforo?: string | null
+          tipo_medicion?: string
+          total_evaluables?: number | null
+          total_excluidos?: number | null
           unidad?: string | null
           updated_at?: string
         }
