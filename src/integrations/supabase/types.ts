@@ -206,6 +206,8 @@ export type Database = {
           detalle: string | null
           documento: string | null
           eapb: string | null
+          eapb_contratada_snapshot: boolean | null
+          eapb_snapshot_at: string | null
           especialidad: string | null
           estado: string | null
           fecha: string | null
@@ -233,6 +235,8 @@ export type Database = {
           detalle?: string | null
           documento?: string | null
           eapb?: string | null
+          eapb_contratada_snapshot?: boolean | null
+          eapb_snapshot_at?: string | null
           especialidad?: string | null
           estado?: string | null
           fecha?: string | null
@@ -260,6 +264,8 @@ export type Database = {
           detalle?: string | null
           documento?: string | null
           eapb?: string | null
+          eapb_contratada_snapshot?: boolean | null
+          eapb_snapshot_at?: string | null
           especialidad?: string | null
           estado?: string | null
           fecha?: string | null
@@ -1870,7 +1876,9 @@ export type Database = {
           departamentos_red_nacional: string | null
           documento: string | null
           eapb: string | null
+          eapb_contratada_snapshot: boolean | null
           eapb_genera_codigo: boolean | null
+          eapb_snapshot_at: string | null
           eapb_tiene_plataforma: boolean | null
           edad: string | null
           especialidades_receptoras: string | null
@@ -1918,7 +1926,9 @@ export type Database = {
           departamentos_red_nacional?: string | null
           documento?: string | null
           eapb?: string | null
+          eapb_contratada_snapshot?: boolean | null
           eapb_genera_codigo?: boolean | null
+          eapb_snapshot_at?: string | null
           eapb_tiene_plataforma?: boolean | null
           edad?: string | null
           especialidades_receptoras?: string | null
@@ -1966,7 +1976,9 @@ export type Database = {
           departamentos_red_nacional?: string | null
           documento?: string | null
           eapb?: string | null
+          eapb_contratada_snapshot?: boolean | null
           eapb_genera_codigo?: boolean | null
+          eapb_snapshot_at?: string | null
           eapb_tiene_plataforma?: boolean | null
           edad?: string | null
           especialidades_receptoras?: string | null
@@ -3000,6 +3012,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calcular_indicadores_mes: {
+        Args: { _month: number; _year: number }
+        Returns: {
+          denominador: number
+          indicador_codigo: string
+          numerador: number
+          resultado: number
+          tipo_medicion: string
+        }[]
+      }
       can_edit: { Args: { _user_id: string }; Returns: boolean }
       delete_email: {
         Args: { message_id: number; queue_name: string }
