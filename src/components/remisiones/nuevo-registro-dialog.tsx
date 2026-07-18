@@ -522,18 +522,27 @@ export function NuevoRegistroDialog({
     if (!String(f.get("paciente_asunto") || "").trim())
       return toast.error("Indica el paciente / asunto");
     if (!pendPrioridad) return toast.error("Selecciona la prioridad");
-    if (!pendDestinoTipo) return toast.error("Selecciona el tipo de destino (IPS o ÁREA)");
-    if (pendDestinoTipo === "IPS" && !pendIps.trim())
-      return toast.error("Indica el nombre de la IPS");
-    if (pendDestinoTipo === "AREA" && !pendArea) return toast.error("Selecciona el área");
+
+    // Tipos que NO requieren destino IPS/Área
+    const sinDestino = pendTipo === "EVOLUCIONAR" || pendTipo === "VACACIONES";
+
+    if (!sinDestino) {
+      if (!pendDestinoTipo) return toast.error("Selecciona el tipo de destino (IPS o ÁREA)");
+      if (pendDestinoTipo === "IPS" && !pendIps.trim())
+        return toast.error("Indica el nombre de la IPS");
+      if (pendDestinoTipo === "AREA" && !pendArea) return toast.error("Selecciona el área");
+    }
 
     const { data: u } = await supabase.auth.getUser();
-    const destinoValor = pendDestinoTipo === "IPS" ? pendIps.trim() : pendArea;
+    const destinoValor = sinDestino
+      ? ""
+      : pendDestinoTipo === "IPS"
+        ? pendIps.trim()
+        : pendArea;
     const tipoFinal = pendTipo === "OTRO" ? `OTRO: ${pendCual.trim().toUpperCase()}` : pendTipo;
-    const detalles: Record<string, unknown> = {
-      destino_tipo: pendDestinoTipo,
-      destino: destinoValor,
-    };
+    const detalles: Record<string, unknown> = sinDestino
+      ? {}
+      : { destino_tipo: pendDestinoTipo, destino: destinoValor };
     if (pendTipo === "OTRO") detalles.cual = pendCual.trim();
     if (pendTipo === "EVOLUCIONAR") detalles.evolucion_pendiente_en = pendEvoEn;
 
