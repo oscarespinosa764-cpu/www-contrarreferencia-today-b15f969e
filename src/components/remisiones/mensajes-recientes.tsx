@@ -57,7 +57,7 @@ export function MensajesRecientesButton({
           aria-label="MENSAJES RECIENTES"
         >
           <MessageSquare className={compact ? "h-4 w-4" : "mr-1.5 h-3.5 w-3.5"} />
-          {!compact && "Mensajes recientes"}
+          {!compact && "Mensajes Recientes"}
           {mensajes.length > 0 && (
             <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-status-teal px-1 text-[9px] font-bold text-white">
               {mensajes.length}
