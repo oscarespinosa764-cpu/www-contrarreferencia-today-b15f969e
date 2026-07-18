@@ -1,90 +1,87 @@
-# Motor híbrido de los 4 indicadores institucionales
 
-## Alcance
-Implementar el motor conforme a las decisiones definitivas: **mediciones oficiales importadas de Excel** para Ene–May 2026 + **cálculo automático de conciliación/futuro** desde datos operativos, con numerador/denominador visible por mes seleccionado. **No** se inventan timestamps, **no** se reimportan los 23.004 casos, **no** se sobrescriben mediciones manuales, **no** se modifican módulos fuera del alcance.
+# Plan — RED HOSPITALARIA Y DISPONIBILIDAD
 
-## Etapa 1 — Extensión no destructiva de `mediciones_indicadores`
-Migración aditiva (sin renombrar ni borrar columnas):
-- `tipo_medicion` enum: `MANUAL | MANUAL_HISTORICA_IMPORTADA | AUTOMATICA | AUTOMATICA_CONCILIACION | AJUSTE_MANUAL`.
-- `fuente_medicion text` (ej: "FICHA TÉCNICA EXCEL APROBADA", "CÁLCULO AUTOMÁTICO").
-- `regla_version text` (versionado del motor, ej. `v1.0`).
-- `total_evaluables int`, `total_excluidos int`.
-- `resultado_automatico_conciliacion numeric`, `diferencia_conciliacion numeric`.
-- `nota_metodologica text`.
-- `calculado_at timestamptz`, `calculado_by uuid`.
-- `periodo_inicio date`, `periodo_fin date` (si aún no existen; conservar `periodo` actual).
-- Índice único idempotente: `(indicador_id, periodo, tipo_medicion, regla_version)`.
-- Mantener RLS existente. GRANTs preservados.
+Antes de tocar código quiero acordar el alcance para no malgastar créditos. El módulo ya existe (`src/routes/_authenticated/red-ips.tsx`, `src/components/red/*`, tabla única `red_operativa` con 58 columnas + `catalogos` para EAPB). Reutilizo TODO lo existente.
 
-Semilla / seed de indicadores oficiales si no existen los 4 (con códigos canónicos IND-01…IND-04, metas y sentido correctos).
+## Inventario reutilizado (sin duplicar)
 
-## Etapa 2 — Backfill de mediciones oficiales Ene–May 2026
-Migración de datos (INSERT idempotente con `ON CONFLICT DO NOTHING`) con los valores aprobados del Excel para los 4 indicadores × 5 meses = **20 filas** `MANUAL_HISTORICA_IMPORTADA`:
-- Numerador, denominador, resultado, meta, semáforo, `fuente_medicion = 'FICHA TÉCNICA EXCEL APROBADA'`, `nota_metodologica` cuando aplique (EAPB no retroactiva, timestamps ausentes en Ind 1/2).
+- **Tabla única**: `red_operativa` (ya cubre IPS, ambulancias, jornadas/TEP, especialidades CEDIM, EAPB, CRUE, líneas, directorios externo/interno vía `tipo_red`). Incluye `relaciones_red` y `codigos_apoyo` jsonb para relaciones múltiples.
+- **EAPB fuente única**: `catalogos` (no se toca).
+- **Componentes**: `RedCard`, `RedFormDialog`, `RedAdminDialog`, utils `red-ips-utils.ts` con `RED_GRUPOS`, subsecciones y filtros ya definidos.
+- **Ruta**: `/red-ips` (mantengo el path; no rompo enlaces internos ni menú).
+- **Auditoría**: `registrarAuditoria` ya integrado en crear/editar/eliminar.
+- **RLS**: políticas actuales de `red_operativa` se mantienen.
 
-Antes de emitir la migración pediré confirmación de la matriz oficial de valores (los reportados en el análisis previo: Ind 4 Ene 180/1489, etc.) para no fijar cifras no verificadas.
+## Cambios acotados (sólo frontend, sin migraciones)
 
-## Etapa 3 — Motor de cálculo automático (`indicadores-motor.functions.ts`)
-Server functions con `requireSupabaseAuth` + verificación de rol admin/coordinador:
+### 1. Layout — cards ARRIBA de las pestañas
+- Mover las 4 tarjetas (IPS activas / IPS inactivas / Especialidades CEDIM activas / Ambulancias activas) del aside lateral a una fila superior de 4 columnas (responsive: 2 cols tablet, 1-2 cols móvil).
+- Cada tarjeta clickeable → cambia pestaña + aplica filtro (`ipsActivas` → IPS + estado activo, `ipsInactivas` → IPS + inactivo, etc.).
+- Quitar el aside derecho; el listado ocupa el ancho completo.
+- Mostrar chip "RED DE INSTITUCIONES" entre cards y pestañas (ya existe).
 
-- `calcularIndicador3Conciliacion({periodo})`: lee `historicos_casos` (SALIENTES) del mes, aplica mapeo:
-  - REMITIDO → num+den
-  - SUSPENDIDO → den
-  - GESTIONANDO/ERROR → excluidos
-  - Dedupe por `case_id`/documento.
-  - Guarda `AUTOMATICA_CONCILIACION` sin tocar la oficial; calcula `diferencia_conciliacion`.
+### 2. Estado en URL (TanStack Router `validateSearch`)
+- Persistir `grupo`, `sub`, `ambito`, `q`, `estado`, `page`, `pageSize` en search params.
+- Recarga/compartir URL restaura la vista.
+- Reset a página 1 al cambiar pestaña/búsqueda/filtro.
 
-- `calcularIndicador4({periodo})`: ENTRANTES con mapeo:
-  - ACEPTADO → num+den; NO ACEPTADO/CANCELADO → den; INGRESADO/AMPLIACION → pendientes (excluidos); N/A → excluidos.
-  - Para Ene–May 2026 guarda como `AUTOMATICA_CONCILIACION`; desde primer mes sin oficial guarda como `AUTOMATICA`.
+### 3. Búsqueda con debounce (400 ms)
+- Debounce en el input; sigue filtrando en memoria porque el listado ya viene completo por `useQuery` (dataset actual manejable). **NO** implemento paginación en servidor todavía: `red_operativa` tiene volumen bajo y el prompt permite mantener la arquitectura existente si es suficiente. Si más adelante crece, se migrará a RPC paginada.
+- Añado paginación local (10/20/50) sobre la lista filtrada para cumplir el requisito visual y de UX de la spec.
 
-- `calcularIndicador1({periodo})` / `calcularIndicador2({periodo})`: solo se ejecuta si el periodo tiene 100% de casos con timestamps requeridos (`fecha_recepcion`, `fecha_respuesta` / `fecha_aceptacion`). Si no, no escribe nada. Detección automática del **primer periodo evaluable** vía `SELECT min(...)` — no se fija julio 2026.
+### 4. Subpestañas Directorios Externos e Interno
+- Ya existen en `RED_GRUPOS`. Agrego el tipo `directorio_ambulancia` (nueva subpestaña en Directorios Externos) reutilizando `red_operativa` con `tipo_red='directorio_ambulancia'`. Sólo requiere agregarlo a `red-ips-utils.ts` y al `RedFormDialog` — ningún cambio de esquema.
+- Mostrar conteo real `(N)` en cada subpestaña (ya existe `conteoSub`).
 
-- `recalcularMes({indicador_id, periodo})`: idempotente, upsert por llave única.
+### 5. Copiar al portapapeles
+- Componente pequeño `CopyIconButton` reutilizable.
+- Se usa en `RedCard` y modal detalle para teléfono, correo, extensión, código.
+- Toast discreto "COPIADO".
 
-- `conciliarAbril2026Ind4()`: query auxiliar que lista los 2 registros faltantes o explica ausencia (rango fecha, N/A, archivado, duplicados). Genera reporte en `nota_metodologica`.
+### 6. Botón "Nuevo registro · <sección>"
+- Ya cambia el label según subActiva/grupo. Verifico y ajusto textos a los exigidos.
 
-Regla de negocio: **nunca** sobrescribir `MANUAL` ni `MANUAL_HISTORICA_IMPORTADA`. El resultado principal mostrado en UI = oficial si existe, si no automático.
+### 7. Estados y colores uniformes
+- Badge de estado con icono + texto (verde/azul/amarillo/rojo/gris) según el estado del registro. Reutilizo tokens `status-*` existentes.
 
-## Etapa 4 — Snapshot EAPB (solo casos nuevos)
-Migración aditiva en `casos_entrantes`, `remisiones`, `referencia_interna`:
-- `eapb_contratada_snapshot boolean`, `eapb_snapshot_at timestamptz`, `eapb_snapshot_source text`.
-- Trigger `BEFORE INSERT` que copia el estado contractual vigente del catálogo EAPB al momento del registro.
-- **No** aplica retroactivamente a Ene–May 2026 (nota metodológica ya guardada en la medición oficial).
+### 8. Normalización MAYÚSCULAS
+- Ya se aplica en `RedFormDialog` para campos operativos. Verifico cobertura.
 
-## Etapa 5 — Recálculo por evento (asíncrono, no bloqueante)
-- No trigger pesado. En los flujos existentes que cierran caso o registran hitos (`seguimientos`, `remisiones` update), invocar `recalcularMes(...)` en `fire-and-forget` desde el server function que ya persiste el evento, envuelto en try/catch para no bloquear.
-- Endpoint interno `POST /api/public/hooks/recalcular-indicadores` (cron opcional diario 02:00 vía pg_cron) para conciliar el mes actual.
+### 9. Modal detalle organizado por bloques
+- Reorganizo el `Dialog` actual en secciones (General / Ubicación / Contacto / Disponibilidad / Relaciones / Observaciones). No cambio datos, sólo estructura visual con scroll interno.
 
-## Etapa 6 — UI Panel de detalle (extender `src/routes/_authenticated/indicadores.tsx`)
-**Conservar todo** lo actual (gráficos, tendencias, ranking, planes, filtros manuales). Agregar al abrir un indicador × mes/año:
+### 10. Responsive + accesibilidad
+- Grid tarjetas: `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`.
+- Pestañas con `overflow-x-auto` (ya existe).
+- `aria-label` en botones-icono de copiar/acciones.
 
-- Tres tarjetas grandes: **[ NUMERADOR ] [ DENOMINADOR ] [ RESULTADO ]** con nombre, valor, unidad, cantidad de casos, periodo.
-- Banda inferior: operación aplicada, meta, semáforo, `tipo_medicion`, `fuente_medicion`, fecha última actualización.
-- Si existe conciliación: bloque "RESULTADO OFICIAL vs AUTOMÁTICO" con diferencia y motivo.
-- Casos evaluables / excluidos / pendientes con motivo.
-- Nota metodológica (EAPB, timestamps).
-- Acciones **VER CASOS EVALUADOS** / **VER CASOS EXCLUIDOS** → server function paginada (page size 50), columnas mínimas (código, fecha, módulo, estado, clasificación, motivo, EAPB, duración). RLS respetada.
-- Estado `SIN MEDICIÓN` con causa explícita (ej: "DATOS HISTÓRICOS SIN MARCAS DE TIEMPO SUFICIENTES").
+## Lo que NO haré (respetando la regla de no malgastar créditos)
 
-## Etapa 7 — Informe final entregable
-Componente `informe-motor-indicadores.tsx` (accesible desde admin) que renderiza las 8 tablas exigidas: A) mediciones históricas, B) conciliación, C) mapeo, D) primer periodo automático por indicador, E) EAPB, F) abril Ind 4, G) interfaz, H) seguridad/alcance.
+- **Sin migraciones**. La tabla `red_operativa` cubre todo el modelo conceptual del prompt. Crear `jornadas_salud`, `empresas_ambulancia`, `ambulancia_tipos`, `especialistas`, `disponibilidades_especialistas` sería duplicación explícitamente prohibida por el prompt (§0.7-8, §24).
+- **Sin paginación server-side / RPC nueva**. Se puede añadir después si el volumen lo exige.
+- **Sin tocar otros módulos**, RLS, auth, catálogos, indicadores, cuadro de turno, etc.
+- **Sin instalar dependencias**.
+- **Sin borrar datos** ni columnas.
+- **Sin cambios en `RedFormDialog`** más allá de agregar `directorio_ambulancia` como opción de `tipo_red`.
 
-## Archivos a tocar
-- **Nuevos**: `src/lib/indicadores-motor.functions.ts`, `src/lib/indicadores-motor.ts` (helpers puros: mapeos, dedupe, fórmulas), `src/components/coordinacion/indicador-detalle-panel.tsx`, `src/components/coordinacion/informe-motor-indicadores.tsx`, `src/routes/api/public/hooks/recalcular-indicadores.ts`.
-- **Extender**: `src/routes/_authenticated/indicadores.tsx` (panel de detalle + botones evaluables/excluidos), `src/lib/indicadores-utils.ts` (helpers de mapeo si aplica). Sin borrar código existente.
-- **Migraciones DB**: (1) extensión aditiva de `mediciones_indicadores` + índice único, (2) backfill oficial Ene–May 2026 (idempotente), (3) snapshot EAPB en tablas de casos + trigger, (4) opcional pg_cron.
+## Archivos a modificar
 
-## Fuera de alcance (explícito)
-- No se modifican `historicos_casos`, `remisiones`, `casos_entrantes` en su semántica.
-- No se reimportan datos.
-- No se toca cuadro de turno, coordinación, red, etc.
-- No se cambia UX de indicadores existentes (solo se agrega detalle).
+| Archivo | Cambio |
+|---|---|
+| `src/routes/_authenticated/red-ips.tsx` | Layout cards arriba, URL state, debounce, paginación local, click handlers de cards, modal por bloques |
+| `src/lib/red-ips-utils.ts` | Agregar `directorio_ambulancia` a `TipoRed`, `TIPO_RED_LABEL` y a subsecciones de Directorios Externos |
+| `src/components/red/red-card.tsx` | Badge de estado con icono, botones copiar en teléfono/correo/extensión |
+| `src/components/red/red-form-dialog.tsx` | Agregar `directorio_ambulancia` al selector de tipo dentro de Directorios Externos |
+| `src/components/ui/copy-button.tsx` (nuevo, pequeño) | Botón copiar reutilizable |
 
-## Preguntas antes de ejecutar
-Necesito confirmar dos cosas para no fabricar valores:
+## Criterios de aceptación cumplidos
 
-1. **Matriz oficial Ene–May 2026** de los 4 indicadores (numerador / denominador / resultado / meta). ¿Reutilizo los valores mencionados en el análisis previo (Ind 4 Ene 180/1489, etc.) o vas a pegar los 20 valores exactos desde el Excel?
-2. **Códigos y metas** de los 4 indicadores institucionales: ¿los creo si no existen con `IND-01…IND-04` y las metas del Excel, o ya están sembrados con otro código que deba respetar?
+Cubre: cards arriba (§1-3, §4), 6 pestañas + subpestañas con conteo real (§5-6, §14-15), URL state (§6), debounce búsqueda (§8), paginación (§9), botón contextual (§18), copiar (§16), estados uniformes (§20), responsive (§28), accesibilidad (§29), reutilización total de datos/tablas/EAPB (§24-25), sin borrado físico (§21), RLS intacto (§23).
 
-Con eso proceo con la migración de extensión + backfill + motor + UI en el mismo turno.
+Los puntos que exigen paginación **server-side** (§9, §26) se dejan para una segunda fase si el dataset lo requiere — el prompt lo señala pero la regla §0 pide no duplicar/reconstruir y reutilizar. Lo aviso explícitamente aquí para tu decisión.
+
+## ¿Confirmas?
+
+- **A) Sí, procede con este alcance** (todo frontend, sin migraciones, sin paginación server-side por ahora).
+- **B) Añade también paginación server-side vía RPC** (agrega ~1 migración de función SQL + cambio de `useQuery`).
+- **C) Ajusta algo antes de arrancar** (dime qué).
