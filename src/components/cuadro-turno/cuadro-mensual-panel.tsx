@@ -104,13 +104,10 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
     const memberIds = new Set(membersFiltrados.map((m) => m.id));
     const daysF = days.filter((d) => memberIds.has(d.member_id) && d.shift_code);
     const turnosProg = daysF.length;
-    const ausenciaCodes = new Set(
-      tipos.filter((t) => ["AUSENCIA", "ausencia"].includes(t.kind) || ["A", "I", "P"].includes(t.code)).map((t) => t.code),
-    );
+    const ausenciaCodes = new Set(["A", "I", "P", "V"]);
     const novedades = daysF.filter((d) => d.shift_code && ausenciaCodes.has(d.shift_code)).length
       + members.filter((m) => !days.some((d) => d.member_id === m.id && d.shift_code)).length;
-    const laboralCodes = new Set(tipos.filter((t) => t.sums_hours).map((t) => t.code));
-    const trabajando = daysF.filter((d) => d.shift_code && laboralCodes.has(d.shift_code)).length;
+    const trabajando = daysF.filter((d) => d.shift_code && !ausenciaCodes.has(d.shift_code) && d.shift_code !== "D").length;
     const cobertura = daysF.length > 0 ? Math.round((trabajando / daysF.length) * 100) : null;
     const asignados = new Set(daysF.map((d) => d.member_id));
     const disp = membersFiltrados.length > 0
