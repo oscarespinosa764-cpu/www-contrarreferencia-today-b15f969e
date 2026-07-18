@@ -348,8 +348,8 @@ function RedIpsPage() {
               <div className="mb-4 flex flex-wrap gap-2">
                 {[
                   { k: "todos", l: "Todas" },
-                  { k: "caqueta", l: "Departamentales — Caquetá" },
-                  { k: "nacional", l: "Nacionales — fuera del Caquetá" },
+                  { k: "caqueta", l: "Departamentales (Caquetá)" },
+                  { k: "nacional", l: "Nacionales (Fuera del Caquetá)" },
                 ].map((c) => (
                   <button
                     key={c.k}
