@@ -783,15 +783,29 @@ export function SeguimientoDialog({
     return [...(mostrarOpcionRadicado ? [T.RADICADO] : []), ...TIPOS_PHD_BASE];
   }, [mostrarOpcionRadicado]);
 
+  // Referencia Interna: opciones dinámicas según secuencia + CAMBIO DE UNIDAD (mientras esté activo).
+  const TIPOS_INTERNA_DYN = useMemo(() => {
+    const proximo = siguientePasoRI(
+      historial as { tipo_seguimiento: string }[] | undefined,
+      casoInterna?.tipo_solicitud ?? null,
+    );
+    const activo = !casoInterna?.archivado;
+    const arr: string[] = [];
+    if (proximo) arr.push(proximo);
+    if (activo) arr.push(T.CAMBIO_UNIDAD);
+    return arr;
+  }, [historial, casoInterna]);
+
   const TIPOS_SEG: string[] = esSaliente
     ? TIPOS_SALIENTES
     : esPhd
       ? TIPOS_PHD
       : esInterna
-        ? TIPOS_INTERNA
+        ? TIPOS_INTERNA_DYN
         : esPendiente
           ? TIPOS_PENDIENTE
           : [];
+
 
   // Inicializar al abrir.
   useEffect(() => {
