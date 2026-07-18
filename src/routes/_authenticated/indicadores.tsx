@@ -1030,7 +1030,134 @@ function FiltrosPanel({
   );
 }
 
+function NumDenPanel({
+  historial,
+  medActual,
+  ind,
+}: {
+  historial: Medicion[];
+  medActual: Medicion | undefined;
+  ind: Indicador;
+}) {
+  // Buscar mediciones del mismo periodo que la actual (oficial + automática).
+  const periodo = medActual?.periodo ?? null;
+  const delPeriodo = useMemo(
+    () => (periodo ? historial.filter((h) => h.periodo === periodo) : []),
+    [historial, periodo],
+  );
+  const oficial = delPeriodo.find(
+    (m) => m.tipo_medicion === "MANUAL_HISTORICA_IMPORTADA" || m.tipo_medicion === "MANUAL",
+  );
+  const automatica = delPeriodo.find(
+    (m) => m.tipo_medicion === "AUTOMATICA" || m.tipo_medicion === "AUTOMATICA_CONCILIACION",
+  );
+  const principal = medActual ?? oficial ?? automatica;
+  if (!principal) return null;
+
+  const unidad = principal.unidad || ind.unidad || "";
+  const fmt = (v: number | null | undefined) =>
+    v === null || v === undefined ? "—" : String(v);
+  const tipoLabel = (t?: string | null) => {
+    switch (t) {
+      case "MANUAL_HISTORICA_IMPORTADA":
+        return "Oficial (Excel histórico)";
+      case "MANUAL":
+        return "Manual";
+      case "AUTOMATICA":
+        return "Automática";
+      case "AUTOMATICA_CONCILIACION":
+        return "Automática (conciliación)";
+      case "AJUSTE_MANUAL":
+        return "Ajuste manual";
+      default:
+        return t || "—";
+    }
+  };
+
+  const diferencia =
+    oficial?.resultado != null && automatica?.resultado != null
+      ? Number(automatica.resultado) - Number(oficial.resultado)
+      : null;
+
+  return (
+    <div className="rounded-lg border border-border/60 bg-muted/20 p-3 sm:p-4">
+      <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+        Numerador / Denominador — {periodo ? formatearPeriodo(periodo) : "periodo actual"}
+      </p>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div>
+          <p className="text-[10px] uppercase text-muted-foreground">Numerador</p>
+          <p className="text-lg font-semibold tabular-nums">{fmt(principal.numerador_valor)}</p>
+        </div>
+        <div>
+          <p className="text-[10px] uppercase text-muted-foreground">Denominador</p>
+          <p className="text-lg font-semibold tabular-nums">{fmt(principal.denominador_valor)}</p>
+        </div>
+        <div>
+          <p className="text-[10px] uppercase text-muted-foreground">Resultado</p>
+          <p className="text-lg font-semibold tabular-nums">
+            {principal.resultado != null ? `${principal.resultado} ${unidad}` : "—"}
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] uppercase text-muted-foreground">Tipo de medición</p>
+          <p className="text-sm font-medium">{tipoLabel(principal.tipo_medicion)}</p>
+          {principal.fuente_medicion && (
+            <p className="text-[10px] text-muted-foreground">Fuente: {principal.fuente_medicion}</p>
+          )}
+        </div>
+      </div>
+
+      {oficial && automatica && (
+        <div className="mt-3 rounded-md border border-border/60 bg-background/60 p-2 text-xs">
+          <p className="mb-1 text-[10px] font-bold uppercase text-muted-foreground">
+            Conciliación oficial vs. automática
+          </p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div>
+              <span className="text-muted-foreground">Oficial: </span>
+              <span className="font-semibold tabular-nums">
+                {fmt(oficial.numerador_valor)}/{fmt(oficial.denominador_valor)} · {oficial.resultado} {unidad}
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Automática: </span>
+              <span className="font-semibold tabular-nums">
+                {fmt(automatica.numerador_valor)}/{fmt(automatica.denominador_valor)} · {automatica.resultado} {unidad}
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Diferencia: </span>
+              <span
+                className={`font-semibold tabular-nums ${
+                  diferencia === null
+                    ? ""
+                    : Math.abs(diferencia) < 0.01
+                      ? "text-status-green"
+                      : "text-status-amber"
+                }`}
+              >
+                {diferencia === null ? "—" : `${diferencia > 0 ? "+" : ""}${diferencia.toFixed(2)} ${unidad}`}
+              </span>
+            </div>
+          </div>
+          <p className="mt-1 text-[10px] italic text-muted-foreground">
+            La medición oficial no se reemplaza; la automática se conserva como conciliación paralela.
+          </p>
+        </div>
+      )}
+
+      {principal.nota_metodologica && (
+        <p className="mt-2 text-[10px] italic text-muted-foreground">
+          Nota metodológica: {principal.nota_metodologica}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function IndicadorDetalleModal({
+
   open,
   onOpenChange,
   ind,
@@ -1146,6 +1273,11 @@ function IndicadorDetalleModal({
               }
             />
           </div>
+
+          {/* Numerador / Denominador + conciliación oficial vs automático */}
+          <NumDenPanel historial={historial} medActual={medActual} ind={ind} />
+
+
 
           {/* Avance vs meta */}
           <div className="rounded-2xl border border-border bg-card p-3">

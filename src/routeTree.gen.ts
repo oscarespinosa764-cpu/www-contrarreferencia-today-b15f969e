@@ -31,6 +31,7 @@ import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/e
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as ApiPublicHooksEvaluarAlertasCoordinacionRouteImport } from './routes/api/public/hooks/evaluar-alertas-coordinacion'
+import { Route as ApiPublicHooksCalcularIndicadoresRouteImport } from './routes/api/public/hooks/calcular-indicadores'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
@@ -147,6 +148,12 @@ const ApiPublicHooksEvaluarAlertasCoordinacionRoute =
     path: '/api/public/hooks/evaluar-alertas-coordinacion',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksCalcularIndicadoresRoute =
+  ApiPublicHooksCalcularIndicadoresRouteImport.update({
+    id: '/api/public/hooks/calcular-indicadores',
+    path: '/api/public/hooks/calcular-indicadores',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -166,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/reglas': typeof AuthenticatedReglasRoute
   '/remisiones': typeof AuthenticatedRemisionesRoute
   '/seguimientos': typeof AuthenticatedSeguimientosRoute
+  '/api/public/hooks/calcular-indicadores': typeof ApiPublicHooksCalcularIndicadoresRoute
   '/api/public/hooks/evaluar-alertas-coordinacion': typeof ApiPublicHooksEvaluarAlertasCoordinacionRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -189,6 +197,7 @@ export interface FileRoutesByTo {
   '/reglas': typeof AuthenticatedReglasRoute
   '/remisiones': typeof AuthenticatedRemisionesRoute
   '/seguimientos': typeof AuthenticatedSeguimientosRoute
+  '/api/public/hooks/calcular-indicadores': typeof ApiPublicHooksCalcularIndicadoresRoute
   '/api/public/hooks/evaluar-alertas-coordinacion': typeof ApiPublicHooksEvaluarAlertasCoordinacionRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -214,6 +223,7 @@ export interface FileRoutesById {
   '/_authenticated/reglas': typeof AuthenticatedReglasRoute
   '/_authenticated/remisiones': typeof AuthenticatedRemisionesRoute
   '/_authenticated/seguimientos': typeof AuthenticatedSeguimientosRoute
+  '/api/public/hooks/calcular-indicadores': typeof ApiPublicHooksCalcularIndicadoresRoute
   '/api/public/hooks/evaluar-alertas-coordinacion': typeof ApiPublicHooksEvaluarAlertasCoordinacionRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -239,6 +249,7 @@ export interface FileRouteTypes {
     | '/reglas'
     | '/remisiones'
     | '/seguimientos'
+    | '/api/public/hooks/calcular-indicadores'
     | '/api/public/hooks/evaluar-alertas-coordinacion'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -262,6 +273,7 @@ export interface FileRouteTypes {
     | '/reglas'
     | '/remisiones'
     | '/seguimientos'
+    | '/api/public/hooks/calcular-indicadores'
     | '/api/public/hooks/evaluar-alertas-coordinacion'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -286,6 +298,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reglas'
     | '/_authenticated/remisiones'
     | '/_authenticated/seguimientos'
+    | '/api/public/hooks/calcular-indicadores'
     | '/api/public/hooks/evaluar-alertas-coordinacion'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -300,6 +313,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   PrivacidadRoute: typeof PrivacidadRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  ApiPublicHooksCalcularIndicadoresRoute: typeof ApiPublicHooksCalcularIndicadoresRoute
   ApiPublicHooksEvaluarAlertasCoordinacionRoute: typeof ApiPublicHooksEvaluarAlertasCoordinacionRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
@@ -462,6 +476,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksEvaluarAlertasCoordinacionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/calcular-indicadores': {
+      id: '/api/public/hooks/calcular-indicadores'
+      path: '/api/public/hooks/calcular-indicadores'
+      fullPath: '/api/public/hooks/calcular-indicadores'
+      preLoaderRoute: typeof ApiPublicHooksCalcularIndicadoresRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -505,6 +526,8 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   PrivacidadRoute: PrivacidadRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  ApiPublicHooksCalcularIndicadoresRoute:
+    ApiPublicHooksCalcularIndicadoresRoute,
   ApiPublicHooksEvaluarAlertasCoordinacionRoute:
     ApiPublicHooksEvaluarAlertasCoordinacionRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
