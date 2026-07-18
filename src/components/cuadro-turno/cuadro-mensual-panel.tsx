@@ -81,6 +81,41 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
   const [asignar, setAsignar] = useState<ShiftMember | null>(null);
   const [asignarOpen, setAsignarOpen] = useState(false);
   const [vista, setVista] = useState<"matriz" | "calendario">("calendario");
+  const [busq, setBusq] = useState("");
+  const [cargoF, setCargoF] = useState("");
+  const [dayDetail, setDayDetail] = useState<number | null>(null);
+
+  const cargos = useMemo(() => {
+    const s = new Set<string>();
+    members.forEach((m) => m.role_name && s.add(m.role_name));
+    return Array.from(s).sort();
+  }, [members]);
+
+  const membersFiltrados = useMemo(() => {
+    const q = busq.trim().toLowerCase();
+    return members.filter((m) => {
+      if (cargoF && m.role_name !== cargoF) return false;
+      if (q && !m.full_name.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [members, busq, cargoF]);
+
+  const kpis = useMemo(() => {
+    const memberIds = new Set(membersFiltrados.map((m) => m.id));
+    const daysF = days.filter((d) => memberIds.has(d.member_id) && d.shift_code);
+    const turnosProg = daysF.length;
+    const ausenciaCodes = new Set(["A", "I", "P", "V"]);
+    const novedades = daysF.filter((d) => d.shift_code && ausenciaCodes.has(d.shift_code)).length
+      + members.filter((m) => !days.some((d) => d.member_id === m.id && d.shift_code)).length;
+    const trabajando = daysF.filter((d) => d.shift_code && !ausenciaCodes.has(d.shift_code) && d.shift_code !== "D").length;
+    const cobertura = daysF.length > 0 ? Math.round((trabajando / daysF.length) * 100) : null;
+    const asignados = new Set(daysF.map((d) => d.member_id));
+    const disp = membersFiltrados.length > 0
+      ? Math.round((asignados.size / membersFiltrados.length) * 100)
+      : null;
+    return { turnosProg, cobertura, novedades, disp, totalMembers: membersFiltrados.length };
+  }, [membersFiltrados, days, members, tipos]);
+
 
   const exportarCuadro = () => {
     exportarCuadroMensual({ anio, mes, members, days, tipos, baseHoras: schedule?.base_hours });
@@ -139,6 +174,54 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
         </div>
       </div>
 
+      {schedule && (
+        <>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Card className="p-3">
+              <p className="text-[11px] uppercase text-muted-foreground">Turnos programados</p>
+              <p className="mt-1 text-2xl font-bold">{kpis.turnosProg}</p>
+            </Card>
+            <Card className="p-3">
+              <p className="text-[11px] uppercase text-muted-foreground">Cobertura laboral</p>
+              <p className="mt-1 text-2xl font-bold">{kpis.cobertura == null ? "—" : `${kpis.cobertura}%`}</p>
+            </Card>
+            <Card className="p-3">
+              <p className="text-[11px] uppercase text-muted-foreground">Novedades</p>
+              <p className="mt-1 text-2xl font-bold">{kpis.novedades}</p>
+            </Card>
+            <Card className="p-3">
+              <p className="text-[11px] uppercase text-muted-foreground">Disponibilidad</p>
+              <p className="mt-1 text-2xl font-bold">{kpis.disp == null ? "—" : `${kpis.disp}%`}</p>
+              <p className="text-[10px] text-muted-foreground">{kpis.totalMembers} funcionario(s)</p>
+            </Card>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              placeholder="Buscar funcionario…"
+              value={busq}
+              onChange={(e) => setBusq(e.target.value)}
+              className="h-8 w-56 text-xs"
+            />
+            <Select value={cargoF || "__all"} onValueChange={(v) => setCargoF(v === "__all" ? "" : v)}>
+              <SelectTrigger className="h-8 w-48 text-xs"><SelectValue placeholder="Cargo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">Todos los cargos</SelectItem>
+                {cargos.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {(busq || cargoF) && (
+              <Button size="sm" variant="ghost" onClick={() => { setBusq(""); setCargoF(""); }}>
+                Limpiar filtros
+              </Button>
+            )}
+            <span className="ml-auto text-[11px] text-muted-foreground">
+              Mostrando {membersFiltrados.length} de {members.length}
+            </span>
+          </div>
+        </>
+      )}
+
+
       {!schedule ? (
         <Card className="p-8 text-center">
           <p className="text-sm text-muted-foreground">No hay cuadro para {MESES[mes - 1]} {anio}.</p>
@@ -167,10 +250,11 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
               anio={anio}
               mes={mes}
               ndias={ndias}
-              members={members}
+              members={membersFiltrados}
               dayMap={dayMap}
               tipoMap={tipoMap}
               onCellClick={(m, d) => setCell({ member: m, day: d })}
+              onMoreClick={(d) => setDayDetail(d)}
             />
           ) : (
             <>
@@ -194,9 +278,9 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {members.length === 0 ? (
+                    {membersFiltrados.length === 0 ? (
                       <tr><td colSpan={ndias + 7} className="py-6 text-center text-muted-foreground">Sin colaboradores en el cuadro.</td></tr>
-                    ) : members.map((m) => {
+                    ) : membersFiltrados.map((m) => {
                       const mdays = days.filter((d) => d.member_id === m.id);
                       const total = totalHorasMiembro(mdays);
                       const base = m.base_hours ?? schedule.base_hours;
@@ -266,6 +350,19 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
           onSaved={() => { setAsignarOpen(false); setAsignar(null); qc.invalidateQueries({ queryKey: ["schedule-days"] }); }}
         />
       )}
+
+      {dayDetail != null && schedule && (
+        <DayDetailDialog
+          anio={anio}
+          mes={mes}
+          day={dayDetail}
+          members={membersFiltrados}
+          dayMap={dayMap}
+          tipoMap={tipoMap}
+          onClose={() => setDayDetail(null)}
+          onEdit={(m) => { setCell({ member: m, day: dayDetail }); setDayDetail(null); }}
+        />
+      )}
     </div>
   );
 }
@@ -273,16 +370,18 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
 const DOW_HEADERS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
 function CalendarView({
-  anio, mes, ndias, members, dayMap, tipoMap, onCellClick,
+  anio, mes, ndias, members, dayMap, tipoMap, onCellClick, onMoreClick,
 }: {
   anio: number; mes: number; ndias: number;
   members: ShiftMember[];
   dayMap: Map<string, ShiftDay>;
   tipoMap: Map<string, ShiftType>;
   onCellClick: (m: ShiftMember, d: number) => void;
+  onMoreClick: (d: number) => void;
 }) {
   const firstDow = new Date(anio, mes - 1, 1).getDay(); // 0=Dom
   const totalCells = Math.ceil((firstDow + ndias) / 7) * 7;
+  const MAX = 4;
 
   return (
     <Card className="p-2 sm:p-3">
@@ -295,39 +394,58 @@ function CalendarView({
         {Array.from({ length: totalCells }, (_, i) => {
           const dayNum = i - firstDow + 1;
           const valido = dayNum >= 1 && dayNum <= ndias;
-          if (!valido) return <div key={i} className="min-h-[96px] rounded-lg bg-muted/20" />;
+          if (!valido) return <div key={i} className="min-h-[110px] rounded-lg bg-muted/20" />;
 
           const asignados = members
             .map((m) => ({ m, cd: dayMap.get(`${m.id}:${dayNum}`) }))
             .filter((x) => x.cd?.shift_code);
+          const visibles = asignados.slice(0, MAX);
+          const extra = asignados.length - visibles.length;
 
           return (
             <div
               key={i}
-              className="flex min-h-[96px] flex-col rounded-lg border bg-background p-1.5 transition-colors hover:border-primary/40"
+              className="flex min-h-[110px] flex-col rounded-lg border bg-background p-1.5 transition-colors hover:border-primary/40"
             >
-              <div className="mb-1 text-right text-[11px] font-bold text-muted-foreground">{dayNum}</div>
+              <button
+                type="button"
+                onClick={() => onMoreClick(dayNum)}
+                className="mb-1 text-right text-[11px] font-bold text-muted-foreground hover:text-primary"
+              >
+                {dayNum}
+              </button>
               <div className="space-y-0.5">
                 {asignados.length === 0 ? (
                   <p className="text-[10px] italic text-muted-foreground/50">—</p>
                 ) : (
-                  asignados.map(({ m, cd }) => {
-                    const tipo = cd!.shift_code ? tipoMap.get(cd!.shift_code) : undefined;
-                    return (
+                  <>
+                    {visibles.map(({ m, cd }) => {
+                      const tipo = cd!.shift_code ? tipoMap.get(cd!.shift_code) : undefined;
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => onCellClick(m, dayNum)}
+                          className="flex w-full items-center gap-1 truncate rounded px-1 py-0.5 text-left text-[10px] hover:ring-1 hover:ring-primary"
+                          style={tipo ? { background: tipo.color + "33" } : undefined}
+                          title={`${m.full_name} · ${cd!.shift_code}${cd!.notes ? ` · ${cd!.notes}` : ""}`}
+                        >
+                          <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: tipo?.color ?? "#999" }} />
+                          <span className="truncate font-medium">{m.full_name.split(" ")[0]}</span>
+                          <span className="ml-auto shrink-0 font-bold">{cd!.shift_code}</span>
+                        </button>
+                      );
+                    })}
+                    {extra > 0 && (
                       <button
-                        key={m.id}
                         type="button"
-                        onClick={() => onCellClick(m, dayNum)}
-                        className="flex w-full items-center gap-1 truncate rounded px-1 py-0.5 text-left text-[10px] hover:ring-1 hover:ring-primary"
-                        style={tipo ? { background: tipo.color + "33" } : undefined}
-                        title={`${m.full_name} · ${cd!.shift_code}${cd!.notes ? ` · ${cd!.notes}` : ""}`}
+                        onClick={() => onMoreClick(dayNum)}
+                        className="w-full rounded bg-muted/60 px-1 py-0.5 text-[10px] font-semibold text-primary hover:bg-muted"
                       >
-                        <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: tipo?.color ?? "#999" }} />
-                        <span className="truncate font-medium">{m.full_name.split(" ")[0]}</span>
-                        <span className="ml-auto shrink-0 font-bold">{cd!.shift_code}</span>
+                        +{extra} más
                       </button>
-                    );
-                  })
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -335,11 +453,82 @@ function CalendarView({
         })}
       </div>
       <p className="mt-2 text-[11px] text-muted-foreground">
-        Haz clic en un turno para ver el detalle.
+        Haz clic en un turno para ver el detalle · Haz clic en el número del día para ver el resumen completo.
       </p>
     </Card>
   );
 }
+
+function DayDetailDialog({
+  anio, mes, day, members, dayMap, tipoMap, onClose, onEdit,
+}: {
+  anio: number; mes: number; day: number;
+  members: ShiftMember[];
+  dayMap: Map<string, ShiftDay>;
+  tipoMap: Map<string, ShiftType>;
+  onClose: () => void;
+  onEdit: (m: ShiftMember) => void;
+}) {
+  const asignados = members
+    .map((m) => ({ m, cd: dayMap.get(`${m.id}:${day}`) }))
+    .filter((x) => x.cd?.shift_code);
+  const resumen = new Map<string, number>();
+  asignados.forEach(({ cd }) => {
+    const c = cd!.shift_code!;
+    resumen.set(c, (resumen.get(c) ?? 0) + 1);
+  });
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-h-[92vh] max-w-lg overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Resumen del día {day} · {MESES[mes - 1]} {anio}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 text-sm">
+          <div className="flex flex-wrap gap-1.5">
+            {Array.from(resumen.entries()).map(([code, n]) => {
+              const t = tipoMap.get(code);
+              return (
+                <span key={code} className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]" style={{ background: (t?.color ?? "#999") + "22" }}>
+                  <span className="inline-block h-2 w-2 rounded-full" style={{ background: t?.color ?? "#999" }} />
+                  <span className="font-bold">{code}</span>
+                  <span className="text-muted-foreground">×{n}</span>
+                </span>
+              );
+            })}
+            {resumen.size === 0 && <p className="text-xs text-muted-foreground">Sin asignaciones.</p>}
+          </div>
+          <div className="divide-y rounded-md border">
+            {asignados.map(({ m, cd }) => {
+              const t = cd!.shift_code ? tipoMap.get(cd!.shift_code) : undefined;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => onEdit(m)}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-muted/40"
+                >
+                  <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: t?.color ?? "#999" }} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{m.full_name}</p>
+                    <p className="truncate text-[10px] text-muted-foreground">{m.role_name ?? "—"}{cd!.notes ? ` · ${cd!.notes}` : ""}</p>
+                  </div>
+                  <span className="font-bold">{cd!.shift_code}</span>
+                </button>
+              );
+            })}
+            {asignados.length === 0 && (
+              <p className="px-3 py-4 text-center text-xs text-muted-foreground">Sin funcionarios asignados este día.</p>
+            )}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cerrar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 /** Selecciona un funcionario del sistema, autollena el cargo y abre la asignación de turnos. */
 function AgregarColaborador({
