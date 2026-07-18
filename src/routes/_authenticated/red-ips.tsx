@@ -270,7 +270,7 @@ function RedIpsPage() {
     <div>
       <AppHeader
         title="RED HOSPITALARIA & DISPONIBILIDAD"
-        subtitle="IPS, Ambulancias, Jornadas y Especialidades"
+        subtitle="IPS, Ambulancias, Jornadas de Salud y Especialidades"
       />
 
       <div className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
