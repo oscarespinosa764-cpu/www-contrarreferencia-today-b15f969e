@@ -522,18 +522,27 @@ export function NuevoRegistroDialog({
     if (!String(f.get("paciente_asunto") || "").trim())
       return toast.error("Indica el paciente / asunto");
     if (!pendPrioridad) return toast.error("Selecciona la prioridad");
-    if (!pendDestinoTipo) return toast.error("Selecciona el tipo de destino (IPS o ÁREA)");
-    if (pendDestinoTipo === "IPS" && !pendIps.trim())
-      return toast.error("Indica el nombre de la IPS");
-    if (pendDestinoTipo === "AREA" && !pendArea) return toast.error("Selecciona el área");
+
+    // Tipos que NO requieren destino IPS/Área
+    const sinDestino = pendTipo === "EVOLUCIONAR" || pendTipo === "VACACIONES";
+
+    if (!sinDestino) {
+      if (!pendDestinoTipo) return toast.error("Selecciona el tipo de destino (IPS o ÁREA)");
+      if (pendDestinoTipo === "IPS" && !pendIps.trim())
+        return toast.error("Indica el nombre de la IPS");
+      if (pendDestinoTipo === "AREA" && !pendArea) return toast.error("Selecciona el área");
+    }
 
     const { data: u } = await supabase.auth.getUser();
-    const destinoValor = pendDestinoTipo === "IPS" ? pendIps.trim() : pendArea;
+    const destinoValor = sinDestino
+      ? ""
+      : pendDestinoTipo === "IPS"
+        ? pendIps.trim()
+        : pendArea;
     const tipoFinal = pendTipo === "OTRO" ? `OTRO: ${pendCual.trim().toUpperCase()}` : pendTipo;
-    const detalles: Record<string, unknown> = {
-      destino_tipo: pendDestinoTipo,
-      destino: destinoValor,
-    };
+    const detalles: Record<string, unknown> = sinDestino
+      ? {}
+      : { destino_tipo: pendDestinoTipo, destino: destinoValor };
     if (pendTipo === "OTRO") detalles.cual = pendCual.trim();
     if (pendTipo === "EVOLUCIONAR") detalles.evolucion_pendiente_en = pendEvoEn;
 
@@ -1109,7 +1118,16 @@ export function NuevoRegistroDialog({
                   </Label>
                   <select
                     value={pendTipo}
-                    onChange={(e) => setPendTipo(e.target.value)}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setPendTipo(v);
+                      // Limpieza al pasar a tipos sin destino
+                      if (v === "EVOLUCIONAR" || v === "VACACIONES") {
+                        setPendDestinoTipo("");
+                        setPendIps("");
+                        setPendArea("");
+                      }
+                    }}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   >
                     <option value="">Seleccione…</option>
@@ -1123,6 +1141,7 @@ export function NuevoRegistroDialog({
                       "CONFIRMACION CON IPS",
                       "RADICAR REMISION",
                       "EVOLUCIONAR",
+                      "VACACIONES",
                       "ORDENES EXTRAMURALES",
                       "NEGACIONES",
                       "AVERIGUAR",
@@ -1167,7 +1186,8 @@ export function NuevoRegistroDialog({
                 </div>
               </div>
 
-              {/* Tipo de destino */}
+              {/* Tipo de destino (oculto para EVOLUCIONAR y VACACIONES) */}
+              {pendTipo !== "EVOLUCIONAR" && pendTipo !== "VACACIONES" && (
               <div className="space-y-1.5">
                 <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Tipo de destino *
@@ -1236,6 +1256,7 @@ export function NuevoRegistroDialog({
                   </div>
                 )}
               </div>
+              )}
 
               {/* Pendiente de evolución en (solo EVOLUCIONAR) */}
               {pendTipo === "EVOLUCIONAR" && (
