@@ -73,14 +73,24 @@ const fmtFecha = (iso: string | null | undefined) => {
   }
 };
 
+type AllowedAction =
+  | "COPY_USER" | "RESEND_INVITATION" | "SEND_RESET"
+  | "CHANGE_PASSWORD_MANUAL" | "GENERATE_TEMP_PASSWORD"
+  | "ACTIVATE_ACCOUNT" | "REVIEW_BLOCK";
+
 type EstadoAcceso = {
   email: string | null;
+  normalizedStatus: "ACTIVE" | "INVITATION_PENDING" | "INACTIVE" | "BLOCKED" | "PROFILE_WITHOUT_AUTH" | "AUTH_ERROR";
   estadoCuenta: string;
   estadoPassword: string;
   activationAt: string | null;
   lastAdminChangeAt: string | null;
   lastResetSentAt: string | null;
+  lastResetStatus: string | null;
+  resetInFlight: boolean;
+  allowedActions: AllowedAction[];
 };
+
 
 
 type EditForm = {
