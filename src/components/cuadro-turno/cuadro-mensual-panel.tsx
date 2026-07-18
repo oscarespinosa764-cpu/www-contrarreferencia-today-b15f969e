@@ -515,7 +515,7 @@ function DayDetailDialog({
     </Dialog>
   );
 }
-}
+
 
 /** Selecciona un funcionario del sistema, autollena el cargo y abre la asignación de turnos. */
 function AgregarColaborador({
