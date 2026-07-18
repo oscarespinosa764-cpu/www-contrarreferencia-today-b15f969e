@@ -30,7 +30,7 @@ function CuadroTurnoPage() {
   const navigate = useNavigate({ from: Route.fullPath });
 
   const setTab = (v: string) =>
-    navigate({ search: (prev) => ({ ...prev, tab: v }), replace: true });
+    navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, tab: v }), replace: true });
 
   return (
     <div>
