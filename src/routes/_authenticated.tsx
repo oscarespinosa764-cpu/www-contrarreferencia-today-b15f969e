@@ -263,7 +263,7 @@ function AuthenticatedLayout() {
   // (visuales + sonido) de casos entrantes en cualquier ventana/módulo.
   const { data: casos } = useCasos();
   // Operativa: alertas silenciosas (sin sonido ni notificación del sistema).
-  useNotifVencimientosMonitor(casos ?? [], { silent: !isAdmin });
+  useNotifVencimientosMonitor(casos, { silent: !isAdmin });
 
 
 
