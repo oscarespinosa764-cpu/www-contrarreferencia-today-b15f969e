@@ -76,12 +76,20 @@ export const Route = createFileRoute("/api/public/hooks/evaluar-alertas-coordina
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const apiKey =
-          request.headers.get("apikey") ||
-          request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-        const expected =
-          process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
-        if (!expected || !apiKey || apiKey !== expected) {
+        const provided =
+          request.headers.get("x-cron-secret") ||
+          request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ||
+          "";
+        const expected = process.env.CRON_SHARED_SECRET || "";
+        const enc = new TextEncoder();
+        const a = enc.encode(provided);
+        const b = enc.encode(expected);
+        let equal = a.length === b.length && expected.length > 0;
+        const len = Math.max(a.length, b.length);
+        let diff = a.length ^ b.length;
+        for (let i = 0; i < len; i++) diff |= (a[i] ?? 0) ^ (b[i] ?? 0);
+        if (diff !== 0) equal = false;
+        if (!equal) {
           return new Response(JSON.stringify({ error: "Unauthorized" }), {
             status: 401,
             headers: { "Content-Type": "application/json" },
