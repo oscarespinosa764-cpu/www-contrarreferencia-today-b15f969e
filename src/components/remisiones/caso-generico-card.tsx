@@ -10,6 +10,7 @@ import { Eye, Pencil, ClipboardCheck, MapPin } from "lucide-react";
 import { Field, SelectField, SpecialtyList } from "./form-bits";
 import { Cie10Field } from "./cie10-field";
 import { SeguimientoDialog } from "./seguimiento-dialog";
+import { PhdCicloPanel } from "./phd-ciclo-panel";
 import {
   evolucionMeta,
   fmtEdad,
@@ -430,6 +431,11 @@ export function CasoGenericoCard({
                 {tipo === "pendiente" ? "Observación de entrega" : "Observaciones"}
               </p>
               <p className="text-sm text-foreground">{justif}</p>
+            </div>
+          )}
+          {tipo === "phd" && (
+            <div className="mt-3">
+              <PhdCicloPanel casoId={r.id} estadoActual={r.estado_ciclo} canEdit={canEdit} />
             </div>
           )}
         </DialogContent>
