@@ -433,6 +433,11 @@ export function CasoGenericoCard({
               <p className="text-sm text-foreground">{justif}</p>
             </div>
           )}
+          {tipo === "phd" && (
+            <div className="mt-3">
+              <PhdCicloPanel casoId={r.id} estadoActual={r.estado_ciclo} canEdit={canEdit} />
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
