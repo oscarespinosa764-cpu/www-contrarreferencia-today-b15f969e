@@ -138,9 +138,46 @@ const TIPOS_PHD_BASE = [T.EVOLUCION, T.CORREO, T.PLATAFORMA, T.FISICO, T.OTRO] a
 const TI = {
   PENDIENTE: "PENDIENTE COORDINACIÓN FECHA Y HORA EXAMEN",
   COORDINADO: "EXAMEN COORDINADO",
+  PROG_AMB: "CONFIRMACIÓN DE PROGRAMACIÓN DE AMBULANCIA",
+  LLEGADA_AMB: "CONFIRMACIÓN DE LLEGADA DE AMBULANCIA",
+  TEP_ACTIVACION: "ACTIVACIÓN DE PROVEEDOR CONTRATADO DE TEP",
+  AMB_COORDINADA_ESP: "AMBULANCIA COORDINADA",
   CULMINACION: "CULMINACIÓN DE SOLICITUD",
 } as const;
-const TIPOS_INTERNA = [TI.PENDIENTE, TI.COORDINADO, TI.CULMINACION];
+
+const RI_ESPECIALES = new Set([
+  "URGENCIAS VITALES",
+  "URGENCIAS_VITALES",
+  "REMISIONES ESPECIALES",
+  "REMISIONES_ESPECIALES",
+  "EVACUACIÓN DE SEDES AMBULATORIAS",
+  "EVACUACION DE SEDES AMBULATORIAS",
+  "EVACUACION_SEDES_AMBULATORIAS",
+]);
+
+/** Determina el próximo paso permitido para un caso de Referencia Interna. */
+function siguientePasoRI(
+  historial: { tipo_seguimiento: string }[] | undefined,
+  tipoSolicitud: string | null | undefined,
+): string | null {
+  const especial = RI_ESPECIALES.has((tipoSolicitud ?? "").toUpperCase().trim());
+  const ultimo = (historial ?? [])
+    .map((h) => (h.tipo_seguimiento || "").toUpperCase())
+    .find((t) => t && t !== "CAMBIO DE UNIDAD");
+  if (especial) {
+    if (!ultimo) return TI.TEP_ACTIVACION;
+    if (ultimo === TI.TEP_ACTIVACION.toUpperCase()) return TI.AMB_COORDINADA_ESP;
+    if (ultimo === TI.AMB_COORDINADA_ESP.toUpperCase()) return TI.CULMINACION;
+    return null;
+  }
+  if (!ultimo) return TI.PENDIENTE;
+  if (ultimo.startsWith("PENDIENTE COORDINAC")) return TI.COORDINADO;
+  if (ultimo === TI.COORDINADO.toUpperCase()) return TI.PROG_AMB;
+  if (ultimo === TI.PROG_AMB.toUpperCase()) return TI.LLEGADA_AMB;
+  if (ultimo === TI.LLEGADA_AMB.toUpperCase()) return TI.CULMINACION;
+  return null;
+}
+
 
 // --- Pendientes ---
 const TP = {
@@ -306,6 +343,15 @@ export function SeguimientoDialog({
   const [riHora, setRiHora] = useState("");
   const [riInformoAmb, setRiInformoAmb] = useState(false);
   const [riInformoServ, setRiInformoServ] = useState(false);
+  // Referencia interna — pasos 3/4 (recogida y llegada de ambulancia).
+  const [riRecFecha, setRiRecFecha] = useState("");
+  const [riRecHora, setRiRecHora] = useState("");
+  const [riRecTipoAmb, setRiRecTipoAmb] = useState("");
+  const [riLlegFecha, setRiLlegFecha] = useState("");
+  const [riLlegHora, setRiLlegHora] = useState("");
+  // Referencia interna — flujo especial TEP.
+  const [riTepProveedor, setRiTepProveedor] = useState("");
+
 
   // Revisión autorización estancia hospitalaria (seguimiento de trazabilidad)
   const [revOpcion, setRevOpcion] = useState<AutorizacionEstanciaOpcion>("");
@@ -448,6 +494,36 @@ export function SeguimientoDialog({
       return data ?? [];
     },
   });
+
+  // Caso de Referencia Interna: se necesita `tipo_solicitud` para calcular la secuencia.
+  const { data: casoInterna } = useQuery({
+    queryKey: ["ri-caso", casoId],
+    enabled: open && esInterna,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("referencia_interna")
+        .select("tipo_solicitud, tipo_ambulancia, servicio, eapb, archivado")
+        .eq("id", casoId)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  // Catálogo empresas TEP (para el selector de proveedor en el flujo especial).
+  const { data: empresasTepInterna = [] } = useQuery({
+    queryKey: ["cat-empresa-tep-ri"],
+    enabled: open && esInterna,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor")
+        .eq("tipo", "EMPRESA_TEP")
+        .eq("activo", true)
+        .order("valor");
+      return (data ?? []).map((d) => d.valor as string);
+    },
+  });
+
 
   // Catálogo de especialidades (para agregar nuevas en CAMBIO EN ESPECIALIDAD).
   const { data: catEspecialidades = [] } = useQuery({
@@ -716,15 +792,29 @@ export function SeguimientoDialog({
     return [...(mostrarOpcionRadicado ? [T.RADICADO] : []), ...TIPOS_PHD_BASE];
   }, [mostrarOpcionRadicado]);
 
+  // Referencia Interna: opciones dinámicas según secuencia + CAMBIO DE UNIDAD (mientras esté activo).
+  const TIPOS_INTERNA_DYN = useMemo(() => {
+    const proximo = siguientePasoRI(
+      historial as { tipo_seguimiento: string }[] | undefined,
+      casoInterna?.tipo_solicitud ?? null,
+    );
+    const activo = !casoInterna?.archivado;
+    const arr: string[] = [];
+    if (proximo) arr.push(proximo);
+    if (activo) arr.push(T.CAMBIO_UNIDAD);
+    return arr;
+  }, [historial, casoInterna]);
+
   const TIPOS_SEG: string[] = esSaliente
     ? TIPOS_SALIENTES
     : esPhd
       ? TIPOS_PHD
       : esInterna
-        ? TIPOS_INTERNA
+        ? TIPOS_INTERNA_DYN
         : esPendiente
           ? TIPOS_PENDIENTE
           : [];
+
 
   // Inicializar al abrir.
   useEffect(() => {
@@ -964,10 +1054,36 @@ export function SeguimientoDialog({
           );
         case TI.CULMINACION:
           return appendNota(generarPlantillaRefInternaCulminacion(), detalle);
+        case TI.PROG_AMB:
+          return appendNota(
+            `SE CONFIRMA PROGRAMACIÓN DE AMBULANCIA.\nFECHA/HORA RECOGIDA: ${riRecFecha} ${riRecHora}\nTIPO AMBULANCIA: ${riRecTipoAmb || "—"}`,
+            detalle,
+          );
+        case TI.LLEGADA_AMB:
+          return appendNota(
+            `SE CONFIRMA LLEGADA DE AMBULANCIA.\nFECHA/HORA LLEGADA: ${riLlegFecha} ${riLlegHora}`,
+            detalle,
+          );
+        case TI.TEP_ACTIVACION:
+          return appendNota(
+            `SE ACTIVA PROVEEDOR CONTRATADO DE TEP.\nPROVEEDOR: ${riTepProveedor || "—"}\nPACIENTE: ${paciente}\nDOCUMENTO: ${documento ?? "—"}\nSERVICIO/UBICACIÓN: ${casoInterna?.servicio ?? "—"}\nTIPO SOLICITUD: ${casoInterna?.tipo_solicitud ?? "—"}\nTIPO AMBULANCIA: ${casoInterna?.tipo_ambulancia ?? "—"}\nEAPB/ERP: ${casoInterna?.eapb ?? "—"}`,
+            detalle,
+          );
+        case TI.AMB_COORDINADA_ESP:
+          return appendNota(
+            `AMBULANCIA COORDINADA CON PROVEEDOR DE TEP.`,
+            detalle,
+          );
+        case T.CAMBIO_UNIDAD:
+          return appendNota(
+            `CAMBIO DE UNIDAD.\nNUEVA UNIDAD: ${nuevaUnidad || "—"}\nNUEVA CAMA: ${nuevaCama || "—"}`,
+            detalle,
+          );
         default:
           return "";
       }
     }
+
     if (esPendiente) {
       if (!tipoSeg) return "";
       return generarPlantillaPendienteCumplimiento(tipoSeg === TP.COMPLETO, detalle);
@@ -1347,10 +1463,28 @@ export function SeguimientoDialog({
             informo_ambulancia: riInformoAmb,
             informo_servicio: riInformoServ,
           };
+        case TI.PROG_AMB:
+          return {
+            fecha_recogida: riRecFecha.trim() || null,
+            hora_recogida: riRecHora.trim() || null,
+            tipo_ambulancia: riRecTipoAmb.trim() || null,
+          };
+        case TI.LLEGADA_AMB:
+          return {
+            fecha_llegada: riLlegFecha.trim() || null,
+            hora_llegada: riLlegHora.trim() || null,
+          };
+        case TI.TEP_ACTIVACION:
+          return { proveedor: riTepProveedor.trim() || null };
+        case TI.AMB_COORDINADA_ESP:
+          return { proveedor: riTepProveedor.trim() || null };
+        case T.CAMBIO_UNIDAD:
+          return { nueva_unidad: nuevaUnidad.trim() || null, nueva_cama: nuevaCama.trim() || null };
         default:
           return null;
       }
     }
+
     if (esPendiente) {
       return { cumplimiento: tipoSeg === TP.COMPLETO ? "completo" : "parcial" };
     }
@@ -1567,6 +1701,13 @@ export function SeguimientoDialog({
     setRiHora("");
     setRiInformoAmb(false);
     setRiInformoServ(false);
+    setRiRecFecha("");
+    setRiRecHora("");
+    setRiRecTipoAmb("");
+    setRiLlegFecha("");
+    setRiLlegHora("");
+    setRiTepProveedor("");
+
   };
 
   const guardar = async () => {
@@ -1633,6 +1774,23 @@ export function SeguimientoDialog({
         if (riHora.trim() && !isHoraValida(riHora))
           return toast.error("Hora del examen inválida (HH:MM)");
       }
+      if (esInterna && tipoSeg === TI.PROG_AMB) {
+        if (!riRecFecha.trim() || !isFechaValida(riRecFecha))
+          return toast.error("Fecha de recogida requerida (DD/MM/AAAA)");
+        if (!riRecHora.trim() || !isHoraValida(riRecHora))
+          return toast.error("Hora de recogida requerida (HH:MM)");
+        if (!riRecTipoAmb.trim()) return toast.error("Selecciona el tipo de ambulancia");
+      }
+      if (esInterna && tipoSeg === TI.LLEGADA_AMB) {
+        if (!riLlegFecha.trim() || !isFechaValida(riLlegFecha))
+          return toast.error("Fecha de llegada requerida (DD/MM/AAAA)");
+        if (!riLlegHora.trim() || !isHoraValida(riLlegHora))
+          return toast.error("Hora de llegada requerida (HH:MM)");
+      }
+      if (esInterna && tipoSeg === TI.TEP_ACTIVACION) {
+        if (!riTepProveedor.trim()) return toast.error("Selecciona el proveedor de TEP");
+      }
+
       // Cambio en especialidad: exige cambio real, conservar una activa y motivo.
       if (esCambioEsp) {
         if (!espHayCambio)
@@ -1912,11 +2070,16 @@ export function SeguimientoDialog({
       if (esInterna) {
         if (tipoSeg === TI.PENDIENTE) update.estado = "PENDIENTE COORDINACION";
         else if (tipoSeg === TI.COORDINADO) update.estado = "EXAMEN COORDINADO";
+        else if (tipoSeg === TI.PROG_AMB) update.estado = "AMBULANCIA PROGRAMADA";
+        else if (tipoSeg === TI.LLEGADA_AMB) update.estado = "AMBULANCIA EN SITIO";
+        else if (tipoSeg === TI.TEP_ACTIVACION) update.estado = "TEP ACTIVADO";
+        else if (tipoSeg === TI.AMB_COORDINADA_ESP) update.estado = "AMBULANCIA COORDINADA";
         else if (tipoSeg === TI.CULMINACION) {
           update.estado = "CULMINADO";
           update.archivado = true;
         }
       }
+
       // Pendientes: cumplimiento completo cierra y archiva el caso.
       if (esPendiente) {
         if (tipoSeg === TP.COMPLETO) {
