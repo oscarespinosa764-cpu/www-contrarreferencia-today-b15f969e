@@ -1490,7 +1490,7 @@ function HistorialPage() {
 
   return (
     <div>
-      <AppHeader title="Referencia y Contrarreferencia" subtitle="Control de Casos Entrantes y Salientes" />
+      <AppHeader title="Referencia y Contrarreferencia" subtitle="Historial Total" />
 
       <Panel bodyMaxHeight={null}>
         {/* Selector de vista con scroll horizontal */}
