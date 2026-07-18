@@ -1118,7 +1118,16 @@ export function NuevoRegistroDialog({
                   </Label>
                   <select
                     value={pendTipo}
-                    onChange={(e) => setPendTipo(e.target.value)}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setPendTipo(v);
+                      // Limpieza al pasar a tipos sin destino
+                      if (v === "EVOLUCIONAR" || v === "VACACIONES") {
+                        setPendDestinoTipo("");
+                        setPendIps("");
+                        setPendArea("");
+                      }
+                    }}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   >
                     <option value="">Seleccione…</option>
@@ -1132,6 +1141,7 @@ export function NuevoRegistroDialog({
                       "CONFIRMACION CON IPS",
                       "RADICAR REMISION",
                       "EVOLUCIONAR",
+                      "VACACIONES",
                       "ORDENES EXTRAMURALES",
                       "NEGACIONES",
                       "AVERIGUAR",
