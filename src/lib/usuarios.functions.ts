@@ -573,10 +573,8 @@ export const enviarResetPasswordUsuario = createServerFn({ method: "POST" })
     if (!email) return { ok: false, error: "No se encontró el correo del usuario." as string | null };
 
     const redirectTo = `${getSiteUrl()}/activar-cuenta`;
-    const { error } = await (supabaseAdmin as any).auth.admin.generateLink({
-      type: "recovery",
-      email,
-      options: { redirectTo },
+    const { error } = await (supabaseAdmin as any).auth.resetPasswordForEmail(email, {
+      redirectTo,
     });
     if (error) {
       return { ok: false, error: "No fue posible enviar el enlace de restablecimiento." as string | null };
@@ -655,17 +653,21 @@ export const obtenerEstadoAccesoUsuario = createServerFn({ method: "POST" })
       (logs ?? []).find((l: any) => l.accion === accion)?.created_at ?? null;
 
     const activationAt = findLatest("USER_ACCOUNT_ACTIVATED") ?? (confirmed ? u.confirmed_at ?? u.email_confirmed_at ?? null : null);
-    const lastAdminChangeAt =
-      findLatest("USER_PASSWORD_RESET") ?? findLatest("USER_TEMP_PASSWORD_GENERATED") ?? null;
+    const manualResetAt = findLatest("USER_PASSWORD_RESET");
+    const tempPasswordAt = findLatest("USER_TEMP_PASSWORD_GENERATED");
+    const lastAdminChangeAt = manualResetAt ?? tempPasswordAt ?? null;
     const lastResetSentAt = findLatest("USER_PASSWORD_RESET_LINK_SENT");
 
     let estadoPassword = "CONFIGURADA — NO CONSULTABLE POR SEGURIDAD";
     if (!confirmed) estadoPassword = "PENDIENTE DE CONFIGURACIÓN";
-    else if (findLatest("USER_TEMP_PASSWORD_GENERATED") &&
-      (!lastSignIn || new Date(lastSignIn) < new Date(findLatest("USER_TEMP_PASSWORD_GENERATED")!))) {
-      estadoPassword = "CONTRASEÑA TEMPORAL GENERADA";
-    } else if (lastResetSentAt && (!lastSignIn || new Date(lastSignIn) < new Date(lastResetSentAt))) {
+    else if (
+      lastResetSentAt &&
+      (!lastSignIn || new Date(lastSignIn) < new Date(lastResetSentAt)) &&
+      (!tempPasswordAt || new Date(lastResetSentAt) >= new Date(tempPasswordAt))
+    ) {
       estadoPassword = "RESTABLECIMIENTO PENDIENTE";
+    } else if (tempPasswordAt && (!lastSignIn || new Date(lastSignIn) < new Date(tempPasswordAt))) {
+      estadoPassword = "CONTRASEÑA TEMPORAL GENERADA";
     }
 
     return {
