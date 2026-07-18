@@ -61,20 +61,38 @@ import {
   type TipoRed,
 } from "@/lib/red-ips-utils";
 
-const searchSchema = z.object({
-  grupo: fallback(z.string(), "jornadas_tep").default("jornadas_tep"),
-  sub: fallback(z.string(), "").default(""),
-  ambito: fallback(z.string(), "todos").default("todos"),
-  q: fallback(z.string(), "").default(""),
-  estado: fallback(z.string(), "todos").default("todos"),
-  page: fallback(z.number().int(), 1).default(1),
-  size: fallback(z.number().int(), 20).default(20),
-});
+type RedSearch = {
+  grupo: string;
+  sub: string;
+  ambito: string;
+  q: string;
+  estado: string;
+  page: number;
+  size: number;
+};
+
+function parseSearch(s: Record<string, unknown>): RedSearch {
+  const str = (v: unknown, d: string) => (typeof v === "string" && v ? v : d);
+  const num = (v: unknown, d: number) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : d;
+  };
+  return {
+    grupo: str(s.grupo, "jornadas_tep"),
+    sub: str(s.sub, ""),
+    ambito: str(s.ambito, "todos"),
+    q: typeof s.q === "string" ? s.q : "",
+    estado: str(s.estado, "todos"),
+    page: num(s.page, 1),
+    size: num(s.size, 20),
+  };
+}
 
 export const Route = createFileRoute("/_authenticated/red-ips")({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: parseSearch,
   component: RedIpsPage,
 });
+
 
 function useDebounced<T>(value: T, ms = 400): T {
   const [v, setV] = useState(value);
