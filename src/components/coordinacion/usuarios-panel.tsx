@@ -206,7 +206,8 @@ export function UsuariosPanel() {
     }
   };
 
-  const restablecimientoPendiente = estadoAcceso?.estadoPassword === "RESTABLECIMIENTO PENDIENTE";
+  const restablecimientoPendiente = estadoAcceso?.resetInFlight === true;
+  const puede = (a: AllowedAction) => estadoAcceso?.allowedActions?.includes(a) ?? false;
 
   const handleReenviarInvitacion = async () => {
     if (!editForm) return;
@@ -227,18 +228,13 @@ export function UsuariosPanel() {
     try {
       const res = await resetLinkFn({ data: { userId: editForm.userId } });
       if (!res.ok) return toast.error(res.error ?? "No fue posible enviar el enlace.");
-      const now = new Date().toISOString();
-      setEstadoAcceso((prev) =>
-        prev
-          ? { ...prev, estadoPassword: "RESTABLECIMIENTO PENDIENTE", lastResetSentAt: now }
-          : prev,
-      );
       toast.success("Solicitud de restablecimiento registrada. El correo está en proceso de envío.");
       await recargarEstadoAcceso();
     } finally {
       setEnviandoReset(false);
     }
   };
+
 
 
   const cambiarRol = async (userId: string, nuevoRol: Rol) => {
