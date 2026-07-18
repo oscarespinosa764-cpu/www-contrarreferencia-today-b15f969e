@@ -247,15 +247,15 @@ function RedIpsPage() {
 
 
   const countCards = [
-    { label: "IPS activas", value: conteos.ipsActivas, icon: Building2, color: "green" },
-    { label: "IPS inactivas", value: conteos.ipsNoDisp, icon: XCircle, color: "red" },
+    { label: "IPS Activas", value: conteos.ipsActivas, icon: Building2, color: "green" },
+    { label: "IPS Inactivas", value: conteos.ipsNoDisp, icon: XCircle, color: "red" },
     {
-      label: "Especialidades CEDIM activas",
+      label: "Especialidades CEDIM Activas",
       value: conteos.especialidades,
       icon: Stethoscope,
       color: "sky",
     },
-    { label: "Ambulancias activas", value: conteos.ambulancias, icon: Ambulance, color: "violet" },
+    { label: "Ambulancias Activas", value: conteos.ambulancias, icon: Ambulance, color: "violet" },
   ] as const;
 
   const colorMap: Record<string, string> = {
