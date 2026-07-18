@@ -486,6 +486,36 @@ export function SeguimientoDialog({
     },
   });
 
+  // Caso de Referencia Interna: se necesita `tipo_solicitud` para calcular la secuencia.
+  const { data: casoInterna } = useQuery({
+    queryKey: ["ri-caso", casoId],
+    enabled: open && esInterna,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("referencia_interna")
+        .select("tipo_solicitud, tipo_ambulancia, servicio, eapb, archivado")
+        .eq("id", casoId)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  // Catálogo empresas TEP (para el selector de proveedor en el flujo especial).
+  const { data: empresasTepInterna = [] } = useQuery({
+    queryKey: ["cat-empresa-tep-ri"],
+    enabled: open && esInterna,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor")
+        .eq("tipo", "EMPRESA_TEP")
+        .eq("activo", true)
+        .order("valor");
+      return (data ?? []).map((d) => d.valor as string);
+    },
+  });
+
+
   // Catálogo de especialidades (para agregar nuevas en CAMBIO EN ESPECIALIDAD).
   const { data: catEspecialidades = [] } = useQuery({
     queryKey: ["cat-especialidad-seg"],
