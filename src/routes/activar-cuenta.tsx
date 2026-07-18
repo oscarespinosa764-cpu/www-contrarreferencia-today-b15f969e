@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { useServerFn } from "@tanstack/react-start";
-import { Eye, EyeOff, ShieldCheck, Loader2, Check, X } from "lucide-react";
+import { Eye, EyeOff, ShieldCheck, Loader2, Check, X, KeyRound } from "lucide-react";
 import cedimLogo from "@/assets/cedim-logo.png";
 
 export const Route = createFileRoute("/activar-cuenta")({
@@ -26,6 +26,7 @@ export const Route = createFileRoute("/activar-cuenta")({
 });
 
 type Req = { key: string; label: string; ok: boolean };
+type Modo = "invite" | "recovery";
 
 function evaluar(pass: string, email: string | null): Req[] {
   return [
@@ -47,11 +48,24 @@ function evaluar(pass: string, email: string | null): Req[] {
   ];
 }
 
+function detectarModoInicial(): Modo {
+  if (typeof window === "undefined") return "invite";
+  const search = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(
+    window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "",
+  );
+  const tipo = (search.get("type") ?? hash.get("type") ?? "").toLowerCase();
+  if (tipo === "recovery") return "recovery";
+  if (tipo === "invite" || tipo === "signup") return "invite";
+  return "invite";
+}
+
 function ActivarCuentaPage() {
   const navigate = useNavigate();
   const registrar = useServerFn(registrarAuditoria);
   const [email, setEmail] = useState<string | null>(null);
   const [sessionReady, setSessionReady] = useState<boolean | null>(null);
+  const [modo, setModo] = useState<Modo>(() => detectarModoInicial());
   const [pass, setPass] = useState("");
   const [pass2, setPass2] = useState("");
   const [ver, setVer] = useState(false);
@@ -60,29 +74,104 @@ function ActivarCuentaPage() {
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
-      await new Promise((r) => setTimeout(r, 200));
-      const { data } = await supabase.auth.getSession();
+
+    // CRÍTICO: marcar la pestaña como viva ANTES de cualquier lectura de sesión
+    // para evitar que AuthProvider cierre la sesión de recuperación/invitación
+    // recién establecida por el enlace del correo.
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("ref_tab_alive", "1");
+    }
+
+    const finalizar = (session: { user?: { email?: string | null } | null } | null) => {
       if (!mounted) return;
-      if (data.session?.user) {
-        setEmail((data.session.user.email ?? "").toLowerCase() || null);
+      if (session?.user) {
+        setEmail((session.user.email ?? "").toLowerCase() || null);
         setSessionReady(true);
       } else {
         setSessionReady(false);
-        setLinkError("EL ENLACE DE ACTIVACIÓN NO ES VÁLIDO O YA VENCIÓ.");
+        setLinkError(
+          "EL ENLACE NO ES VÁLIDO, YA FUE UTILIZADO O VENCIÓ. SOLICITA UNO NUEVO.",
+        );
+      }
+    };
+
+    // Escuchar el evento de recuperación para diferenciar recovery vs invite.
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setModo("recovery");
+      }
+      if (session?.user && sessionReady !== true) {
+        setEmail((session.user.email ?? "").toLowerCase() || null);
+        setSessionReady(true);
+      }
+    });
+
+    (async () => {
+      try {
+        const url = new URL(window.location.href);
+        const code = url.searchParams.get("code");
+        const tokenHash =
+          url.searchParams.get("token_hash") ?? url.searchParams.get("token");
+        const tipoParam = (url.searchParams.get("type") ?? "").toLowerCase();
+
+        // 1) Flujo PKCE (?code=...). Intercambiar por sesión.
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            console.warn("[activar-cuenta] exchange failed", {
+              stage: "SESSION_EXCHANGE",
+              code: (error as { status?: number }).status,
+              message: error.message,
+            });
+          }
+        } else if (tokenHash && (tipoParam === "recovery" || tipoParam === "invite" || tipoParam === "signup")) {
+          // 2) Flujo token_hash (OTP verify)
+          const { error } = await supabase.auth.verifyOtp({
+            type: tipoParam as "recovery" | "invite" | "signup",
+            token_hash: tokenHash,
+          });
+          if (error) {
+            console.warn("[activar-cuenta] verifyOtp failed", {
+              stage: "SESSION_EXCHANGE",
+              message: error.message,
+            });
+          }
+        }
+
+        // Pequeña espera para permitir a detectSessionInUrl (hash flow) completar.
+        await new Promise((r) => setTimeout(r, 150));
+        const { data } = await supabase.auth.getSession();
+        finalizar(data.session);
+      } catch (e) {
+        console.warn("[activar-cuenta] init error", e);
+        finalizar(null);
       }
     })();
+
     return () => {
       mounted = false;
+      sub.subscription.unsubscribe();
       setPass("");
       setPass2("");
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const reqs = useMemo(() => evaluar(pass, email), [pass, email]);
   const allOk = reqs.every((r) => r.ok) && pass.length > 0;
   const match = pass.length > 0 && pass2.length > 0 && pass === pass2;
-  const puedeActivar = allOk && match && !busy;
+  const puedeSubmit = allOk && match && !busy;
+
+  const esRecovery = modo === "recovery";
+  const titulo = esRecovery ? "Restablecer contraseña" : "Activar cuenta";
+  const descripcion = esRecovery
+    ? "Confirma tu usuario y establece una nueva contraseña para recuperar el acceso a tu cuenta."
+    : "Confirma tu usuario y establece una contraseña para activar tu cuenta.";
+  const botonLabel = esRecovery ? "Actualizar contraseña" : "Activar cuenta";
+  const botonBusy = esRecovery ? "Actualizando contraseña…" : "Activando cuenta…";
+  const toastExito = esRecovery
+    ? "Contraseña actualizada correctamente. Ya puedes ingresar con tu nueva contraseña."
+    : "Cuenta activada. Ya puedes iniciar sesión.";
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -90,15 +179,40 @@ function ActivarCuentaPage() {
     if (!match) return toast.error("LAS CONTRASEÑAS NO COINCIDEN.");
     setBusy(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password: pass });
-      if (error) {
-        toast.error("NO FUE POSIBLE ACTUALIZAR LA CONTRASEÑA.");
+      // Reconfirmar sesión antes de updateUser para no ejecutar sin sesión válida.
+      const { data: cur } = await supabase.auth.getSession();
+      if (!cur.session?.user) {
+        toast.error("NO SE PUDO VALIDAR LA SESIÓN DEL ENLACE. SOLICITA UNO NUEVO.");
+        setSessionReady(false);
+        setLinkError("EL ENLACE YA FUE UTILIZADO O VENCIÓ. SOLICITA UNO NUEVO.");
         return;
       }
+
+      const { error } = await supabase.auth.updateUser({ password: pass });
+      if (error) {
+        const msg = (error.message || "").toLowerCase();
+        console.warn("[activar-cuenta] updateUser failed", {
+          stage: "PASSWORD_UPDATE_FAILED",
+          message: error.message,
+        });
+        if (msg.includes("session")) {
+          toast.error("NO SE PUDO VALIDAR LA SESIÓN DEL ENLACE. SOLICITA UNO NUEVO.");
+        } else if (msg.includes("expired") || msg.includes("invalid")) {
+          toast.error("EL ENLACE DE RESTABLECIMIENTO VENCIÓ O NO ES VÁLIDO.");
+        } else if (msg.includes("same") || msg.includes("password")) {
+          toast.error("LA NUEVA CONTRASEÑA NO CUMPLE LA POLÍTICA O ES IGUAL A LA ANTERIOR.");
+        } else {
+          toast.error(
+            "NO FUE POSIBLE ACTUALIZAR LA CONTRASEÑA EN ESTE MOMENTO. INTÉNTALO NUEVAMENTE O SOLICITA UN NUEVO ENLACE.",
+          );
+        }
+        return;
+      }
+
       try {
         await registrar({
           data: {
-            accion: "USER_ACCOUNT_ACTIVATED",
+            accion: esRecovery ? "USER_PASSWORD_RESET_COMPLETED" : "USER_ACCOUNT_ACTIVATED",
             modulo: "usuarios",
             tabla: "auth.users",
             resultado: "exito",
@@ -107,9 +221,10 @@ function ActivarCuentaPage() {
       } catch {
         /* auditoría best-effort */
       }
+
       setPass("");
       setPass2("");
-      toast.success("Cuenta activada. Ya puedes iniciar sesión.");
+      toast.success(toastExito);
       await supabase.auth.signOut();
       navigate({ to: "/login" });
     } finally {
@@ -124,10 +239,8 @@ function ActivarCuentaPage() {
       <div className="w-full max-w-md rounded-2xl border border-border bg-card shadow-lg p-6 space-y-4">
         <div className="flex flex-col items-center gap-2">
           <img src={cedimLogo} alt="CEDIM IPS" className="h-14" />
-          <h1 className="text-lg font-bold text-foreground uppercase tracking-wide">Activar cuenta</h1>
-          <p className="text-sm text-muted-foreground text-center">
-            Confirma tu usuario y establece una contraseña para activar tu cuenta.
-          </p>
+          <h1 className="text-lg font-bold text-foreground uppercase tracking-wide">{titulo}</h1>
+          <p className="text-sm text-muted-foreground text-center">{descripcion}</p>
         </div>
 
         {sessionReady === null && (
@@ -137,13 +250,12 @@ function ActivarCuentaPage() {
         )}
 
         {sessionReady === false && (
-          <div className="rounded-md border border-status-red/40 bg-status-red/10 p-3 text-sm text-status-red">
-            {linkError}
-            <div className="mt-3">
-              <Button variant="outline" onClick={() => navigate({ to: "/login" })}>
-                Ir al inicio de sesión
-              </Button>
-            </div>
+          <div className="rounded-md border border-status-red/40 bg-status-red/10 p-3 text-sm text-status-red space-y-3">
+            <p className="font-semibold uppercase">Enlace no disponible</p>
+            <p>{linkError}</p>
+            <Button variant="outline" onClick={() => navigate({ to: "/login" })}>
+              Volver al inicio de sesión
+            </Button>
           </div>
         )}
 
@@ -160,7 +272,7 @@ function ActivarCuentaPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="p1">Nueva contraseña</Label>
+              <Label htmlFor="p1">{esRecovery ? "Nueva contraseña" : "Nueva contraseña"}</Label>
               <div className="relative">
                 <Input
                   id="p1"
@@ -231,14 +343,18 @@ function ActivarCuentaPage() {
                 </p>
               )}
             </div>
-            <Button type="submit" disabled={!puedeActivar} className="w-full">
+            <Button type="submit" disabled={!puedeSubmit} className="w-full">
               {busy ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Activando cuenta…
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {botonBusy}
+                </>
+              ) : esRecovery ? (
+                <>
+                  <KeyRound className="mr-2 h-4 w-4" /> {botonLabel}
                 </>
               ) : (
                 <>
-                  <ShieldCheck className="mr-2 h-4 w-4" /> Activar cuenta
+                  <ShieldCheck className="mr-2 h-4 w-4" /> {botonLabel}
                 </>
               )}
             </Button>
