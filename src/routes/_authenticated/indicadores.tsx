@@ -807,11 +807,11 @@ function DonutCumplimiento({
               </Pie>
             </PieChart>
           </ResponsiveContainer>
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-2xl font-extrabold text-foreground">
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-2 text-center leading-tight">
+            <span className="text-lg font-extrabold text-foreground">
               {resumen.cumplimientoGeneral}%
             </span>
-            <span className="text-[9px] uppercase text-muted-foreground">Cumplimiento general</span>
+            <span className="text-[8px] uppercase text-muted-foreground">Cumplimiento</span>
           </div>
         </div>
         <ul className="space-y-1.5 text-xs">
