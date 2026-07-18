@@ -41,6 +41,7 @@ type NavItem = {
   label: string;
   icon: typeof LayoutDashboard;
   badge?: "seguimientos";
+  adminOnly?: boolean;
 };
 
 type NavGroup = { label: string; abbr: string; adminOnly?: boolean; items: NavItem[] };
@@ -50,7 +51,7 @@ const groups: NavGroup[] = [
     label: "Principal",
     abbr: "INI",
     items: [
-      { to: "/dashboard", label: "Dashboard General", icon: LayoutDashboard },
+      { to: "/dashboard", label: "Dashboard General", icon: LayoutDashboard, adminOnly: true },
       { to: "/historial", label: "Historial de Casos E & S", icon: Search },
       { to: "/red-ips", label: "RED/DISPONIBILIDAD", icon: Network },
       { to: "/cuadro-turno", label: "Cuadro de Turno", icon: CalendarDays },
