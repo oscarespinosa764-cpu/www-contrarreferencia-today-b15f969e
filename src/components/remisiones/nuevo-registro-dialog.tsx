@@ -1054,7 +1054,15 @@ export function NuevoRegistroDialog({
                 <SelectField
                   name="servicio"
                   label="Servicio"
-                  options={["URGENCIAS", "HOSPITALIZACION", "UCI ADULTOS", "QUIROFANO"]}
+                  options={[
+                    "URGENCIAS",
+                    "HOSPITALIZACION",
+                    "UCI ADULTOS",
+                    "QUIROFANO",
+                    "SEDE AMBULATORIA PRINCIPAL",
+                    "SEDE AMBULATORIA CONSULTAS ESPECIALIZADAS",
+                    "SEDE AMBULATORIA SALAZAR",
+                  ]}
                   required
                 />
                 <PatientBlock key={`ri-pac-${resetKey}`} />
@@ -1069,6 +1077,7 @@ export function NuevoRegistroDialog({
                     "RX",
                     "URGENCIAS VITALES",
                     "REMISIONES ESPECIALES",
+                    "EVACUACION DE SEDES AMBULATORIAS",
                   ]}
                   required
                 />
