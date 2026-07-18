@@ -122,12 +122,12 @@ function RedIpsPage() {
   const qDebounced = useDebounced(qInput, 400);
   useEffect(() => {
     if (qDebounced !== search.q) {
-      navigate({ search: (p) => ({ ...p, q: qDebounced, page: 1 }), replace: true });
+      navigate({ search: (p: RedSearch) => ({ ...p, q: qDebounced, page: 1 }), replace: true });
     }
   }, [qDebounced]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const setSearch = (patch: Partial<z.infer<typeof searchSchema>>) => {
-    navigate({ search: (p) => ({ ...p, ...patch }), replace: true });
+  const setSearch = (patch: Partial<RedSearch>) => {
+    navigate({ search: (p: RedSearch) => ({ ...p, ...patch }), replace: true });
   };
 
   const [detalle, setDetalle] = useState<RedRegistro | null>(null);
