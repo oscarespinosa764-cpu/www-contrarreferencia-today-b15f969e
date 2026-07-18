@@ -282,6 +282,9 @@ export type Database = {
         Row: {
           activo: boolean
           created_at: string
+          eapb_correo_radicacion: string | null
+          eapb_requisitos_radicacion: string | null
+          eapb_sla_horas: number | null
           extra1: string | null
           extra2: string | null
           extra3: string | null
@@ -298,6 +301,9 @@ export type Database = {
         Insert: {
           activo?: boolean
           created_at?: string
+          eapb_correo_radicacion?: string | null
+          eapb_requisitos_radicacion?: string | null
+          eapb_sla_horas?: number | null
           extra1?: string | null
           extra2?: string | null
           extra3?: string | null
@@ -314,6 +320,9 @@ export type Database = {
         Update: {
           activo?: boolean
           created_at?: string
+          eapb_correo_radicacion?: string | null
+          eapb_requisitos_radicacion?: string | null
+          eapb_sla_horas?: number | null
           extra1?: string | null
           extra2?: string | null
           extra3?: string | null
@@ -448,6 +457,7 @@ export type Database = {
       }
       domiciliarios: {
         Row: {
+          ambulancia_obligatoria: boolean | null
           archivado: boolean
           cama: string | null
           cie10: string | null
@@ -463,22 +473,34 @@ export type Database = {
           eapb_genera_codigo: boolean | null
           eapb_tiene_plataforma: boolean | null
           edad: string | null
+          egreso_mismo_dia: boolean | null
           especialidades_tratantes: string | null
           estado: string | null
+          estado_ciclo: string | null
           evolucion: string | null
           evolucion_actualizada_at: string | null
           evolucion_detalle: string | null
           evolucion_motivo: string | null
           fecha: string | null
+          fecha_aceptacion: string | null
+          fecha_cierre: string | null
+          fecha_coordinacion_ambulancia: string | null
+          fecha_egreso: string | null
           fecha_inicio: string | null
+          fecha_prevista_egreso: string | null
           fecha_radicado: string | null
+          fecha_ultima_evolucion: string | null
           id: string
           ips: string | null
           ips_receptora: string | null
+          motivo_cierre: string | null
           observaciones: string | null
           paciente: string | null
           plataforma_funcionando: boolean | null
           prioridad: string | null
+          proveedor: string | null
+          proveedor_ambulancia: string | null
+          radicacion_estado: string | null
           regimen: string | null
           requiere_ambulancia: string | null
           servicio: string | null
@@ -492,6 +514,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ambulancia_obligatoria?: boolean | null
           archivado?: boolean
           cama?: string | null
           cie10?: string | null
@@ -507,22 +530,34 @@ export type Database = {
           eapb_genera_codigo?: boolean | null
           eapb_tiene_plataforma?: boolean | null
           edad?: string | null
+          egreso_mismo_dia?: boolean | null
           especialidades_tratantes?: string | null
           estado?: string | null
+          estado_ciclo?: string | null
           evolucion?: string | null
           evolucion_actualizada_at?: string | null
           evolucion_detalle?: string | null
           evolucion_motivo?: string | null
           fecha?: string | null
+          fecha_aceptacion?: string | null
+          fecha_cierre?: string | null
+          fecha_coordinacion_ambulancia?: string | null
+          fecha_egreso?: string | null
           fecha_inicio?: string | null
+          fecha_prevista_egreso?: string | null
           fecha_radicado?: string | null
+          fecha_ultima_evolucion?: string | null
           id?: string
           ips?: string | null
           ips_receptora?: string | null
+          motivo_cierre?: string | null
           observaciones?: string | null
           paciente?: string | null
           plataforma_funcionando?: boolean | null
           prioridad?: string | null
+          proveedor?: string | null
+          proveedor_ambulancia?: string | null
+          radicacion_estado?: string | null
           regimen?: string | null
           requiere_ambulancia?: string | null
           servicio?: string | null
@@ -536,6 +571,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ambulancia_obligatoria?: boolean | null
           archivado?: boolean
           cama?: string | null
           cie10?: string | null
@@ -551,22 +587,34 @@ export type Database = {
           eapb_genera_codigo?: boolean | null
           eapb_tiene_plataforma?: boolean | null
           edad?: string | null
+          egreso_mismo_dia?: boolean | null
           especialidades_tratantes?: string | null
           estado?: string | null
+          estado_ciclo?: string | null
           evolucion?: string | null
           evolucion_actualizada_at?: string | null
           evolucion_detalle?: string | null
           evolucion_motivo?: string | null
           fecha?: string | null
+          fecha_aceptacion?: string | null
+          fecha_cierre?: string | null
+          fecha_coordinacion_ambulancia?: string | null
+          fecha_egreso?: string | null
           fecha_inicio?: string | null
+          fecha_prevista_egreso?: string | null
           fecha_radicado?: string | null
+          fecha_ultima_evolucion?: string | null
           id?: string
           ips?: string | null
           ips_receptora?: string | null
+          motivo_cierre?: string | null
           observaciones?: string | null
           paciente?: string | null
           plataforma_funcionando?: boolean | null
           prioridad?: string | null
+          proveedor?: string | null
+          proveedor_ambulancia?: string | null
+          radicacion_estado?: string | null
           regimen?: string | null
           requiere_ambulancia?: string | null
           servicio?: string | null
@@ -1236,6 +1284,56 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      phd_pad_o2_radicaciones: {
+        Row: {
+          canal: string
+          created_at: string
+          created_by: string | null
+          domiciliario_id: string
+          eapb: string
+          fecha_radicacion: string
+          id: string
+          numero_radicado: string | null
+          observaciones: string | null
+          soporte_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          canal: string
+          created_at?: string
+          created_by?: string | null
+          domiciliario_id: string
+          eapb: string
+          fecha_radicacion?: string
+          id?: string
+          numero_radicado?: string | null
+          observaciones?: string | null
+          soporte_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          canal?: string
+          created_at?: string
+          created_by?: string | null
+          domiciliario_id?: string
+          eapb?: string
+          fecha_radicacion?: string
+          id?: string
+          numero_radicado?: string | null
+          observaciones?: string | null
+          soporte_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phd_pad_o2_radicaciones_domiciliario_id_fkey"
+            columns: ["domiciliario_id"]
+            isOneToOne: false
+            referencedRelation: "domiciliarios"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       plantillas: {
         Row: {
