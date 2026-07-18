@@ -138,9 +138,46 @@ const TIPOS_PHD_BASE = [T.EVOLUCION, T.CORREO, T.PLATAFORMA, T.FISICO, T.OTRO] a
 const TI = {
   PENDIENTE: "PENDIENTE COORDINACIÓN FECHA Y HORA EXAMEN",
   COORDINADO: "EXAMEN COORDINADO",
+  PROG_AMB: "CONFIRMACIÓN DE PROGRAMACIÓN DE AMBULANCIA",
+  LLEGADA_AMB: "CONFIRMACIÓN DE LLEGADA DE AMBULANCIA",
+  TEP_ACTIVACION: "ACTIVACIÓN DE PROVEEDOR CONTRATADO DE TEP",
+  AMB_COORDINADA_ESP: "AMBULANCIA COORDINADA",
   CULMINACION: "CULMINACIÓN DE SOLICITUD",
 } as const;
-const TIPOS_INTERNA = [TI.PENDIENTE, TI.COORDINADO, TI.CULMINACION];
+
+const RI_ESPECIALES = new Set([
+  "URGENCIAS VITALES",
+  "URGENCIAS_VITALES",
+  "REMISIONES ESPECIALES",
+  "REMISIONES_ESPECIALES",
+  "EVACUACIÓN DE SEDES AMBULATORIAS",
+  "EVACUACION DE SEDES AMBULATORIAS",
+  "EVACUACION_SEDES_AMBULATORIAS",
+]);
+
+/** Determina el próximo paso permitido para un caso de Referencia Interna. */
+function siguientePasoRI(
+  historial: { tipo_seguimiento: string }[] | undefined,
+  tipoSolicitud: string | null | undefined,
+): string | null {
+  const especial = RI_ESPECIALES.has((tipoSolicitud ?? "").toUpperCase().trim());
+  const ultimo = (historial ?? [])
+    .map((h) => (h.tipo_seguimiento || "").toUpperCase())
+    .find((t) => t && t !== "CAMBIO DE UNIDAD");
+  if (especial) {
+    if (!ultimo) return TI.TEP_ACTIVACION;
+    if (ultimo === TI.TEP_ACTIVACION.toUpperCase()) return TI.AMB_COORDINADA_ESP;
+    if (ultimo === TI.AMB_COORDINADA_ESP.toUpperCase()) return TI.CULMINACION;
+    return null;
+  }
+  if (!ultimo) return TI.PENDIENTE;
+  if (ultimo.startsWith("PENDIENTE COORDINAC")) return TI.COORDINADO;
+  if (ultimo === TI.COORDINADO.toUpperCase()) return TI.PROG_AMB;
+  if (ultimo === TI.PROG_AMB.toUpperCase()) return TI.LLEGADA_AMB;
+  if (ultimo === TI.LLEGADA_AMB.toUpperCase()) return TI.CULMINACION;
+  return null;
+}
+
 
 // --- Pendientes ---
 const TP = {
