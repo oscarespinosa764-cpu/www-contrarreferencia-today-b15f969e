@@ -196,6 +196,8 @@ export function UsuariosPanel() {
     }
   };
 
+  const restablecimientoPendiente = estadoAcceso?.estadoPassword === "RESTABLECIMIENTO PENDIENTE";
+
   const handleReenviarInvitacion = async () => {
     if (!editForm) return;
     setReenviando(true);
@@ -215,8 +217,14 @@ export function UsuariosPanel() {
     try {
       const res = await resetLinkFn({ data: { userId: editForm.userId } });
       if (!res.ok) return toast.error(res.error ?? "No fue posible enviar el enlace.");
-      toast.success("Enlace de restablecimiento enviado al correo del usuario.");
-      recargarEstadoAcceso();
+      const now = new Date().toISOString();
+      setEstadoAcceso((prev) =>
+        prev
+          ? { ...prev, estadoPassword: "RESTABLECIMIENTO PENDIENTE", lastResetSentAt: now }
+          : prev,
+      );
+      toast.success("Solicitud de restablecimiento registrada. El correo está en proceso de envío.");
+      await recargarEstadoAcceso();
     } finally {
       setEnviandoReset(false);
     }
@@ -1003,10 +1011,10 @@ export function UsuariosPanel() {
                     variant="outline"
                     className="w-full justify-start rounded-md"
                     onClick={handleEnviarResetLink}
-                    disabled={enviandoReset}
+                    disabled={enviandoReset || restablecimientoPendiente}
                   >
                     {enviandoReset ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
-                    Enviar enlace de restablecimiento
+                    {restablecimientoPendiente ? "Restablecimiento en proceso" : "Enviar enlace de restablecimiento"}
                   </Button>
 
                   <Button
