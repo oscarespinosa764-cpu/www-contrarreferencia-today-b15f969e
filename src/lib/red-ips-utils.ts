@@ -134,7 +134,7 @@ export interface GrupoConfig {
 export const RED_GRUPOS: GrupoConfig[] = [
   {
     key: "jornadas_tep",
-    label: "JORNADAS / CÓDIGOS TEP",
+    label: "JORNADAS DE SALUD",
     icon: CalendarClock,
     tipos: ["jornada_especialidad", "codigo_tep"],
     tieneAmbito: false,
