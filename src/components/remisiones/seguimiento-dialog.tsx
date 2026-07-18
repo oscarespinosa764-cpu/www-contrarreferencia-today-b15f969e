@@ -2046,11 +2046,16 @@ export function SeguimientoDialog({
       if (esInterna) {
         if (tipoSeg === TI.PENDIENTE) update.estado = "PENDIENTE COORDINACION";
         else if (tipoSeg === TI.COORDINADO) update.estado = "EXAMEN COORDINADO";
+        else if (tipoSeg === TI.PROG_AMB) update.estado = "AMBULANCIA PROGRAMADA";
+        else if (tipoSeg === TI.LLEGADA_AMB) update.estado = "AMBULANCIA EN SITIO";
+        else if (tipoSeg === TI.TEP_ACTIVACION) update.estado = "TEP ACTIVADO";
+        else if (tipoSeg === TI.AMB_COORDINADA_ESP) update.estado = "AMBULANCIA COORDINADA";
         else if (tipoSeg === TI.CULMINACION) {
           update.estado = "CULMINADO";
           update.archivado = true;
         }
       }
+
       // Pendientes: cumplimiento completo cierra y archiva el caso.
       if (esPendiente) {
         if (tipoSeg === TP.COMPLETO) {
