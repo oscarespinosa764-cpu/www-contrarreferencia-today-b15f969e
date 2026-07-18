@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.domi_estado_gating() FROM PUBLIC, anon, authenticated;
