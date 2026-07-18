@@ -278,9 +278,9 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {members.length === 0 ? (
+                    {membersFiltrados.length === 0 ? (
                       <tr><td colSpan={ndias + 7} className="py-6 text-center text-muted-foreground">Sin colaboradores en el cuadro.</td></tr>
-                    ) : members.map((m) => {
+                    ) : membersFiltrados.map((m) => {
                       const mdays = days.filter((d) => d.member_id === m.id);
                       const total = totalHorasMiembro(mdays);
                       const base = m.base_hours ?? schedule.base_hours;
