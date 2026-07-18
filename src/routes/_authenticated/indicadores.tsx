@@ -425,7 +425,7 @@ function IndicadoresPage() {
 
   return (
     <div>
-      <AppHeader title="Indicadores" subtitle="Panel ejecutivo · KPIs, tendencias y cumplimiento." />
+      <AppHeader title="Indicadores" subtitle="Panel ejecutivo · KPIs, Tendencias y Cumplimiento." />
 
       {/* Aviso discreto */}
       <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -653,11 +653,11 @@ function IndicadoresPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Numerador / valor acumulado</Label>
+                <Label>Numerador / Valor Acumulado</Label>
                 <Input name="numerador" type="number" step="any" placeholder="0" />
               </div>
               <div className="space-y-1.5">
-                <Label>Denominador / casos</Label>
+                <Label>Denominador / Casos</Label>
                 <Input name="denominador" type="number" step="any" placeholder="0" />
               </div>
               <div className="space-y-1.5">
