@@ -35,7 +35,15 @@ export const avanzarEstadoCiclo = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => avanzarSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    const patch: Record<string, unknown> = { estado_ciclo: data.nuevoEstado };
+    const patch: {
+      estado_ciclo: PhdEstadoCiclo;
+      fecha_aceptacion?: string;
+      fecha_coordinacion_ambulancia?: string;
+      fecha_cierre?: string;
+      fecha_egreso?: string;
+      motivo_cierre?: string;
+      observaciones?: string;
+    } = { estado_ciclo: data.nuevoEstado };
     const now = data.fechaEvento ?? new Date().toISOString();
 
     if (data.nuevoEstado.startsWith("ACEPTADO")) {
