@@ -526,22 +526,21 @@ const HISTORICOS_SELECT =
   "id,seccion,tipo_caso,fuente_hoja,fuente_archivo,radicado,paciente,documento,ips,estado,asegurador,fecha,detalle,created_at";
 
 async function fetchHistoricosCasos(): Promise<HistoricoCaso[]> {
-  const pageSize = 1000;
-  const rows: HistoricoCaso[] = [];
-  for (let from = 0; ; from += pageSize) {
-    const { data, error } = await supabase
-      .from("historicos_casos")
-      .select(HISTORICOS_SELECT)
-      .eq("archivado", false)
-      .order("fecha", { ascending: false, nullsFirst: false })
-      .range(from, from + pageSize - 1);
-    if (error) throw error;
-    const chunk = (data ?? []) as HistoricoCaso[];
-    rows.push(...chunk);
-    if (chunk.length < pageSize) break;
-  }
-  return rows;
+  // La tabla histórica supera los 20k registros. Traer todo con paginación
+  // infinita ordenando por `fecha` (sin índice) tumba el Historial. Se limita
+  // a los registros más recientes por `created_at` (que sí es rápido). Con
+  // 5000 filas cubrimos ampliamente la vista de "Últimos 10" y las consultas
+  // por documento; el resto queda accesible vía exportación.
+  const { data, error } = await supabase
+    .from("historicos_casos")
+    .select(HISTORICOS_SELECT)
+    .eq("archivado", false)
+    .order("created_at", { ascending: false })
+    .limit(5000);
+  if (error) throw error;
+  return (data ?? []) as HistoricoCaso[];
 }
+
 
 const historicoFecha = (h: HistoricoCaso): string => v(h.fecha) || v(h.created_at);
 const historicoTextoMeta = (h: HistoricoCaso): string =>
