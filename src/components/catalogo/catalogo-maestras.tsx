@@ -31,6 +31,9 @@ type CatRow = {
   radica_oxigeno?: boolean | null;
   radica_unidad_especial?: boolean | null;
   seguimientos_en_plataforma?: boolean | null;
+  eapb_correo_radicacion?: string | null;
+  eapb_sla_horas?: number | null;
+  eapb_requisitos_radicacion?: string | null;
 };
 
 // Etiqueta legible + dónde se usa + módulo agrupador
@@ -208,7 +211,7 @@ export function CatalogoMaestras() {
       const { data, error } = await supabase
         .from("catalogos")
         .select(
-          "id, tipo, valor, extra1, extra2, extra3, activo, radica_phd, radica_pad, radica_oxigeno, radica_unidad_especial, seguimientos_en_plataforma",
+          "id, tipo, valor, extra1, extra2, extra3, activo, radica_phd, radica_pad, radica_oxigeno, radica_unidad_especial, seguimientos_en_plataforma, eapb_correo_radicacion, eapb_sla_horas, eapb_requisitos_radicacion",
         )
         .neq("tipo", "plantilla")
         .order("tipo")
@@ -290,6 +293,8 @@ export function CatalogoMaestras() {
     const nuevoSegPlataforma = isEAPB
       ? String(f.get("seguimientos_en_plataforma")) === "SI"
       : undefined;
+    const slaRaw = isEAPB ? String(f.get("eapb_sla_horas") ?? "").trim() : "";
+    const slaNum = slaRaw ? Number(slaRaw) : NaN;
     const radicaPatch = isEAPB
       ? {
           radica_phd: radicaFlags.radica_phd,
@@ -297,6 +302,11 @@ export function CatalogoMaestras() {
           radica_oxigeno: radicaFlags.radica_oxigeno,
           radica_unidad_especial: radicaFlags.radica_unidad_especial,
           seguimientos_en_plataforma: nuevoSegPlataforma,
+          eapb_correo_radicacion:
+            (String(f.get("eapb_correo_radicacion") ?? "").trim() || null) as string | null,
+          eapb_sla_horas: Number.isFinite(slaNum) && slaNum > 0 ? slaNum : null,
+          eapb_requisitos_radicacion:
+            (String(f.get("eapb_requisitos_radicacion") ?? "").trim() || null) as string | null,
         }
       : {};
     const { error } = await supabase
@@ -679,6 +689,53 @@ export function CatalogoMaestras() {
                         />
                       </label>
                     ))}
+                  </div>
+                  <div className="space-y-3 rounded-lg border border-border/60 bg-muted/30 p-3">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Configuración de radicación PHD/PAD/O2/Especiales
+                    </Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="eapb_correo_radicacion" className="text-xs">
+                        Correo(s) de radicación
+                      </Label>
+                      <Input
+                        id="eapb_correo_radicacion"
+                        name="eapb_correo_radicacion"
+                        type="text"
+                        placeholder="correo1@eapb.com; correo2@eapb.com"
+                        defaultValue={editing.eapb_correo_radicacion ?? ""}
+                      />
+                      <p className="text-[10px] text-muted-foreground">
+                        Separar múltiples correos con punto y coma (;).
+                      </p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="eapb_sla_horas" className="text-xs">
+                        SLA de respuesta (horas)
+                      </Label>
+                      <Input
+                        id="eapb_sla_horas"
+                        name="eapb_sla_horas"
+                        type="number"
+                        min={1}
+                        step={1}
+                        placeholder="Ej. 24"
+                        defaultValue={editing.eapb_sla_horas ?? ""}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="eapb_requisitos_radicacion" className="text-xs">
+                        Requisitos de radicación
+                      </Label>
+                      <textarea
+                        id="eapb_requisitos_radicacion"
+                        name="eapb_requisitos_radicacion"
+                        rows={3}
+                        defaultValue={editing.eapb_requisitos_radicacion ?? ""}
+                        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        placeholder="Documentos, formatos u observaciones requeridas por la EAPB."
+                      />
+                    </div>
                   </div>
                 </>
               ) : editing.tipo === "DOC_ENTREGA" ? (
