@@ -73,14 +73,24 @@ const fmtFecha = (iso: string | null | undefined) => {
   }
 };
 
+type AllowedAction =
+  | "COPY_USER" | "RESEND_INVITATION" | "SEND_RESET"
+  | "CHANGE_PASSWORD_MANUAL" | "GENERATE_TEMP_PASSWORD"
+  | "ACTIVATE_ACCOUNT" | "REVIEW_BLOCK";
+
 type EstadoAcceso = {
   email: string | null;
+  normalizedStatus: "ACTIVE" | "INVITATION_PENDING" | "INACTIVE" | "BLOCKED" | "PROFILE_WITHOUT_AUTH" | "AUTH_ERROR";
   estadoCuenta: string;
   estadoPassword: string;
   activationAt: string | null;
   lastAdminChangeAt: string | null;
   lastResetSentAt: string | null;
+  lastResetStatus: string | null;
+  resetInFlight: boolean;
+  allowedActions: AllowedAction[];
 };
+
 
 
 type EditForm = {
@@ -196,7 +206,8 @@ export function UsuariosPanel() {
     }
   };
 
-  const restablecimientoPendiente = estadoAcceso?.estadoPassword === "RESTABLECIMIENTO PENDIENTE";
+  const restablecimientoPendiente = estadoAcceso?.resetInFlight === true;
+  const puede = (a: AllowedAction) => estadoAcceso?.allowedActions?.includes(a) ?? false;
 
   const handleReenviarInvitacion = async () => {
     if (!editForm) return;
@@ -217,18 +228,13 @@ export function UsuariosPanel() {
     try {
       const res = await resetLinkFn({ data: { userId: editForm.userId } });
       if (!res.ok) return toast.error(res.error ?? "No fue posible enviar el enlace.");
-      const now = new Date().toISOString();
-      setEstadoAcceso((prev) =>
-        prev
-          ? { ...prev, estadoPassword: "RESTABLECIMIENTO PENDIENTE", lastResetSentAt: now }
-          : prev,
-      );
       toast.success("Solicitud de restablecimiento registrada. El correo está en proceso de envío.");
       await recargarEstadoAcceso();
     } finally {
       setEnviandoReset(false);
     }
   };
+
 
 
   const cambiarRol = async (userId: string, nuevoRol: Rol) => {
@@ -993,7 +999,7 @@ export function UsuariosPanel() {
                 <div className="rounded-lg border border-border/60 bg-muted/20 p-3 space-y-2">
                   <div className="text-xs font-semibold uppercase text-muted-foreground">Acciones administrativas</div>
 
-                  {estadoAcceso?.estadoCuenta === "INVITACIÓN PENDIENTE" && (
+                  {puede("RESEND_INVITATION") && (
                     <Button
                       type="button"
                       variant="outline"
@@ -1006,28 +1012,53 @@ export function UsuariosPanel() {
                     </Button>
                   )}
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full justify-start rounded-md"
-                    onClick={handleEnviarResetLink}
-                    disabled={enviandoReset || restablecimientoPendiente}
-                  >
-                    {enviandoReset ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
-                    {restablecimientoPendiente ? "Restablecimiento en proceso" : "Enviar enlace de restablecimiento"}
-                  </Button>
+                  {puede("SEND_RESET") && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-start rounded-md"
+                      onClick={handleEnviarResetLink}
+                      disabled={enviandoReset || restablecimientoPendiente}
+                    >
+                      {enviandoReset ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
+                      {restablecimientoPendiente ? "Restablecimiento en proceso" : "Enviar enlace de restablecimiento"}
+                    </Button>
+                  )}
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full justify-start rounded-md"
-                    onClick={() => setMostrarCambioManual((v) => !v)}
-                  >
-                    <KeyRound className="mr-2 h-4 w-4" />
-                    Cambiar contraseña manualmente
-                  </Button>
+                  {estadoAcceso?.normalizedStatus === "INACTIVE" && (
+                    <div className="rounded-md border border-status-amber/40 bg-status-amber/10 p-2 text-xs">
+                      La cuenta está inactiva. Actívala desde la tabla de usuarios antes de gestionar credenciales.
+                    </div>
+                  )}
+                  {estadoAcceso?.normalizedStatus === "BLOCKED" && (
+                    <div className="rounded-md border border-status-red/40 bg-status-red/10 p-2 text-xs">
+                      La cuenta está bloqueada. Revisa su estado en Auth antes de enviar enlaces.
+                    </div>
+                  )}
+                  {estadoAcceso?.normalizedStatus === "PROFILE_WITHOUT_AUTH" && (
+                    <div className="rounded-md border border-status-red/40 bg-status-red/10 p-2 text-xs">
+                      Este perfil no tiene una cuenta de acceso vinculada.
+                    </div>
+                  )}
+                  {estadoAcceso?.lastResetStatus && ["failed", "dlq", "bounced"].includes(estadoAcceso.lastResetStatus) && puede("SEND_RESET") && (
+                    <div className="rounded-md border border-status-red/40 bg-status-red/10 p-2 text-[11px]">
+                      El último intento de restablecimiento no pudo enviarse ({estadoAcceso.lastResetStatus}). Puedes reintentar.
+                    </div>
+                  )}
 
-                  {mostrarCambioManual && (
+                  {puede("CHANGE_PASSWORD_MANUAL") && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-start rounded-md"
+                      onClick={() => setMostrarCambioManual((v) => !v)}
+                    >
+                      <KeyRound className="mr-2 h-4 w-4" />
+                      Cambiar contraseña manualmente
+                    </Button>
+                  )}
+
+                  {mostrarCambioManual && puede("CHANGE_PASSWORD_MANUAL") && (
                     <div className="rounded-md border border-border/60 bg-background p-3 space-y-2">
                       <div className="space-y-1.5">
                         <Label htmlFor="cm-pass">Nueva contraseña</Label>
@@ -1074,7 +1105,7 @@ export function UsuariosPanel() {
                     </div>
                   )}
 
-                  {confirmGenerar ? (
+                  {puede("GENERATE_TEMP_PASSWORD") && (confirmGenerar ? (
                     <div className="rounded-lg border border-status-amber/40 bg-status-amber/10 p-3 space-y-2">
                       <p className="text-sm">
                         Se reemplazará la contraseña actual. La contraseña anterior deja de funcionar inmediatamente. Esta acción queda auditada.
@@ -1105,8 +1136,9 @@ export function UsuariosPanel() {
                     >
                       <ShieldAlert className="mr-2 h-4 w-4" /> Generar contraseña temporal
                     </Button>
-                  )}
+                  ))}
                 </div>
+
               </>
             )}
           </div>
