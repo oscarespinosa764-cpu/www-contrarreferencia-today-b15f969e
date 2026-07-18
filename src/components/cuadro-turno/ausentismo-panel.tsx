@@ -88,7 +88,7 @@ export function AusentismoPanel() {
     <div className="space-y-4">
       <div>
         <h2 className="text-base font-bold uppercase">Control y seguimiento ausentismos laborales</h2>
-        <p className="text-xs text-muted-foreground">Registro administrativo de permisos, ausencias, incapacidades y novedades laborales aprobadas. (TH-FR-48 · solo administración)</p>
+        <p className="text-xs text-muted-foreground">Registro administrativo de permisos, ausencias, incapacidades y novedades laborales aprobadas. (TH-FR-48)</p>
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
@@ -108,15 +108,15 @@ export function AusentismoPanel() {
             </SelectContent>
           </Select></div>
         <div className="ml-auto flex gap-2">
-          <Button size="sm" variant="outline" onClick={exportar}><FileDown className="mr-1.5 h-4 w-4" /> Exportar TH-FR-48</Button>
+          <Button size="sm" variant="outline" onClick={exportar}><FileDown className="mr-1.5 h-4 w-4" /> Exportar&nbsp;</Button>
           <Button size="sm" onClick={() => setNuevo(true)}><Plus className="mr-1.5 h-4 w-4" /> Nuevo registro</Button>
         </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <Card className="p-4"><p className="text-xs text-muted-foreground">Total eventos</p><p className="text-2xl font-bold">{filtrados.length}</p></Card>
-        <Card className="p-4"><p className="text-xs text-muted-foreground">Total días</p><p className="text-2xl font-bold">{totalDias}</p></Card>
-        <Card className="p-4"><p className="text-xs text-muted-foreground">Total minutos</p><p className="text-2xl font-bold">{totalMin}</p></Card>
+        <Card className="p-4"><p className="text-xs text-muted-foreground">Total Eventos</p><p className="text-2xl font-bold">{filtrados.length}</p></Card>
+        <Card className="p-4"><p className="text-xs text-muted-foreground">Total Días</p><p className="text-2xl font-bold">{totalDias}</p></Card>
+        <Card className="p-4"><p className="text-xs text-muted-foreground">Total Minutos</p><p className="text-2xl font-bold">{totalMin}</p></Card>
       </div>
 
       <Card className="overflow-x-auto">
