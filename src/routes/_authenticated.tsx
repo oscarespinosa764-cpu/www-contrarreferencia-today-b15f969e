@@ -52,8 +52,8 @@ const groups: NavGroup[] = [
     abbr: "INI",
     items: [
       { to: "/dashboard", label: "Dashboard General", icon: LayoutDashboard, adminOnly: true },
-      { to: "/historial", label: "Historial de Casos E & S", icon: Search },
-      { to: "/red-ips", label: "RED/DISPONIBILIDAD", icon: Network },
+      { to: "/historial", label: "Historial de Casos", icon: Search },
+      { to: "/red-ips", label: "Red & Disponibilidad", icon: Network },
       { to: "/cuadro-turno", label: "Cuadro de Turno", icon: CalendarDays },
     ],
   },
@@ -62,7 +62,7 @@ const groups: NavGroup[] = [
     abbr: "REM",
     items: [
       { to: "/casos", label: "Dashboard Operativo Entrantes", icon: PlusCircle },
-      { to: "/remisiones", label: "Dashboard Operativo salientes", icon: ClipboardList },
+      { to: "/remisiones", label: "Dashboard Operativo Salientes", icon: ClipboardList },
     ],
   },
   {
