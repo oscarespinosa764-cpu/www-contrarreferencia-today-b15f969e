@@ -1437,10 +1437,28 @@ export function SeguimientoDialog({
             informo_ambulancia: riInformoAmb,
             informo_servicio: riInformoServ,
           };
+        case TI.PROG_AMB:
+          return {
+            fecha_recogida: riRecFecha.trim() || null,
+            hora_recogida: riRecHora.trim() || null,
+            tipo_ambulancia: riRecTipoAmb.trim() || null,
+          };
+        case TI.LLEGADA_AMB:
+          return {
+            fecha_llegada: riLlegFecha.trim() || null,
+            hora_llegada: riLlegHora.trim() || null,
+          };
+        case TI.TEP_ACTIVACION:
+          return { proveedor: riTepProveedor.trim() || null };
+        case TI.AMB_COORDINADA_ESP:
+          return { proveedor: riTepProveedor.trim() || null };
+        case T.CAMBIO_UNIDAD:
+          return { nueva_unidad: nuevaUnidad.trim() || null, nueva_cama: nuevaCama.trim() || null };
         default:
           return null;
       }
     }
+
     if (esPendiente) {
       return { cumplimiento: tipoSeg === TP.COMPLETO ? "completo" : "parcial" };
     }
