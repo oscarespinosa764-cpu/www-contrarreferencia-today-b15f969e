@@ -3015,11 +3015,11 @@ export type Database = {
       calcular_indicadores_mes: {
         Args: { _month: number; _year: number }
         Returns: {
-          denominador: number
-          indicador_codigo: string
-          numerador: number
-          resultado: number
-          tipo_medicion: string
+          out_codigo: string
+          out_den: number
+          out_num: number
+          out_res: number
+          out_tipo: string
         }[]
       }
       can_edit: { Args: { _user_id: string }; Returns: boolean }
