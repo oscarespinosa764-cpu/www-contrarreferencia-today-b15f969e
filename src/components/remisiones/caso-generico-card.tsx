@@ -10,6 +10,7 @@ import { Eye, Pencil, ClipboardCheck, MapPin } from "lucide-react";
 import { Field, SelectField, SpecialtyList } from "./form-bits";
 import { Cie10Field } from "./cie10-field";
 import { SeguimientoDialog } from "./seguimiento-dialog";
+import { PhdCicloPanel } from "./phd-ciclo-panel";
 import {
   evolucionMeta,
   fmtEdad,
