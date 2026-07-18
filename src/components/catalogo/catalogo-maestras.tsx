@@ -293,6 +293,8 @@ export function CatalogoMaestras() {
     const nuevoSegPlataforma = isEAPB
       ? String(f.get("seguimientos_en_plataforma")) === "SI"
       : undefined;
+    const slaRaw = isEAPB ? String(f.get("eapb_sla_horas") ?? "").trim() : "";
+    const slaNum = slaRaw ? Number(slaRaw) : NaN;
     const radicaPatch = isEAPB
       ? {
           radica_phd: radicaFlags.radica_phd,
@@ -300,6 +302,11 @@ export function CatalogoMaestras() {
           radica_oxigeno: radicaFlags.radica_oxigeno,
           radica_unidad_especial: radicaFlags.radica_unidad_especial,
           seguimientos_en_plataforma: nuevoSegPlataforma,
+          eapb_correo_radicacion:
+            (String(f.get("eapb_correo_radicacion") ?? "").trim() || null) as string | null,
+          eapb_sla_horas: Number.isFinite(slaNum) && slaNum > 0 ? slaNum : null,
+          eapb_requisitos_radicacion:
+            (String(f.get("eapb_requisitos_radicacion") ?? "").trim() || null) as string | null,
         }
       : {};
     const { error } = await supabase
