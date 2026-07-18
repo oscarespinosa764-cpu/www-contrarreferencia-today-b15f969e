@@ -138,7 +138,9 @@ export async function descargarReporteGeneralPDF(params: {
   pendientes: number;
   usuario: string;
   contadores?: Record<string, number>;
+  domiciliarios?: Record<string, unknown>[];
 }): Promise<void> {
+
   const { jsPDF } = await import("jspdf");
   const autoTable = (await import("jspdf-autotable")).default;
   const doc = new jsPDF({ unit: "mm", format: "legal", orientation: "landscape" });
