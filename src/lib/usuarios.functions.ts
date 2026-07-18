@@ -559,6 +559,10 @@ export const reenviarInvitacion = createServerFn({ method: "POST" })
   });
 
 // --- Enviar enlace de restablecimiento ---------------------------------------
+// IMPORTANTE: resetPasswordForEmail debe invocarse desde un cliente NO admin
+// (clave publishable). El cliente service_role no dispara el webhook
+// send-email de GoTrue y el correo nunca sale. Con la clave publishable el
+// hook /lovable/email/auth/webhook recibe el evento 'recovery' y se encola.
 export const enviarResetPasswordUsuario = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { userId: string }) => z.object({ userId: z.string().uuid() }).parse(input))
@@ -569,14 +573,52 @@ export const enviarResetPasswordUsuario = createServerFn({ method: "POST" })
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: current } = await (supabaseAdmin as any).auth.admin.getUserById(data.userId);
-    const email = current?.user?.email as string | undefined;
+    const u = current?.user;
+    const email = u?.email as string | undefined;
     if (!email) return { ok: false, error: "No se encontró el correo del usuario." as string | null };
 
-    const redirectTo = `${getSiteUrl()}/activar-cuenta`;
-    const { error } = await (supabaseAdmin as any).auth.resetPasswordForEmail(email, {
-      redirectTo,
+    // Validaciones de estado real (fail-closed)
+    const bannedUntil = u.banned_until ? new Date(u.banned_until) : null;
+    if (bannedUntil && bannedUntil.getTime() > Date.now()) {
+      return { ok: false, error: "La cuenta está bloqueada. Desbloquéala antes de enviar el enlace." as string | null };
+    }
+    if (!u.email_confirmed_at && !u.confirmed_at) {
+      return { ok: false, error: "Esta cuenta aún no está activa. Debe usarse la invitación." as string | null };
+    }
+    const { data: prof } = await (supabaseAdmin as any)
+      .from("profiles").select("activo").eq("user_id", data.userId).maybeSingle();
+    if (prof && prof.activo === false) {
+      return { ok: false, error: "La cuenta está inactiva. Actívala antes de enviar el enlace." as string | null };
+    }
+
+    // Cliente publishable server-side (dispara el hook send-email).
+    const { createClient } = await import("@supabase/supabase-js");
+    const url = process.env.SUPABASE_URL!;
+    const anonKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY!;
+    const pub = createClient(url, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
+      global: {
+        fetch: (input: any, init?: any) => {
+          const h = new Headers(init?.headers);
+          if (anonKey.startsWith("sb_") && h.get("Authorization") === `Bearer ${anonKey}`) h.delete("Authorization");
+          h.set("apikey", anonKey);
+          return fetch(input, { ...init, headers: h });
+        },
+      },
     });
+
+    const redirectTo = `${getSiteUrl()}/activar-cuenta`;
+    const { error } = await pub.auth.resetPasswordForEmail(email, { redirectTo });
     if (error) {
+      await (supabaseAdmin as any).from("audit_logs").insert({
+        user_id: userId,
+        accion: "USER_PASSWORD_RESET_FAILED",
+        modulo: "usuarios",
+        tabla: "auth.users",
+        registro_id: data.userId,
+        resultado: "error",
+        detalles: { email: maskEmail(email), error: (error.message ?? "").slice(0, 200) },
+      });
       return { ok: false, error: "No fue posible enviar el enlace de restablecimiento." as string | null };
     }
 
@@ -593,6 +635,23 @@ export const enviarResetPasswordUsuario = createServerFn({ method: "POST" })
   });
 
 // --- Estado de acceso (para modal "Datos básicos de acceso") -----------------
+export type NormalizedAuthStatus =
+  | "ACTIVE"
+  | "INVITATION_PENDING"
+  | "INACTIVE"
+  | "BLOCKED"
+  | "PROFILE_WITHOUT_AUTH"
+  | "AUTH_ERROR";
+
+export type AllowedAction =
+  | "COPY_USER"
+  | "RESEND_INVITATION"
+  | "SEND_RESET"
+  | "CHANGE_PASSWORD_MANUAL"
+  | "GENERATE_TEMP_PASSWORD"
+  | "ACTIVATE_ACCOUNT"
+  | "REVIEW_BLOCK";
+
 export const obtenerEstadoAccesoUsuario = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { userId: string }) => z.object({ userId: z.string().uuid() }).parse(input))
@@ -603,37 +662,59 @@ export const obtenerEstadoAccesoUsuario = createServerFn({ method: "POST" })
         ok: false,
         info: null as null | {
           email: string | null;
+          normalizedStatus: NormalizedAuthStatus;
           estadoCuenta: string;
           estadoPassword: string;
           activationAt: string | null;
           lastAdminChangeAt: string | null;
           lastResetSentAt: string | null;
+          lastResetStatus: string | null;
+          resetInFlight: boolean;
+          allowedActions: AllowedAction[];
         },
         error: "Acción reservada al administrador." as string | null,
       };
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: res, error } = await (supabaseAdmin as any).auth.admin.getUserById(data.userId);
+
+    // Perfil
+    const { data: prof } = await (supabaseAdmin as any)
+      .from("profiles").select("activo").eq("user_id", data.userId).maybeSingle();
+
     if (error || !res?.user) {
-      return { ok: false, info: null, error: "No fue posible cargar la información de acceso." as string | null };
+      const normalizedStatus: NormalizedAuthStatus = prof ? "PROFILE_WITHOUT_AUTH" : "AUTH_ERROR";
+      return {
+        ok: true,
+        info: {
+          email: null,
+          normalizedStatus,
+          estadoCuenta: normalizedStatus === "PROFILE_WITHOUT_AUTH" ? "PERFIL SIN CUENTA DE ACCESO" : "ERROR DE VERIFICACIÓN",
+          estadoPassword: "SIN INFORMACIÓN",
+          activationAt: null,
+          lastAdminChangeAt: null,
+          lastResetSentAt: null,
+          lastResetStatus: null,
+          resetInFlight: false,
+          allowedActions: [] as AllowedAction[],
+        },
+        error: null as string | null,
+      };
     }
+
     const u = res.user;
     const bannedUntil = u.banned_until ? new Date(u.banned_until) : null;
-    const isBanned = bannedUntil && bannedUntil.getTime() > Date.now();
+    const isBanned = !!(bannedUntil && bannedUntil.getTime() > Date.now());
     const confirmed = !!u.email_confirmed_at || !!u.confirmed_at;
     const lastSignIn = u.last_sign_in_at as string | null;
+    const emailAuth = (u.email as string) ?? null;
 
-    // Perfil (para saber si está activo administrativamente).
-    const { data: prof } = await (supabaseAdmin as any)
-      .from("profiles")
-      .select("activo")
-      .eq("user_id", data.userId)
-      .maybeSingle();
-
-    let estadoCuenta = "CUENTA ACTIVA";
-    if (prof && prof.activo === false) estadoCuenta = "CUENTA INACTIVA";
-    else if (isBanned) estadoCuenta = "CUENTA BLOQUEADA";
-    else if (!confirmed) estadoCuenta = "INVITACIÓN PENDIENTE";
+    let normalizedStatus: NormalizedAuthStatus;
+    let estadoCuenta: string;
+    if (prof && prof.activo === false) { normalizedStatus = "INACTIVE"; estadoCuenta = "CUENTA INACTIVA"; }
+    else if (isBanned) { normalizedStatus = "BLOCKED"; estadoCuenta = "CUENTA BLOQUEADA"; }
+    else if (!confirmed) { normalizedStatus = "INVITATION_PENDING"; estadoCuenta = "INVITACIÓN PENDIENTE"; }
+    else { normalizedStatus = "ACTIVE"; estadoCuenta = "CUENTA ACTIVA"; }
 
     // Auditoría de últimos eventos de credenciales.
     const { data: logs } = await (supabaseAdmin as any)
@@ -644,10 +725,11 @@ export const obtenerEstadoAccesoUsuario = createServerFn({ method: "POST" })
         "USER_ACCOUNT_ACTIVATED",
         "USER_PASSWORD_RESET",
         "USER_PASSWORD_RESET_LINK_SENT",
+        "USER_PASSWORD_RESET_FAILED",
         "USER_TEMP_PASSWORD_GENERATED",
       ])
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(30);
 
     const findLatest = (accion: string) =>
       (logs ?? []).find((l: any) => l.accion === accion)?.created_at ?? null;
@@ -658,10 +740,38 @@ export const obtenerEstadoAccesoUsuario = createServerFn({ method: "POST" })
     const lastAdminChangeAt = manualResetAt ?? tempPasswordAt ?? null;
     const lastResetSentAt = findLatest("USER_PASSWORD_RESET_LINK_SENT");
 
+    // Correlacionar con email_send_log (último 'recovery' para este correo).
+    let lastResetStatus: string | null = null;
+    let resetInFlight = false;
+    if (emailAuth && lastResetSentAt) {
+      const { data: mailRows } = await (supabaseAdmin as any)
+        .from("email_send_log")
+        .select("status, created_at")
+        .eq("template_name", "recovery")
+        .eq("recipient_email", emailAuth)
+        .gte("created_at", lastResetSentAt)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      const rows = mailRows ?? [];
+      // Preferimos el estado más "avanzado" (sent/failed/dlq) sobre pending.
+      const terminal = rows.find((r: any) => ["sent", "failed", "dlq", "bounced", "suppressed"].includes(r.status));
+      const pending = rows.find((r: any) => r.status === "pending");
+      lastResetStatus = terminal?.status ?? pending?.status ?? null;
+      // "en curso" = hay pending SIN estado terminal Y llegó hace menos de 20 min (TTL 15m + margen).
+      if (!terminal && pending) {
+        const ageMs = Date.now() - new Date(pending.created_at).getTime();
+        resetInFlight = ageMs < 20 * 60_000;
+      }
+    }
+
     let estadoPassword = "CONFIGURADA — NO CONSULTABLE POR SEGURIDAD";
     if (!confirmed) estadoPassword = "PENDIENTE DE CONFIGURACIÓN";
-    else if (
+    else if (resetInFlight) estadoPassword = "RESTABLECIMIENTO EN PROCESO";
+    else if (lastResetStatus && ["failed", "dlq", "bounced"].includes(lastResetStatus)) {
+      estadoPassword = "ERROR EN ÚLTIMO ENVÍO DE RESTABLECIMIENTO";
+    } else if (
       lastResetSentAt &&
+      lastResetStatus === "sent" &&
       (!lastSignIn || new Date(lastSignIn) < new Date(lastResetSentAt)) &&
       (!tempPasswordAt || new Date(lastResetSentAt) >= new Date(tempPasswordAt))
     ) {
@@ -670,17 +780,35 @@ export const obtenerEstadoAccesoUsuario = createServerFn({ method: "POST" })
       estadoPassword = "CONTRASEÑA TEMPORAL GENERADA";
     }
 
+    // Acciones permitidas por estado
+    const allowedActions: AllowedAction[] = ["COPY_USER"];
+    if (normalizedStatus === "INVITATION_PENDING") {
+      allowedActions.push("RESEND_INVITATION");
+    } else if (normalizedStatus === "ACTIVE") {
+      if (!resetInFlight) allowedActions.push("SEND_RESET");
+      allowedActions.push("CHANGE_PASSWORD_MANUAL", "GENERATE_TEMP_PASSWORD");
+    } else if (normalizedStatus === "INACTIVE") {
+      allowedActions.push("ACTIVATE_ACCOUNT");
+    } else if (normalizedStatus === "BLOCKED") {
+      allowedActions.push("REVIEW_BLOCK");
+    }
+
     return {
       ok: true,
       info: {
-        email: (u.email as string) ?? null,
+        email: emailAuth,
+        normalizedStatus,
         estadoCuenta,
         estadoPassword,
         activationAt,
         lastAdminChangeAt,
         lastResetSentAt,
+        lastResetStatus,
+        resetInFlight,
+        allowedActions,
       },
       error: null as string | null,
     };
   });
+
 
