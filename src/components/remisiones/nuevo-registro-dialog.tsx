@@ -1186,7 +1186,8 @@ export function NuevoRegistroDialog({
                 </div>
               </div>
 
-              {/* Tipo de destino */}
+              {/* Tipo de destino (oculto para EVOLUCIONAR y VACACIONES) */}
+              {pendTipo !== "EVOLUCIONAR" && pendTipo !== "VACACIONES" && (
               <div className="space-y-1.5">
                 <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Tipo de destino *
@@ -1255,6 +1256,7 @@ export function NuevoRegistroDialog({
                   </div>
                 )}
               </div>
+              )}
 
               {/* Pendiente de evolución en (solo EVOLUCIONAR) */}
               {pendTipo === "EVOLUCIONAR" && (
