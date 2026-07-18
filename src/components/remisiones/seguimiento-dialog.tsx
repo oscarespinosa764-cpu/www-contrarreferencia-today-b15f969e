@@ -343,6 +343,15 @@ export function SeguimientoDialog({
   const [riHora, setRiHora] = useState("");
   const [riInformoAmb, setRiInformoAmb] = useState(false);
   const [riInformoServ, setRiInformoServ] = useState(false);
+  // Referencia interna — pasos 3/4 (recogida y llegada de ambulancia).
+  const [riRecFecha, setRiRecFecha] = useState("");
+  const [riRecHora, setRiRecHora] = useState("");
+  const [riRecTipoAmb, setRiRecTipoAmb] = useState("");
+  const [riLlegFecha, setRiLlegFecha] = useState("");
+  const [riLlegHora, setRiLlegHora] = useState("");
+  // Referencia interna — flujo especial TEP.
+  const [riTepProveedor, setRiTepProveedor] = useState("");
+
 
   // Revisión autorización estancia hospitalaria (seguimiento de trazabilidad)
   const [revOpcion, setRevOpcion] = useState<AutorizacionEstanciaOpcion>("");
