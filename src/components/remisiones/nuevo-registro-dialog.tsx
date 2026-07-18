@@ -524,7 +524,7 @@ export function NuevoRegistroDialog({
     if (!pendPrioridad) return toast.error("Selecciona la prioridad");
 
     // Tipos que NO requieren destino IPS/Área
-    const sinDestino = pendTipo === "EVOLUCIONAR" || pendTipo === "VACACIONES";
+    const sinDestino = pendTipo === "EVOLUCIONAR" || pendTipo === "NEGACIONES";
 
     if (!sinDestino) {
       if (!pendDestinoTipo) return toast.error("Selecciona el tipo de destino (IPS o ÁREA)");
@@ -1122,7 +1122,7 @@ export function NuevoRegistroDialog({
                       const v = e.target.value;
                       setPendTipo(v);
                       // Limpieza al pasar a tipos sin destino
-                      if (v === "EVOLUCIONAR" || v === "VACACIONES") {
+                      if (v === "EVOLUCIONAR" || v === "NEGACIONES") {
                         setPendDestinoTipo("");
                         setPendIps("");
                         setPendArea("");
@@ -1141,7 +1141,6 @@ export function NuevoRegistroDialog({
                       "CONFIRMACION CON IPS",
                       "RADICAR REMISION",
                       "EVOLUCIONAR",
-                      "VACACIONES",
                       "ORDENES EXTRAMURALES",
                       "NEGACIONES",
                       "AVERIGUAR",
@@ -1186,8 +1185,8 @@ export function NuevoRegistroDialog({
                 </div>
               </div>
 
-              {/* Tipo de destino (oculto para EVOLUCIONAR y VACACIONES) */}
-              {pendTipo !== "EVOLUCIONAR" && pendTipo !== "VACACIONES" && (
+              {/* Tipo de destino (oculto para EVOLUCIONAR y NEGACIONES) */}
+              {pendTipo !== "EVOLUCIONAR" && pendTipo !== "NEGACIONES" && (
               <div className="space-y-1.5">
                 <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Tipo de destino *
