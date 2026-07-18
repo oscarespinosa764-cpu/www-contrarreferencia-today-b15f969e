@@ -31,7 +31,13 @@ export type Medicion = {
   comentario: string | null;
   fecha: string | null;
   created_at: string;
+  tipo_medicion?: string | null;
+  fuente_medicion?: string | null;
+  total_evaluables?: number | null;
+  nota_metodologica?: string | null;
+  calculado_at?: string | null;
 };
+
 
 export type Semaforo = "VERDE" | "AMARILLO" | "ROJO" | "GRIS";
 
