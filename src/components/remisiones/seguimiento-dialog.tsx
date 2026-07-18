@@ -1054,10 +1054,36 @@ export function SeguimientoDialog({
           );
         case TI.CULMINACION:
           return appendNota(generarPlantillaRefInternaCulminacion(), detalle);
+        case TI.PROG_AMB:
+          return appendNota(
+            `SE CONFIRMA PROGRAMACIÓN DE AMBULANCIA.\nFECHA/HORA RECOGIDA: ${riRecFecha} ${riRecHora}\nTIPO AMBULANCIA: ${riRecTipoAmb || "—"}`,
+            detalle,
+          );
+        case TI.LLEGADA_AMB:
+          return appendNota(
+            `SE CONFIRMA LLEGADA DE AMBULANCIA.\nFECHA/HORA LLEGADA: ${riLlegFecha} ${riLlegHora}`,
+            detalle,
+          );
+        case TI.TEP_ACTIVACION:
+          return appendNota(
+            `SE ACTIVA PROVEEDOR CONTRATADO DE TEP.\nPROVEEDOR: ${riTepProveedor || "—"}\nPACIENTE: ${paciente}\nDOCUMENTO: ${documento ?? "—"}\nSERVICIO/UBICACIÓN: ${casoInterna?.servicio ?? "—"}\nTIPO SOLICITUD: ${casoInterna?.tipo_solicitud ?? "—"}\nTIPO AMBULANCIA: ${casoInterna?.tipo_ambulancia ?? "—"}\nEAPB/ERP: ${casoInterna?.eapb ?? "—"}`,
+            detalle,
+          );
+        case TI.AMB_COORDINADA_ESP:
+          return appendNota(
+            `AMBULANCIA COORDINADA CON PROVEEDOR DE TEP.`,
+            detalle,
+          );
+        case T.CAMBIO_UNIDAD:
+          return appendNota(
+            `CAMBIO DE UNIDAD.\nNUEVA UNIDAD: ${nuevaUnidad || "—"}\nNUEVA CAMA: ${nuevaCama || "—"}`,
+            detalle,
+          );
         default:
           return "";
       }
     }
+
     if (esPendiente) {
       if (!tipoSeg) return "";
       return generarPlantillaPendienteCumplimiento(tipoSeg === TP.COMPLETO, detalle);
