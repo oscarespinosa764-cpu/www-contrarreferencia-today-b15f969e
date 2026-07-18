@@ -350,6 +350,19 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
           onSaved={() => { setAsignarOpen(false); setAsignar(null); qc.invalidateQueries({ queryKey: ["schedule-days"] }); }}
         />
       )}
+
+      {dayDetail != null && schedule && (
+        <DayDetailDialog
+          anio={anio}
+          mes={mes}
+          day={dayDetail}
+          members={membersFiltrados}
+          dayMap={dayMap}
+          tipoMap={tipoMap}
+          onClose={() => setDayDetail(null)}
+          onEdit={(m) => { setCell({ member: m, day: dayDetail }); setDayDetail(null); }}
+        />
+      )}
     </div>
   );
 }
