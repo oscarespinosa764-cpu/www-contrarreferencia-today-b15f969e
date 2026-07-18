@@ -357,16 +357,18 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
 const DOW_HEADERS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
 function CalendarView({
-  anio, mes, ndias, members, dayMap, tipoMap, onCellClick,
+  anio, mes, ndias, members, dayMap, tipoMap, onCellClick, onMoreClick,
 }: {
   anio: number; mes: number; ndias: number;
   members: ShiftMember[];
   dayMap: Map<string, ShiftDay>;
   tipoMap: Map<string, ShiftType>;
   onCellClick: (m: ShiftMember, d: number) => void;
+  onMoreClick: (d: number) => void;
 }) {
   const firstDow = new Date(anio, mes - 1, 1).getDay(); // 0=Dom
   const totalCells = Math.ceil((firstDow + ndias) / 7) * 7;
+  const MAX = 4;
 
   return (
     <Card className="p-2 sm:p-3">
@@ -379,39 +381,58 @@ function CalendarView({
         {Array.from({ length: totalCells }, (_, i) => {
           const dayNum = i - firstDow + 1;
           const valido = dayNum >= 1 && dayNum <= ndias;
-          if (!valido) return <div key={i} className="min-h-[96px] rounded-lg bg-muted/20" />;
+          if (!valido) return <div key={i} className="min-h-[110px] rounded-lg bg-muted/20" />;
 
           const asignados = members
             .map((m) => ({ m, cd: dayMap.get(`${m.id}:${dayNum}`) }))
             .filter((x) => x.cd?.shift_code);
+          const visibles = asignados.slice(0, MAX);
+          const extra = asignados.length - visibles.length;
 
           return (
             <div
               key={i}
-              className="flex min-h-[96px] flex-col rounded-lg border bg-background p-1.5 transition-colors hover:border-primary/40"
+              className="flex min-h-[110px] flex-col rounded-lg border bg-background p-1.5 transition-colors hover:border-primary/40"
             >
-              <div className="mb-1 text-right text-[11px] font-bold text-muted-foreground">{dayNum}</div>
+              <button
+                type="button"
+                onClick={() => onMoreClick(dayNum)}
+                className="mb-1 text-right text-[11px] font-bold text-muted-foreground hover:text-primary"
+              >
+                {dayNum}
+              </button>
               <div className="space-y-0.5">
                 {asignados.length === 0 ? (
                   <p className="text-[10px] italic text-muted-foreground/50">—</p>
                 ) : (
-                  asignados.map(({ m, cd }) => {
-                    const tipo = cd!.shift_code ? tipoMap.get(cd!.shift_code) : undefined;
-                    return (
+                  <>
+                    {visibles.map(({ m, cd }) => {
+                      const tipo = cd!.shift_code ? tipoMap.get(cd!.shift_code) : undefined;
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => onCellClick(m, dayNum)}
+                          className="flex w-full items-center gap-1 truncate rounded px-1 py-0.5 text-left text-[10px] hover:ring-1 hover:ring-primary"
+                          style={tipo ? { background: tipo.color + "33" } : undefined}
+                          title={`${m.full_name} · ${cd!.shift_code}${cd!.notes ? ` · ${cd!.notes}` : ""}`}
+                        >
+                          <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: tipo?.color ?? "#999" }} />
+                          <span className="truncate font-medium">{m.full_name.split(" ")[0]}</span>
+                          <span className="ml-auto shrink-0 font-bold">{cd!.shift_code}</span>
+                        </button>
+                      );
+                    })}
+                    {extra > 0 && (
                       <button
-                        key={m.id}
                         type="button"
-                        onClick={() => onCellClick(m, dayNum)}
-                        className="flex w-full items-center gap-1 truncate rounded px-1 py-0.5 text-left text-[10px] hover:ring-1 hover:ring-primary"
-                        style={tipo ? { background: tipo.color + "33" } : undefined}
-                        title={`${m.full_name} · ${cd!.shift_code}${cd!.notes ? ` · ${cd!.notes}` : ""}`}
+                        onClick={() => onMoreClick(dayNum)}
+                        className="w-full rounded bg-muted/60 px-1 py-0.5 text-[10px] font-semibold text-primary hover:bg-muted"
                       >
-                        <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: tipo?.color ?? "#999" }} />
-                        <span className="truncate font-medium">{m.full_name.split(" ")[0]}</span>
-                        <span className="ml-auto shrink-0 font-bold">{cd!.shift_code}</span>
+                        +{extra} más
                       </button>
-                    );
-                  })
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -419,10 +440,81 @@ function CalendarView({
         })}
       </div>
       <p className="mt-2 text-[11px] text-muted-foreground">
-        Haz clic en un turno para ver el detalle.
+        Haz clic en un turno para ver el detalle · Haz clic en el número del día para ver el resumen completo.
       </p>
     </Card>
   );
+}
+
+function DayDetailDialog({
+  anio, mes, day, members, dayMap, tipoMap, onClose, onEdit,
+}: {
+  anio: number; mes: number; day: number;
+  members: ShiftMember[];
+  dayMap: Map<string, ShiftDay>;
+  tipoMap: Map<string, ShiftType>;
+  onClose: () => void;
+  onEdit: (m: ShiftMember) => void;
+}) {
+  const asignados = members
+    .map((m) => ({ m, cd: dayMap.get(`${m.id}:${day}`) }))
+    .filter((x) => x.cd?.shift_code);
+  const resumen = new Map<string, number>();
+  asignados.forEach(({ cd }) => {
+    const c = cd!.shift_code!;
+    resumen.set(c, (resumen.get(c) ?? 0) + 1);
+  });
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-h-[92vh] max-w-lg overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Resumen del día {day} · {MESES[mes - 1]} {anio}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 text-sm">
+          <div className="flex flex-wrap gap-1.5">
+            {Array.from(resumen.entries()).map(([code, n]) => {
+              const t = tipoMap.get(code);
+              return (
+                <span key={code} className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]" style={{ background: (t?.color ?? "#999") + "22" }}>
+                  <span className="inline-block h-2 w-2 rounded-full" style={{ background: t?.color ?? "#999" }} />
+                  <span className="font-bold">{code}</span>
+                  <span className="text-muted-foreground">×{n}</span>
+                </span>
+              );
+            })}
+            {resumen.size === 0 && <p className="text-xs text-muted-foreground">Sin asignaciones.</p>}
+          </div>
+          <div className="divide-y rounded-md border">
+            {asignados.map(({ m, cd }) => {
+              const t = cd!.shift_code ? tipoMap.get(cd!.shift_code) : undefined;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => onEdit(m)}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-muted/40"
+                >
+                  <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: t?.color ?? "#999" }} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{m.full_name}</p>
+                    <p className="truncate text-[10px] text-muted-foreground">{m.role_name ?? "—"}{cd!.notes ? ` · ${cd!.notes}` : ""}</p>
+                  </div>
+                  <span className="font-bold">{cd!.shift_code}</span>
+                </button>
+              );
+            })}
+            {asignados.length === 0 && (
+              <p className="px-3 py-4 text-center text-xs text-muted-foreground">Sin funcionarios asignados este día.</p>
+            )}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cerrar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 }
 
 /** Selecciona un funcionario del sistema, autollena el cargo y abre la asignación de turnos. */
