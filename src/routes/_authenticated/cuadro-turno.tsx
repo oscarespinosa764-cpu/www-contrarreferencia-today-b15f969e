@@ -24,8 +24,8 @@ function CuadroTurnoPage() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="mb-4 flex h-auto w-full flex-wrap justify-start gap-1">
-          <TabsTrigger value="cuadro">Cuadro de turno</TabsTrigger>
-          <TabsTrigger value="solicitudes">Solicitudes y ausentismo</TabsTrigger>
+          <TabsTrigger value="cuadro">Cuadro de Turno</TabsTrigger>
+          <TabsTrigger value="solicitudes">Solicitudes y Ausentismo</TabsTrigger>
           {isAdmin && <TabsTrigger value="admin">Administración</TabsTrigger>}
         </TabsList>
 

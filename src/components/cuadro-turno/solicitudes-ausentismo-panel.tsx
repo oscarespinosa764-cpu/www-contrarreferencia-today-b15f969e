@@ -59,7 +59,7 @@ function HistorialResumen() {
     <Card className="p-4">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-sm font-bold">
-          <History className="h-4 w-4" /> Historial de cambios
+          <History className="h-4 w-4" /> Historial de Cambios
         </h3>
         <Button size="sm" variant="outline" onClick={() => setVerTodo(true)}>
           Ver actividad
@@ -135,14 +135,14 @@ export function SolicitudesAusentismoPanel({ isAdmin }: { isAdmin: boolean }) {
   return (
     <Tabs value={sub} onValueChange={setSub} className="space-y-4">
       <TabsList>
-        <TabsTrigger value="solicitudes">Solicitudes y cambios</TabsTrigger>
-        <TabsTrigger value="pendientes">Pendientes de verificación</TabsTrigger>
-        <TabsTrigger value="ausentismo">Control de ausentismo</TabsTrigger>
+        <TabsTrigger value="solicitudes">Solicitudes y Cambios</TabsTrigger>
+        <TabsTrigger value="pendientes">Pendientes de Verificación</TabsTrigger>
+        <TabsTrigger value="ausentismo">Control de Ausentismo</TabsTrigger>
       </TabsList>
       <TabsContent value="solicitudes" className="space-y-4">
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => setOpenSolicitud(true)}>
-            <CalendarPlus className="mr-1.5 h-4 w-4" /> Solicitar permiso / cambio de turno
+            <CalendarPlus className="mr-1.5 h-4 w-4" /> Solicitar Permiso / Cambio de Turno
           </Button>
         </div>
         <HistorialResumen />
