@@ -163,8 +163,10 @@ let _monitorMounted = false;
  * autenticado, para que las notificaciones del sistema (visuales + sonido)
  * se generen sin importar en qué ventana/módulo esté el usuario.
  */
-export function useNotifVencimientosMonitor(casos: Caso[]) {
-  const enabled = useSyncExternalStore(subscribeEnabled, getEnabled, getEnabled);
+export function useNotifVencimientosMonitor(casos: Caso[], opts?: { silent?: boolean }) {
+  const silent = opts?.silent ?? false;
+  const enabledStore = useSyncExternalStore(subscribeEnabled, getEnabled, getEnabled);
+  const enabled = enabledStore && !silent;
   const [tick, setTick] = useState(0);
   const doneRef = useRef<Record<string, boolean>>(loadDone());
   const casosRef = useRef(casos);
