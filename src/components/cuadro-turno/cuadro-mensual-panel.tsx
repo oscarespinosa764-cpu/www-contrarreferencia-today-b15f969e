@@ -250,10 +250,11 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
               anio={anio}
               mes={mes}
               ndias={ndias}
-              members={members}
+              members={membersFiltrados}
               dayMap={dayMap}
               tipoMap={tipoMap}
               onCellClick={(m, d) => setCell({ member: m, day: d })}
+              onMoreClick={(d) => setDayDetail(d)}
             />
           ) : (
             <>
