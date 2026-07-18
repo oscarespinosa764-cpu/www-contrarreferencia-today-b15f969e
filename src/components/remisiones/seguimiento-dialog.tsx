@@ -1701,6 +1701,13 @@ export function SeguimientoDialog({
     setRiHora("");
     setRiInformoAmb(false);
     setRiInformoServ(false);
+    setRiRecFecha("");
+    setRiRecHora("");
+    setRiRecTipoAmb("");
+    setRiLlegFecha("");
+    setRiLlegHora("");
+    setRiTepProveedor("");
+
   };
 
   const guardar = async () => {
