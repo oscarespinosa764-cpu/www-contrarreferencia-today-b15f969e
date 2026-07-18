@@ -108,7 +108,7 @@ function CasosPage() {
     <div>
       <AppHeader
         title="DASHBOARD OPERATIVO ENTRANTES"
-        subtitle="Registro de casos referencias entrantes"
+        subtitle="Registro de Casos Referencias Entrantes"
       />
 
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
