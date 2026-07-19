@@ -156,6 +156,17 @@ export function PhdCicloPanel({
                 {iconoPaso(e)} <span className="ml-1">{e}</span>
               </Button>
             ))}
+            {(estadoActual === "AMBULANCIA COORDINADA - PENDIENTE EGRESO" ||
+              estadoActual === "ACEPTADO - PENDIENTE COORDINACION DE AMBULANCIA") && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-full"
+                onClick={() => setEntregaOpen(true)}
+              >
+                <FileSignature className="mr-1 h-3.5 w-3.5" /> Entrega documental
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"
