@@ -649,11 +649,11 @@ function PreviewHtml({ plantilla }: { plantilla: PlantillaInv }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("casos_entrantes")
-        .select("id, codigo, paciente, observaciones")
+        .select("id, codigo, nombres, apellidos, detalle")
         .order("created_at", { ascending: false })
         .limit(15);
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as Array<{ id: string; codigo: string | null; nombres: string | null; apellidos: string | null; detalle: string | null }>;
     },
   });
 
@@ -664,7 +664,7 @@ function PreviewHtml({ plantilla }: { plantilla: PlantillaInv }) {
 
   const html = useMemo(() => {
     if (casoSel) {
-      const mensaje = String(casoSel.observaciones ?? "").trim() || fixtureOficioMensaje(tipoOficio);
+      const mensaje = String(casoSel.detalle ?? "").trim() || fixtureOficioMensaje(tipoOficio);
       return buildOficioHTML(tipoOficio, casoSel.codigo ?? "S/C", mensaje);
     }
     return buildOficioHTML(tipoOficio, FIXTURE_CASO.codigo, fixtureOficioMensaje(tipoOficio));
