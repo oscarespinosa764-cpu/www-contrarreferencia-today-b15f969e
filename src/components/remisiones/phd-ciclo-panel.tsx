@@ -23,7 +23,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { fmtFechaHora } from "@/lib/remisiones-utils";
-import { ChevronRight, FilePlus2, XCircle, CheckCircle2, Truck } from "lucide-react";
+import { ChevronRight, FilePlus2, XCircle, CheckCircle2, Truck, FileSignature } from "lucide-react";
+import { EntregaDocumentalDialog } from "./entrega-documental-dialog";
 
 const CANALES = ["CORREO", "PLATAFORMA", "TELEFONO", "PRESENCIAL", "OTRO"];
 
