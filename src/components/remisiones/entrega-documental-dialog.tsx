@@ -12,8 +12,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import {
   Copy,
-  Plus,
-  X,
   QrCode,
   FileText,
   Ban,
@@ -23,6 +21,7 @@ import {
   CheckCircle2,
   CheckSquare,
   Eraser,
+  Lock,
 } from "lucide-react";
 import {
   ORIGENES_DOC,
@@ -41,7 +40,7 @@ import {
   descargarFirmadoPDF,
   type EntregaDatos,
 } from "@/lib/entrega-firma-pdf";
-import { ChecklistRunner } from "@/components/coordinacion/checklist-runner";
+
 
 type Props = {
   open: boolean;
@@ -95,7 +94,9 @@ export function EntregaDocumentalDialog({
 }: Props) {
   const [origen, setOrigen] = useState<OrigenDoc | "">("");
   const [docs, setDocs] = useState<DocItem[]>([]);
-  const [nuevoDoc, setNuevoDoc] = useState("");
+  // Trazabilidad: si viene de la asignación previa, se marca como readonly.
+  const empresaDeTrazabilidad = !!(empresaTraslado ?? "").trim();
+  const ipsDeTrazabilidad = !!(ipsReceptora ?? "").trim();
   const [empresa, setEmpresa] = useState("");
   const [ips, setIps] = useState("");
   const [fecha, setFecha] = useState("");
@@ -259,29 +260,28 @@ export function EntregaDocumentalDialog({
   const estado = sesion.data?.estado;
   const firmada = estado === "FIRMADA";
 
-  // Al confirmarse la firma, generar la plantilla Índigo corta editable (Parte 14).
+  // Al confirmarse la firma, migrar datos del tripulante al modal y armar Índigo (Parte 7/14).
   useEffect(() => {
-    if (firmada && sesion.data && !indigoCorta) {
-      setIndigoCorta(
-        generarPlantillaIndigoCorta(snapshot, {
-          nombre: sesion.data.firmante_nombre ?? "",
-          cargo: sesion.data.firmante_cargo ?? "",
-        }),
-      );
+    if (firmada && sesion.data) {
+      if (sesion.data.firmante_nombre && !tripulanteS)
+        setTripulanteS(sesion.data.firmante_nombre.toUpperCase());
+      if (sesion.data.firmante_cargo && !cargoTripulanteS)
+        setCargoTripulanteS(sesion.data.firmante_cargo.toUpperCase());
+      if (!indigoCorta) {
+        setIndigoCorta(
+          generarPlantillaIndigoCorta(snapshot, {
+            nombre: sesion.data.firmante_nombre ?? "",
+            cargo: sesion.data.firmante_cargo ?? "",
+          }),
+        );
+      }
     }
-  }, [firmada, sesion.data, indigoCorta, snapshot]);
+  }, [firmada, sesion.data, indigoCorta, snapshot, tripulanteS, cargoTripulanteS]);
 
   const toggleDoc = (i: number) =>
     setDocs((p) => p.map((d, idx) => (idx === i ? { ...d, marcado: !d.marcado } : d)));
-  const quitarDoc = (i: number) => setDocs((p) => p.filter((_, idx) => idx !== i));
   const marcarTodos = () => setDocs((p) => p.map((d) => ({ ...d, marcado: true })));
   const limpiarMarcas = () => setDocs((p) => p.map((d) => ({ ...d, marcado: false })));
-  const agregarDoc = () => {
-    const v = nuevoDoc.trim();
-    if (!v) return;
-    setDocs((p) => [...p, { label: v, marcado: true }]);
-    setNuevoDoc("");
-  };
 
   const copiarIndigoCorta = () => {
     navigator.clipboard.writeText(indigoCorta || generarPlantillaIndigoCorta(snapshot));
@@ -403,12 +403,34 @@ export function EntregaDocumentalDialog({
           {/* Datos base (autollenados, editables) */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label className="text-xs">Empresa de traslado</Label>
-              <Input uppercase value={empresa} onChange={(e) => setEmpresa(e.target.value)} disabled={!!sesionId} />
+              <Label className="text-xs flex items-center gap-1">
+                Empresa de traslado
+                {empresaDeTrazabilidad && <Lock className="h-3 w-3 text-muted-foreground" />}
+              </Label>
+              <Input
+                uppercase
+                value={empresa}
+                onChange={(e) => setEmpresa(e.target.value)}
+                disabled={!!sesionId || empresaDeTrazabilidad}
+                placeholder={!empresaDeTrazabilidad ? "NO HAY EMPRESA DE TRASLADO ASIGNADA…" : undefined}
+              />
+              {!empresaDeTrazabilidad && (
+                <p className="text-[10.5px] text-amber-600">
+                  Sin empresa en la trazabilidad. Registre la asignación desde el seguimiento del caso.
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">IPS receptora</Label>
-              <Input uppercase value={ips} onChange={(e) => setIps(e.target.value)} disabled={!!sesionId} />
+              <Label className="text-xs flex items-center gap-1">
+                IPS receptora
+                {ipsDeTrazabilidad && <Lock className="h-3 w-3 text-muted-foreground" />}
+              </Label>
+              <Input
+                uppercase
+                value={ips}
+                onChange={(e) => setIps(e.target.value)}
+                disabled={!!sesionId || ipsDeTrazabilidad}
+              />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Nombre de quien acepta</Label>
@@ -417,14 +439,6 @@ export function EntregaDocumentalDialog({
             <div className="space-y-1.5">
               <Label className="text-xs">Cargo de quien acepta</Label>
               <Input uppercase value={cargoAceptaS} onChange={(e) => setCargoAceptaS(e.target.value)} disabled={!!sesionId} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Tripulante responsable del traslado</Label>
-              <Input uppercase value={tripulanteS} onChange={(e) => setTripulanteS(e.target.value)} disabled={!!sesionId} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Cargo del tripulante</Label>
-              <Input uppercase value={cargoTripulanteS} onChange={(e) => setCargoTripulanteS(e.target.value)} disabled={!!sesionId} />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label className="text-xs">Fecha/hora de entrega</Label>
@@ -438,7 +452,7 @@ export function EntregaDocumentalDialog({
                 disabled={!!sesionId}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecciona: EPS / ARL / SOAT / Particular" />
+                  <SelectValue placeholder="Selecciona: EPS / SOAT / ADRES / ARL / Particular" />
                 </SelectTrigger>
                 <SelectContent>
                   {ORIGENES_DOC.map((o) => (
@@ -448,6 +462,16 @@ export function EntregaDocumentalDialog({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-1.5 sm:col-span-2 rounded-md border border-dashed bg-muted/30 p-2.5">
+              <Label className="text-[10.5px] uppercase text-muted-foreground">
+                Tripulante responsable / cargo
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                {tripulanteS
+                  ? `${tripulanteS}${cargoTripulanteS ? ` — ${cargoTripulanteS}` : ""}`
+                  : "PENDIENTE DE FIRMA QR (los diligencia el tripulante al firmar)."}
+              </p>
             </div>
           </div>
 
@@ -482,29 +506,12 @@ export function EntregaDocumentalDialog({
                       disabled={!!sesionId}
                     />
                     <span className="flex-1">{d.label}</span>
-                    {!sesionId && (
-                      <button onClick={() => quitarDoc(i)} className="text-muted-foreground hover:text-destructive">
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    )}
                   </div>
                 ))}
-                {!sesionId && (
-                  <div className="flex items-center gap-2 pt-1">
-                    <Input
-                      value={nuevoDoc}
-                      onChange={(e) => setNuevoDoc(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), agregarDoc())}
-                      uppercase
-                      placeholder="Agregar documento…"
-                      className="h-8 text-sm"
-                    />
-                    <Button type="button" size="sm" variant="outline" onClick={agregarDoc}>
-                      <Plus className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                )}
               </div>
+              <p className="text-[10.5px] text-muted-foreground">
+                Los ítems se administran desde Control de Mando → Listas de chequeo.
+              </p>
             </div>
           ) : (
             <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
@@ -512,7 +519,7 @@ export function EntregaDocumentalDialog({
             </p>
           )}
 
-          {/* PASO 1 — Antes de la firma: solo Portada PDF + Generar QR (Parte 13.1) */}
+          {/* PASO 1 — Antes de la firma: solo Generar QR (Portada solo tras firma · Parte 15) */}
           {!sesionId ? (
             <div className="space-y-2">
               <Button
@@ -520,11 +527,17 @@ export function EntregaDocumentalDialog({
                 variant="outline"
                 size="sm"
                 className="w-full"
-                onClick={generarPortada}
+                disabled
+                title="Disponible después de la firma QR"
               >
-                <FileText className="mr-1.5 h-3.5 w-3.5" /> Portada PDF
+                <FileText className="mr-1.5 h-3.5 w-3.5" /> Portada PDF — pendiente de firma
               </Button>
-              <Button type="button" className="w-full" onClick={generarQR} disabled={generando || !origen}>
+              <Button
+                type="button"
+                className="w-full"
+                onClick={generarQR}
+                disabled={generando || !origen || !empresa.trim() || !ips.trim()}
+              >
                 {generando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
                 Generar QR de firma
               </Button>
@@ -569,10 +582,15 @@ export function EntregaDocumentalDialog({
                 </Button>
               </div>
 
-              {/* Bloque 3 · Checklist PDF firmado */}
-              <Button type="button" size="sm" className="w-full" onClick={descargarFirmado}>
-                <Download className="mr-1.5 h-3.5 w-3.5" /> Lista de chequeo confirmada PDF
-              </Button>
+              {/* Bloque 3 · Portada + Checklist PDF firmado */}
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <Button type="button" size="sm" variant="outline" onClick={generarPortada}>
+                  <FileText className="mr-1.5 h-3.5 w-3.5" /> Portada PDF
+                </Button>
+                <Button type="button" size="sm" onClick={descargarFirmado}>
+                  <Download className="mr-1.5 h-3.5 w-3.5" /> Acta firmada PDF
+                </Button>
+              </div>
 
               {/* Bloque 4 · Cerrar */}
               <Button type="button" size="sm" variant="ghost" className="w-full" onClick={() => onOpenChange(false)}>
@@ -606,18 +624,6 @@ export function EntregaDocumentalDialog({
               </div>
             </div>
           )}
-
-          <ChecklistRunner
-            checklistCodigo={(() => {
-              const s = (entidadPago ?? "").toUpperCase();
-              if (s.includes("SOAT")) return "SALIENTES_ENTREGA_SEGURA_SOAT";
-              if (s.includes("ARL")) return "SALIENTES_ENTREGA_SEGURA_ARL";
-              return "SALIENTES_ENTREGA_SEGURA_EPS";
-            })()}
-            casoId={casoId}
-            casoTipo={tipoCaso}
-            compact
-          />
 
         </div>
       </DialogContent>

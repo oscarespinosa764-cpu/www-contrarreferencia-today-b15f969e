@@ -24,12 +24,13 @@ export const DOCUMENTOS_DEFAULT: string[] = [
 ];
 
 /** Origen / responsable documental (define qué documentos aparecen). */
-export type OrigenDoc = "EPS" | "ARL" | "SOAT" | "PARTICULAR";
+export type OrigenDoc = "EPS" | "ARL" | "SOAT" | "ADRES" | "PARTICULAR";
 
 export const ORIGENES_DOC: { value: OrigenDoc; label: string }[] = [
   { value: "EPS", label: "EPS" },
-  { value: "ARL", label: "ARL" },
   { value: "SOAT", label: "SOAT" },
+  { value: "ADRES", label: "ADRES" },
+  { value: "ARL", label: "ARL / Póliza estudiantil" },
   { value: "PARTICULAR", label: "Particular" },
 ];
 
@@ -45,6 +46,13 @@ const DOCS_COMUNES = [
   "Hoja de administración de medicamentos",
 ];
 
+const DOCS_SOAT_ADRES = [
+  ...DOCS_COMUNES,
+  "FURIPS",
+  "Copia del SOAT / póliza",
+  "Informe de accidente de tránsito",
+];
+
 /**
  * Lista de chequeo por defecto según el origen documental.
  * NOTA: mientras no exista un catálogo administrable en BD, estos valores actúan
@@ -52,13 +60,9 @@ const DOCS_COMUNES = [
  */
 export const DOCUMENTOS_POR_ORIGEN: Record<OrigenDoc, string[]> = {
   EPS: [...DOCS_COMUNES, "Autorización de la EAPB", "Carné / certificado de afiliación EPS"],
-  ARL: [...DOCS_COMUNES, "Reporte de accidente laboral (FURAT)", "Autorización de la ARL"],
-  SOAT: [
-    ...DOCS_COMUNES,
-    "FURIPS",
-    "Copia del SOAT / póliza",
-    "Informe de accidente de tránsito",
-  ],
+  ARL: [...DOCS_COMUNES, "Reporte de accidente laboral (FURAT)", "Autorización de la ARL / Póliza"],
+  SOAT: DOCS_SOAT_ADRES,
+  ADRES: DOCS_SOAT_ADRES,
   PARTICULAR: [...DOCS_COMUNES, "Soporte / compromiso de pago"],
 };
 
