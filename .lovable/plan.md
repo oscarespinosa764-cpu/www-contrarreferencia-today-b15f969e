@@ -1,64 +1,119 @@
-## Fase A — Q1 + Q7 (base canónica, auditable y reutilizable)
+## Alcance acordado
 
-Bug bloqueante ya corregido en este turno: `useDictationConfigRows` ahora exige sesión (`enabled: !!user`), lo que detiene el bucle de 401 sobre `voice_dictation_config` en `/login`. Con eso, procedo únicamente con Fase A.
+Fase 1 + Fase 2, sin editor de "crear plantilla desde cero" ni redise\u00f1o de listas documentales (esas quedan para una Fase 3 posterior). Salientes\u00b7Entrega segura se archiva/renombra como base para EPS/SOAT/ARL en la Fase 3; PHD y Apertura de turno pasan a `BORRADOR_EN_REVISION` sin punto activo.
 
-### 1. Inventario previo (una sola consulta, sin modificar datos)
-Antes de crear cualquier catálogo, ejecuto una lectura de `public.catalogos` agrupada por `tipo` para confirmar cuáles de los 10 ya existen y con qué valores. También leo distintos `profiles.cargo`, sedes activas en `red_operativa`, motivos usados hoy en `shift_monthly_exceptions`, novedades en `remisiones`, y motivos de cierre en `casos_entrantes`/`historicos_casos`. El resultado alimenta las tablas del informe final (no se muestran valores sensibles).
+## Entregables
 
-### 2. Migración única `phase_a_catalogos_y_auditoria` (idempotente, no destructiva)
-Una sola migración agrupada. Solo estructura y seeds seguros. No borra ni renombra nada.
+### 1. Inventario real de plantillas (auditor\u00eda + siembra)
 
-Cambios de esquema:
-- `public.catalogos`: solo si faltan, añade columnas opcionales `codigo TEXT`, `orden INT DEFAULT 0`, `metadata JSONB DEFAULT '{}'`, `updated_by UUID`, `created_by UUID`. Ninguna se marca NOT NULL. Índice `UNIQUE (tipo, codigo) WHERE codigo IS NOT NULL` (parcial, no rompe filas antiguas).
-- Nueva tabla `public.catalogo_dependencias` con: `catalogo_tipo`, `elemento_id` (nullable), `modulo`, `ruta`, `ventana`, `formulario`, `campo`, `tipo_control`, `obligatorio`, `componente`, `verificado_at`. GRANTs + RLS: SELECT autenticados, INSERT/UPDATE/DELETE solo admin (via `has_role`). Se llena por seed determinista, no por escaneo runtime.
-- Nueva tabla `public.plantillas_inventario` con: `codigo`, `nombre`, `modulo`, `formato` (`PDF`/`EXCEL`), `origen` (`CODIGO`/`CODIGO+CONFIG`), `generador` (ruta del módulo), `estado`, `version`, `dependencia`, `editable_nivel` (`SOLO_LECTURA`/`PARCIAL`/`COMPLETA`). GRANT + RLS igual que arriba. Seed con las 7 plantillas.
-- Extensión mínima de `public.audit_logs` NO se toca (ya existe). Se reutiliza `registrar_auditoria_srv` para todos los eventos nuevos.
-- Nueva función `public.registrar_auditoria_catalogo(_accion, _tipo, _elemento_id, _antes, _despues, _motivo)` SECURITY DEFINER, `search_path=''`, que sanitiza y llama a `registrar_auditoria_srv`. No expone PII.
-- Triggers de auditoría append-only sobre `public.catalogos`, `public.plantillas`, `public.catalogo_dependencias`, `public.plantillas_inventario`: en INSERT/UPDATE/DELETE guardan solo `id`, `tipo/codigo`, `antes_resumen`, `despues_resumen`, `usuario`, `hora`, `accion`. Nunca guardan HTML, base64, PII ni tokens.
+Auditar el c\u00f3digo y sembrar en `plantillas_inventario` los registros faltantes con `codigo`, `nombre`, `modulo`, `formato`, `origen`, `generador`, `editable_nivel`, `dependencia`, `contenido_editable` (campos seguros) y `notas`. M\u00ednimo a cubrir:
 
-Seeds (todos `ON CONFLICT DO NOTHING`, con `codigo` estable, `orden` explícito):
-- `TIPO_AMBULANCIA`: TAB, TAM, TAM_N (más AEREA si el inventario la encuentra en uso real).
-- `TIPO_EAPB`: EPS, ARL, PARTICULAR, POLIZA, MEDICINA_PREPAGADA, SOAT, OTRO.
-- `TIPO_RECURSO_RED`: HOSPITALARIO, AMBULATORIO, DOMICILIARIO, AMBULANCIA, ESPECIALIDAD, DIRECTORIO_INTERNO.
-- `MOTIVO_EXENTO_CUPO`: valores actuales de `src/lib/solicitudes-utils.ts`.
-- `TIPO_INDICADOR`: valores actuales de `src/lib/indicadores-utils.ts`.
-- `AREA_CRUE`: seed inicial vacío + los valores detectados en Fase 1; si son ambiguos se dejan pendientes.
-- `TIPO_NOVEDAD_SALIENTE`, `MOTIVO_CIERRE_ENTRANTE`: seed de los valores inequívocos detectados; los ambiguos van al informe como “pendientes de decisión manual”.
-- `SEDE` y `CARGO`: seed inicial con los valores exactos detectados en `profiles`/`red_operativa`. NO fusiona ambiguos automáticamente — quedan como “pendiente conciliación”.
+- `ENTRANTES_ACEPTACION_HTML` \u2192 buildOficioHTML (aceptaci\u00f3n)
+- `ENTRANTES_NEGACION_HTML` \u2192 buildOficioHTML (negaci\u00f3n)
+- `ENTRANTES_CANCELACION_HTML` (si existe)
+- `ENTRANTES_BITACORA_PDF` \u2192 bitacora-pdf.ts
+- `SALIENTES_REPORTE_GENERAL_PDF` \u2192 salientes-export
+- `SALIENTES_ENTREGA_DOCUMENTAL_PDF` \u2192 entrega-firma-pdf
+- `HISTORIAL_EXPORTACION_XLSX` \u2192 historial-export
+- `CUADRO_TURNO_SOLICITUD_PERMISO_PDF` (TH-FR-09) \u2192 solicitud-pdf
+- `CUADRO_TURNO_EXPORTACION_MENSUAL_XLSX` (TH-FR-10) \u2192 cuadro-excel
+- `CUADRO_TURNO_AUSENTISMO_XLSX` (TH-FR-48) \u2192 ausentismo-export
 
-### 3. Adaptadores de lectura (código, mínimos)
-No refactor grande. Un solo helper nuevo `src/lib/catalogos-canonicos.ts` con:
-- `useCatalogo(tipo)` (React Query, caché 5 min, filtra `activo`, ordena por `orden`).
-- `getCatalogoOnce(tipo)` para uso puntual.
-- Utilidades `resolveCanonico(tipo, valor)` para tolerar valores históricos (fallback al valor recibido sin romper renders).
+Los 7 registros ya existentes se preservan; solo se completan campos faltantes y se enriquece `contenido_editable`.
 
-Adaptación quirúrgica de tres archivos, sin borrar los arrays actuales (quedan como fallback runtime marcado con comentario, hasta la Fase B que los retire tras verificación):
-- `src/lib/red-ips-utils.ts` → `TIPOS_AMBULANCIA`, `TIPOS_EAPB`, `TIPOS_RECURSO` pasan a leerse del catálogo; si el catálogo aún no cargó, se usa el array anterior. Sin cambios a firmas exportadas.
-- `src/lib/solicitudes-utils.ts` → `MOTIVOS_EXENTOS` igual.
-- `src/lib/indicadores-utils.ts` → `TIPOS_INDICADOR` igual.
+### 2. Registro de puntos de uso (nuevo)
 
-No se modifican archivos de estados técnicos, máquinas de estado, RLS, `has_role`, ni componentes fuera del alcance.
+Nueva tabla `puntos_de_uso` (solo lectura para operativa/coordinador, admin gestiona) con columnas: `codigo`, `modulo`, `ruta`, `ventana`, `paso`, `evento`, `tipo_salida`, `variables_disponibles` (jsonb), `plantilla_codigo` (fk l\u00f3gica a `plantillas_inventario.codigo`), `estado`, `componente_responsable`, `notas`. Sembrada con un punto por cada plantilla del inventario. Sin creaci\u00f3n libre desde UI \u2014 catalogo cerrado en esta fase.
 
-### 4. Auditoría, dependencias y advertencias
-- `src/components/catalogo/categoria-modal.tsx` (pestañas ya existentes):
-  - Pestaña **Configuración**: cuando el admin marca un elemento como inactivo, consulta `catalogo_dependencias` + un `count` de usos en tablas registradas y muestra el modal “ESTE ELEMENTO SE UTILIZA EN …” exigiendo motivo. Bloquea desactivar si hay dependencias marcadas obligatorias, salvo confirmación explícita.
-  - Pestaña **Historial de cambios**: consume `audit_logs` filtrado por `tabla IN ('catalogos','plantillas','catalogo_dependencias','plantillas_inventario')` y `registro_id`. Ya no queda vacía.
-- Seed inicial de `catalogo_dependencias` con las rutas conocidas (Red → Tipo de ambulancia, Salientes → EAPB, Salientes → Motivo cierre, etc.). No se hace scan runtime.
+### 3. Redise\u00f1o del panel Plantillas del sistema
 
-### 5. Inventario de plantillas
-Nueva pestaña de solo lectura “Inventario” dentro de la vista actual de Plantillas (`src/components/catalogo/…` o el panel de plantillas existente): lista las 7 plantillas desde `plantillas_inventario`, marca origen `CODIGO`/`CODIGO+CONFIG` y muestra “DISEÑO ADMINISTRABLE PENDIENTE DE DESARROLLO” para las que aún no son editables. No toca ningún generador (`salientes-export.ts`, `solicitud-pdf.ts`, etc.).
+Reemplaza el panel actual por una vista con:
 
-### 6. Fuera de alcance (confirmado)
-No implemento: dictado (registro de 12 campos), reorganización de Control de Mando en 10 secciones, listas de chequeo, PDF de listas, refactor de Reporte General o TH-FR-09, notas de voz, audio. No modifico Auth, dominios, Lovable Emails, `has_role`, ni RLS existentes.
+- **4 pesta\u00f1as principales**: Documentos \u00b7 Textos y comunicaciones \u00b7 Listas de chequeo (delegado al panel existente) \u00b7 Puntos de uso.
+- **Filtros**: b\u00fasqueda, m\u00f3dulo, formato, estado, editabilidad.
+- **Tarjetas** con nombre, c\u00f3digo, m\u00f3dulo, formato, versi\u00f3n activa, punto(s) de uso, nivel de editabilidad con etiqueta explicativa (`EDITABLE` \u00b7 `CONFIGURACI\u00d3N PARCIAL` \u00b7 `ARCHIVO REEMPLAZABLE` \u00b7 `SOLO LECTURA` \u00b7 `REQUIERE INTEGRACI\u00d3N T\u00c9CNICA`).
+- **Detalle con sub-pesta\u00f1as**: Vista previa \u00b7 Dise\u00f1o y contenido \u00b7 Variables \u00b7 Puntos de uso \u00b7 Versiones \u00b7 Historial.
 
-### 7. Informe final
-Al terminar entrego las tablas A–J y K exactamente como pide el prompt, con los pendientes de conciliación marcados (SEDE y CARGO ambiguos, novedades/motivos de cierre ambiguos, etc.) para que puedas decidirlos en una ronda posterior sin migrarlos ahora.
+### 4. Vista previa segura (por formato)
 
-### Detalles técnicos
-- Todas las tablas nuevas siguen el patrón obligatorio: `CREATE TABLE` → `GRANT` a `authenticated`/`service_role` (sin `anon`) → `ENABLE RLS` → `CREATE POLICY` usando `public.has_role(auth.uid(),'admin')`.
-- Triggers de auditoría son `SECURITY DEFINER` con `SET search_path = ''` y sanitización explícita.
-- `catalogo_dependencias` no se puebla desde el cliente: solo por seeds/migraciones o server functions admin.
-- No se instalan dependencias npm.
-- Una sola migración; los seeds usan `INSERT ... ON CONFLICT DO NOTHING` para ser reejecutables.
+- **HTML**: render en iframe sandbox con datos ficticios (`PACIENTE DE PRUEBA`, doc enmascarado, IPS de prueba, etc.).
+- **PDF**: bot\u00f3n "Generar PDF de prueba" que invoca el generador real con datos ficticios y abre el blob en nueva pesta\u00f1a.
+- **Excel**: muestra columnas/encabezados declarados en `contenido_editable.columnas` y bot\u00f3n para descargar XLSX de prueba.
+- **Texto/Mensaje**: render de string con variables sustituidas.
 
-¿Autorizas ejecutar esta Fase A tal como está descrita?
+Los generadores actuales siguen intactos; se agrega un modo `preview: true` que acepta el payload ficticio.
+
+### 5. Editor de campos seguros
+
+El editor actual de `contenido_editable` se ampl\u00eda:
+
+- Campos declarados por plantilla con tipos: texto corto, texto largo, boolean, color (paleta autorizada), n\u00famero, seleccionar (enum), lista ordenable (columnas Excel/PDF).
+- Cada campo con etiqueta legible, descripci\u00f3n y valor por defecto.
+- Bot\u00f3n **Vista previa** que aplica el borrador sin guardar.
+- Bot\u00f3n **Guardar como nueva versi\u00f3n** (obligatorio para plantillas con `versionable=true`).
+
+### 6. Variables (declarativo)
+
+Nuevo campo `variables_declaradas` (jsonb) en `plantillas_inventario` con `codigo`, `nombre`, `descripcion`, `fuente`, `tipo`, `obligatoria`, `valor_prueba`. Se muestra en la pesta\u00f1a Variables del detalle. No editable en esta fase (define el generador).
+
+### 7. Versionado ligero + historial
+
+Nueva tabla `plantillas_versiones`:
+
+- `plantilla_codigo`, `version` (int), `estado` (`BORRADOR`/`ACTIVA`/`ARCHIVADA`), `contenido_editable` (jsonb snapshot), `motivo`, `creada_por`, `creada_at`, `publicada_at`, `publicada_por`.
+- Solo una `ACTIVA` por `plantilla_codigo`.
+- Al publicar: la actual pasa a `ARCHIVADA`, la nueva a `ACTIVA`, y se copia su `contenido_editable` a `plantillas_inventario` para que los generadores (que leen `plantillas_inventario`) no cambien su contrato.
+- Bot\u00f3n **Volver a versi\u00f3n anterior** duplica una archivada como nuevo borrador.
+- Historial: lista cronol\u00f3gica de versiones con usuario, fecha, motivo. La auditor\u00eda ya existente en `audit_logs` sigue registrando los cambios.
+
+### 8. Ajuste de listas actuales
+
+- `SALIENTES_ENTREGA_SEGURA` \u2192 renombrar visualmente a "Salientes \u00b7 Entrega segura (gen\u00e9rica)" y marcar `estado='EN_REVISION'`. Sirve como base para Fase 3.
+- `PHD_RADICACION_VALIDACION` \u2192 `estado='BORRADOR_EN_REVISION'`, versi\u00f3n activa se despublica; se remueve la ejecuci\u00f3n bloqueante en `phd-ciclo-panel` (queda visible pero no obligatoria).
+- `TURNO_APERTURA` \u2192 `estado='BORRADOR_SIN_VINCULAR'`, sin punto de ejecuci\u00f3n.
+
+Ninguna se elimina.
+
+## Detalle t\u00e9cnico
+
+### Migraciones
+
+1. `puntos_de_uso` (tabla + GRANT + RLS: SELECT authenticated, ALL admin + service_role) + siembra.
+2. `plantillas_versiones` (tabla + GRANT + RLS: SELECT authenticated, ALL admin) + trigger `updated_at`.
+3. `ALTER plantillas_inventario ADD COLUMN variables_declaradas jsonb DEFAULT '[]'`.
+4. `ALTER checklists ADD COLUMN estado_revision text` para los 3 estados nuevos (`ACTIVA`/`EN_REVISION`/`BORRADOR_EN_REVISION`/`BORRADOR_SIN_VINCULAR`).
+5. Siembras: nuevos registros de `plantillas_inventario`, `puntos_de_uso`, ajuste de las 3 listas.
+
+### Frontend
+
+- `src/components/coordinacion/plantillas-inventario-panel.tsx`: redise\u00f1o completo a las 4 pesta\u00f1as + detalle con sub-pesta\u00f1as.
+- `src/components/coordinacion/plantilla-preview.tsx` (nuevo): renderizador de vista previa por formato con datos ficticios.
+- `src/components/coordinacion/plantilla-editor-campos.tsx` (nuevo): editor din\u00e1mico por tipo de campo.
+- `src/components/coordinacion/plantilla-versiones.tsx` (nuevo): listado y publicaci\u00f3n de versiones.
+- `src/components/coordinacion/puntos-uso-panel.tsx` (nuevo): tabla de puntos de uso.
+- `src/lib/plantillas-preview-fixtures.ts` (nuevo): datos ficticios can\u00f3nicos.
+- `src/lib/plantillas-versiones.functions.ts` (nuevo): server fns `listarVersiones`, `crearBorrador`, `publicarVersion`, `restaurarVersion` (todas con `requireSupabaseAuth` + verificaci\u00f3n admin).
+- Generadores existentes: agregar par\u00e1metro opcional `previewFixture` para renderizar sin tocar backend.
+
+### Seguridad
+
+- Todos los mutadores pasan por server fns admin-only (verificaci\u00f3n `has_role`).
+- HTML editable sanitizado antes de render (`DOMPurify` \u2014 ya disponible via shadcn stack? si no, se agrega).
+- `contenido_editable` se valida contra un schema por plantilla (whitelist de claves).
+- Ning\u00fan cambio a RLS de otras tablas ni a consultas de datos.
+
+## Fuera de alcance (queda para Fase 3)
+
+- Creaci\u00f3n de plantillas nuevas desde UI.
+- Carga de archivos base (DOCX/PDF).
+- Redise\u00f1o de las 3 listas can\u00f3nicas EPS/SOAT/ARL con selecci\u00f3n autom\u00e1tica en Entrega documental.
+- Nuevos puntos de uso creables desde UI.
+
+## Criterios de cierre de Fase 1+2
+
+1. `Plantillas del sistema` muestra 10+ plantillas reales con puntos de uso visibles.
+2. Cada plantilla tiene vista previa funcional con datos ficticios.
+3. Admin puede editar campos seguros y publicar nueva versi\u00f3n.
+4. Historial de versiones visible por plantilla.
+5. Las 3 listas actuales quedan en el estado acordado, sin borrar.
+6. Typecheck limpio, sin cambios a RLS de tablas no relacionadas.

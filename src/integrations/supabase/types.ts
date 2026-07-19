@@ -517,6 +517,7 @@ export type Database = {
           activo: boolean
           codigo: string
           created_at: string
+          estado_revision: string
           id: string
           modulo: string
           nombre: string
@@ -526,6 +527,7 @@ export type Database = {
           activo?: boolean
           codigo: string
           created_at?: string
+          estado_revision?: string
           id?: string
           modulo: string
           nombre: string
@@ -535,6 +537,7 @@ export type Database = {
           activo?: boolean
           codigo?: string
           created_at?: string
+          estado_revision?: string
           id?: string
           modulo?: string
           nombre?: string
@@ -1641,7 +1644,9 @@ export type Database = {
           nombre: string
           notas: string | null
           origen: string
+          puntos_uso_codigos: string[]
           updated_at: string
+          variables_declaradas: Json
           version: string
         }
         Insert: {
@@ -1658,7 +1663,9 @@ export type Database = {
           nombre: string
           notas?: string | null
           origen: string
+          puntos_uso_codigos?: string[]
           updated_at?: string
+          variables_declaradas?: Json
           version?: string
         }
         Update: {
@@ -1675,8 +1682,55 @@ export type Database = {
           nombre?: string
           notas?: string | null
           origen?: string
+          puntos_uso_codigos?: string[]
           updated_at?: string
+          variables_declaradas?: Json
           version?: string
+        }
+        Relationships: []
+      }
+      plantillas_versiones: {
+        Row: {
+          archivada_at: string | null
+          contenido_editable: Json
+          creada_por: string | null
+          created_at: string
+          estado: string
+          id: string
+          motivo: string | null
+          plantilla_codigo: string
+          publicada_at: string | null
+          publicada_por: string | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          archivada_at?: string | null
+          contenido_editable?: Json
+          creada_por?: string | null
+          created_at?: string
+          estado?: string
+          id?: string
+          motivo?: string | null
+          plantilla_codigo: string
+          publicada_at?: string | null
+          publicada_por?: string | null
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          archivada_at?: string | null
+          contenido_editable?: Json
+          creada_por?: string | null
+          created_at?: string
+          estado?: string
+          id?: string
+          motivo?: string | null
+          plantilla_codigo?: string
+          publicada_at?: string | null
+          publicada_por?: string | null
+          updated_at?: string
+          version?: number
         }
         Relationships: []
       }
@@ -1722,6 +1776,63 @@ export type Database = {
           tipo_documento?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      puntos_de_uso: {
+        Row: {
+          codigo: string
+          componente_responsable: string | null
+          created_at: string
+          estado: string
+          evento: string | null
+          id: string
+          modulo: string
+          nombre: string
+          notas: string | null
+          paso: string | null
+          plantilla_codigo: string | null
+          ruta: string | null
+          tipo_salida: string
+          updated_at: string
+          variables_disponibles: Json
+          ventana: string | null
+        }
+        Insert: {
+          codigo: string
+          componente_responsable?: string | null
+          created_at?: string
+          estado?: string
+          evento?: string | null
+          id?: string
+          modulo: string
+          nombre: string
+          notas?: string | null
+          paso?: string | null
+          plantilla_codigo?: string | null
+          ruta?: string | null
+          tipo_salida: string
+          updated_at?: string
+          variables_disponibles?: Json
+          ventana?: string | null
+        }
+        Update: {
+          codigo?: string
+          componente_responsable?: string | null
+          created_at?: string
+          estado?: string
+          evento?: string | null
+          id?: string
+          modulo?: string
+          nombre?: string
+          notas?: string | null
+          paso?: string | null
+          plantilla_codigo?: string | null
+          ruta?: string | null
+          tipo_salida?: string
+          updated_at?: string
+          variables_disponibles?: Json
+          ventana?: string | null
         }
         Relationships: []
       }

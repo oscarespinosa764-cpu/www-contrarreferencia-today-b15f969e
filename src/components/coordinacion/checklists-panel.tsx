@@ -27,6 +27,7 @@ type Checklist = {
   nombre: string;
   modulo: string;
   activo: boolean;
+  estado_revision: string | null;
   versionActiva: number | null;
   itemCount: number;
 };
@@ -62,7 +63,7 @@ export function ChecklistsPanel() {
     queryFn: async () => {
       const { data: listas, error } = await supabase
         .from("checklists")
-        .select("id, codigo, nombre, modulo, activo")
+        .select("id, codigo, nombre, modulo, activo, estado_revision")
         .order("codigo", { ascending: true });
       if (error) throw error;
       const rows = (listas ?? []) as Array<Omit<Checklist, "versionActiva" | "itemCount">>;
@@ -258,6 +259,11 @@ export function ChecklistsPanel() {
                   <div className="mt-1 text-[11px] text-muted-foreground">
                     v{c.versionActiva ?? "—"} activa · {c.itemCount} ítems
                   </div>
+                  {c.estado_revision && c.estado_revision !== "ACTIVA" ? (
+                    <div className="mt-1 text-[11px] font-semibold text-amber-600">
+                      {c.estado_revision.replace(/_/g, " ")}
+                    </div>
+                  ) : null}
                 </button>
               </li>
             );
