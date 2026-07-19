@@ -38,7 +38,7 @@ export function ChecklistRunner({
     queryFn: async () => {
       const { data: cl, error: e1 } = await supabase
         .from("checklists")
-        .select("id, codigo, nombre, descripcion")
+        .select("id, codigo, nombre")
         .eq("codigo", checklistCodigo)
         .eq("activo", true)
         .maybeSingle();
