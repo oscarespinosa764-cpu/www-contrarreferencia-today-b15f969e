@@ -360,6 +360,24 @@ export function ChecklistsPanel() {
           </>
         )}
       </section>
+
+      <ChecklistFormDialog
+        open={dialogCrear}
+        onOpenChange={setDialogCrear}
+        modo="crear"
+      />
+      <ChecklistFormDialog
+        open={dialogEditar}
+        onOpenChange={setDialogEditar}
+        modo="editar"
+        inicial={seleccion ? {
+          id: seleccion.id,
+          codigo: seleccion.codigo,
+          nombre: seleccion.nombre,
+          modulo: seleccion.modulo,
+          activo: seleccion.activo,
+        } : null}
+      />
     </div>
   );
 }
