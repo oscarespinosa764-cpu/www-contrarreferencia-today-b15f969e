@@ -27,10 +27,10 @@ export const Route = createFileRoute("/_authenticated/cuadro-turno")({
 function CuadroTurnoPage() {
   const { isAdmin } = useAuth();
   const { tab } = Route.useSearch();
-  const navigate = useNavigate({ from: Route.fullPath });
+  const navigate = useNavigate();
 
   const setTab = (v: string) =>
-    navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, tab: v }), replace: true });
+    navigate({ to: "/cuadro-turno", search: (prev: Record<string, unknown>) => ({ ...prev, tab: v }), replace: true });
 
   return (
     <div>
