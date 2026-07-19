@@ -21,7 +21,6 @@ export interface ChecklistFormValue {
   codigo: string;
   nombre: string;
   modulo: string;
-  descripcion?: string | null;
   activo?: boolean;
 }
 
