@@ -39,10 +39,12 @@ function ControlMandoPage() {
       />
 
       <Tabs defaultValue="usuarios" className="w-full">
-        <TabsList className="mb-4 grid h-auto w-full grid-cols-2 sm:grid-cols-5">
+        <TabsList className="mb-4 grid h-auto w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-7">
           <TabsTrigger className="whitespace-normal" value="usuarios">Usuarios</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="historicos">Históricos</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="alertas">Alertas y avisos</TabsTrigger>
+          <TabsTrigger className="whitespace-normal" value="checklists">Listas de chequeo</TabsTrigger>
+          <TabsTrigger className="whitespace-normal" value="plantillas">Plantillas del sistema</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="dictado">Dictado por voz</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="notificaciones">Notificaciones externas</TabsTrigger>
         </TabsList>
@@ -62,6 +64,12 @@ function ControlMandoPage() {
         <TabsContent value="alertas">
           <AlertasAvisosAdmin />
         </TabsContent>
+        <TabsContent value="checklists">
+          <ChecklistsPanel />
+        </TabsContent>
+        <TabsContent value="plantillas">
+          <PlantillasInventarioPanel />
+        </TabsContent>
         <TabsContent value="dictado">
           <DictadoPanel />
         </TabsContent>
@@ -69,6 +77,7 @@ function ControlMandoPage() {
           <NotificacionesExternasPanel />
         </TabsContent>
       </Tabs>
+
 
     </div>
   );
