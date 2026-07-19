@@ -421,6 +421,127 @@ export type Database = {
         }
         Relationships: []
       }
+      checklist_respuestas: {
+        Row: {
+          caso_id: string | null
+          caso_tipo: string | null
+          checklist_codigo: string
+          created_at: string
+          id: string
+          observaciones: string | null
+          respuestas: Json
+          usuario_id: string | null
+          usuario_nombre: string | null
+          version_id: string
+        }
+        Insert: {
+          caso_id?: string | null
+          caso_tipo?: string | null
+          checklist_codigo: string
+          created_at?: string
+          id?: string
+          observaciones?: string | null
+          respuestas?: Json
+          usuario_id?: string | null
+          usuario_nombre?: string | null
+          version_id: string
+        }
+        Update: {
+          caso_id?: string | null
+          caso_tipo?: string | null
+          checklist_codigo?: string
+          created_at?: string
+          id?: string
+          observaciones?: string | null
+          respuestas?: Json
+          usuario_id?: string | null
+          usuario_nombre?: string | null
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_respuestas_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_versiones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_versiones: {
+        Row: {
+          checklist_id: string
+          created_at: string
+          created_by: string | null
+          estado: string
+          id: string
+          items: Json
+          notas: string | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          checklist_id: string
+          created_at?: string
+          created_by?: string | null
+          estado?: string
+          id?: string
+          items?: Json
+          notas?: string | null
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          checklist_id?: string
+          created_at?: string
+          created_by?: string | null
+          estado?: string
+          id?: string
+          items?: Json
+          notas?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_versiones_checklist_id_fkey"
+            columns: ["checklist_id"]
+            isOneToOne: false
+            referencedRelation: "checklists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklists: {
+        Row: {
+          activo: boolean
+          codigo: string
+          created_at: string
+          id: string
+          modulo: string
+          nombre: string
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          codigo: string
+          created_at?: string
+          id?: string
+          modulo: string
+          nombre: string
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          codigo?: string
+          created_at?: string
+          id?: string
+          modulo?: string
+          nombre?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       consentimientos: {
         Row: {
           aceptado: boolean
@@ -1508,6 +1629,7 @@ export type Database = {
       plantillas_inventario: {
         Row: {
           codigo: string
+          contenido_editable: Json
           created_at: string
           dependencia: string | null
           editable_nivel: string
@@ -1524,6 +1646,7 @@ export type Database = {
         }
         Insert: {
           codigo: string
+          contenido_editable?: Json
           created_at?: string
           dependencia?: string | null
           editable_nivel?: string
@@ -1540,6 +1663,7 @@ export type Database = {
         }
         Update: {
           codigo?: string
+          contenido_editable?: Json
           created_at?: string
           dependencia?: string | null
           editable_nivel?: string
