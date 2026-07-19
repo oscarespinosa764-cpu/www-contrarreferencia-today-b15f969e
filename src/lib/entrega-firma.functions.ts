@@ -54,6 +54,8 @@ export type SnapshotPublico = {
   paciente_iniciales?: string;
   documento_enmascarado?: string;
   ips_receptora?: string;
+  empresa_traslado?: string;
+  tipo_ambulancia?: string;
   fecha_entrega?: string;
   documentos?: string[];
 };
@@ -84,6 +86,8 @@ function snapshotPublicoDesde(raw: EntregaSnapshotInterno): SnapshotPublico {
     paciente_iniciales: inicialesNombre(raw.paciente),
     documento_enmascarado: enmascararDocumento(raw.documento),
     ips_receptora: raw.ips_receptora || undefined,
+    empresa_traslado: raw.empresa_traslado || undefined,
+    tipo_ambulancia: (raw.tipo_ambulancia as string | undefined) || undefined,
     fecha_entrega: raw.fecha_entrega || undefined,
     documentos: docs,
   };
@@ -136,11 +140,16 @@ export const obtenerSesionFirma = createServerFn({ method: "POST" })
 
 const firmaInput = z.object({
   token: z.string().min(10).max(200),
+  responsable_nombre: z.string().trim().min(2).max(160),
+  responsable_cargo: z.string().trim().min(2).max(120),
+  firmante_es_responsable: z.boolean().default(true),
   firmante_nombre: z.string().trim().min(2).max(160),
   firmante_cargo: z.string().trim().min(2).max(120),
   firmante_empresa: z.string().trim().max(160).optional().default(""),
-  firmante_documento: z.string().trim().max(60).optional().default(""),
-  firmante_telefono: z.string().trim().max(40).optional().default(""),
+  firmante_telefono: z.string().trim().min(7).max(40),
+  tipo_ambulancia: z.string().trim().max(80).optional().default(""),
+  empresa_declarada: z.string().trim().max(160).optional().default(""),
+  empresa_declarada_motivo: z.string().trim().max(300).optional().default(""),
   firma_data: z.string().min(50).max(700000), // dataURL PNG
   aceptacion: z.literal(true),
 });
@@ -191,11 +200,16 @@ export const firmarEntrega = createServerFn({ method: "POST" })
       .from("entrega_firmas")
       .update({
         estado: "FIRMADA",
+        responsable_nombre: data.responsable_nombre,
+        responsable_cargo: data.responsable_cargo,
+        firmante_es_responsable: data.firmante_es_responsable,
         firmante_nombre: data.firmante_nombre,
         firmante_cargo: data.firmante_cargo,
         firmante_empresa: data.firmante_empresa || null,
-        firmante_documento: data.firmante_documento || null,
         firmante_telefono: data.firmante_telefono || null,
+        tipo_ambulancia: data.tipo_ambulancia || null,
+        empresa_declarada: data.empresa_declarada || null,
+        empresa_declarada_motivo: data.empresa_declarada_motivo || null,
         aceptacion: true,
         firma_data: data.firma_data,
         firma_ip: ip,
@@ -203,7 +217,7 @@ export const firmarEntrega = createServerFn({ method: "POST" })
         firmado_at: firmadoAt,
         codigo_verificacion: codigo,
         pdf_hash: pdfHash,
-      })
+      } as never)
       .eq("id", row.id)
       .eq("estado", "PENDIENTE"); // condición de uso único (carrera)
 

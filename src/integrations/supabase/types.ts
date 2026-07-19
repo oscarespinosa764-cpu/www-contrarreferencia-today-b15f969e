@@ -929,6 +929,8 @@ export type Database = {
           caso_id: string
           codigo_verificacion: string | null
           created_at: string
+          empresa_declarada: string | null
+          empresa_declarada_motivo: string | null
           estado: string
           expira_at: string
           firma_data: string | null
@@ -938,13 +940,17 @@ export type Database = {
           firmante_cargo: string | null
           firmante_documento: string | null
           firmante_empresa: string | null
+          firmante_es_responsable: boolean | null
           firmante_nombre: string | null
           firmante_telefono: string | null
           id: string
           nombre_usuario: string | null
           pdf_hash: string | null
+          responsable_cargo: string | null
+          responsable_nombre: string | null
           seguimiento_id: string | null
           snapshot: Json
+          tipo_ambulancia: string | null
           tipo_caso: string
           token_hash: string
           updated_at: string
@@ -955,6 +961,8 @@ export type Database = {
           caso_id: string
           codigo_verificacion?: string | null
           created_at?: string
+          empresa_declarada?: string | null
+          empresa_declarada_motivo?: string | null
           estado?: string
           expira_at: string
           firma_data?: string | null
@@ -964,13 +972,17 @@ export type Database = {
           firmante_cargo?: string | null
           firmante_documento?: string | null
           firmante_empresa?: string | null
+          firmante_es_responsable?: boolean | null
           firmante_nombre?: string | null
           firmante_telefono?: string | null
           id?: string
           nombre_usuario?: string | null
           pdf_hash?: string | null
+          responsable_cargo?: string | null
+          responsable_nombre?: string | null
           seguimiento_id?: string | null
           snapshot?: Json
+          tipo_ambulancia?: string | null
           tipo_caso?: string
           token_hash: string
           updated_at?: string
@@ -981,6 +993,8 @@ export type Database = {
           caso_id?: string
           codigo_verificacion?: string | null
           created_at?: string
+          empresa_declarada?: string | null
+          empresa_declarada_motivo?: string | null
           estado?: string
           expira_at?: string
           firma_data?: string | null
@@ -990,13 +1004,17 @@ export type Database = {
           firmante_cargo?: string | null
           firmante_documento?: string | null
           firmante_empresa?: string | null
+          firmante_es_responsable?: boolean | null
           firmante_nombre?: string | null
           firmante_telefono?: string | null
           id?: string
           nombre_usuario?: string | null
           pdf_hash?: string | null
+          responsable_cargo?: string | null
+          responsable_nombre?: string | null
           seguimiento_id?: string | null
           snapshot?: Json
+          tipo_ambulancia?: string | null
           tipo_caso?: string
           token_hash?: string
           updated_at?: string

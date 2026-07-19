@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -9,11 +9,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, ShieldCheck, CircleAlert, CheckCircle2 } from "lucide-react";
 
 const TEXTO_ACEPTACION =
   "Declaro que recibo la documentación relacionada en la lista de chequeo para el traslado " +
   "del paciente y que la información registrada corresponde a la entrega realizada.";
+
+const TIPOS_AMBULANCIA = ["BÁSICA", "MEDICALIZADA", "AVANZADA (TAM)"];
 
 export const Route = createFileRoute("/firma-entrega")({
   validateSearch: (s: Record<string, unknown>) =>
@@ -32,6 +36,8 @@ type Snap = {
   paciente_iniciales?: string;
   documento_enmascarado?: string;
   ips_receptora?: string;
+  empresa_traslado?: string;
+  tipo_ambulancia?: string;
   fecha_entrega?: string;
   documentos?: string[];
 };
@@ -54,11 +60,16 @@ function FirmaEntregaPage() {
   const firmar = useServerFn(firmarEntrega);
   const padRef = useRef<SignaturePadHandle>(null);
 
-  const [nombre, setNombre] = useState("");
-  const [cargo, setCargo] = useState("");
-  const [empresa, setEmpresa] = useState("");
-  const [documento, setDocumento] = useState("");
+  const [respNombre, setRespNombre] = useState("");
+  const [respCargo, setRespCargo] = useState("");
+  const [firmanteEsResp, setFirmanteEsResp] = useState<"si" | "no">("si");
+  const [firmNombre, setFirmNombre] = useState("");
+  const [firmCargo, setFirmCargo] = useState("");
+  const [tipoAmb, setTipoAmb] = useState("");
   const [telefono, setTelefono] = useState("");
+  const [reportarOtra, setReportarOtra] = useState(false);
+  const [empresaOtra, setEmpresaOtra] = useState("");
+  const [motivoOtra, setMotivoOtra] = useState("");
   const [acepta, setAcepta] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
@@ -70,6 +81,13 @@ function FirmaEntregaPage() {
     queryFn: () => obtener({ data: { token: t! } }),
     staleTime: 0,
   });
+
+  const snap = (sesion.data?.snapshot ?? {}) as Snap;
+  const empresaSnap = (snap.empresa_traslado || "").toUpperCase();
+
+  useEffect(() => {
+    if (snap.tipo_ambulancia && !tipoAmb) setTipoAmb(snap.tipo_ambulancia.toUpperCase());
+  }, [snap.tipo_ambulancia, tipoAmb]);
 
   if (!t) {
     return (
@@ -91,29 +109,11 @@ function FirmaEntregaPage() {
 
   const estado = sesion.data?.estado;
   if (estado === "NO_EXISTE")
-    return (
-      <Aviso
-        icon={<CircleAlert className="h-6 w-6 text-destructive" />}
-        title="Enlace no válido"
-        text="No encontramos esta entrega. Solicite generar un nuevo enlace de firma."
-      />
-    );
+    return <Aviso icon={<CircleAlert className="h-6 w-6 text-destructive" />} title="Enlace no válido" text="No encontramos esta entrega. Solicite generar un nuevo enlace de firma." />;
   if (estado === "VENCIDA")
-    return (
-      <Aviso
-        icon={<CircleAlert className="h-6 w-6 text-amber-600" />}
-        title="Enlace vencido"
-        text="Este enlace de firma ha vencido. Solicite generar uno nuevo."
-      />
-    );
+    return <Aviso icon={<CircleAlert className="h-6 w-6 text-amber-600" />} title="Enlace vencido" text="Este enlace de firma ha vencido. Solicite generar uno nuevo." />;
   if (estado === "ANULADA")
-    return (
-      <Aviso
-        icon={<CircleAlert className="h-6 w-6 text-destructive" />}
-        title="Enlace anulado"
-        text="Este enlace de firma fue anulado. Solicite generar uno nuevo."
-      />
-    );
+    return <Aviso icon={<CircleAlert className="h-6 w-6 text-destructive" />} title="Enlace anulado" text="Este enlace de firma fue anulado. Solicite generar uno nuevo." />;
   if (estado === "FIRMADA" || firmado)
     return (
       <Aviso
@@ -127,15 +127,35 @@ function FirmaEntregaPage() {
       />
     );
 
-  const snap = (sesion.data?.snapshot ?? {}) as Snap;
   const docs = snap.documentos ?? [];
 
   const onSubmit = async () => {
     setError("");
-    if (nombre.trim().length < 2) return setError("Indique su nombre y apellido.");
-    if (cargo.trim().length < 2) return setError("Indique su cargo.");
+    const rN = respNombre.trim().toUpperCase();
+    const rC = respCargo.trim().toUpperCase();
+    if (rN.length < 2) return setError("Indique el nombre del responsable.");
+    if (rC.length < 2) return setError("Indique el cargo del responsable.");
+
+    const esResp = firmanteEsResp === "si";
+    const fN = (esResp ? rN : firmNombre.trim().toUpperCase());
+    const fC = (esResp ? rC : firmCargo.trim().toUpperCase());
+    if (!esResp && fN.length < 2) return setError("Indique el nombre del firmante.");
+    if (!esResp && fC.length < 2) return setError("Indique el cargo del firmante.");
+
+    if (!tipoAmb) return setError("Seleccione el tipo de ambulancia.");
+    if (telefono.trim().length < 7) return setError("Indique un teléfono de contacto válido.");
     if (padRef.current?.isEmpty()) return setError("Debe firmar en la pantalla.");
     if (!acepta) return setError("Debe aceptar la declaración de recibido.");
+
+    if (reportarOtra) {
+      if (empresaOtra.trim().length < 2) return setError("Indique la empresa realmente presente.");
+      if (motivoOtra.trim().length < 3) return setError("Indique el motivo del cambio de empresa.");
+    }
+
+    const empresaFinal = reportarOtra
+      ? empresaOtra.trim().toUpperCase()
+      : empresaSnap;
+
     const firma_data = padRef.current?.toDataURL() ?? "";
 
     setEnviando(true);
@@ -143,11 +163,16 @@ function FirmaEntregaPage() {
       const res = await firmar({
         data: {
           token: t!,
-          firmante_nombre: nombre.trim(),
-          firmante_cargo: cargo.trim(),
-          firmante_empresa: empresa.trim(),
-          firmante_documento: documento.trim(),
+          responsable_nombre: rN,
+          responsable_cargo: rC,
+          firmante_es_responsable: esResp,
+          firmante_nombre: fN,
+          firmante_cargo: fC,
+          firmante_empresa: empresaFinal,
           firmante_telefono: telefono.trim(),
+          tipo_ambulancia: tipoAmb,
+          empresa_declarada: reportarOtra ? empresaOtra.trim().toUpperCase() : "",
+          empresa_declarada_motivo: reportarOtra ? motivoOtra.trim() : "",
           firma_data,
           aceptacion: true as const,
         },
@@ -182,32 +207,68 @@ function FirmaEntregaPage() {
         <Dato k="Paciente (iniciales)" v={snap.paciente_iniciales} />
         <Dato k="Documento" v={snap.documento_enmascarado} />
         <Dato k="IPS receptora" v={snap.ips_receptora} />
+        <Dato k="Empresa de traslado" v={empresaSnap || "—"} />
         <Dato k="Fecha/hora de entrega" v={snap.fecha_entrega} />
       </div>
 
       <div className="mt-4">
-        <p className="text-xs font-semibold uppercase text-muted-foreground">
-          Documentos entregados
-        </p>
+        <p className="text-xs font-semibold uppercase text-muted-foreground">Documentos entregados</p>
         <ul className="mt-1.5 space-y-1 text-sm">
           {docs.map((label, i) => (
-            <li key={i} className="flex gap-2">
-              <span className="text-emerald-600">✓</span>
-              {label}
-            </li>
+            <li key={i} className="flex gap-2"><span className="text-emerald-600">✓</span>{label}</li>
           ))}
-          {docs.length === 0 && (
-            <li className="text-muted-foreground">Sin documentos marcados.</li>
-          )}
+          {docs.length === 0 && <li className="text-muted-foreground">Sin documentos marcados.</li>}
         </ul>
       </div>
 
-      <div className="mt-5 space-y-3">
-        <Campo label="Nombre y apellido *" value={nombre} onChange={setNombre} />
-        <Campo label="Cargo *" value={cargo} onChange={setCargo} />
-        <Campo label="Empresa de ambulancia" value={empresa} onChange={setEmpresa} />
-        <Campo label="Documento o identificación laboral" value={documento} onChange={setDocumento} />
-        <Campo label="Teléfono (opcional)" value={telefono} onChange={setTelefono} />
+      <div className="mt-5 space-y-4">
+        <section className="space-y-3 rounded-lg border p-3">
+          <p className="text-xs font-semibold uppercase text-muted-foreground">Responsable de la entrega</p>
+          <Campo label="Nombre y apellido *" value={respNombre} onChange={setRespNombre} upper />
+          <Campo label="Cargo *" value={respCargo} onChange={setRespCargo} upper />
+        </section>
+
+        <section className="space-y-2 rounded-lg border p-3">
+          <Label className="text-xs font-semibold uppercase text-muted-foreground">
+            ¿La persona que firma es la misma responsable? *
+          </Label>
+          <RadioGroup value={firmanteEsResp} onValueChange={(v) => setFirmanteEsResp(v as "si" | "no")} className="flex gap-4">
+            <label className="flex items-center gap-1.5 text-sm"><RadioGroupItem value="si" /> Sí</label>
+            <label className="flex items-center gap-1.5 text-sm"><RadioGroupItem value="no" /> No</label>
+          </RadioGroup>
+          {firmanteEsResp === "no" && (
+            <div className="space-y-3 pt-2">
+              <Campo label="Nombre del firmante *" value={firmNombre} onChange={setFirmNombre} upper />
+              <Campo label="Cargo del firmante *" value={firmCargo} onChange={setFirmCargo} upper />
+            </div>
+          )}
+        </section>
+
+        <section className="space-y-3 rounded-lg border p-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Tipo de ambulancia *</Label>
+            <Select value={tipoAmb} onValueChange={setTipoAmb}>
+              <SelectTrigger><SelectValue placeholder="Seleccione…" /></SelectTrigger>
+              <SelectContent>
+                {TIPOS_AMBULANCIA.map((v) => (<SelectItem key={v} value={v}>{v}</SelectItem>))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Campo label="Teléfono de contacto *" value={telefono} onChange={setTelefono} />
+
+          <label className="flex items-start gap-2 text-xs">
+            <Checkbox checked={reportarOtra} onCheckedChange={(v) => setReportarOtra(!!v)} className="mt-0.5" />
+            <span className="leading-relaxed text-muted-foreground">
+              La empresa que realmente llegó es diferente a la asignada ({empresaSnap || "—"}).
+            </span>
+          </label>
+          {reportarOtra && (
+            <div className="space-y-3">
+              <Campo label="Empresa realmente presente *" value={empresaOtra} onChange={setEmpresaOtra} upper />
+              <Campo label="Motivo del cambio *" value={motivoOtra} onChange={setMotivoOtra} />
+            </div>
+          )}
+        </section>
 
         <div className="space-y-1.5">
           <Label className="text-xs font-medium">Firma *</Label>
@@ -243,15 +304,21 @@ function Campo({
   label,
   value,
   onChange,
+  upper,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
+  upper?: boolean;
 }) {
   return (
     <div className="space-y-1.5">
       <Label className="text-xs font-medium">{label}</Label>
-      <Input value={value} onChange={(e) => onChange(e.target.value)} />
+      <Input
+        value={value}
+        onChange={(e) => onChange(upper ? e.target.value.toUpperCase() : e.target.value)}
+        className={upper ? "uppercase" : ""}
+      />
     </div>
   );
 }

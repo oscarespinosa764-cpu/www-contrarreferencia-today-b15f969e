@@ -2950,7 +2950,13 @@ export function SeguimientoDialog({
                     tipoDocumento={caso?.tipo_documento}
                     cie10={caso?.cie10}
                     ipsReceptora={caso?.ips_receptora ?? ipsReceptora}
-                    empresaTraslado={empresaAmb}
+                    empresaTraslado={empresaAmb || (() => {
+                      const h = (historial ?? []).find(
+                        (s) => String(s.tipo_seguimiento ?? "").toUpperCase().includes("AMBULANCIA COORDINADA"),
+                      );
+                      const det = (h?.detalles ?? {}) as { empresa?: string };
+                      return (det.empresa ?? "").toString();
+                    })()}
                     especialidad={especialidadesList.join(", ")}
                     entidadPago={caso?.eapb}
                     tipoAmbulancia={caso?.tipo_ambulancia}

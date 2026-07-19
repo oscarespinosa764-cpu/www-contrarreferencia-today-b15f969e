@@ -67,12 +67,17 @@ type SesionRow = {
   firmante_nombre: string | null;
   firmante_cargo: string | null;
   firmante_empresa: string | null;
-  firmante_documento: string | null;
   firmante_telefono: string | null;
   firma_data: string | null;
   firmado_at: string | null;
   codigo_verificacion: string | null;
   pdf_hash: string | null;
+  responsable_nombre: string | null;
+  responsable_cargo: string | null;
+  firmante_es_responsable: boolean | null;
+  tipo_ambulancia: string | null;
+  empresa_declarada: string | null;
+  empresa_declarada_motivo: string | null;
 };
 
 export function EntregaDocumentalDialog({
@@ -249,11 +254,11 @@ export function EntregaDocumentalDialog({
       const { data } = await supabase
         .from("entrega_firmas")
         .select(
-          "id, estado, expira_at, firmante_nombre, firmante_cargo, firmante_empresa, firmante_documento, firmante_telefono, firma_data, firmado_at, codigo_verificacion, pdf_hash",
+          "id, estado, expira_at, firmante_nombre, firmante_cargo, firmante_empresa, firmante_telefono, firma_data, firmado_at, codigo_verificacion, pdf_hash, responsable_nombre, responsable_cargo, firmante_es_responsable, tipo_ambulancia, empresa_declarada, empresa_declarada_motivo",
         )
         .eq("id", sesionId!)
         .maybeSingle();
-      return (data as SesionRow) ?? null;
+      return (data as unknown as SesionRow) ?? null;
     },
   });
 
@@ -374,7 +379,7 @@ export function EntregaDocumentalDialog({
       nombre: d.firmante_nombre ?? "",
       cargo: d.firmante_cargo ?? "",
       empresa: d.firmante_empresa ?? "",
-      documento: d.firmante_documento ?? "",
+      documento: "",
       telefono: d.firmante_telefono ?? "",
       firma_data: d.firma_data,
       firmado_at: d.firmado_at ?? "",
@@ -463,16 +468,6 @@ export function EntregaDocumentalDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5 sm:col-span-2 rounded-md border border-dashed bg-muted/30 p-2.5">
-              <Label className="text-[10.5px] uppercase text-muted-foreground">
-                Tripulante responsable / cargo
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                {tripulanteS
-                  ? `${tripulanteS}${cargoTripulanteS ? ` — ${cargoTripulanteS}` : ""}`
-                  : "PENDIENTE DE FIRMA QR (los diligencia el tripulante al firmar)."}
-              </p>
-            </div>
           </div>
 
           {/* Checklist documental (según origen) */}
@@ -519,24 +514,26 @@ export function EntregaDocumentalDialog({
             </p>
           )}
 
-          {/* PASO 1 — Antes de la firma: solo Generar QR (Portada solo tras firma · Parte 15) */}
+          {/* PASO 1 — Antes de la firma: solo Generar QR (Portada y Acta aparecen tras la firma) */}
           {!sesionId ? (
             <div className="space-y-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full"
-                disabled
-                title="Disponible después de la firma QR"
-              >
-                <FileText className="mr-1.5 h-3.5 w-3.5" /> Portada PDF — pendiente de firma
-              </Button>
+              {(!quienAceptaS.trim() || !cargoAceptaS.trim()) && (
+                <p className="rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                  Complete el NOMBRE y el CARGO de quien acepta la documentación para poder generar el QR.
+                </p>
+              )}
               <Button
                 type="button"
                 className="w-full"
                 onClick={generarQR}
-                disabled={generando || !origen || !empresa.trim() || !ips.trim()}
+                disabled={
+                  generando ||
+                  !origen ||
+                  !empresa.trim() ||
+                  !ips.trim() ||
+                  !quienAceptaS.trim() ||
+                  !cargoAceptaS.trim()
+                }
               >
                 {generando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
                 Generar QR de firma
@@ -552,10 +549,21 @@ export function EntregaDocumentalDialog({
                   <span className="font-semibold">Entrega firmada</span>
                 </div>
                 <div className="space-y-0.5 text-sm">
-                  <p><b>Nombre:</b> {sesion.data?.firmante_nombre || "—"}</p>
+                  {sesion.data?.responsable_nombre && (
+                    <p>
+                      <b>Responsable:</b> {sesion.data.responsable_nombre}
+                      {sesion.data.responsable_cargo ? ` — ${sesion.data.responsable_cargo}` : ""}
+                    </p>
+                  )}
+                  <p><b>Firmante:</b> {sesion.data?.firmante_nombre || "—"}</p>
                   <p><b>Cargo:</b> {sesion.data?.firmante_cargo || "—"}</p>
-                  <p><b>Empresa:</b> {sesion.data?.firmante_empresa || "—"}</p>
-                  <p><b>Documento/ID:</b> {sesion.data?.firmante_documento || "—"}</p>
+                  <p><b>Empresa:</b> {sesion.data?.firmante_empresa || sesion.data?.empresa_declarada || "—"}</p>
+                  {sesion.data?.tipo_ambulancia && (
+                    <p><b>Tipo de ambulancia:</b> {sesion.data.tipo_ambulancia}</p>
+                  )}
+                  {sesion.data?.firmante_telefono && (
+                    <p><b>Teléfono:</b> {sesion.data.firmante_telefono}</p>
+                  )}
                   <p>
                     <b>Fecha/hora de firma:</b>{" "}
                     {sesion.data?.firmado_at
