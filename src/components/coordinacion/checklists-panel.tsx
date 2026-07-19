@@ -173,11 +173,16 @@ export function ChecklistsPanel() {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-[280px_1fr]">
       <aside className="space-y-2 rounded-xl border border-border bg-card p-3">
-        <div>
-          <h3 className="text-sm font-semibold">Listas registradas</h3>
-          <p className="text-[11px] text-muted-foreground">
-            {filtradas.length} visibles · {checklists?.length ?? 0} registradas
-          </p>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold">Listas registradas</h3>
+            <p className="text-[11px] text-muted-foreground">
+              {filtradas.length} visibles · {checklists?.length ?? 0} registradas
+            </p>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => setDialogCrear(true)}>
+            <Plus className="mr-1 h-3.5 w-3.5" /> Nueva
+          </Button>
         </div>
 
         <div className="space-y-2 rounded-md border border-border/70 bg-background p-2">
