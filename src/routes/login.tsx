@@ -128,10 +128,10 @@ function LoginPage() {
 
           <div className="mb-8">
             <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
-              Bienvenido
+              BIENVENIDO
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Ingresa con las credenciales institucionales asignadas por el administrador.
+              Ingresa con las credenciales asignadas por el administrador.
             </p>
           </div>
 
@@ -141,7 +141,7 @@ function LoginPage() {
                 htmlFor="l-email"
                 className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
               >
-                Correo institucional
+                CORREO ELECTRONICO
               </Label>
               <div className="relative">
                 <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -189,15 +189,14 @@ function LoginPage() {
           <div className="mt-6 flex items-start gap-2 rounded-xl border border-border bg-muted/40 p-3">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Acceso exclusivo para personal autorizado. Las cuentas las crea y administra
-              únicamente el administrador. Si necesitas acceso o restablecer tu contraseña,
-              contacta al administrador del sistema.
+              Acceso exclusivo para personal autorizado. Si necesitas acceso o restablecer tu
+              contraseña, contacta al administrador del sistema.
             </p>
           </div>
 
           <div className="mt-6 space-y-2 text-center">
             <p className="text-xs font-medium text-muted-foreground">
-              Horario de turno: {turnoLabel ?? "—"}
+              Horario de Turno: {turnoLabel ?? "—"}
             </p>
             <p className="text-xs font-medium text-muted-foreground">© 2026 CEDIM IPS</p>
           </div>
