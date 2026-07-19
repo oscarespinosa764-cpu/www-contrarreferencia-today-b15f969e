@@ -660,7 +660,7 @@ function PreviewDocumento({ plantilla }: { plantilla: PlantillaInv }) {
             </p>
             <p className="text-xs italic text-muted-foreground">{String(cfg.pie_leyenda)}</p>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
