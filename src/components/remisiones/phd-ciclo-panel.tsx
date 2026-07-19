@@ -65,10 +65,22 @@ export function PhdCicloPanel({
   casoId,
   estadoActual,
   canEdit,
+  paciente,
+  documento,
+  tipoDocumento,
+  ipsReceptora,
+  empresaTraslado,
+  entidadPago,
 }: {
   casoId: string;
   estadoActual: string | null | undefined;
   canEdit: boolean;
+  paciente?: string | null;
+  documento?: string | null;
+  tipoDocumento?: string | null;
+  ipsReceptora?: string | null;
+  empresaTraslado?: string | null;
+  entidadPago?: string | null;
 }) {
   const qc = useQueryClient();
   const avanzar = useServerFn(avanzarEstadoCiclo);
