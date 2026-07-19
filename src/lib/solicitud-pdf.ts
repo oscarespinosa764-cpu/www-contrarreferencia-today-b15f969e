@@ -60,6 +60,10 @@ export async function generarSolicitudPDF(
   opts?: { firmaDataUrl?: string | null; jefeFirmaDataUrl?: string | null; usuario?: string },
 ): Promise<void> {
   const { jsPDF } = await import("jspdf");
+  const cfg = await getPlantillaConfig("TH-FR-09");
+  const TITULO = pickText(cfg, "encabezado_titulo", TITULO_DEFAULT);
+  const CODIGO = pickText(cfg, "encabezado_codigo", CODIGO_DEFAULT);
+  const PIE = pickText(cfg, "pie_leyenda", PIE_DEFAULT);
   const doc: Doc = new jsPDF({ unit: "mm", format: "letter" });
   const pageW = doc.internal.pageSize.getWidth();
   const mX = 10;
