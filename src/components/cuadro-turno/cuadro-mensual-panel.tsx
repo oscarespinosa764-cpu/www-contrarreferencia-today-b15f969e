@@ -40,6 +40,31 @@ const sameMonth = (iso: string | null | undefined, year: number, month: number) 
   return y === year && m === month;
 };
 
+function ViewButton({
+  active,
+  onClick,
+  icon: Icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: typeof CalendarDays;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 font-medium transition-colors ${
+        active ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-accent"
+      }`}
+    >
+      <Icon className="h-3.5 w-3.5" />
+      {label}
+    </button>
+  );
+}
+
 export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -313,7 +338,7 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
                 tipoMap={tipoMap}
                 selectedDay={selectedDay}
                 onCellClick={(m, d) => setCell({ member: m, day: d })}
-                onMoreClick={(d) => setSearch({ dia: d })}
+                onMoreClick={(d) => { void setSearch({ dia: d }); }}
               />
               <DaySummaryPanel
                 anio={anio}
@@ -429,18 +454,6 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
         />
       )}
 
-      {dayDetail != null && schedule && (
-        <DayDetailDialog
-          anio={anio}
-          mes={mes}
-          day={dayDetail}
-          members={membersFiltrados}
-          dayMap={dayMap}
-          tipoMap={tipoMap}
-          onClose={() => setDayDetail(null)}
-          onEdit={(m) => { setCell({ member: m, day: dayDetail }); setDayDetail(null); }}
-        />
-      )}
     </div>
   );
 }
@@ -448,12 +461,13 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
 const DOW_HEADERS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
 function CalendarView({
-  anio, mes, ndias, members, dayMap, tipoMap, onCellClick, onMoreClick,
+  anio, mes, ndias, members, dayMap, tipoMap, selectedDay, onCellClick, onMoreClick,
 }: {
   anio: number; mes: number; ndias: number;
   members: ShiftMember[];
   dayMap: Map<string, ShiftDay>;
   tipoMap: Map<string, ShiftType>;
+  selectedDay: number;
   onCellClick: (m: ShiftMember, d: number) => void;
   onMoreClick: (d: number) => void;
 }) {
@@ -483,7 +497,9 @@ function CalendarView({
           return (
             <div
               key={i}
-              className="flex min-h-[110px] flex-col rounded-lg border bg-background p-1.5 transition-colors hover:border-primary/40"
+              className={`flex min-h-[110px] flex-col rounded-lg border bg-background p-1.5 transition-colors hover:border-primary/40 ${
+                selectedDay === dayNum ? "border-primary ring-1 ring-primary/40" : ""
+              }`}
             >
               <button
                 type="button"
@@ -533,6 +549,164 @@ function CalendarView({
       <p className="mt-2 text-[11px] text-muted-foreground">
         Haz clic en un turno para ver el detalle · Haz clic en el número del día para ver el resumen completo.
       </p>
+    </Card>
+  );
+}
+
+function DaySummaryPanel({
+  anio, mes, day, members, dayMap, tipoMap, onEdit,
+}: {
+  anio: number;
+  mes: number;
+  day: number;
+  members: ShiftMember[];
+  dayMap: Map<string, ShiftDay>;
+  tipoMap: Map<string, ShiftType>;
+  onEdit: (m: ShiftMember) => void;
+}) {
+  const asignados = members
+    .map((m) => ({ m, cd: dayMap.get(`${m.id}:${day}`) }))
+    .filter((x) => x.cd?.shift_code);
+  const resumen = new Map<string, number>();
+  asignados.forEach(({ cd }) => {
+    const c = cd!.shift_code!;
+    resumen.set(c, (resumen.get(c) ?? 0) + 1);
+  });
+
+  return (
+    <Card className="p-4">
+      <div className="mb-3">
+        <p className="text-xs font-semibold uppercase text-muted-foreground">Resumen del día</p>
+        <h3 className="text-base font-bold">{day} de {MESES[mes - 1]} {anio}</h3>
+      </div>
+      <div className="rounded-lg border p-3">
+        <p className="text-xs text-muted-foreground">Total de turnos</p>
+        <p className="text-3xl font-bold">{asignados.length}</p>
+        <div className="mt-3 space-y-1.5">
+          {Array.from(resumen.entries()).map(([code, total]) => {
+            const tipo = tipoMap.get(code);
+            return (
+              <div key={code} className="flex items-center gap-2 text-xs">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ background: tipo?.color ?? "#94a3b8" }} />
+                <span className="font-bold">{code}</span>
+                <span className="min-w-0 flex-1 truncate text-muted-foreground">{tipo?.name ?? "Turno"}</span>
+                <span>{total}</span>
+              </div>
+            );
+          })}
+          {resumen.size === 0 && <p className="text-xs text-muted-foreground">Sin asignaciones para este día.</p>}
+        </div>
+      </div>
+      <div className="mt-4 space-y-2">
+        <p className="text-xs font-semibold uppercase text-muted-foreground">Lista de asignados</p>
+        {asignados.map(({ m, cd }) => {
+          const tipo = cd!.shift_code ? tipoMap.get(cd!.shift_code) : undefined;
+          return (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => onEdit(m)}
+              className="flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-xs transition-colors hover:bg-muted/40"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-bold">
+                {m.full_name.split(" ").map((p) => p[0]).join("").slice(0, 2)}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-medium">{m.full_name}</span>
+                <span className="block truncate text-[10px] text-muted-foreground">{m.role_name ?? "—"}</span>
+              </span>
+              <span className="rounded px-1.5 py-0.5 font-bold" style={{ background: (tipo?.color ?? "#94a3b8") + "33" }}>
+                {cd!.shift_code}
+              </span>
+            </button>
+          );
+        })}
+        {asignados.length === 0 && <p className="rounded-md border px-3 py-4 text-center text-xs text-muted-foreground">Selecciona otro día con asignaciones.</p>}
+      </div>
+    </Card>
+  );
+}
+
+function ListView({
+  anio, mes, members, days, tipoMap, onEdit,
+}: {
+  anio: number;
+  mes: number;
+  members: ShiftMember[];
+  days: ShiftDay[];
+  tipoMap: Map<string, ShiftType>;
+  onEdit: (m: ShiftMember, d: number) => void;
+}) {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const memberMap = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
+  const rows = useMemo(() => days
+    .filter((d) => d.shift_code && memberMap.has(d.member_id))
+    .map((d) => ({ day: d, member: memberMap.get(d.member_id)! }))
+    .sort((a, b) => a.day.day_number - b.day.day_number || a.member.full_name.localeCompare(b.member.full_name)), [days, memberMap]);
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const visibles = rows.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b p-3">
+        <div>
+          <h3 className="text-sm font-bold">Vista de lista · {MESES[mes - 1]} {anio}</h3>
+          <p className="text-xs text-muted-foreground">{rows.length} asignación(es) reales según el cuadro activo.</p>
+        </div>
+        <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1); }}>
+          <SelectTrigger className="h-8 w-36 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {[10, 25, 50, 100].map((n) => <SelectItem key={n} value={String(n)}>{n} por página</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b bg-muted/50 text-left text-muted-foreground">
+              <th className="px-3 py-2">Fecha</th>
+              <th className="px-3 py-2">Funcionario</th>
+              <th className="px-3 py-2">Cargo</th>
+              <th className="px-3 py-2">Turno</th>
+              <th className="px-3 py-2">Horario</th>
+              <th className="px-3 py-2">Estado</th>
+              <th className="px-3 py-2">Observaciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visibles.map(({ day, member }) => {
+              const tipo = day.shift_code ? tipoMap.get(day.shift_code) : undefined;
+              return (
+                <tr key={day.id} className="border-b hover:bg-muted/30">
+                  <td className="px-3 py-2 font-medium">{fechaISO(anio, mes, day.day_number)}</td>
+                  <td className="px-3 py-2">{member.full_name}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{member.role_name ?? "—"}</td>
+                  <td className="px-3 py-2">
+                    <button type="button" onClick={() => onEdit(member, day.day_number)} className="rounded px-2 py-0.5 font-bold" style={{ background: (tipo?.color ?? "#94a3b8") + "33" }}>
+                      {day.shift_code}
+                    </button>
+                  </td>
+                  <td className="px-3 py-2 text-muted-foreground">{tipo?.start_time && tipo?.end_time ? `${tipo.start_time.slice(0, 5)} – ${tipo.end_time.slice(0, 5)}` : "—"}</td>
+                  <td className="px-3 py-2">Asignado</td>
+                  <td className="px-3 py-2 text-muted-foreground">{day.notes ?? "—"}</td>
+                </tr>
+              );
+            })}
+            {visibles.length === 0 && (
+              <tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">Sin asignaciones para los filtros actuales.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 p-3 text-xs text-muted-foreground">
+        <span>Página {safePage} de {totalPages}</span>
+        <div className="flex gap-1">
+          <Button size="sm" variant="outline" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}>Anterior</Button>
+          <Button size="sm" variant="outline" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}>Siguiente</Button>
+        </div>
+      </div>
     </Card>
   );
 }
