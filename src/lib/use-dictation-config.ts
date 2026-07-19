@@ -50,12 +50,15 @@ async function fetchConfigs(): Promise<DictationConfigRow[]> {
 
 /** Carga todas las filas de configuración (para Control de Mando). */
 export function useDictationConfigRows() {
+  const { user } = useAuth();
   return useQuery({
     queryKey: DICTATION_QUERY_KEY,
     queryFn: fetchConfigs,
     staleTime: 60_000,
+    enabled: !!user,
   });
 }
+
 
 /**
  * Resuelve la configuración aplicable para los campos. Combina las filas de la
