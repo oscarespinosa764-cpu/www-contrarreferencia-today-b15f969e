@@ -97,6 +97,7 @@ export function EntregaDocumentalDialog({
   quienAcepta,
   cargoAcepta,
 }: Props) {
+  const qc = useQueryClient();
   const [origen, setOrigen] = useState<OrigenDoc | "">("");
   const [docs, setDocs] = useState<DocItem[]>([]);
   // Trazabilidad: si viene de la asignación previa, se marca como readonly.
