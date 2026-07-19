@@ -272,15 +272,8 @@ export function EntregaDocumentalDialog({
 
   const toggleDoc = (i: number) =>
     setDocs((p) => p.map((d, idx) => (idx === i ? { ...d, marcado: !d.marcado } : d)));
-  const quitarDoc = (i: number) => setDocs((p) => p.filter((_, idx) => idx !== i));
   const marcarTodos = () => setDocs((p) => p.map((d) => ({ ...d, marcado: true })));
   const limpiarMarcas = () => setDocs((p) => p.map((d) => ({ ...d, marcado: false })));
-  const agregarDoc = () => {
-    const v = nuevoDoc.trim();
-    if (!v) return;
-    setDocs((p) => [...p, { label: v, marcado: true }]);
-    setNuevoDoc("");
-  };
 
   const copiarIndigoCorta = () => {
     navigator.clipboard.writeText(indigoCorta || generarPlantillaIndigoCorta(snapshot));
