@@ -379,7 +379,7 @@ export function EntregaDocumentalDialog({
       nombre: d.firmante_nombre ?? "",
       cargo: d.firmante_cargo ?? "",
       empresa: d.firmante_empresa ?? "",
-      documento: d.firmante_documento ?? "",
+      documento: "",
       telefono: d.firmante_telefono ?? "",
       firma_data: d.firma_data,
       firmado_at: d.firmado_at ?? "",
