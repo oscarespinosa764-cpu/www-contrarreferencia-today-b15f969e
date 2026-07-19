@@ -67,12 +67,17 @@ type SesionRow = {
   firmante_nombre: string | null;
   firmante_cargo: string | null;
   firmante_empresa: string | null;
-  firmante_documento: string | null;
   firmante_telefono: string | null;
   firma_data: string | null;
   firmado_at: string | null;
   codigo_verificacion: string | null;
   pdf_hash: string | null;
+  responsable_nombre: string | null;
+  responsable_cargo: string | null;
+  firmante_es_responsable: boolean | null;
+  tipo_ambulancia: string | null;
+  empresa_declarada: string | null;
+  empresa_declarada_motivo: string | null;
 };
 
 export function EntregaDocumentalDialog({
