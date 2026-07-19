@@ -140,11 +140,16 @@ export const obtenerSesionFirma = createServerFn({ method: "POST" })
 
 const firmaInput = z.object({
   token: z.string().min(10).max(200),
+  responsable_nombre: z.string().trim().min(2).max(160),
+  responsable_cargo: z.string().trim().min(2).max(120),
+  firmante_es_responsable: z.boolean().default(true),
   firmante_nombre: z.string().trim().min(2).max(160),
   firmante_cargo: z.string().trim().min(2).max(120),
   firmante_empresa: z.string().trim().max(160).optional().default(""),
-  firmante_documento: z.string().trim().max(60).optional().default(""),
-  firmante_telefono: z.string().trim().max(40).optional().default(""),
+  firmante_telefono: z.string().trim().min(7).max(40),
+  tipo_ambulancia: z.string().trim().max(80).optional().default(""),
+  empresa_declarada: z.string().trim().max(160).optional().default(""),
+  empresa_declarada_motivo: z.string().trim().max(300).optional().default(""),
   firma_data: z.string().min(50).max(700000), // dataURL PNG
   aceptacion: z.literal(true),
 });
