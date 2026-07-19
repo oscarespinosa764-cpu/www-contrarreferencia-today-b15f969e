@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { invalidatePlantillaConfig } from "@/lib/plantillas-inventario-config";
 
 // ============================================================
 // Inventario de plantillas del sistema (Fase Q5).
