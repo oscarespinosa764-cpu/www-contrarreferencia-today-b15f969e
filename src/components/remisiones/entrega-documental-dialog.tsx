@@ -463,16 +463,6 @@ export function EntregaDocumentalDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5 sm:col-span-2 rounded-md border border-dashed bg-muted/30 p-2.5">
-              <Label className="text-[10.5px] uppercase text-muted-foreground">
-                Tripulante responsable / cargo
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                {tripulanteS
-                  ? `${tripulanteS}${cargoTripulanteS ? ` — ${cargoTripulanteS}` : ""}`
-                  : "PENDIENTE DE FIRMA QR (los diligencia el tripulante al firmar)."}
-              </p>
-            </div>
           </div>
 
           {/* Checklist documental (según origen) */}
