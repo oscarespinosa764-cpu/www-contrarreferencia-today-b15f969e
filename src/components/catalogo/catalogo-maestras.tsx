@@ -377,21 +377,23 @@ export function CatalogoMaestras({ moduloFijo }: { moduloFijo?: string } = {}) {
             />
           </div>
 
-          <div className="mb-3 flex flex-wrap gap-1.5">
-            {MODULOS.map((m) => (
-              <button
-                key={m}
-                onClick={() => setModulo(m)}
-                className={`rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${
-                  modulo === m
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-accent"
-                }`}
-              >
-                {m} ({conteoModulo(m)})
-              </button>
-            ))}
-          </div>
+          {!moduloFijo && (
+            <div className="mb-3 flex flex-wrap gap-1.5">
+              {MODULOS.map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setModulo(m)}
+                  className={`rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${
+                    modulo === m
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-accent"
+                  }`}
+                >
+                  {m} ({conteoModulo(m)})
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="space-y-1 overflow-y-auto pr-1 lg:max-h-[calc(100vh-22rem)]">
             {tiposVisibles.map((t) => {
