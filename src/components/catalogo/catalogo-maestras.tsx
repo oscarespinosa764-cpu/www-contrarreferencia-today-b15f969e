@@ -166,7 +166,12 @@ function detectarClusters(rows: CatRow[], umbral = 0.82) {
 
 export function CatalogoMaestras() {
   const qc = useQueryClient();
+  const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setQ(qInput), 250);
+    return () => clearTimeout(t);
+  }, [qInput]);
   const [modulo, setModulo] = useState("Todos");
   const [tipoSel, setTipoSel] = useState<string | null>(null);
   const [nuevoValor, setNuevoValor] = useState("");
