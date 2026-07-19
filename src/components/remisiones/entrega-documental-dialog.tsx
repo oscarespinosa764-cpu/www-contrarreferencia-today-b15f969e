@@ -582,10 +582,15 @@ export function EntregaDocumentalDialog({
                 </Button>
               </div>
 
-              {/* Bloque 3 · Checklist PDF firmado */}
-              <Button type="button" size="sm" className="w-full" onClick={descargarFirmado}>
-                <Download className="mr-1.5 h-3.5 w-3.5" /> Lista de chequeo confirmada PDF
-              </Button>
+              {/* Bloque 3 · Portada + Checklist PDF firmado */}
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <Button type="button" size="sm" variant="outline" onClick={generarPortada}>
+                  <FileText className="mr-1.5 h-3.5 w-3.5" /> Portada PDF
+                </Button>
+                <Button type="button" size="sm" onClick={descargarFirmado}>
+                  <Download className="mr-1.5 h-3.5 w-3.5" /> Acta firmada PDF
+                </Button>
+              </div>
 
               {/* Bloque 4 · Cerrar */}
               <Button type="button" size="sm" variant="ghost" className="w-full" onClick={() => onOpenChange(false)}>
