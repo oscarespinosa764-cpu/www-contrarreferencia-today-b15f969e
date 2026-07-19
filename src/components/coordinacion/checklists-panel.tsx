@@ -298,9 +298,14 @@ export function ChecklistsPanel() {
                   {seleccion.codigo} · módulo {seleccion.modulo}
                 </p>
               </div>
-              <Button size="sm" onClick={crearNuevaVersion}>
-                <Plus className="mr-1 h-4 w-4" /> Nueva versión (borrador)
-              </Button>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setDialogEditar(true)}>
+                  <Pencil className="mr-1 h-4 w-4" /> Editar
+                </Button>
+                <Button size="sm" onClick={crearNuevaVersion}>
+                  <Plus className="mr-1 h-4 w-4" /> Nueva versión (borrador)
+                </Button>
+              </div>
             </header>
 
             <div className="grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
