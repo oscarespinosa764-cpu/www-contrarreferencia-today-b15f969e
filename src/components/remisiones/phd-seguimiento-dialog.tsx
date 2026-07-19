@@ -842,7 +842,7 @@ export function PhdSeguimientoDialog({
                         {fmtFechaHora(h.created_at)} · {h.nombre_usuario || "—"}
                       </span>
                     </div>
-                    {(d.estado_anterior || d.estado_nuevo) && (
+                    {Boolean(d.estado_anterior || d.estado_nuevo) && (
                       <p className="text-[10.5px] text-muted-foreground">
                         {String(d.estado_anterior ?? "")} → {String(d.estado_nuevo ?? "")}
                       </p>
