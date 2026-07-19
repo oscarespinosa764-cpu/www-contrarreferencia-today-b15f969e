@@ -565,3 +565,6 @@ export function CasoGenericoCard({
           estadoActual={r.estado}
         />
       )}
+    </div>
+  );
+}
