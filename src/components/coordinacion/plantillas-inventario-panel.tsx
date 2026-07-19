@@ -160,8 +160,8 @@ function PlantillaEditor({
             {plantilla.codigo} · módulo {plantilla.modulo ?? "—"} · formato{" "}
             {plantilla.formato ?? "—"}
           </p>
-          {plantilla.descripcion && (
-            <p className="mt-1 text-sm text-muted-foreground">{plantilla.descripcion}</p>
+          {plantilla.notas && (
+            <p className="mt-1 text-sm text-muted-foreground">{plantilla.notas}</p>
           )}
         </div>
         <Badge variant={soloLectura ? "outline" : "default"}>{plantilla.editable_nivel}</Badge>
@@ -171,10 +171,11 @@ function PlantillaEditor({
         <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
           DISEÑO ADMINISTRABLE PENDIENTE DE DESARROLLO. Esta plantilla se genera directamente
           desde código: <code className="rounded bg-muted px-1 py-0.5 text-xs">
-            {plantilla.ruta_generador ?? "generador no registrado"}
+            {plantilla.generador ?? "generador no registrado"}
           </code>
           .
         </div>
+
       ) : entries.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           Esta plantilla no declara campos editables todavía.
