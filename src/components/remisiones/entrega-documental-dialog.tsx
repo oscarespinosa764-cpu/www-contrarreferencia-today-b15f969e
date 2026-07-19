@@ -606,6 +606,13 @@ export function EntregaDocumentalDialog({
               </div>
             </div>
           )}
+
+          <ChecklistRunner
+            checklistCodigo="SALIENTES_ENTREGA_SEGURA"
+            casoId={casoId}
+            casoTipo={tipoCaso}
+            compact
+          />
         </div>
       </DialogContent>
     </Dialog>
