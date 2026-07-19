@@ -675,7 +675,7 @@ function ListaGenerica({
 }) {
   if (items.length === 0) return <VacioModulo />;
   const grupos = agruparPorEtapa(
-    items.map((it) => ({ ...it, estado: (it as { estado?: string | null }).estado ?? null })),
+    items as Array<Record<string, any> & { estado?: string | null }>,
   );
   return (
     <div className="grid gap-4">
