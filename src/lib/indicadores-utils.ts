@@ -41,7 +41,9 @@ export type Medicion = {
 
 export type Semaforo = "VERDE" | "AMARILLO" | "ROJO" | "GRIS";
 
+// FUENTE CANÓNICA (Fase A · Q1): useCatalogo("TIPO_INDICADOR") — fallback runtime.
 export const TIPOS_INDICADOR = ["PROPORCION", "OPORTUNIDAD", "PROMEDIO"];
+
 export const UNIDADES_INDICADOR = ["%", "HORAS", "DIAS", "CASOS"];
 export const SENTIDOS_INDICADOR = ["MAYOR_ES_MEJOR", "MENOR_ES_MEJOR"];
 

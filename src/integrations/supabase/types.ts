@@ -284,10 +284,74 @@ export type Database = {
         }
         Relationships: []
       }
+      catalogo_dependencias: {
+        Row: {
+          campo: string | null
+          catalogo_tipo: string
+          componente: string | null
+          created_at: string
+          elemento_id: string | null
+          formulario: string | null
+          id: string
+          modulo: string
+          notas: string | null
+          obligatorio: boolean
+          ruta: string | null
+          tipo_control: string | null
+          updated_at: string
+          ventana: string | null
+          verificado_at: string
+        }
+        Insert: {
+          campo?: string | null
+          catalogo_tipo: string
+          componente?: string | null
+          created_at?: string
+          elemento_id?: string | null
+          formulario?: string | null
+          id?: string
+          modulo: string
+          notas?: string | null
+          obligatorio?: boolean
+          ruta?: string | null
+          tipo_control?: string | null
+          updated_at?: string
+          ventana?: string | null
+          verificado_at?: string
+        }
+        Update: {
+          campo?: string | null
+          catalogo_tipo?: string
+          componente?: string | null
+          created_at?: string
+          elemento_id?: string | null
+          formulario?: string | null
+          id?: string
+          modulo?: string
+          notas?: string | null
+          obligatorio?: boolean
+          ruta?: string | null
+          tipo_control?: string | null
+          updated_at?: string
+          ventana?: string | null
+          verificado_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalogo_dependencias_elemento_id_fkey"
+            columns: ["elemento_id"]
+            isOneToOne: false
+            referencedRelation: "catalogos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       catalogos: {
         Row: {
           activo: boolean
+          codigo: string | null
           created_at: string
+          created_by: string | null
           eapb_correo_radicacion: string | null
           eapb_requisitos_radicacion: string | null
           eapb_sla_horas: number | null
@@ -295,6 +359,8 @@ export type Database = {
           extra2: string | null
           extra3: string | null
           id: string
+          metadata: Json
+          orden: number
           radica_oxigeno: boolean
           radica_pad: boolean
           radica_phd: boolean
@@ -302,11 +368,14 @@ export type Database = {
           seguimientos_en_plataforma: boolean
           tipo: string
           updated_at: string
+          updated_by: string | null
           valor: string
         }
         Insert: {
           activo?: boolean
+          codigo?: string | null
           created_at?: string
+          created_by?: string | null
           eapb_correo_radicacion?: string | null
           eapb_requisitos_radicacion?: string | null
           eapb_sla_horas?: number | null
@@ -314,6 +383,8 @@ export type Database = {
           extra2?: string | null
           extra3?: string | null
           id?: string
+          metadata?: Json
+          orden?: number
           radica_oxigeno?: boolean
           radica_pad?: boolean
           radica_phd?: boolean
@@ -321,11 +392,14 @@ export type Database = {
           seguimientos_en_plataforma?: boolean
           tipo: string
           updated_at?: string
+          updated_by?: string | null
           valor: string
         }
         Update: {
           activo?: boolean
+          codigo?: string | null
           created_at?: string
+          created_by?: string | null
           eapb_correo_radicacion?: string | null
           eapb_requisitos_radicacion?: string | null
           eapb_sla_horas?: number | null
@@ -333,6 +407,8 @@ export type Database = {
           extra2?: string | null
           extra3?: string | null
           id?: string
+          metadata?: Json
+          orden?: number
           radica_oxigeno?: boolean
           radica_pad?: boolean
           radica_phd?: boolean
@@ -340,6 +416,7 @@ export type Database = {
           seguimientos_en_plataforma?: boolean
           tipo?: string
           updated_at?: string
+          updated_by?: string | null
           valor?: string
         }
         Relationships: []
@@ -1425,6 +1502,57 @@ export type Database = {
           subcategoria?: string | null
           updated_at?: string
           variables?: string | null
+        }
+        Relationships: []
+      }
+      plantillas_inventario: {
+        Row: {
+          codigo: string
+          created_at: string
+          dependencia: string | null
+          editable_nivel: string
+          estado: string
+          formato: string
+          generador: string | null
+          id: string
+          modulo: string
+          nombre: string
+          notas: string | null
+          origen: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          codigo: string
+          created_at?: string
+          dependencia?: string | null
+          editable_nivel?: string
+          estado?: string
+          formato: string
+          generador?: string | null
+          id?: string
+          modulo: string
+          nombre: string
+          notas?: string | null
+          origen: string
+          updated_at?: string
+          version?: string
+        }
+        Update: {
+          codigo?: string
+          created_at?: string
+          dependencia?: string | null
+          editable_nivel?: string
+          estado?: string
+          formato?: string
+          generador?: string | null
+          id?: string
+          modulo?: string
+          nombre?: string
+          notas?: string | null
+          origen?: string
+          updated_at?: string
+          version?: string
         }
         Relationships: []
       }
