@@ -143,6 +143,7 @@ function PlantillaEditor({
     else {
       toast.success("Contenido guardado");
       setDirty(false);
+      invalidatePlantillaConfig(plantilla.codigo);
       onSaved();
     }
   };
