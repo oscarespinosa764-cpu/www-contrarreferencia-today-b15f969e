@@ -83,7 +83,7 @@ export function PlantillasInventarioPanel() {
                       variant={
                         r.editable_nivel === "PARCIAL"
                           ? "default"
-                          : r.editable_nivel === "TOTAL"
+                          : r.editable_nivel === "COMPLETA"
                             ? "default"
                             : "outline"
                       }
