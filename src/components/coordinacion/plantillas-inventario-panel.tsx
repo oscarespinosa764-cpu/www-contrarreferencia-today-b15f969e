@@ -642,9 +642,33 @@ function PreviewHtml({ plantilla }: { plantilla: PlantillaInv }) {
     }
   }, [plantilla.codigo]);
 
+  const [casoId, setCasoId] = useState<string>("__fixture__");
+
+  const { data: casos } = useQuery({
+    queryKey: ["cm-preview-casos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("casos_entrantes")
+        .select("id, codigo, paciente, observaciones")
+        .order("created_at", { ascending: false })
+        .limit(15);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const casoSel = useMemo(
+    () => (casos ?? []).find((c) => c.id === casoId),
+    [casos, casoId],
+  );
+
   const html = useMemo(() => {
+    if (casoSel) {
+      const mensaje = String(casoSel.observaciones ?? "").trim() || fixtureOficioMensaje(tipoOficio);
+      return buildOficioHTML(tipoOficio, casoSel.codigo ?? "S/C", mensaje);
+    }
     return buildOficioHTML(tipoOficio, FIXTURE_CASO.codigo, fixtureOficioMensaje(tipoOficio));
-  }, [tipoOficio]);
+  }, [tipoOficio, casoSel]);
 
   return (
     <div className="space-y-2">
@@ -652,6 +676,22 @@ function PreviewHtml({ plantilla }: { plantilla: PlantillaInv }) {
         <AlertTitle>Vista previa</AlertTitle>
         <AlertDescription>{AVISO_PREVIEW}</AlertDescription>
       </Alert>
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="text-xs font-medium text-muted-foreground">Datos:</label>
+        <Select value={casoId} onValueChange={setCasoId}>
+          <SelectTrigger className="h-8 w-[320px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__fixture__">Datos de ejemplo (fixture)</SelectItem>
+            {(casos ?? []).map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.codigo ?? "S/C"} — {String(c.paciente ?? "").slice(0, 40)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       <iframe
         title={`Vista previa ${plantilla.codigo}`}
         sandbox=""
