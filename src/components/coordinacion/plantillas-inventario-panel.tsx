@@ -479,10 +479,12 @@ function PlantillaDetalle({
   plantilla,
   puntos,
   canEdit,
+  onEditar,
 }: {
   plantilla: PlantillaInv;
   puntos: PuntoUso[];
   canEdit: boolean;
+  onEditar: () => void;
 }) {
   const qc = useQueryClient();
   const soloLectura = plantilla.editable_nivel === "SOLO_LECTURA";
@@ -503,6 +505,14 @@ function PlantillaDetalle({
     invalidatePlantillaConfig(plantilla.codigo);
   };
 
+  const eliminar = async () => {
+    if (!confirm(`¿Eliminar la plantilla ${plantilla.codigo}? Esta acción no se puede deshacer.`)) return;
+    const { error } = await supabase.from("plantillas_inventario").delete().eq("id", plantilla.id);
+    if (error) return toast.error(error.message);
+    toast.success("Plantilla eliminada");
+    qc.invalidateQueries({ queryKey: ["cm-plantillas-inv"] });
+  };
+
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-start justify-between gap-2">
@@ -515,9 +525,21 @@ function PlantillaDetalle({
             <p className="mt-1 text-sm text-muted-foreground">{plantilla.notas}</p>
           )}
         </div>
-        <Badge variant={soloLectura ? "outline" : "default"}>
-          {NIVEL_LABEL[plantilla.editable_nivel] ?? plantilla.editable_nivel}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant={soloLectura ? "outline" : "default"}>
+            {NIVEL_LABEL[plantilla.editable_nivel] ?? plantilla.editable_nivel}
+          </Badge>
+          {canEdit && (
+            <>
+              <Button size="sm" variant="outline" onClick={onEditar}>
+                <Pencil className="mr-1 h-4 w-4" /> Editar
+              </Button>
+              <Button size="sm" variant="ghost" onClick={eliminar}>
+                <Trash2 className="mr-1 h-4 w-4" /> Eliminar
+              </Button>
+            </>
+          )}
+        </div>
       </header>
 
       <div className="grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
