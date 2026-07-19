@@ -620,14 +620,14 @@ function PreviewDocumento({ plantilla }: { plantilla: PlantillaInv }) {
           <h4 className="text-lg font-bold">
             {String(cfg.encabezado_titulo ?? plantilla.nombre)}
           </h4>
-          {cfg.encabezado_subtitulo && (
+          {cfg.encabezado_subtitulo ? (
             <p className="text-sm text-muted-foreground">{String(cfg.encabezado_subtitulo)}</p>
-          )}
-          {cfg.encabezado_codigo && (
+          ) : null}
+          {cfg.encabezado_codigo ? (
             <p className="mt-1 text-xs font-mono text-muted-foreground">
               Código: {String(cfg.encabezado_codigo)}
             </p>
-          )}
+          ) : null}
         </div>
 
         <div className="py-4">
@@ -653,7 +653,7 @@ function PreviewDocumento({ plantilla }: { plantilla: PlantillaInv }) {
           )}
         </div>
 
-        {cfg.pie_leyenda && (
+        {cfg.pie_leyenda ? (
           <div className="border-t border-border pt-3">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               Pie
