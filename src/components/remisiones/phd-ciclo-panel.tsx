@@ -23,7 +23,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { fmtFechaHora } from "@/lib/remisiones-utils";
-import { ChevronRight, FilePlus2, XCircle, CheckCircle2, Truck } from "lucide-react";
+import { ChevronRight, FilePlus2, XCircle, CheckCircle2, Truck, FileSignature } from "lucide-react";
+import { EntregaDocumentalDialog } from "./entrega-documental-dialog";
 
 const CANALES = ["CORREO", "PLATAFORMA", "TELEFONO", "PRESENCIAL", "OTRO"];
 
@@ -64,10 +65,22 @@ export function PhdCicloPanel({
   casoId,
   estadoActual,
   canEdit,
+  paciente,
+  documento,
+  tipoDocumento,
+  ipsReceptora,
+  empresaTraslado,
+  entidadPago,
 }: {
   casoId: string;
   estadoActual: string | null | undefined;
   canEdit: boolean;
+  paciente?: string | null;
+  documento?: string | null;
+  tipoDocumento?: string | null;
+  ipsReceptora?: string | null;
+  empresaTraslado?: string | null;
+  entidadPago?: string | null;
 }) {
   const qc = useQueryClient();
   const avanzar = useServerFn(avanzarEstadoCiclo);
@@ -78,6 +91,7 @@ export function PhdCicloPanel({
   const [pendiente, setPendiente] = useState<PhdEstadoCiclo | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [radOpen, setRadOpen] = useState(false);
+  const [entregaOpen, setEntregaOpen] = useState(false);
 
   const { data: radicaciones = [], refetch } = useQuery({
     queryKey: ["phd-radicaciones", casoId],
@@ -142,6 +156,17 @@ export function PhdCicloPanel({
                 {iconoPaso(e)} <span className="ml-1">{e}</span>
               </Button>
             ))}
+            {(estadoActual === "AMBULANCIA COORDINADA - PENDIENTE EGRESO" ||
+              estadoActual === "ACEPTADO - PENDIENTE COORDINACION DE AMBULANCIA") && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-full"
+                onClick={() => setEntregaOpen(true)}
+              >
+                <FileSignature className="mr-1 h-3.5 w-3.5" /> Entrega documental
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"
@@ -324,6 +349,22 @@ export function PhdCicloPanel({
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Entrega documental (traslado en ambulancia) */}
+      {entregaOpen && (
+        <EntregaDocumentalDialog
+          open={entregaOpen}
+          onOpenChange={setEntregaOpen}
+          casoId={casoId}
+          tipoCaso="phd"
+          paciente={paciente ?? ""}
+          documento={documento ?? null}
+          tipoDocumento={tipoDocumento ?? null}
+          ipsReceptora={ipsReceptora ?? null}
+          empresaTraslado={empresaTraslado ?? null}
+          entidadPago={entidadPago ?? null}
+        />
+      )}
     </div>
   );
 }
