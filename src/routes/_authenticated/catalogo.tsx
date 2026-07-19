@@ -8,7 +8,7 @@ import { AppHeader } from "@/components/app-header";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlantillasBiblioteca } from "@/components/coordinacion/plantillas-biblioteca";
-import { CatalogoMaestras } from "@/components/catalogo/catalogo-maestras";
+import { CategoriasView } from "@/components/catalogo/categorias-view";
 import {
   BookOpen,
   Mail,
