@@ -253,44 +253,46 @@ export async function descargarReporteGeneralPDF(params: {
   });
 
   // ── Sección PHD / PAD / O2 / ESPECIALES ACTIVOS ─────────────────────────
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  y = ((doc as any).lastAutoTable?.finalY ?? y) + 8;
-  if (y > pageH - 24) {
-    doc.addPage();
-    y = 16;
-  }
-  doc.setFillColor(NAVY[0], NAVY[1], NAVY[2]);
-  doc.rect(8, y - 4, pageW - 16, 6, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8.5);
-  doc.text("PHD / PAD / O2 / ESPECIALES ACTIVOS", pageW / 2, y, { align: "center" });
-  doc.setTextColor(0);
-  y += 5;
+  if (INCLUYE_PHD) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    y = ((doc as any).lastAutoTable?.finalY ?? y) + 8;
+    if (y > pageH - 24) {
+      doc.addPage();
+      y = 16;
+    }
+    doc.setFillColor(NAVY[0], NAVY[1], NAVY[2]);
+    doc.rect(8, y - 4, pageW - 16, 6, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    doc.text("PHD / PAD / O2 / ESPECIALES ACTIVOS", pageW / 2, y, { align: "center" });
+    doc.setTextColor(0);
+    y += 5;
 
-  const dom = (params.domiciliarios ?? []).filter(
-    (d) => !(d as { archivado?: boolean }).archivado,
-  );
-  const bodyDom = dom.map((it) => [
-    fmtFechaHora((it.fecha_inicio as string) ?? (it.created_at as string)),
-    v(it.paciente ?? it.paciente_asunto),
-    v(it.documento),
-    v(it.tipo ?? it.servicio ?? it.asunto),
-    v(it.eapb ?? it.asegurador),
-    v(it.estado ?? it.prioridad),
-    v(it.observaciones ?? it.detalle),
-  ]);
-  autoTable(doc, {
-    startY: y,
-    head: [["FECHA", "PACIENTE", "DOCUMENTO", "TIPO", "EAPB", "ESTADO", "OBSERVACIONES"]] as never,
-    body: (bodyDom.length
-      ? bodyDom
-      : [[{ content: "Sin registros activos", colSpan: 7, styles: { halign: "center", textColor: [130, 130, 130], fontStyle: "italic" } }]]) as never,
-    theme: "grid",
-    styles: { fontSize: 6.5, cellPadding: 1, overflow: "linebreak", lineColor: [140, 140, 140], lineWidth: 0.15 },
-    headStyles: { fillColor: NAVY, textColor: [255, 255, 255], fontStyle: "bold", fontSize: 6.5 },
-    margin: { left: 8, right: 8 },
-  });
+    const dom = (params.domiciliarios ?? []).filter(
+      (d) => !(d as { archivado?: boolean }).archivado,
+    );
+    const bodyDom = dom.map((it) => [
+      fmtFechaHora((it.fecha_inicio as string) ?? (it.created_at as string)),
+      v(it.paciente ?? it.paciente_asunto),
+      v(it.documento),
+      v(it.tipo ?? it.servicio ?? it.asunto),
+      v(it.eapb ?? it.asegurador),
+      v(it.estado ?? it.prioridad),
+      v(it.observaciones ?? it.detalle),
+    ]);
+    autoTable(doc, {
+      startY: y,
+      head: [["FECHA", "PACIENTE", "DOCUMENTO", "TIPO", "EAPB", "ESTADO", "OBSERVACIONES"]] as never,
+      body: (bodyDom.length
+        ? bodyDom
+        : [[{ content: "Sin registros activos", colSpan: 7, styles: { halign: "center", textColor: [130, 130, 130], fontStyle: "italic" } }]]) as never,
+      theme: "grid",
+      styles: { fontSize: 6.5, cellPadding: 1, overflow: "linebreak", lineColor: [140, 140, 140], lineWidth: 0.15 },
+      headStyles: { fillColor: NAVY, textColor: [255, 255, 255], fontStyle: "bold", fontSize: 6.5 },
+      margin: { left: 8, right: 8 },
+    });
+  }
 
 
   // ── Pie en todas las páginas ────────────────────────────────────────────
