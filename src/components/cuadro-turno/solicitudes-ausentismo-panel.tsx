@@ -180,11 +180,6 @@ export function SolicitudesAusentismoPanel({ isAdmin }: { isAdmin: boolean }) {
   const setSub = (v: string) =>
     navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, sub: v }), replace: true });
 
-  if (!isAdmin) {
-    // El equipo operativo gestiona sus propias solicitudes.
-    return <MiTurnoPanel />;
-  }
-
   return (
     <Tabs value={sub} onValueChange={setSub} className="space-y-4">
       <TabsList>
@@ -201,13 +196,13 @@ export function SolicitudesAusentismoPanel({ isAdmin }: { isAdmin: boolean }) {
         </div>
         <HistorialResumen />
         <ControlMensualPanel />
-        <SolicitudesPanel />
+        {isAdmin ? <SolicitudesPanel /> : <MiTurnoPanel />}
       </TabsContent>
       <TabsContent value="pendientes">
-        <PendientesVerificacionPanel />
+        {isAdmin ? <PendientesVerificacionPanel /> : <MiTurnoPanel />}
       </TabsContent>
       <TabsContent value="ausentismo">
-        <AusentismoPanel />
+        {isAdmin ? <AusentismoPanel /> : <MiTurnoPanel />}
       </TabsContent>
       <SolicitudFormDialog open={openSolicitud} onOpenChange={setOpenSolicitud} />
     </Tabs>
