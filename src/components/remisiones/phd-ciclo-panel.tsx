@@ -91,6 +91,7 @@ export function PhdCicloPanel({
   const [pendiente, setPendiente] = useState<PhdEstadoCiclo | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [radOpen, setRadOpen] = useState(false);
+  const [entregaOpen, setEntregaOpen] = useState(false);
 
   const { data: radicaciones = [], refetch } = useQuery({
     queryKey: ["phd-radicaciones", casoId],
