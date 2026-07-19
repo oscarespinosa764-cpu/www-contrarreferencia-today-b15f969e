@@ -686,7 +686,7 @@ function PreviewHtml({ plantilla }: { plantilla: PlantillaInv }) {
             <SelectItem value="__fixture__">Datos de ejemplo (fixture)</SelectItem>
             {(casos ?? []).map((c) => (
               <SelectItem key={c.id} value={c.id}>
-                {c.codigo ?? "S/C"} — {String(c.paciente ?? "").slice(0, 40)}
+                {c.codigo ?? "S/C"} — {`${c.nombres ?? ""} ${c.apellidos ?? ""}`.trim().slice(0, 40) || "sin nombre"}
               </SelectItem>
             ))}
           </SelectContent>
