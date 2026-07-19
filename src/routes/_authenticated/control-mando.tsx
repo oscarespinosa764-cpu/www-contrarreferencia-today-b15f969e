@@ -10,6 +10,7 @@ import { NotificacionesExternasPanel } from "@/components/coordinacion/notificac
 import { AlertasAvisosAdmin } from "@/components/coordinacion/alertas-avisos-admin";
 import { ChecklistsPanel } from "@/components/coordinacion/checklists-panel";
 import { PlantillasInventarioPanel } from "@/components/coordinacion/plantillas-inventario-panel";
+import { AuditoriaPanel } from "@/components/coordinacion/auditoria-panel";
 
 import { useAuth } from "@/lib/auth";
 
