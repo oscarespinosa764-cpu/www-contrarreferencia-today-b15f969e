@@ -549,10 +549,21 @@ export function EntregaDocumentalDialog({
                   <span className="font-semibold">Entrega firmada</span>
                 </div>
                 <div className="space-y-0.5 text-sm">
-                  <p><b>Nombre:</b> {sesion.data?.firmante_nombre || "—"}</p>
+                  {sesion.data?.responsable_nombre && (
+                    <p>
+                      <b>Responsable:</b> {sesion.data.responsable_nombre}
+                      {sesion.data.responsable_cargo ? ` — ${sesion.data.responsable_cargo}` : ""}
+                    </p>
+                  )}
+                  <p><b>Firmante:</b> {sesion.data?.firmante_nombre || "—"}</p>
                   <p><b>Cargo:</b> {sesion.data?.firmante_cargo || "—"}</p>
-                  <p><b>Empresa:</b> {sesion.data?.firmante_empresa || "—"}</p>
-                  <p><b>Documento/ID:</b> {sesion.data?.firmante_documento || "—"}</p>
+                  <p><b>Empresa:</b> {sesion.data?.firmante_empresa || sesion.data?.empresa_declarada || "—"}</p>
+                  {sesion.data?.tipo_ambulancia && (
+                    <p><b>Tipo de ambulancia:</b> {sesion.data.tipo_ambulancia}</p>
+                  )}
+                  {sesion.data?.firmante_telefono && (
+                    <p><b>Teléfono:</b> {sesion.data.firmante_telefono}</p>
+                  )}
                   <p>
                     <b>Fecha/hora de firma:</b>{" "}
                     {sesion.data?.firmado_at
