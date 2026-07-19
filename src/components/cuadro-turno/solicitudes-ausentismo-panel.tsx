@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { History, CheckCircle2, Users, CalendarPlus, FileCheck2, Clock, RefreshCw, ShieldCheck } from "lucide-react";
+import { History, CheckCircle2, Users, CalendarPlus, Clock, FileCheck2 } from "lucide-react";
 import { fmtFechaHora } from "@/lib/cuadro-turno-utils";
 import { SolicitudesPanel } from "./solicitudes-panel";
 import { AusentismoPanel } from "./ausentismo-panel";
