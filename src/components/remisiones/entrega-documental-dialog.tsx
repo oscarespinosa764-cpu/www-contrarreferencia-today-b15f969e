@@ -12,8 +12,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner";
 import {
   Copy,
-  Plus,
-  X,
   QrCode,
   FileText,
   Ban,
@@ -23,6 +21,7 @@ import {
   CheckCircle2,
   CheckSquare,
   Eraser,
+  Lock,
 } from "lucide-react";
 import {
   ORIGENES_DOC,
