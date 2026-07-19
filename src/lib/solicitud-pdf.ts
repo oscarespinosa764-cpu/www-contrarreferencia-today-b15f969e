@@ -11,12 +11,13 @@
 
 import logoAsset from "@/assets/cedim-logo.png.asset.json";
 import { fmtFecha, fmtFechaHora, type ShiftRequest } from "@/lib/cuadro-turno-utils";
+import { getPlantillaConfig, pickText } from "@/lib/plantillas-inventario-config";
 
-const TITULO = "Solicitud de permiso, ausencia o salida del colaborador";
-const CODIGO = "TH-FR-09";
+const TITULO_DEFAULT = "Solicitud de permiso, ausencia o salida del colaborador";
+const CODIGO_DEFAULT = "TH-FR-09";
 const VERSION = "Versión: 02";
 const APROBADO = "Aprobado: 1/07/2026";
-const PIE = "Servicios de salud con calidad y humanización";
+const PIE_DEFAULT = "Servicios de salud con calidad y humanización";
 
 const NO_RECUP = ["Cita médica", "Actividad escolar de hijos", "Citación judicial", "Calamidad grave", "Cumpleaños", "Compensatorio"];
 const RECUP = ["Estudio", "Licencia", "Diligencia personal", "Otro"];
