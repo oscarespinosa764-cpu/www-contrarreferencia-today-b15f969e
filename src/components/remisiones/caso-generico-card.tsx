@@ -435,7 +435,17 @@ export function CasoGenericoCard({
           )}
           {tipo === "phd" && (
             <div className="mt-3">
-              <PhdCicloPanel casoId={r.id} estadoActual={r.estado_ciclo} canEdit={canEdit} />
+              <PhdCicloPanel
+                casoId={r.id}
+                estadoActual={r.estado_ciclo}
+                canEdit={canEdit}
+                paciente={r.paciente ?? null}
+                documento={r.documento ?? null}
+                tipoDocumento={r.tipo_documento ?? null}
+                ipsReceptora={r.ips_receptora ?? null}
+                empresaTraslado={r.empresa_traslado ?? null}
+                entidadPago={r.eapb ?? null}
+              />
             </div>
           )}
         </DialogContent>
