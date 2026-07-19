@@ -10,6 +10,7 @@ import { NotificacionesExternasPanel } from "@/components/coordinacion/notificac
 import { AlertasAvisosAdmin } from "@/components/coordinacion/alertas-avisos-admin";
 import { ChecklistsPanel } from "@/components/coordinacion/checklists-panel";
 import { PlantillasInventarioPanel } from "@/components/coordinacion/plantillas-inventario-panel";
+import { AuditoriaPanel } from "@/components/coordinacion/auditoria-panel";
 
 import { useAuth } from "@/lib/auth";
 
@@ -39,7 +40,7 @@ function ControlMandoPage() {
       />
 
       <Tabs defaultValue="usuarios" className="w-full">
-        <TabsList className="mb-4 grid h-auto w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-7">
+        <TabsList className="mb-4 grid h-auto w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-8">
           <TabsTrigger className="whitespace-normal" value="usuarios">Usuarios</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="historicos">Históricos</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="alertas">Alertas y avisos</TabsTrigger>
@@ -47,6 +48,7 @@ function ControlMandoPage() {
           <TabsTrigger className="whitespace-normal" value="plantillas">Plantillas del sistema</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="dictado">Dictado por voz</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="notificaciones">Notificaciones externas</TabsTrigger>
+          <TabsTrigger className="whitespace-normal" value="auditoria">Auditoría</TabsTrigger>
         </TabsList>
 
         <TabsContent value="usuarios">
@@ -75,6 +77,9 @@ function ControlMandoPage() {
         </TabsContent>
         <TabsContent value="notificaciones">
           <NotificacionesExternasPanel />
+        </TabsContent>
+        <TabsContent value="auditoria">
+          <AuditoriaPanel />
         </TabsContent>
       </Tabs>
 
