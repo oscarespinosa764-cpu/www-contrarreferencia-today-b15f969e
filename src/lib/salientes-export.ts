@@ -142,6 +142,11 @@ export async function descargarReporteGeneralPDF(params: {
   contadores?: Record<string, number>;
   domiciliarios?: Record<string, unknown>[];
 }): Promise<void> {
+  const cfg = await getPlantillaConfig("REPORTE_GENERAL_SALIENTES");
+  const TITULO = pickText(cfg, "encabezado_titulo", TITULO_DEFAULT);
+  const SUBTITULO = pickText(cfg, "encabezado_subtitulo", "");
+  const PIE = pickText(cfg, "pie_leyenda", PIE_DEFAULT);
+  const INCLUYE_PHD = pickBool(cfg, "incluye_seccion_phd", true);
 
   const { jsPDF } = await import("jspdf");
   const autoTable = (await import("jspdf-autotable")).default;
