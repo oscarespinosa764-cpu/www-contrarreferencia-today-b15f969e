@@ -25,10 +25,10 @@ type PlantillaInv = {
   codigo: string;
   nombre: string;
   modulo: string | null;
-  editable_nivel: "SOLO_LECTURA" | "PARCIAL" | "TOTAL";
+  editable_nivel: "SOLO_LECTURA" | "PARCIAL" | "COMPLETA";
   formato: string | null;
-  ruta_generador: string | null;
-  descripcion: string | null;
+  generador: string | null;
+  notas: string | null;
   contenido_editable: Record<string, unknown>;
 };
 
@@ -42,13 +42,17 @@ export function PlantillasInventarioPanel() {
       const { data, error } = await supabase
         .from("plantillas_inventario")
         .select(
-          "id, codigo, nombre, modulo, editable_nivel, formato, ruta_generador, descripcion, contenido_editable",
+          "id, codigo, nombre, modulo, editable_nivel, formato, generador, notas, contenido_editable",
         )
         .order("codigo", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as PlantillaInv[];
+      return (data ?? []).map((r) => ({
+        ...r,
+        contenido_editable: (r.contenido_editable ?? {}) as Record<string, unknown>,
+      })) as PlantillaInv[];
     },
   });
+
 
   const [selectedCodigo, setSelectedCodigo] = useState<string | null>(null);
   const seleccion = useMemo(
