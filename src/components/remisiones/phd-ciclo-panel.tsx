@@ -349,6 +349,22 @@ export function PhdCicloPanel({
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Entrega documental (traslado en ambulancia) */}
+      {entregaOpen && (
+        <EntregaDocumentalDialog
+          open={entregaOpen}
+          onOpenChange={setEntregaOpen}
+          casoId={casoId}
+          tipoCaso="phd"
+          paciente={paciente ?? ""}
+          documento={documento ?? null}
+          tipoDocumento={tipoDocumento ?? null}
+          ipsReceptora={ipsReceptora ?? null}
+          empresaTraslado={empresaTraslado ?? null}
+          entidadPago={entidadPago ?? null}
+        />
+      )}
     </div>
   );
 }
