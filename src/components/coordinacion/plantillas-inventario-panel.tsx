@@ -309,14 +309,24 @@ function PanelListaDetalle(props: PanelProps) {
     canEdit,
   } = props;
 
+  const [dialogCrear, setDialogCrear] = useState(false);
+  const [dialogEditar, setDialogEditar] = useState(false);
+
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-[320px_1fr]">
       <aside className="space-y-2 rounded-xl border border-border bg-card p-3">
-        <div>
-          <h3 className="text-sm font-semibold">{titulo}</h3>
-          <p className="text-[11px] text-muted-foreground">
-            {filtradas.length} visibles · {rows.length} registradas · {subtitle}
-          </p>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold">{titulo}</h3>
+            <p className="text-[11px] text-muted-foreground">
+              {filtradas.length} visibles · {rows.length} registradas · {subtitle}
+            </p>
+          </div>
+          {canEdit && (
+            <Button size="sm" variant="outline" onClick={() => setDialogCrear(true)}>
+              <Plus className="mr-1 h-3.5 w-3.5" /> Nueva
+            </Button>
+          )}
         </div>
 
         <div className="space-y-2 rounded-md border border-border/70 bg-background p-2">
