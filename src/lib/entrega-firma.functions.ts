@@ -86,6 +86,8 @@ function snapshotPublicoDesde(raw: EntregaSnapshotInterno): SnapshotPublico {
     paciente_iniciales: inicialesNombre(raw.paciente),
     documento_enmascarado: enmascararDocumento(raw.documento),
     ips_receptora: raw.ips_receptora || undefined,
+    empresa_traslado: raw.empresa_traslado || undefined,
+    tipo_ambulancia: (raw.tipo_ambulancia as string | undefined) || undefined,
     fecha_entrega: raw.fecha_entrega || undefined,
     documentos: docs,
   };
