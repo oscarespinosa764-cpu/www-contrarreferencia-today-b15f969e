@@ -11,11 +11,13 @@
 import * as XLSX from "xlsx";
 import logoAsset from "@/assets/cedim-logo.png.asset.json";
 import { fmtFechaHora, fmtEdad, fmtTranscurrido } from "./remisiones-utils";
+import { getPlantillaConfig, pickText, pickBool } from "./plantillas-inventario-config";
 import type { Remision } from "@/components/remisiones/caso-remision-card";
 
 const INSTITUCION = "CENTRO DE IMAGENES DIAGNOSTICAS CEDIM I.P.S S.A.S";
 const NIT = "NIT: 900559103-5";
-const PIE = "SISTEMA DE REFERENCIA Y CONTRARREFERENCIA";
+const PIE_DEFAULT = "SISTEMA DE REFERENCIA Y CONTRARREFERENCIA";
+const TITULO_DEFAULT = "REPORTE GENERAL OPERATIVO — SALIENTES";
 const NAVY: [number, number, number] = [31, 56, 100];
 const LIGHT_BLUE: [number, number, number] = [221, 235, 247];
 
