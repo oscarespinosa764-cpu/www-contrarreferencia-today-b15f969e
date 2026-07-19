@@ -399,7 +399,7 @@ export function PhdSeguimientoDialog({
           .update({
             empresa_traslado: empresaAmb.trim().toUpperCase(),
             tipo_ambulancia: tipoAmb.trim().toUpperCase(),
-          })
+          } as never)
           .eq("id", casoId);
       } else if (evento === "CONFIRMACION_EGRESO") {
         nuevoEstado = "CERRADO POR EGRESO";
