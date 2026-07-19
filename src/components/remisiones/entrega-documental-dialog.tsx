@@ -519,7 +519,7 @@ export function EntregaDocumentalDialog({
             </p>
           )}
 
-          {/* PASO 1 — Antes de la firma: solo Portada PDF + Generar QR (Parte 13.1) */}
+          {/* PASO 1 — Antes de la firma: solo Generar QR (Portada solo tras firma · Parte 15) */}
           {!sesionId ? (
             <div className="space-y-2">
               <Button
@@ -527,11 +527,17 @@ export function EntregaDocumentalDialog({
                 variant="outline"
                 size="sm"
                 className="w-full"
-                onClick={generarPortada}
+                disabled
+                title="Disponible después de la firma QR"
               >
-                <FileText className="mr-1.5 h-3.5 w-3.5" /> Portada PDF
+                <FileText className="mr-1.5 h-3.5 w-3.5" /> Portada PDF — pendiente de firma
               </Button>
-              <Button type="button" className="w-full" onClick={generarQR} disabled={generando || !origen}>
+              <Button
+                type="button"
+                className="w-full"
+                onClick={generarQR}
+                disabled={generando || !origen || !empresa.trim() || !ips.trim()}
+              >
                 {generando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
                 Generar QR de firma
               </Button>
