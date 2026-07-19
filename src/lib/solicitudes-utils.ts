@@ -165,7 +165,9 @@ export function minutosAHoras(min: number): string {
 // ---------------------------------------------------------------------------
 // Motivos exentos del límite mensual (requieren soporte obligatorio)
 // ---------------------------------------------------------------------------
+// FUENTE CANÓNICA (Fase A · Q1): useCatalogo("MOTIVO_EXENTO_CUPO") — fallback runtime.
 export const MOTIVOS_EXENTOS = ["Cita médica", "Calamidad"] as const;
+
 
 export function esExento(motivo: string | null | undefined): boolean {
   return !!motivo && (MOTIVOS_EXENTOS as readonly string[]).includes(motivo);
