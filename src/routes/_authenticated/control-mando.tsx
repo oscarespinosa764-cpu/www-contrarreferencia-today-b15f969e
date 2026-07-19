@@ -78,6 +78,9 @@ function ControlMandoPage() {
         <TabsContent value="notificaciones">
           <NotificacionesExternasPanel />
         </TabsContent>
+        <TabsContent value="auditoria">
+          <AuditoriaPanel />
+        </TabsContent>
       </Tabs>
 
 
