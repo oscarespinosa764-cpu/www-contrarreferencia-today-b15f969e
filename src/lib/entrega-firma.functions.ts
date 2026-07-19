@@ -54,6 +54,8 @@ export type SnapshotPublico = {
   paciente_iniciales?: string;
   documento_enmascarado?: string;
   ips_receptora?: string;
+  empresa_traslado?: string;
+  tipo_ambulancia?: string;
   fecha_entrega?: string;
   documentos?: string[];
 };
