@@ -309,7 +309,7 @@ export function PhdCicloPanel({
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Observaciones (opcional)</Label>
-              <Textarea name="obs" rows={2} />
+              <DictationTextarea dictationKey="phd.radicacion.observaciones" name="obs" rows={2} />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setRadOpen(false)}>
