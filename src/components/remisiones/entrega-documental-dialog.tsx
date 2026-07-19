@@ -608,11 +608,17 @@ export function EntregaDocumentalDialog({
           )}
 
           <ChecklistRunner
-            checklistCodigo="SALIENTES_ENTREGA_SEGURA"
+            checklistCodigo={(() => {
+              const s = (entidadPago ?? "").toUpperCase();
+              if (s.includes("SOAT")) return "SALIENTES_ENTREGA_SEGURA_SOAT";
+              if (s.includes("ARL")) return "SALIENTES_ENTREGA_SEGURA_ARL";
+              return "SALIENTES_ENTREGA_SEGURA_EPS";
+            })()}
             casoId={casoId}
             casoTipo={tipoCaso}
             compact
           />
+
         </div>
       </DialogContent>
     </Dialog>
