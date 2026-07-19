@@ -68,7 +68,7 @@ function ViewButton({
 export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const navigate = useNavigate({ from: CUADRO_ROUTE });
+  const navigate = useNavigate();
   const search = useSearch({ from: CUADRO_ROUTE });
   const now = new Date();
   const anio = Number.isFinite(search.anio) ? search.anio : now.getFullYear();
@@ -81,7 +81,7 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
   const ndias = diasDelMes(anio, mes);
 
   const setSearch = (patch: Record<string, unknown>) =>
-    navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }), replace: true });
+    navigate({ to: "/cuadro-turno", search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }), replace: true });
 
   const { data: tipos = [] } = useQuery({
     queryKey: ["shift-types"],
