@@ -11,12 +11,13 @@
 
 import logoAsset from "@/assets/cedim-logo.png.asset.json";
 import { fmtFecha, fmtFechaHora, type ShiftRequest } from "@/lib/cuadro-turno-utils";
+import { getPlantillaConfig, pickText } from "@/lib/plantillas-inventario-config";
 
-const TITULO = "Solicitud de permiso, ausencia o salida del colaborador";
-const CODIGO = "TH-FR-09";
+const TITULO_DEFAULT = "Solicitud de permiso, ausencia o salida del colaborador";
+const CODIGO_DEFAULT = "TH-FR-09";
 const VERSION = "Versión: 02";
 const APROBADO = "Aprobado: 1/07/2026";
-const PIE = "Servicios de salud con calidad y humanización";
+const PIE_DEFAULT = "Servicios de salud con calidad y humanización";
 
 const NO_RECUP = ["Cita médica", "Actividad escolar de hijos", "Citación judicial", "Calamidad grave", "Cumpleaños", "Compensatorio"];
 const RECUP = ["Estudio", "Licencia", "Diligencia personal", "Otro"];
@@ -59,6 +60,10 @@ export async function generarSolicitudPDF(
   opts?: { firmaDataUrl?: string | null; jefeFirmaDataUrl?: string | null; usuario?: string },
 ): Promise<void> {
   const { jsPDF } = await import("jspdf");
+  const cfg = await getPlantillaConfig("TH-FR-09");
+  const TITULO = pickText(cfg, "encabezado_titulo", TITULO_DEFAULT);
+  const CODIGO = pickText(cfg, "encabezado_codigo", CODIGO_DEFAULT);
+  const PIE = pickText(cfg, "pie_leyenda", PIE_DEFAULT);
   const doc: Doc = new jsPDF({ unit: "mm", format: "letter" });
   const pageW = doc.internal.pageSize.getWidth();
   const mX = 10;
