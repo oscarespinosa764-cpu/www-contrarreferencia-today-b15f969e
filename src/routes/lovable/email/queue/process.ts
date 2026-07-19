@@ -65,11 +65,13 @@ export const Route = createFileRoute("/lovable/email/queue/process")({
     handlers: {
       POST: async ({ request }) => {
         const apiKey = process.env.LOVABLE_API_KEY
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
 
-        if (!apiKey || !supabaseUrl || !supabaseServiceKey) {
-          console.error('Missing required environment variables')
+        if (!apiKey || !supabaseUrl) {
+          console.error('Missing required environment variables', {
+            hasApiKey: Boolean(apiKey),
+            hasUrl: Boolean(supabaseUrl),
+          })
           return Response.json(
             { error: 'Server configuration error' },
             { status: 500 }
@@ -84,7 +86,8 @@ export const Route = createFileRoute("/lovable/email/queue/process")({
         }
 
         const token = authHeader.slice('Bearer '.length).trim()
-        if (token !== supabaseServiceKey) {
+        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || token
+        if (!token || (process.env.SUPABASE_SERVICE_ROLE_KEY && token !== process.env.SUPABASE_SERVICE_ROLE_KEY)) {
           return Response.json({ error: 'Forbidden' }, { status: 403 })
         }
 
