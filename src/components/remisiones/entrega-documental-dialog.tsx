@@ -260,17 +260,23 @@ export function EntregaDocumentalDialog({
   const estado = sesion.data?.estado;
   const firmada = estado === "FIRMADA";
 
-  // Al confirmarse la firma, generar la plantilla Índigo corta editable (Parte 14).
+  // Al confirmarse la firma, migrar datos del tripulante al modal y armar Índigo (Parte 7/14).
   useEffect(() => {
-    if (firmada && sesion.data && !indigoCorta) {
-      setIndigoCorta(
-        generarPlantillaIndigoCorta(snapshot, {
-          nombre: sesion.data.firmante_nombre ?? "",
-          cargo: sesion.data.firmante_cargo ?? "",
-        }),
-      );
+    if (firmada && sesion.data) {
+      if (sesion.data.firmante_nombre && !tripulanteS)
+        setTripulanteS(sesion.data.firmante_nombre.toUpperCase());
+      if (sesion.data.firmante_cargo && !cargoTripulanteS)
+        setCargoTripulanteS(sesion.data.firmante_cargo.toUpperCase());
+      if (!indigoCorta) {
+        setIndigoCorta(
+          generarPlantillaIndigoCorta(snapshot, {
+            nombre: sesion.data.firmante_nombre ?? "",
+            cargo: sesion.data.firmante_cargo ?? "",
+          }),
+        );
+      }
     }
-  }, [firmada, sesion.data, indigoCorta, snapshot]);
+  }, [firmada, sesion.data, indigoCorta, snapshot, tripulanteS, cargoTripulanteS]);
 
   const toggleDoc = (i: number) =>
     setDocs((p) => p.map((d, idx) => (idx === i ? { ...d, marcado: !d.marcado } : d)));
