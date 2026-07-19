@@ -14,7 +14,7 @@ const searchSchema = z.object({
   vista: fallback(z.string(), "calendario").default("calendario"),
   anio: fallback(z.number(), new Date().getFullYear()).default(new Date().getFullYear()),
   mes: fallback(z.number(), new Date().getMonth() + 1).default(new Date().getMonth() + 1),
-  dia: fallback(z.number().optional(), undefined),
+  dia: z.number().optional(),
   q: fallback(z.string(), "").default(""),
   cargo: fallback(z.string(), "").default(""),
 });
