@@ -242,7 +242,7 @@ function CatalogoPage() {
         </TabsList>
 
         <TabsContent value="catalogo" className="mt-0 flex-1">
-          <CatalogoMaestras />
+          <CategoriasView />
         </TabsContent>
         <TabsContent value="plantillas" className="mt-0 flex-1">
           <PlantillasBiblioteca />
