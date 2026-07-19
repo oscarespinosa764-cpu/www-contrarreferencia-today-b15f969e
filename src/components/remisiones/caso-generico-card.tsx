@@ -558,10 +558,10 @@ export function CasoGenericoCard({
           documento={documento}
           evolucionActual={r.evolucion}
           evolucionDetalle={r.evolucion_detalle}
-          especialidades={tipo === "phd" ? r.especialidades_tratantes : null}
+          especialidades={null}
           radicadoCaso={cfg.tieneRadicado ? r.codigo_radicacion : null}
           tabla={cfg.tabla}
-          estadoOpciones={tipo === "phd" ? PHD_ESTADO_OPCIONES : undefined}
+          estadoOpciones={undefined}
           estadoActual={r.estado}
         />
       )}
