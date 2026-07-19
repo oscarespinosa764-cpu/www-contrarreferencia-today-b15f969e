@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { DictationTextarea } from "@/components/voz/dictation-textarea";
+import { ChecklistRunner } from "@/components/coordinacion/checklist-runner";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -308,8 +310,9 @@ export function PhdCicloPanel({
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Observaciones (opcional)</Label>
-              <Textarea name="obs" rows={2} />
+              <DictationTextarea dictationKey="phd.radicacion.observaciones" name="obs" rows={2} />
             </div>
+            <ChecklistRunner checklistCodigo="PHD_RADICACION_VALIDACION" compact />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setRadOpen(false)}>
                 Cancelar

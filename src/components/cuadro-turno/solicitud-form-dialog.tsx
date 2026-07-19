@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { DictationTextarea } from "@/components/voz/dictation-textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { SignaturePad, type SignaturePadHandle } from "./signature-pad";
@@ -1167,11 +1168,12 @@ export function SolicitudFormDialog({
 
           <div>
             <Label className="text-xs">Especifique motivo del permiso</Label>
-            <Textarea value={detalle} onChange={(e) => setDetalle(e.target.value)} rows={2} />
+            <DictationTextarea dictationKey="cuadro_turno.solicitud.detalle" value={detalle} onChange={(e) => setDetalle(e.target.value)} rows={2} />
           </div>
           <div>
             <Label className="text-xs">Observaciones adicionales</Label>
-            <Textarea
+            <DictationTextarea
+              dictationKey="cuadro_turno.solicitud.observaciones"
               value={observaciones}
               onChange={(e) => setObservaciones(e.target.value)}
               rows={2}
