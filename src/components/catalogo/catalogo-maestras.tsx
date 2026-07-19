@@ -369,8 +369,8 @@ export function CatalogoMaestras() {
             <Input
               className="rounded-full pl-9"
               placeholder="Buscar tipo de catálogo…"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
+              value={qInput}
+              onChange={(e) => setQInput(e.target.value)}
             />
           </div>
 
