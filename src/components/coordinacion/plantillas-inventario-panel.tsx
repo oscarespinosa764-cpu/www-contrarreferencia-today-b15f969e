@@ -136,7 +136,7 @@ function PlantillaEditor({
     if (!canEdit || soloLectura) return;
     const { error } = await supabase
       .from("plantillas_inventario")
-      .update({ contenido_editable: draft })
+      .update({ contenido_editable: draft as never })
       .eq("id", plantilla.id);
     if (error) toast.error(error.message);
     else {
