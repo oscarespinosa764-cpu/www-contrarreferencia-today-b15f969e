@@ -23,6 +23,8 @@ import {
   descargarReporteGeneralPDF,
   descargarEntregaTurnoPDF,
 } from "@/lib/salientes-export";
+import { agruparPorEtapa } from "@/lib/salientes-grupos";
+import { GrupoEtapa } from "@/components/remisiones/grupo-etapa";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { toast } from "sonner";
 
@@ -590,14 +592,18 @@ function RemisionesPage() {
             ) : remisionesF.length === 0 ? (
               <VacioModulo />
             ) : (
-              <div className="grid gap-3">
-                {remisionesF.map((r) => (
-                  <CasoRemisionCard
-                    key={r.id}
-                    r={r}
-                    canEdit={canEdit}
-                    ultimaGestion={ultGestiones?.[r.id] ?? null}
-                  />
+              <div className="grid gap-4">
+                {agruparPorEtapa(remisionesF).map(({ etapa, items }) => (
+                  <GrupoEtapa key={etapa.key} etapa={etapa} count={items.length}>
+                    {items.map((r) => (
+                      <CasoRemisionCard
+                        key={r.id}
+                        r={r}
+                        canEdit={canEdit}
+                        ultimaGestion={ultGestiones?.[r.id] ?? null}
+                      />
+                    ))}
+                  </GrupoEtapa>
                 ))}
               </div>
             )}
@@ -668,16 +674,23 @@ function ListaGenerica({
   ultGestiones?: Record<string, { fecha: string | null; responsable: string | null }>;
 }) {
   if (items.length === 0) return <VacioModulo />;
+  const grupos = agruparPorEtapa(
+    items as Array<Record<string, any> & { estado?: string | null }>,
+  );
   return (
-    <div className="grid gap-3">
-      {items.map((it) => (
-        <CasoGenericoCard
-          key={it.id}
-          tipo={tipo}
-          r={it}
-          canEdit={canEdit}
-          ultimaGestion={ultGestiones?.[it.id] ?? null}
-        />
+    <div className="grid gap-4">
+      {grupos.map(({ etapa, items: bucket }) => (
+        <GrupoEtapa key={etapa.key} etapa={etapa} count={bucket.length}>
+          {bucket.map((it) => (
+            <CasoGenericoCard
+              key={it.id as string}
+              tipo={tipo}
+              r={it}
+              canEdit={canEdit}
+              ultimaGestion={ultGestiones?.[it.id as string] ?? null}
+            />
+          ))}
+        </GrupoEtapa>
       ))}
     </div>
   );
