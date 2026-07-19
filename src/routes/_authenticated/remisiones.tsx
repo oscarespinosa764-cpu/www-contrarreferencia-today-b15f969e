@@ -592,14 +592,18 @@ function RemisionesPage() {
             ) : remisionesF.length === 0 ? (
               <VacioModulo />
             ) : (
-              <div className="grid gap-3">
-                {remisionesF.map((r) => (
-                  <CasoRemisionCard
-                    key={r.id}
-                    r={r}
-                    canEdit={canEdit}
-                    ultimaGestion={ultGestiones?.[r.id] ?? null}
-                  />
+              <div className="grid gap-4">
+                {agruparPorEtapa(remisionesF).map(({ etapa, items }) => (
+                  <GrupoEtapa key={etapa.key} etapa={etapa} count={items.length}>
+                    {items.map((r) => (
+                      <CasoRemisionCard
+                        key={r.id}
+                        r={r}
+                        canEdit={canEdit}
+                        ultimaGestion={ultGestiones?.[r.id] ?? null}
+                      />
+                    ))}
+                  </GrupoEtapa>
                 ))}
               </div>
             )}
