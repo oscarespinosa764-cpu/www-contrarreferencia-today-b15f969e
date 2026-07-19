@@ -23,6 +23,8 @@ import {
   descargarReporteGeneralPDF,
   descargarEntregaTurnoPDF,
 } from "@/lib/salientes-export";
+import { agruparPorEtapa } from "@/lib/salientes-grupos";
+import { GrupoEtapa } from "@/components/remisiones/grupo-etapa";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { toast } from "sonner";
 
