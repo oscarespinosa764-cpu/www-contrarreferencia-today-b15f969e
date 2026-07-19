@@ -1,13 +1,16 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, CheckCircle2, Archive } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Plus, Trash2, CheckCircle2, Archive, AlertTriangle, RefreshCw } from "lucide-react";
 
 // ============================================================
 // Panel administrativo de LISTAS DE CHEQUEO (Fase Q4).
@@ -24,6 +27,8 @@ type Checklist = {
   nombre: string;
   modulo: string;
   activo: boolean;
+  versionActiva: number | null;
+  itemCount: number;
 };
 
 type ChecklistItem = { id: string; texto: string; requerido: boolean };
@@ -42,25 +47,85 @@ export function ChecklistsPanel() {
   const { isAdmin } = useAuth();
   const qc = useQueryClient();
 
-  const { data: checklists } = useQuery<Checklist[]>({
+  const [moduloFiltro, setModuloFiltro] = useState("todos");
+  const [estadoFiltro, setEstadoFiltro] = useState("activas");
+  const [busqueda, setBusqueda] = useState("");
+
+  const {
+    data: checklists,
+    isLoading: cargandoChecklists,
+    isError: checklistsError,
+    error: checklistsErrorObj,
+    refetch: refetchChecklists,
+  } = useQuery<Checklist[]>({
     queryKey: ["cm-checklists"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: listas, error } = await supabase
         .from("checklists")
         .select("id, codigo, nombre, modulo, activo")
         .order("codigo", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as Checklist[];
+      const rows = (listas ?? []) as Array<Omit<Checklist, "versionActiva" | "itemCount">>;
+      if (rows.length === 0) return [];
+
+      const { data: versiones, error: versionError } = await supabase
+        .from("checklist_versiones")
+        .select("checklist_id, version, estado, items")
+        .in(
+          "checklist_id",
+          rows.map((r) => r.id),
+        )
+        .eq("estado", "ACTIVA");
+      if (versionError) throw versionError;
+
+      const versionesActivas = new Map(
+        (versiones ?? []).map((v) => [
+          v.checklist_id,
+          {
+            version: Number(v.version),
+            items: Array.isArray(v.items) ? v.items.length : 0,
+          },
+        ]),
+      );
+
+      return rows.map((r) => {
+        const activa = versionesActivas.get(r.id);
+        return {
+          ...r,
+          versionActiva: activa?.version ?? null,
+          itemCount: activa?.items ?? 0,
+        };
+      });
     },
   });
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const modulos = useMemo(
+    () => Array.from(new Set((checklists ?? []).map((c) => c.modulo))).sort(),
+    [checklists],
+  );
+  const filtradas = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    return (checklists ?? []).filter((c) => {
+      if (moduloFiltro !== "todos" && c.modulo !== moduloFiltro) return false;
+      if (estadoFiltro === "activas" && !c.activo) return false;
+      if (estadoFiltro === "inactivas" && c.activo) return false;
+      if (!q) return true;
+      return [c.nombre, c.codigo, c.modulo].some((v) => v.toLowerCase().includes(q));
+    });
+  }, [busqueda, checklists, estadoFiltro, moduloFiltro]);
   const seleccion = useMemo(
-    () => (selectedId ? checklists?.find((c) => c.id === selectedId) : checklists?.[0]) ?? null,
-    [checklists, selectedId],
+    () => (selectedId ? filtradas.find((c) => c.id === selectedId) : filtradas[0]) ?? null,
+    [filtradas, selectedId],
   );
 
-  const { data: versiones } = useQuery<Version[]>({
+  const {
+    data: versiones,
+    isLoading: cargandoVersiones,
+    isError: versionesError,
+    error: versionesErrorObj,
+    refetch: refetchVersiones,
+  } = useQuery<Version[]>({
     queryKey: ["cm-checklist-versiones", seleccion?.id],
     enabled: !!seleccion?.id,
     queryFn: async () => {
@@ -95,16 +160,81 @@ export function ChecklistsPanel() {
     if (error) toast.error(error.message);
     else {
       toast.success(`Versión ${proxima} creada en borrador`);
+      qc.invalidateQueries({ queryKey: ["cm-checklists"] });
       qc.invalidateQueries({ queryKey: ["cm-checklist-versiones", seleccion.id] });
     }
   };
 
+  const errorMessage = (err: unknown) =>
+    err instanceof Error ? err.message : "No fue posible completar la consulta.";
+
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-[280px_1fr]">
       <aside className="space-y-2 rounded-xl border border-border bg-card p-3">
-        <h3 className="text-sm font-semibold">Listas registradas</h3>
+        <div>
+          <h3 className="text-sm font-semibold">Listas registradas</h3>
+          <p className="text-[11px] text-muted-foreground">
+            {filtradas.length} visibles · {checklists?.length ?? 0} registradas
+          </p>
+        </div>
+
+        <div className="space-y-2 rounded-md border border-border/70 bg-background p-2">
+          <Input
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar por nombre o código"
+            className="h-8 text-xs"
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <Select value={moduloFiltro} onValueChange={setModuloFiltro}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Módulo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos los módulos</SelectItem>
+                {modulos.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {m}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={estadoFiltro} onValueChange={setEstadoFiltro}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="activas">Activas</SelectItem>
+                <SelectItem value="todas">Todas</SelectItem>
+                <SelectItem value="inactivas">Inactivas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {cargandoChecklists && (
+          <div className="space-y-2">
+            <Skeleton className="h-16" />
+            <Skeleton className="h-16" />
+            <Skeleton className="h-16" />
+          </div>
+        )}
+
+        {checklistsError && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>No se pudieron leer las listas</AlertTitle>
+            <AlertDescription className="space-y-2">
+              <p>{errorMessage(checklistsErrorObj)}</p>
+              <Button size="sm" variant="outline" onClick={() => refetchChecklists()}>
+                <RefreshCw className="mr-1 h-3.5 w-3.5" /> Reintentar
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <ul className="space-y-1">
-          {(checklists ?? []).map((c) => {
+          {!cargandoChecklists && !checklistsError && filtradas.map((c) => {
             const active = seleccion?.id === c.id;
             return (
               <li key={c.id}>
@@ -116,17 +246,27 @@ export function ChecklistsPanel() {
                       : "border-border bg-background hover:bg-muted"
                   }`}
                 >
-                  <div className="font-medium uppercase">{c.nombre}</div>
-                  <div className="text-[11px] text-muted-foreground">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="font-medium uppercase leading-tight">{c.nombre}</div>
+                    <Badge variant={c.activo ? "default" : "outline"}>
+                      {c.activo ? "ACTIVA" : "INACTIVA"}
+                    </Badge>
+                  </div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">
                     {c.codigo} · módulo {c.modulo}
+                  </div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">
+                    v{c.versionActiva ?? "—"} activa · {c.itemCount} ítems
                   </div>
                 </button>
               </li>
             );
           })}
-          {(!checklists || checklists.length === 0) && (
+          {!cargandoChecklists && !checklistsError && filtradas.length === 0 && (
             <li className="rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground">
-              Aún no hay listas registradas.
+              {(checklists?.length ?? 0) === 0
+                ? "Aún no hay listas registradas."
+                : "No hay listas que coincidan con los filtros visibles."}
             </li>
           )}
         </ul>
@@ -149,11 +289,50 @@ export function ChecklistsPanel() {
               </Button>
             </header>
 
+            <div className="grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+              <Info label="Estado" value={seleccion.activo ? "ACTIVA" : "INACTIVA"} />
+              <Info label="Versión activa" value={seleccion.versionActiva ? `v${seleccion.versionActiva}` : "Sin versión activa"} />
+              <Info label="Ítems activos" value={String(seleccion.itemCount)} />
+              <Info label="Dependencias" value="Sin dependencias registradas" />
+              <Info label="Plantilla PDF vinculada" value="No configurada" className="sm:col-span-2" />
+              <Info
+                label="Punto de ejecución"
+                value={
+                  seleccion.codigo === "TURNO_APERTURA"
+                    ? "Configurada — sin punto de ejecución asignado"
+                    : seleccion.codigo === "PHD_RADICACION_VALIDACION"
+                      ? "Radicación PHD/PAD/O2"
+                      : seleccion.codigo === "SALIENTES_ENTREGA_SEGURA"
+                        ? "Entrega documental salientes"
+                        : "No registrado"
+                }
+                className="sm:col-span-2"
+              />
+            </div>
+
             <div className="space-y-3">
-              {(versiones ?? []).map((v) => (
+              {cargandoVersiones && (
+                <div className="space-y-2">
+                  <Skeleton className="h-24" />
+                  <Skeleton className="h-24" />
+                </div>
+              )}
+              {versionesError && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>No se pudieron leer las versiones</AlertTitle>
+                  <AlertDescription className="space-y-2">
+                    <p>{errorMessage(versionesErrorObj)}</p>
+                    <Button size="sm" variant="outline" onClick={() => refetchVersiones()}>
+                      <RefreshCw className="mr-1 h-3.5 w-3.5" /> Reintentar
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+              {!cargandoVersiones && !versionesError && (versiones ?? []).map((v) => (
                 <VersionCard key={v.id} version={v} />
               ))}
-              {(!versiones || versiones.length === 0) && (
+              {!cargandoVersiones && !versionesError && (!versiones || versiones.length === 0) && (
                 <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
                   Sin versiones. Cree la primera.
                 </p>
@@ -162,6 +341,15 @@ export function ChecklistsPanel() {
           </>
         )}
       </section>
+    </div>
+  );
+}
+
+function Info({ label, value, className }: { label: string; value: string; className?: string }) {
+  return (
+    <div className={`rounded-md border border-border/70 bg-background p-2 ${className ?? ""}`}>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-0.5 font-medium text-foreground">{value}</p>
     </div>
   );
 }
@@ -183,6 +371,7 @@ function VersionCard({ version }: { version: Version }) {
     else {
       toast.success("Versión guardada");
       setDirty(false);
+      qc.invalidateQueries({ queryKey: ["cm-checklists"] });
       qc.invalidateQueries({ queryKey: ["cm-checklist-versiones", version.checklist_id] });
     }
   };
@@ -201,6 +390,7 @@ function VersionCard({ version }: { version: Version }) {
       .eq("id", version.id);
     if (e2) return toast.error(e2.message);
     toast.success(`Versión ${version.version} activa`);
+    qc.invalidateQueries({ queryKey: ["cm-checklists"] });
     qc.invalidateQueries({ queryKey: ["cm-checklist-versiones", version.checklist_id] });
   };
 
@@ -212,6 +402,7 @@ function VersionCard({ version }: { version: Version }) {
     if (error) toast.error(error.message);
     else {
       toast.success(`Versión ${version.version} archivada`);
+      qc.invalidateQueries({ queryKey: ["cm-checklists"] });
       qc.invalidateQueries({ queryKey: ["cm-checklist-versiones", version.checklist_id] });
     }
   };
@@ -229,6 +420,7 @@ function VersionCard({ version }: { version: Version }) {
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold">Versión {version.version}</span>
+          <span className="text-[11px] text-muted-foreground">{items.length} ítems</span>
           <Badge
             variant={
               version.estado === "ACTIVA"
