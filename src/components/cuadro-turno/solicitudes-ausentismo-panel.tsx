@@ -174,11 +174,11 @@ function HistorialResumen() {
 
 export function SolicitudesAusentismoPanel({ isAdmin }: { isAdmin: boolean }) {
   const { sub } = Route.useSearch();
-  const navigate = useNavigate({ from: Route.fullPath });
+  const navigate = useNavigate();
   const [openSolicitud, setOpenSolicitud] = useState(false);
 
   const setSub = (v: string) =>
-    navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, sub: v }), replace: true });
+    navigate({ to: "/cuadro-turno", search: (prev: Record<string, unknown>) => ({ ...prev, sub: v }), replace: true });
 
   return (
     <Tabs value={sub} onValueChange={setSub} className="space-y-4">
