@@ -438,9 +438,35 @@ function PanelListaDetalle(props: PanelProps) {
             plantilla={seleccion}
             puntos={puntos.filter((p) => (seleccion.puntos_uso_codigos ?? []).includes(p.codigo))}
             canEdit={canEdit}
+            onEditar={() => setDialogEditar(true)}
           />
         )}
       </section>
+
+      <PlantillaFormDialog
+        open={dialogCrear}
+        onOpenChange={setDialogCrear}
+        modo="crear"
+      />
+      <PlantillaFormDialog
+        open={dialogEditar}
+        onOpenChange={setDialogEditar}
+        modo="editar"
+        inicial={seleccion ? {
+          id: seleccion.id,
+          codigo: seleccion.codigo,
+          nombre: seleccion.nombre,
+          modulo: seleccion.modulo ?? "GENERAL",
+          formato: seleccion.formato ?? "PDF",
+          origen: seleccion.origen ?? "CODIGO",
+          generador: seleccion.generador,
+          estado: seleccion.estado ?? "ACTIVA",
+          version: seleccion.version ?? "1.0",
+          dependencia: seleccion.dependencia,
+          editable_nivel: seleccion.editable_nivel,
+          notas: seleccion.notas,
+        } as PlantillaFormValue : null}
+      />
     </div>
   );
 }
