@@ -200,11 +200,16 @@ export const firmarEntrega = createServerFn({ method: "POST" })
       .from("entrega_firmas")
       .update({
         estado: "FIRMADA",
+        responsable_nombre: data.responsable_nombre,
+        responsable_cargo: data.responsable_cargo,
+        firmante_es_responsable: data.firmante_es_responsable,
         firmante_nombre: data.firmante_nombre,
         firmante_cargo: data.firmante_cargo,
         firmante_empresa: data.firmante_empresa || null,
-        firmante_documento: data.firmante_documento || null,
         firmante_telefono: data.firmante_telefono || null,
+        tipo_ambulancia: data.tipo_ambulancia || null,
+        empresa_declarada: data.empresa_declarada || null,
+        empresa_declarada_motivo: data.empresa_declarada_motivo || null,
         aceptacion: true,
         firma_data: data.firma_data,
         firma_ip: ip,
@@ -212,7 +217,7 @@ export const firmarEntrega = createServerFn({ method: "POST" })
         firmado_at: firmadoAt,
         codigo_verificacion: codigo,
         pdf_hash: pdfHash,
-      })
+      } as never)
       .eq("id", row.id)
       .eq("estado", "PENDIENTE"); // condición de uso único (carrera)
 
