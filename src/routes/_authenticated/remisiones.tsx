@@ -674,16 +674,23 @@ function ListaGenerica({
   ultGestiones?: Record<string, { fecha: string | null; responsable: string | null }>;
 }) {
   if (items.length === 0) return <VacioModulo />;
+  const grupos = agruparPorEtapa(
+    items.map((it) => ({ ...it, estado: (it as { estado?: string | null }).estado ?? null })),
+  );
   return (
-    <div className="grid gap-3">
-      {items.map((it) => (
-        <CasoGenericoCard
-          key={it.id}
-          tipo={tipo}
-          r={it}
-          canEdit={canEdit}
-          ultimaGestion={ultGestiones?.[it.id] ?? null}
-        />
+    <div className="grid gap-4">
+      {grupos.map(({ etapa, items: bucket }) => (
+        <GrupoEtapa key={etapa.key} etapa={etapa} count={bucket.length}>
+          {bucket.map((it) => (
+            <CasoGenericoCard
+              key={it.id as string}
+              tipo={tipo}
+              r={it}
+              canEdit={canEdit}
+              ultimaGestion={ultGestiones?.[it.id as string] ?? null}
+            />
+          ))}
+        </GrupoEtapa>
       ))}
     </div>
   );
