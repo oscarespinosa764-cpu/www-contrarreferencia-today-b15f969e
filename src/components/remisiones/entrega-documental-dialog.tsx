@@ -94,7 +94,9 @@ export function EntregaDocumentalDialog({
 }: Props) {
   const [origen, setOrigen] = useState<OrigenDoc | "">("");
   const [docs, setDocs] = useState<DocItem[]>([]);
-  const [nuevoDoc, setNuevoDoc] = useState("");
+  // Trazabilidad: si viene de la asignación previa, se marca como readonly.
+  const empresaDeTrazabilidad = !!(empresaTraslado ?? "").trim();
+  const ipsDeTrazabilidad = !!(ipsReceptora ?? "").trim();
   const [empresa, setEmpresa] = useState("");
   const [ips, setIps] = useState("");
   const [fecha, setFecha] = useState("");
