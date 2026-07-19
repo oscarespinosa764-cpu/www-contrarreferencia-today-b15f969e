@@ -38,7 +38,6 @@ export function ChecklistFormDialog({ open, onOpenChange, modo, inicial }: Props
   const [codigo, setCodigo] = useState("");
   const [nombre, setNombre] = useState("");
   const [modulo, setModulo] = useState("GENERAL");
-  const [descripcion, setDescripcion] = useState("");
   const [activo, setActivo] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -47,7 +46,6 @@ export function ChecklistFormDialog({ open, onOpenChange, modo, inicial }: Props
     setCodigo(inicial?.codigo ?? "");
     setNombre(inicial?.nombre ?? "");
     setModulo(inicial?.modulo ?? "GENERAL");
-    setDescripcion(inicial?.descripcion ?? "");
     setActivo(inicial?.activo ?? true);
   }, [open, inicial]);
 
