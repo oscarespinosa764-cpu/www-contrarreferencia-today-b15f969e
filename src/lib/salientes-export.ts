@@ -346,6 +346,8 @@ export async function descargarEntregaTurnoPDF(params: {
   // JORNADAS OTRAS IPS: tomadas de RED/DISPONIBILIDAD → Jornadas / Códigos TEP.
   jornadasOtrasIps?: string[];
 }): Promise<void> {
+  const cfg = await getPlantillaConfig("REPORTE_GENERAL_SALIENTES");
+  const PIE = pickText(cfg, "pie_leyenda", PIE_DEFAULT);
   const { jsPDF } = await import("jspdf");
   const autoTable = (await import("jspdf-autotable")).default;
   const doc = new jsPDF({ unit: "mm", format: "legal", orientation: "landscape" });
