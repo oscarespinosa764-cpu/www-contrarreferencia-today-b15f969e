@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
@@ -13,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, UserPlus, FileDown, Loader2, Trash2 } from "lucide-react";
+import { Plus, UserPlus, FileDown, Loader2, Trash2, CalendarDays, Grid3X3, List, Users, AlertTriangle, Activity, Search } from "lucide-react";
 import { toast } from "sonner";
 import {
   MESES, diasDelMes, letraDiaSemana, fechaISO, totalHorasMiembro, tiempoExtra, tiempoTotal,
@@ -21,14 +22,41 @@ import {
 } from "@/lib/cuadro-turno-utils";
 import { exportarCuadroMensual } from "@/lib/cuadro-excel";
 
+const CUADRO_ROUTE = "/_authenticated/cuadro-turno" as const;
+const VISTAS = ["calendario", "matriz", "lista"] as const;
+type VistaCuadro = (typeof VISTAS)[number];
+
+interface ReqSummary {
+  status: string | null;
+  requires_replacement: boolean | null;
+  start_date: string | null;
+  original_shift_date: string | null;
+  created_at: string | null;
+}
+
+const sameMonth = (iso: string | null | undefined, year: number, month: number) => {
+  if (!iso) return false;
+  const [y, m] = iso.slice(0, 10).split("-").map(Number);
+  return y === year && m === month;
+};
+
 export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate({ from: CUADRO_ROUTE });
+  const search = useSearch({ from: CUADRO_ROUTE });
   const now = new Date();
-  const [anio, setAnio] = useState(now.getFullYear());
-  const [mes, setMes] = useState(now.getMonth() + 1);
+  const anio = Number.isFinite(search.anio) ? search.anio : now.getFullYear();
+  const mes = Math.min(12, Math.max(1, Number.isFinite(search.mes) ? search.mes : now.getMonth() + 1));
+  const vista: VistaCuadro = VISTAS.includes(search.vista as VistaCuadro) ? (search.vista as VistaCuadro) : "calendario";
+  const busq = search.q ?? "";
+  const cargoF = search.cargo ?? "";
+  const selectedDay = search.dia && search.dia >= 1 && search.dia <= diasDelMes(anio, mes) ? search.dia : Math.min(now.getDate(), diasDelMes(anio, mes));
   const dependency = "Referencia y Contrarreferencia";
   const ndias = diasDelMes(anio, mes);
+
+  const setSearch = (patch: Record<string, unknown>) =>
+    navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, ...patch }), replace: true });
 
   const { data: tipos = [] } = useQuery({
     queryKey: ["shift-types"],
@@ -70,6 +98,16 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
     },
   });
 
+  const { data: requests = [] } = useQuery({
+    queryKey: ["shift-requests", "cuadro-resumen", anio, mes],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("shift_requests")
+        .select("status, requires_replacement, start_date, original_shift_date, created_at");
+      return (data ?? []) as unknown as ReqSummary[];
+    },
+  });
+
   const dayMap = useMemo(() => {
     const m = new Map<string, ShiftDay>();
     for (const d of days) m.set(`${d.member_id}:${d.day_number}`, d);
@@ -80,10 +118,6 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
   const [cell, setCell] = useState<{ member: ShiftMember; day: number } | null>(null);
   const [asignar, setAsignar] = useState<ShiftMember | null>(null);
   const [asignarOpen, setAsignarOpen] = useState(false);
-  const [vista, setVista] = useState<"matriz" | "calendario">("calendario");
-  const [busq, setBusq] = useState("");
-  const [cargoF, setCargoF] = useState("");
-  const [dayDetail, setDayDetail] = useState<number | null>(null);
 
   const cargos = useMemo(() => {
     const s = new Set<string>();
@@ -105,16 +139,17 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
     const daysF = days.filter((d) => memberIds.has(d.member_id) && d.shift_code);
     const turnosProg = daysF.length;
     const ausenciaCodes = new Set(["A", "I", "P", "V"]);
+    const reqMes = requests.filter((r) => sameMonth(r.original_shift_date || r.start_date || r.created_at, anio, mes));
+    const coberturas = reqMes.filter((r) => r.requires_replacement && r.status === "APROBADA").length;
+    const coberturasPendientes = reqMes.filter((r) => r.requires_replacement && ["PENDIENTE", "DEVUELTA PARA AJUSTE"].includes(r.status ?? "")).length;
     const novedades = daysF.filter((d) => d.shift_code && ausenciaCodes.has(d.shift_code)).length
-      + members.filter((m) => !days.some((d) => d.member_id === m.id && d.shift_code)).length;
-    const trabajando = daysF.filter((d) => d.shift_code && !ausenciaCodes.has(d.shift_code) && d.shift_code !== "D").length;
-    const cobertura = daysF.length > 0 ? Math.round((trabajando / daysF.length) * 100) : null;
+      + reqMes.filter((r) => ["PENDIENTE", "DEVUELTA PARA AJUSTE"].includes(r.status ?? "")).length;
     const asignados = new Set(daysF.map((d) => d.member_id));
     const disp = membersFiltrados.length > 0
       ? Math.round((asignados.size / membersFiltrados.length) * 100)
       : null;
-    return { turnosProg, cobertura, novedades, disp, totalMembers: membersFiltrados.length };
-  }, [membersFiltrados, days, members, tipos]);
+    return { turnosProg, coberturas, coberturasPendientes, novedades, disp, totalMembers: membersFiltrados.length };
+  }, [membersFiltrados, days, requests, anio, mes]);
 
 
   const exportarCuadro = () => {
@@ -142,48 +177,97 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <div><Label className="text-xs">Año</Label><Input type="number" className="w-24" value={anio} onChange={(e) => setAnio(Number(e.target.value))} /></div>
+      <Card className="flex flex-wrap items-end gap-3 p-3">
+        <div><Label className="text-xs">Año</Label><Input type="number" className="w-24" value={anio} onChange={(e) => setSearch({ anio: Number(e.target.value), dia: undefined })} /></div>
         <div><Label className="text-xs">Mes</Label>
-          <Select value={String(mes)} onValueChange={(v) => setMes(Number(v))}>
+          <Select value={String(mes)} onValueChange={(v) => setSearch({ mes: Number(v), dia: undefined })}>
             <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
             <SelectContent>{MESES.map((m, i) => <SelectItem key={m} value={String(i + 1)}>{m}</SelectItem>)}</SelectContent>
           </Select></div>
+        <Button size="sm" variant="outline" onClick={exportarCuadro} disabled={!schedule}>
+          <FileDown className="mr-1.5 h-4 w-4" /> Exportar Excel
+        </Button>
         <div className="ml-auto flex flex-wrap items-center gap-2 text-xs">
           <div className="flex overflow-hidden rounded-md border">
-            <button
-              type="button"
-              onClick={() => setVista("calendario")}
-              className={`px-2.5 py-1 font-medium transition-colors ${vista === "calendario" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-accent"}`}
-            >
-              Calendario
-            </button>
-            <button
-              type="button"
-              onClick={() => setVista("matriz")}
-              className={`px-2.5 py-1 font-medium transition-colors ${vista === "matriz" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-accent"}`}
-            >
-              Matriz
-            </button>
+            <ViewButton active={vista === "calendario"} onClick={() => setSearch({ vista: "calendario" })} icon={CalendarDays} label="Calendario" />
+            <ViewButton active={vista === "matriz"} onClick={() => setSearch({ vista: "matriz" })} icon={Grid3X3} label="Matriz" />
+            <ViewButton active={vista === "lista"} onClick={() => setSearch({ vista: "lista" })} icon={List} label="Lista" />
           </div>
           {tipos.filter((t) => t.active).map((t) => (
-            <span key={t.id} className="inline-flex items-center gap-1 rounded border px-1.5 py-0.5">
+            <span key={t.id} className="inline-flex items-center gap-1 rounded border px-1.5 py-0.5" title={`${t.name}${t.start_time && t.end_time ? ` · ${t.start_time.slice(0, 5)}-${t.end_time.slice(0, 5)}` : ""}`}>
               <span className="inline-block h-3 w-3 rounded" style={{ background: t.color }} /> {t.code}
             </span>
           ))}
         </div>
-      </div>
+      </Card>
+
+      <Card className="flex flex-wrap items-end gap-3 p-3">
+        <div>
+          <Label className="text-xs">Colaborador</Label>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar colaborador…"
+              value={busq}
+              onChange={(e) => setSearch({ q: e.target.value })}
+              className="h-9 w-64 pl-8 text-xs"
+            />
+          </div>
+        </div>
+        <div>
+          <Label className="text-xs">Cargo</Label>
+          <Select value={cargoF || "__all"} onValueChange={(v) => setSearch({ cargo: v === "__all" ? "" : v })}>
+            <SelectTrigger className="h-9 w-52 text-xs"><SelectValue placeholder="Cargo" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Todos los cargos</SelectItem>
+              {cargos.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        {(busq || cargoF) && (
+          <Button size="sm" variant="ghost" onClick={() => setSearch({ q: "", cargo: "" })}>
+            Limpiar filtros
+          </Button>
+        )}
+        {isAdmin && schedule && (
+          <Button size="sm" className="ml-auto" onClick={() => abrirAsignacion(null)} disabled={members.length === 0}>
+            <Plus className="mr-1.5 h-4 w-4" /> Agregar
+          </Button>
+        )}
+      </Card>
 
       {schedule && (
         <>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Card className="p-3">
+              <div className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" /><p className="text-[11px] uppercase text-muted-foreground">Turnos programados</p></div>
+              <p className="mt-1 text-2xl font-bold">{kpis.turnosProg}</p>
+              <p className="text-[10px] text-muted-foreground">{MESES[mes - 1]} {anio}</p>
+            </Card>
+            <Card className="p-3">
+              <div className="flex items-center gap-2"><Users className="h-4 w-4 text-emerald-600" /><p className="text-[11px] uppercase text-muted-foreground">Coberturas</p></div>
+              <p className="mt-1 text-2xl font-bold">{kpis.coberturas}</p>
+              <p className="text-[10px] text-muted-foreground">{kpis.coberturasPendientes} pendiente(s)</p>
+            </Card>
+            <Card className="p-3">
+              <div className="flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-amber-600" /><p className="text-[11px] uppercase text-muted-foreground">Novedades</p></div>
+              <p className="mt-1 text-2xl font-bold">{kpis.novedades}</p>
+              <p className="text-[10px] text-muted-foreground">Ausencias y solicitudes pendientes</p>
+            </Card>
+            <Card className="p-3">
+              <div className="flex items-center gap-2"><Activity className="h-4 w-4 text-sky-600" /><p className="text-[11px] uppercase text-muted-foreground">Disponibilidad del equipo</p></div>
+              <p className="mt-1 text-2xl font-bold">{kpis.disp == null ? "—" : `${kpis.disp}%`}</p>
+              <p className="text-[10px] text-muted-foreground">{kpis.totalMembers} funcionario(s)</p>
+            </Card>
+          </div>
+          <div className="sr-only">
             <Card className="p-3">
               <p className="text-[11px] uppercase text-muted-foreground">Turnos programados</p>
               <p className="mt-1 text-2xl font-bold">{kpis.turnosProg}</p>
             </Card>
             <Card className="p-3">
               <p className="text-[11px] uppercase text-muted-foreground">Cobertura laboral</p>
-              <p className="mt-1 text-2xl font-bold">{kpis.cobertura == null ? "—" : `${kpis.cobertura}%`}</p>
+              <p className="mt-1 text-2xl font-bold">{kpis.coberturas}</p>
             </Card>
             <Card className="p-3">
               <p className="text-[11px] uppercase text-muted-foreground">Novedades</p>
@@ -195,29 +279,7 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
               <p className="text-[10px] text-muted-foreground">{kpis.totalMembers} funcionario(s)</p>
             </Card>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Input
-              placeholder="Buscar funcionario…"
-              value={busq}
-              onChange={(e) => setBusq(e.target.value)}
-              className="h-8 w-56 text-xs"
-            />
-            <Select value={cargoF || "__all"} onValueChange={(v) => setCargoF(v === "__all" ? "" : v)}>
-              <SelectTrigger className="h-8 w-48 text-xs"><SelectValue placeholder="Cargo" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all">Todos los cargos</SelectItem>
-                {cargos.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            {(busq || cargoF) && (
-              <Button size="sm" variant="ghost" onClick={() => { setBusq(""); setCargoF(""); }}>
-                Limpiar filtros
-              </Button>
-            )}
-            <span className="ml-auto text-[11px] text-muted-foreground">
-              Mostrando {membersFiltrados.length} de {members.length}
-            </span>
-          </div>
+          <p className="text-right text-[11px] text-muted-foreground">Mostrando {membersFiltrados.length} de {members.length}</p>
         </>
       )}
 
@@ -231,11 +293,6 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
         <>
           {isAdmin && (
             <>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button size="sm" onClick={exportarCuadro}>
-                  <FileDown className="mr-1.5 h-4 w-4" /> Exportar Excel
-                </Button>
-              </div>
               <AgregarColaborador
                 scheduleId={schedule.id}
                 sortOrder={members.length}
@@ -246,15 +303,36 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
             </>
           )}
           {vista === "calendario" ? (
-            <CalendarView
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+              <CalendarView
+                anio={anio}
+                mes={mes}
+                ndias={ndias}
+                members={membersFiltrados}
+                dayMap={dayMap}
+                tipoMap={tipoMap}
+                selectedDay={selectedDay}
+                onCellClick={(m, d) => setCell({ member: m, day: d })}
+                onMoreClick={(d) => setSearch({ dia: d })}
+              />
+              <DaySummaryPanel
+                anio={anio}
+                mes={mes}
+                day={selectedDay}
+                members={membersFiltrados}
+                dayMap={dayMap}
+                tipoMap={tipoMap}
+                onEdit={(m) => setCell({ member: m, day: selectedDay })}
+              />
+            </div>
+          ) : vista === "lista" ? (
+            <ListView
               anio={anio}
               mes={mes}
-              ndias={ndias}
               members={membersFiltrados}
-              dayMap={dayMap}
+              days={days}
               tipoMap={tipoMap}
-              onCellClick={(m, d) => setCell({ member: m, day: d })}
-              onMoreClick={(d) => setDayDetail(d)}
+              onEdit={(m, d) => setCell({ member: m, day: d })}
             />
           ) : (
             <>
