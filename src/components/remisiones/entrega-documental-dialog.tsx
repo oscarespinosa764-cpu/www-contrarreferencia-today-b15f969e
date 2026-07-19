@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { Button } from "@/components/ui/button";
@@ -97,6 +97,7 @@ export function EntregaDocumentalDialog({
   quienAcepta,
   cargoAcepta,
 }: Props) {
+  const qc = useQueryClient();
   const [origen, setOrigen] = useState<OrigenDoc | "">("");
   const [docs, setDocs] = useState<DocItem[]>([]);
   // Trazabilidad: si viene de la asignación previa, se marca como readonly.
@@ -280,8 +281,15 @@ export function EntregaDocumentalDialog({
           }),
         );
       }
+      // Sincronía post-firma: refresca las tarjetas / paneles del aplicativo
+      // para que aparezcan los datos del tripulante y se puedan generar los
+      // PDF de Portada y Acta y la plantilla Índigo con la información real.
+      qc.invalidateQueries({ queryKey: ["domiciliarios"] });
+      qc.invalidateQueries({ queryKey: ["remisiones"] });
+      qc.invalidateQueries({ queryKey: ["indigo-caso"] });
+      qc.invalidateQueries({ queryKey: ["phd-seguimientos", casoId] });
     }
-  }, [firmada, sesion.data, indigoCorta, snapshot, tripulanteS, cargoTripulanteS]);
+  }, [firmada, sesion.data, indigoCorta, snapshot, tripulanteS, cargoTripulanteS, qc, casoId]);
 
   const toggleDoc = (i: number) =>
     setDocs((p) => p.map((d, idx) => (idx === i ? { ...d, marcado: !d.marcado } : d)));

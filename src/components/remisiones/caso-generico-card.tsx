@@ -10,6 +10,7 @@ import { Eye, Pencil, ClipboardCheck, MapPin } from "lucide-react";
 import { Field, SelectField, SpecialtyList } from "./form-bits";
 import { Cie10Field } from "./cie10-field";
 import { SeguimientoDialog } from "./seguimiento-dialog";
+import { PhdSeguimientoDialog } from "./phd-seguimiento-dialog";
 import { PhdCicloPanel } from "./phd-ciclo-panel";
 import {
   evolucionMeta,
@@ -534,21 +535,36 @@ export function CasoGenericoCard({
       </Dialog>
 
       {/* Seguimiento */}
-      <SeguimientoDialog
-        open={seg}
-        onOpenChange={setSeg}
-        casoId={r.id}
-        tipoCaso={cfg.tipoCaso}
-        paciente={nombre}
-        documento={documento}
-        evolucionActual={r.evolucion}
-        evolucionDetalle={r.evolucion_detalle}
-        especialidades={tipo === "phd" ? r.especialidades_tratantes : null}
-        radicadoCaso={cfg.tieneRadicado ? r.codigo_radicacion : null}
-        tabla={cfg.tabla}
-        estadoOpciones={tipo === "phd" ? PHD_ESTADO_OPCIONES : undefined}
-        estadoActual={r.estado}
-      />
+      {tipo === "phd" ? (
+        <PhdSeguimientoDialog
+          open={seg}
+          onOpenChange={setSeg}
+          casoId={r.id}
+          paciente={nombre}
+          documento={documento}
+          tipoDocumento={r.tipo_documento}
+          estadoActual={r.estado_ciclo ?? r.estado}
+          ipsReceptora={r.ips_receptora}
+          empresaTraslado={r.empresa_traslado ?? r.prestador_traslado}
+          entidadPago={r.eapb}
+        />
+      ) : (
+        <SeguimientoDialog
+          open={seg}
+          onOpenChange={setSeg}
+          casoId={r.id}
+          tipoCaso={cfg.tipoCaso}
+          paciente={nombre}
+          documento={documento}
+          evolucionActual={r.evolucion}
+          evolucionDetalle={r.evolucion_detalle}
+          especialidades={null}
+          radicadoCaso={cfg.tieneRadicado ? r.codigo_radicacion : null}
+          tabla={cfg.tabla}
+          estadoOpciones={undefined}
+          estadoActual={r.estado}
+        />
+      )}
     </div>
   );
 }
