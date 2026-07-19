@@ -238,6 +238,7 @@ export const CATEGORIAS_RECURSO = [
   "Normativa",
   "Otro",
 ];
+// FUENTE CANÓNICA (Fase A · Q1): useCatalogo("TIPO_RECURSO_RED") — fallback runtime.
 export const TIPOS_RECURSO = ["URL", "Correo", "Teléfono", "Texto informativo"];
 
 // Etiqueta de subsección (pestaña interna) según el tipo_red.
@@ -249,7 +250,9 @@ export function subseccionDeTipo(grupo: GrupoConfig, tipo: string | null | undef
 
 export const JORNADAS = ["Mañana", "Tarde", "Noche", "Día completo", "Otro"];
 export const ESTADOS_JORNADA = ["Activo", "Inactivo", "Finalizado"];
+// FUENTE CANÓNICA (Fase A · Q1): useCatalogo("TIPO_AMBULANCIA") — fallback runtime.
 export const TIPOS_AMBULANCIA = ["TAB", "TAM", "TAM-N", "AÉREA"];
+
 
 export function getGrupo(key: RedGrupo): GrupoConfig {
   return RED_GRUPOS.find((g) => g.key === key) ?? RED_GRUPOS[0];
