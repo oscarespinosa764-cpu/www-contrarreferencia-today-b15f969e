@@ -23,7 +23,11 @@ import {
   CheckCircle2,
   RotateCcw,
   Plus,
+  Pencil,
+  Trash2,
 } from "lucide-react";
+import { PlantillaFormDialog, type PlantillaFormValue } from "./plantilla-form-dialog";
+import { PuntoUsoFormDialog, type PuntoUsoFormValue } from "./punto-uso-form-dialog";
 import { buildOficioHTML } from "@/lib/oficio";
 import { fixtureOficioMensaje, FIXTURE_CASO, AVISO_PREVIEW } from "@/lib/plantillas-preview-fixtures";
 import {
