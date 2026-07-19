@@ -397,12 +397,34 @@ export function EntregaDocumentalDialog({
           {/* Datos base (autollenados, editables) */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label className="text-xs">Empresa de traslado</Label>
-              <Input uppercase value={empresa} onChange={(e) => setEmpresa(e.target.value)} disabled={!!sesionId} />
+              <Label className="text-xs flex items-center gap-1">
+                Empresa de traslado
+                {empresaDeTrazabilidad && <Lock className="h-3 w-3 text-muted-foreground" />}
+              </Label>
+              <Input
+                uppercase
+                value={empresa}
+                onChange={(e) => setEmpresa(e.target.value)}
+                disabled={!!sesionId || empresaDeTrazabilidad}
+                placeholder={!empresaDeTrazabilidad ? "NO HAY EMPRESA DE TRASLADO ASIGNADA…" : undefined}
+              />
+              {!empresaDeTrazabilidad && (
+                <p className="text-[10.5px] text-amber-600">
+                  Sin empresa en la trazabilidad. Registre la asignación desde el seguimiento del caso.
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">IPS receptora</Label>
-              <Input uppercase value={ips} onChange={(e) => setIps(e.target.value)} disabled={!!sesionId} />
+              <Label className="text-xs flex items-center gap-1">
+                IPS receptora
+                {ipsDeTrazabilidad && <Lock className="h-3 w-3 text-muted-foreground" />}
+              </Label>
+              <Input
+                uppercase
+                value={ips}
+                onChange={(e) => setIps(e.target.value)}
+                disabled={!!sesionId || ipsDeTrazabilidad}
+              />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Nombre de quien acepta</Label>
@@ -411,14 +433,6 @@ export function EntregaDocumentalDialog({
             <div className="space-y-1.5">
               <Label className="text-xs">Cargo de quien acepta</Label>
               <Input uppercase value={cargoAceptaS} onChange={(e) => setCargoAceptaS(e.target.value)} disabled={!!sesionId} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Tripulante responsable del traslado</Label>
-              <Input uppercase value={tripulanteS} onChange={(e) => setTripulanteS(e.target.value)} disabled={!!sesionId} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Cargo del tripulante</Label>
-              <Input uppercase value={cargoTripulanteS} onChange={(e) => setCargoTripulanteS(e.target.value)} disabled={!!sesionId} />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label className="text-xs">Fecha/hora de entrega</Label>
@@ -432,7 +446,7 @@ export function EntregaDocumentalDialog({
                 disabled={!!sesionId}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecciona: EPS / ARL / SOAT / Particular" />
+                  <SelectValue placeholder="Selecciona: EPS / SOAT / ADRES / ARL / Particular" />
                 </SelectTrigger>
                 <SelectContent>
                   {ORIGENES_DOC.map((o) => (
@@ -442,6 +456,16 @@ export function EntregaDocumentalDialog({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-1.5 sm:col-span-2 rounded-md border border-dashed bg-muted/30 p-2.5">
+              <Label className="text-[10.5px] uppercase text-muted-foreground">
+                Tripulante responsable / cargo
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                {tripulanteS
+                  ? `${tripulanteS}${cargoTripulanteS ? ` — ${cargoTripulanteS}` : ""}`
+                  : "PENDIENTE DE FIRMA QR (los diligencia el tripulante al firmar)."}
+              </p>
             </div>
           </div>
 
