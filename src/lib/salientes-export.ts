@@ -167,7 +167,13 @@ export async function descargarReporteGeneralPDF(params: {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
   doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
-  doc.text("REPORTE GENERAL OPERATIVO — SALIENTES", pageW / 2, 22, { align: "center" });
+  doc.text(TITULO, pageW / 2, 22, { align: "center" });
+  if (SUBTITULO) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(90);
+    doc.text(SUBTITULO, pageW / 2, 26.5, { align: "center" });
+  }
   doc.setTextColor(0);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
