@@ -41,6 +41,7 @@ import {
   descargarFirmadoPDF,
   type EntregaDatos,
 } from "@/lib/entrega-firma-pdf";
+import { ChecklistRunner } from "@/components/coordinacion/checklist-runner";
 
 type Props = {
   open: boolean;
@@ -605,6 +606,13 @@ export function EntregaDocumentalDialog({
               </div>
             </div>
           )}
+
+          <ChecklistRunner
+            checklistCodigo="SALIENTES_ENTREGA_SEGURA"
+            casoId={casoId}
+            casoTipo={tipoCaso}
+            compact
+          />
         </div>
       </DialogContent>
     </Dialog>
