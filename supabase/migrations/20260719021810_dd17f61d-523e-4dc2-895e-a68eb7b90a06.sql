@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.trg_audit_catalogo_plantilla() FROM PUBLIC, anon, authenticated;
