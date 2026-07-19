@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Trash2, CheckCircle2, Archive, AlertTriangle, RefreshCw } from "lucide-react";
+import { Plus, Trash2, CheckCircle2, Archive, AlertTriangle, RefreshCw, Pencil } from "lucide-react";
+import { ChecklistFormDialog } from "./checklist-form-dialog";
 
 // ============================================================
 // Panel administrativo de LISTAS DE CHEQUEO (Fase Q4).
@@ -101,6 +102,8 @@ export function ChecklistsPanel() {
   });
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [dialogCrear, setDialogCrear] = useState(false);
+  const [dialogEditar, setDialogEditar] = useState(false);
   const modulos = useMemo(
     () => Array.from(new Set((checklists ?? []).map((c) => c.modulo))).sort(),
     [checklists],
@@ -172,11 +175,16 @@ export function ChecklistsPanel() {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-[280px_1fr]">
       <aside className="space-y-2 rounded-xl border border-border bg-card p-3">
-        <div>
-          <h3 className="text-sm font-semibold">Listas registradas</h3>
-          <p className="text-[11px] text-muted-foreground">
-            {filtradas.length} visibles · {checklists?.length ?? 0} registradas
-          </p>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold">Listas registradas</h3>
+            <p className="text-[11px] text-muted-foreground">
+              {filtradas.length} visibles · {checklists?.length ?? 0} registradas
+            </p>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => setDialogCrear(true)}>
+            <Plus className="mr-1 h-3.5 w-3.5" /> Nueva
+          </Button>
         </div>
 
         <div className="space-y-2 rounded-md border border-border/70 bg-background p-2">
@@ -290,9 +298,14 @@ export function ChecklistsPanel() {
                   {seleccion.codigo} · módulo {seleccion.modulo}
                 </p>
               </div>
-              <Button size="sm" onClick={crearNuevaVersion}>
-                <Plus className="mr-1 h-4 w-4" /> Nueva versión (borrador)
-              </Button>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setDialogEditar(true)}>
+                  <Pencil className="mr-1 h-4 w-4" /> Editar
+                </Button>
+                <Button size="sm" onClick={crearNuevaVersion}>
+                  <Plus className="mr-1 h-4 w-4" /> Nueva versión (borrador)
+                </Button>
+              </div>
             </header>
 
             <div className="grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
@@ -347,6 +360,24 @@ export function ChecklistsPanel() {
           </>
         )}
       </section>
+
+      <ChecklistFormDialog
+        open={dialogCrear}
+        onOpenChange={setDialogCrear}
+        modo="crear"
+      />
+      <ChecklistFormDialog
+        open={dialogEditar}
+        onOpenChange={setDialogEditar}
+        modo="editar"
+        inicial={seleccion ? {
+          id: seleccion.id,
+          codigo: seleccion.codigo,
+          nombre: seleccion.nombre,
+          modulo: seleccion.modulo,
+          activo: seleccion.activo,
+        } : null}
+      />
     </div>
   );
 }
