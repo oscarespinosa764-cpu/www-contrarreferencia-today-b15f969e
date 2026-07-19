@@ -1,69 +1,64 @@
+## Fase A — Q1 + Q7 (base canónica, auditable y reutilizable)
 
-# Rediseño — Catálogo y Plantillas
+Bug bloqueante ya corregido en este turno: `useDictationConfigRows` ahora exige sesión (`enabled: !!user`), lo que detiene el bucle de 401 sobre `voice_dictation_config` en `/login`. Con eso, procedo únicamente con Fase A.
 
-Alcance amplio. Propongo entregarlo en **4 fases** revisables para no malgastar créditos ni desestabilizar el módulo. Confirma qué fases apruebas antes de implementar.
+### 1. Inventario previo (una sola consulta, sin modificar datos)
+Antes de crear cualquier catálogo, ejecuto una lectura de `public.catalogos` agrupada por `tipo` para confirmar cuáles de los 10 ya existen y con qué valores. También leo distintos `profiles.cargo`, sedes activas en `red_operativa`, motivos usados hoy en `shift_monthly_exceptions`, novedades en `remisiones`, y motivos de cierre en `casos_entrantes`/`historicos_casos`. El resultado alimenta las tablas del informe final (no se muestran valores sensibles).
 
-## Inventario reutilizable (verificado)
+### 2. Migración única `phase_a_catalogos_y_auditoria` (idempotente, no destructiva)
+Una sola migración agrupada. Solo estructura y seeds seguros. No borra ni renombra nada.
 
-- Tabla `catalogos` (15 tipos activos, ~372 filas): EAPB (41), IPS (51), ESPECIALIDAD (75), MEDICO (63), EMPRESA_TEP (35), PLACA (58), DEPARTAMENTO (8), MOTIVO_* (24), UNIDAD/UNIDAD_REQUERIDA (8), REGIMEN (6), IPS_LOCAL (2), más el tipo huérfano en minúsculas `ips` (1 fila, se normaliza a IPS).
-- Tabla `plantillas` (80 activas) con `indicativo, categoria, subcategoria, nombre, mensaje, pasos, condicion, activo, archivado`.
-- Componentes existentes que se reutilizan tal cual: `catalogo-maestras.tsx` (CRUD + detección de duplicados + auditoría) y `plantillas-biblioteca.tsx` (biblioteca con pasos y variables).
-- Ruta `/catalogo` con `Tabs` shadcn — se mantiene.
-- Auditoría vía `registrar_auditoria` ya integrada — se mantiene append-only.
-- Sin nuevas tablas obligatorias en Fase 1 y 2.
+Cambios de esquema:
+- `public.catalogos`: solo si faltan, añade columnas opcionales `codigo TEXT`, `orden INT DEFAULT 0`, `metadata JSONB DEFAULT '{}'`, `updated_by UUID`, `created_by UUID`. Ninguna se marca NOT NULL. Índice `UNIQUE (tipo, codigo) WHERE codigo IS NOT NULL` (parcial, no rompe filas antiguas).
+- Nueva tabla `public.catalogo_dependencias` con: `catalogo_tipo`, `elemento_id` (nullable), `modulo`, `ruta`, `ventana`, `formulario`, `campo`, `tipo_control`, `obligatorio`, `componente`, `verificado_at`. GRANTs + RLS: SELECT autenticados, INSERT/UPDATE/DELETE solo admin (via `has_role`). Se llena por seed determinista, no por escaneo runtime.
+- Nueva tabla `public.plantillas_inventario` con: `codigo`, `nombre`, `modulo`, `formato` (`PDF`/`EXCEL`), `origen` (`CODIGO`/`CODIGO+CONFIG`), `generador` (ruta del módulo), `estado`, `version`, `dependencia`, `editable_nivel` (`SOLO_LECTURA`/`PARCIAL`/`COMPLETA`). GRANT + RLS igual que arriba. Seed con las 7 plantillas.
+- Extensión mínima de `public.audit_logs` NO se toca (ya existe). Se reutiliza `registrar_auditoria_srv` para todos los eventos nuevos.
+- Nueva función `public.registrar_auditoria_catalogo(_accion, _tipo, _elemento_id, _antes, _despues, _motivo)` SECURITY DEFINER, `search_path=''`, que sanitiza y llama a `registrar_auditoria_srv`. No expone PII.
+- Triggers de auditoría append-only sobre `public.catalogos`, `public.plantillas`, `public.catalogo_dependencias`, `public.plantillas_inventario`: en INSERT/UPDATE/DELETE guardan solo `id`, `tipo/codigo`, `antes_resumen`, `despues_resumen`, `usuario`, `hora`, `accion`. Nunca guardan HTML, base64, PII ni tokens.
 
-## Fase 1 — Shell visual (nuevo encabezado, 5 KPIs, sin tocar CRUD)
+Seeds (todos `ON CONFLICT DO NOTHING`, con `codigo` estable, `orden` explícito):
+- `TIPO_AMBULANCIA`: TAB, TAM, TAM_N (más AEREA si el inventario la encuentra en uso real).
+- `TIPO_EAPB`: EPS, ARL, PARTICULAR, POLIZA, MEDICINA_PREPAGADA, SOAT, OTRO.
+- `TIPO_RECURSO_RED`: HOSPITALARIO, AMBULATORIO, DOMICILIARIO, AMBULANCIA, ESPECIALIDAD, DIRECTORIO_INTERNO.
+- `MOTIVO_EXENTO_CUPO`: valores actuales de `src/lib/solicitudes-utils.ts`.
+- `TIPO_INDICADOR`: valores actuales de `src/lib/indicadores-utils.ts`.
+- `AREA_CRUE`: seed inicial vacío + los valores detectados en Fase 1; si son ambiguos se dejan pendientes.
+- `TIPO_NOVEDAD_SALIENTE`, `MOTIVO_CIERRE_ENTRANTE`: seed de los valores inequívocos detectados; los ambiguos van al informe como “pendientes de decisión manual”.
+- `SEDE` y `CARGO`: seed inicial con los valores exactos detectados en `profiles`/`red_operativa`. NO fusiona ambiguos automáticamente — quedan como “pendiente conciliación”.
 
-Solo presentación en `src/routes/_authenticated/catalogo.tsx`:
+### 3. Adaptadores de lectura (código, mínimos)
+No refactor grande. Un solo helper nuevo `src/lib/catalogos-canonicos.ts` con:
+- `useCatalogo(tipo)` (React Query, caché 5 min, filtra `activo`, ordena por `orden`).
+- `getCatalogoOnce(tipo)` para uso puntual.
+- Utilidades `resolveCanonico(tipo, valor)` para tolerar valores históricos (fallback al valor recibido sin romper renders).
 
-- Título "Catálogo y Plantillas" + subtítulo.
-- 5 tarjetas KPI reales, calculadas con **una** consulta agregada (no N+1):
-  - Categorías activas = `count(distinct tipo) filter (activo)` sobre `catalogos` + agrupador estático de módulos.
-  - Catálogos = `count(distinct tipo)` en `catalogos`.
-  - Plantillas = `count(*) filter (archivado=false and activo=true)` en `plantillas`.
-  - Elementos totales = `count(*) filter (activo)` en `catalogos`.
-  - Última actualización = `max(updated_at)` entre `catalogos` y `plantillas`.
-- Tarjetas clicables que solo cambian filtros/pestañas actuales (sin modal nuevo).
-- Persistencia en URL: `?tab=catalogo|plantillas&modulo=&estado=&q=`.
-- Normaliza el tipo huérfano `ips` (minúscula) a `IPS` con un `UPDATE` puntual (no destructivo).
+Adaptación quirúrgica de tres archivos, sin borrar los arrays actuales (quedan como fallback runtime marcado con comentario, hasta la Fase B que los retire tras verificación):
+- `src/lib/red-ips-utils.ts` → `TIPOS_AMBULANCIA`, `TIPOS_EAPB`, `TIPOS_RECURSO` pasan a leerse del catálogo; si el catálogo aún no cargó, se usa el array anterior. Sin cambios a firmas exportadas.
+- `src/lib/solicitudes-utils.ts` → `MOTIVOS_EXENTOS` igual.
+- `src/lib/indicadores-utils.ts` → `TIPOS_INDICADOR` igual.
 
-## Fase 2 — Vista por categorías + búsqueda con debounce
+No se modifican archivos de estados técnicos, máquinas de estado, RLS, `has_role`, ni componentes fuera del alcance.
 
-Sobre `catalogo-maestras.tsx` (misma tabla, sin migraciones):
+### 4. Auditoría, dependencias y advertencias
+- `src/components/catalogo/categoria-modal.tsx` (pestañas ya existentes):
+  - Pestaña **Configuración**: cuando el admin marca un elemento como inactivo, consulta `catalogo_dependencias` + un `count` de usos en tablas registradas y muestra el modal “ESTE ELEMENTO SE UTILIZA EN …” exigiendo motivo. Bloquea desactivar si hay dependencias marcadas obligatorias, salvo confirmación explícita.
+  - Pestaña **Historial de cambios**: consume `audit_logs` filtrado por `tabla IN ('catalogos','plantillas','catalogo_dependencias','plantillas_inventario')` y `registro_id`. Ya no queda vacía.
+- Seed inicial de `catalogo_dependencias` con las rutas conocidas (Red → Tipo de ambulancia, Salientes → EAPB, Salientes → Motivo cierre, etc.). No se hace scan runtime.
 
-- Lista lateral de categorías (12 grupos derivados de `TIPO_META.modulo` + agrupador extendido) con conteo real por tipo.
-- Grid central de tarjetas por categoría (icono + nombre + descripción + N catálogos + N elementos).
-- Buscador con debounce 400ms sobre `valor/extra1/extra2/tipo`.
-- Filtros: módulo, estado (activo/inactivo/todos).
-- Al clicar una tarjeta → abre panel lateral (no modal doble) con los elementos del catálogo (ya existe el CRUD, se envuelve).
-- Reutiliza el diálogo de creación/edición actual; no se cambia la lógica de duplicados.
+### 5. Inventario de plantillas
+Nueva pestaña de solo lectura “Inventario” dentro de la vista actual de Plantillas (`src/components/catalogo/…` o el panel de plantillas existente): lista las 7 plantillas desde `plantillas_inventario`, marca origen `CODIGO`/`CODIGO+CONFIG` y muestra “DISEÑO ADMINISTRABLE PENDIENTE DE DESARROLLO” para las que aún no son editables. No toca ningún generador (`salientes-export.ts`, `solicitud-pdf.ts`, etc.).
 
-## Fase 3 — Modal amplio de categoría con pestañas Catálogos/Elementos/Configuración/Historial
+### 6. Fuera de alcance (confirmado)
+No implemento: dictado (registro de 12 campos), reorganización de Control de Mando en 10 secciones, listas de chequeo, PDF de listas, refactor de Reporte General o TH-FR-09, notas de voz, audio. No modifico Auth, dominios, Lovable Emails, `has_role`, ni RLS existentes.
 
-- Un solo modal principal (`max-w-[92vw]`, `h-[82vh]`).
-- Pestañas internas; los detalles abren en panel lateral **dentro** del modal.
-- "Configuración" muestra el `usadoEn` que ya está en `TIPO_META` (inventario estático, no búsqueda en archivos).
-- "Historial de cambios" consume `audit_logs` filtrado por `tabla='catalogos'` + `registro_id`.
-- Advertencia de impacto antes de desactivar: motivo obligatorio + auditoría.
+### 7. Informe final
+Al terminar entrego las tablas A–J y K exactamente como pide el prompt, con los pendientes de conciliación marcados (SEDE y CARGO ambiguos, novedades/motivos de cierre ambiguos, etc.) para que puedas decidirlos en una ronda posterior sin migrarlos ahora.
 
-## Fase 4 — Plantillas Generales (modal amplio, pestañas Mis/Todas/Compartidas/Eliminadas)
+### Detalles técnicos
+- Todas las tablas nuevas siguen el patrón obligatorio: `CREATE TABLE` → `GRANT` a `authenticated`/`service_role` (sin `anon`) → `ENABLE RLS` → `CREATE POLICY` usando `public.has_role(auth.uid(),'admin')`.
+- Triggers de auditoría son `SECURITY DEFINER` con `SET search_path = ''` y sanitización explícita.
+- `catalogo_dependencias` no se puebla desde el cliente: solo por seeds/migraciones o server functions admin.
+- No se instalan dependencias npm.
+- Una sola migración; los seeds usan `INSERT ... ON CONFLICT DO NOTHING` para ser reejecutables.
 
-- Reutiliza `plantillas-biblioteca.tsx` completo dentro del mismo modal.
-- Pestañas Mis/Todas/Eliminadas derivadas de columnas actuales (`created_by` si existe, `archivado`).
-- "Compartidas conmigo" queda como **placeholder deshabilitado** (no hay tabla de sharing y crearla está fuera de alcance sin autorización explícita).
-- Vista previa con `aplicarVariables` ya implementado.
-- Sin Storage nuevo: las plantillas actuales son texto (`mensaje`), no archivos DOCX/PDF — el prompt pide constructor multi-formato **solo si ya existe**, y no existe, así que se declara explícitamente fuera de alcance.
-
-## Fuera de alcance (declarado, para no gastar créditos)
-
-Estos puntos del prompt requieren tablas y features nuevos que hoy no existen. Los dejo explícitamente pendientes salvo que los autorices por separado:
-
-1. Sistema de sharing de plantillas (tabla `plantilla_permisos`).
-2. Editor DOCX/PDF/HTML y Storage privado para archivos binarios.
-3. Versionado explícito de plantillas (tabla `plantilla_versiones`).
-4. Motor de dependencias dinámicas (tabla `catalogo_dependencias`) — se usa el mapa estático `TIPO_META.usadoEn`.
-5. Constructor de formularios.
-
-## Confirmación
-
-Responde **"dale F1"**, **"F1+F2"**, **"todas"** o indica qué fases y qué elementos del fuera-de-alcance quieres incluir. Empiezo apenas confirmes.
+¿Autorizas ejecutar esta Fase A tal como está descrita?
