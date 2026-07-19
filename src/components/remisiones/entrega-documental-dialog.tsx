@@ -254,11 +254,11 @@ export function EntregaDocumentalDialog({
       const { data } = await supabase
         .from("entrega_firmas")
         .select(
-          "id, estado, expira_at, firmante_nombre, firmante_cargo, firmante_empresa, firmante_documento, firmante_telefono, firma_data, firmado_at, codigo_verificacion, pdf_hash",
+          "id, estado, expira_at, firmante_nombre, firmante_cargo, firmante_empresa, firmante_telefono, firma_data, firmado_at, codigo_verificacion, pdf_hash, responsable_nombre, responsable_cargo, firmante_es_responsable, tipo_ambulancia, empresa_declarada, empresa_declarada_motivo",
         )
         .eq("id", sesionId!)
         .maybeSingle();
-      return (data as SesionRow) ?? null;
+      return (data as unknown as SesionRow) ?? null;
     },
   });
 
