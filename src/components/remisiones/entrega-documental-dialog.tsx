@@ -41,6 +41,7 @@ import {
   descargarFirmadoPDF,
   type EntregaDatos,
 } from "@/lib/entrega-firma-pdf";
+import { ChecklistRunner } from "@/components/coordinacion/checklist-runner";
 
 type Props = {
   open: boolean;
