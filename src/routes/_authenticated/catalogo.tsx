@@ -8,7 +8,7 @@ import { AppHeader } from "@/components/app-header";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlantillasBiblioteca } from "@/components/coordinacion/plantillas-biblioteca";
-import { CatalogoMaestras } from "@/components/catalogo/catalogo-maestras";
+import { CategoriasView } from "@/components/catalogo/categorias-view";
 import {
   BookOpen,
   Mail,
@@ -242,7 +242,7 @@ function CatalogoPage() {
         </TabsList>
 
         <TabsContent value="catalogo" className="mt-0 flex-1">
-          <CatalogoMaestras />
+          <CategoriasView />
         </TabsContent>
         <TabsContent value="plantillas" className="mt-0 flex-1">
           <PlantillasBiblioteca />

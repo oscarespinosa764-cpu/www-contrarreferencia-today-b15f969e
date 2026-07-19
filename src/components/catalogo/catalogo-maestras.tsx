@@ -164,7 +164,7 @@ function detectarClusters(rows: CatRow[], umbral = 0.82) {
   return Object.values(groups).filter((g) => g.length > 1);
 }
 
-export function CatalogoMaestras() {
+export function CatalogoMaestras({ moduloFijo }: { moduloFijo?: string } = {}) {
   const qc = useQueryClient();
   const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
@@ -172,7 +172,10 @@ export function CatalogoMaestras() {
     const t = setTimeout(() => setQ(qInput), 250);
     return () => clearTimeout(t);
   }, [qInput]);
-  const [modulo, setModulo] = useState("Todos");
+  const [modulo, setModulo] = useState(moduloFijo ?? "Todos");
+  useEffect(() => {
+    if (moduloFijo) setModulo(moduloFijo);
+  }, [moduloFijo]);
   const [tipoSel, setTipoSel] = useState<string | null>(null);
   const [nuevoValor, setNuevoValor] = useState("");
   // Origen para documentos de entrega (DOC_ENTREGA) al agregar en línea.
@@ -374,21 +377,23 @@ export function CatalogoMaestras() {
             />
           </div>
 
-          <div className="mb-3 flex flex-wrap gap-1.5">
-            {MODULOS.map((m) => (
-              <button
-                key={m}
-                onClick={() => setModulo(m)}
-                className={`rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${
-                  modulo === m
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-accent"
-                }`}
-              >
-                {m} ({conteoModulo(m)})
-              </button>
-            ))}
-          </div>
+          {!moduloFijo && (
+            <div className="mb-3 flex flex-wrap gap-1.5">
+              {MODULOS.map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setModulo(m)}
+                  className={`rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${
+                    modulo === m
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-accent"
+                  }`}
+                >
+                  {m} ({conteoModulo(m)})
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="space-y-1 overflow-y-auto pr-1 lg:max-h-[calc(100vh-22rem)]">
             {tiposVisibles.map((t) => {
