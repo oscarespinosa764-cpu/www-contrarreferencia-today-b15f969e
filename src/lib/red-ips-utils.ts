@@ -212,7 +212,10 @@ export const TIPO_RED_LABEL: Record<TipoRed, string> = {
 };
 
 // Tipos de entidad para EAPB/EPS y líneas de emergencia.
+// FUENTE CANÓNICA (Fase A · Q1): useCatalogo("TIPO_EAPB") — este arreglo se
+// conserva como fallback runtime hasta la Fase B.
 export const TIPOS_EAPB = ["EPS", "EAPB", "ARL", "Aseguradora", "Otra"];
+
 export const TIPOS_LINEA = [
   "Emergencias",
   "Gestión del riesgo",
