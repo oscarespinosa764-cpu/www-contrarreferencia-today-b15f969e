@@ -136,10 +136,6 @@ export function ChecklistFormDialog({ open, onOpenChange, modo, inicial }: Props
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium">Descripción</label>
-            <Textarea value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={2} />
-          </div>
           {modo === "editar" && (
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={activo} onChange={(e) => setActivo(e.target.checked)} />
