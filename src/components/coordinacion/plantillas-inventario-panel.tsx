@@ -1,13 +1,17 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { invalidatePlantillaConfig } from "@/lib/plantillas-inventario-config";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 
 // ============================================================
 // Inventario de plantillas del sistema (Fase Q5).
@@ -28,7 +32,11 @@ type PlantillaInv = {
   modulo: string | null;
   editable_nivel: "SOLO_LECTURA" | "PARCIAL" | "COMPLETA";
   formato: string | null;
+  origen: string | null;
   generador: string | null;
+  estado: string | null;
+  version: string | null;
+  dependencia: string | null;
   notas: string | null;
   contenido_editable: Record<string, unknown>;
 };
@@ -37,13 +45,23 @@ export function PlantillasInventarioPanel() {
   const { isAdmin } = useAuth();
   const qc = useQueryClient();
 
-  const { data: rows } = useQuery<PlantillaInv[]>({
+  const [moduloFiltro, setModuloFiltro] = useState("todos");
+  const [estadoFiltro, setEstadoFiltro] = useState("activas");
+  const [busqueda, setBusqueda] = useState("");
+
+  const {
+    data: rows,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery<PlantillaInv[]>({
     queryKey: ["cm-plantillas-inv"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("plantillas_inventario")
         .select(
-          "id, codigo, nombre, modulo, editable_nivel, formato, generador, notas, contenido_editable",
+          "id, codigo, nombre, modulo, editable_nivel, formato, origen, generador, estado, version, dependencia, notas, contenido_editable",
         )
         .order("codigo", { ascending: true });
       if (error) throw error;
@@ -56,17 +74,96 @@ export function PlantillasInventarioPanel() {
 
 
   const [selectedCodigo, setSelectedCodigo] = useState<string | null>(null);
-  const seleccion = useMemo(
-    () => (rows ?? []).find((r) => r.codigo === selectedCodigo) ?? (rows ?? [])[0] ?? null,
-    [rows, selectedCodigo],
+  const modulos = useMemo(
+    () => Array.from(new Set((rows ?? []).map((r) => r.modulo).filter(Boolean) as string[])).sort(),
+    [rows],
   );
+  const filtradas = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    return (rows ?? []).filter((r) => {
+      if (moduloFiltro !== "todos" && r.modulo !== moduloFiltro) return false;
+      if (estadoFiltro === "activas" && r.estado !== "ACTIVA") return false;
+      if (estadoFiltro === "inactivas" && r.estado === "ACTIVA") return false;
+      if (!q) return true;
+      return [r.codigo, r.nombre, r.modulo ?? "", r.formato ?? "", r.origen ?? ""].some((v) =>
+        v.toLowerCase().includes(q),
+      );
+    });
+  }, [busqueda, estadoFiltro, moduloFiltro, rows]);
+  const seleccion = useMemo(
+    () => filtradas.find((r) => r.codigo === selectedCodigo) ?? filtradas[0] ?? null,
+    [filtradas, selectedCodigo],
+  );
+
+  const errorMessage = error instanceof Error ? error.message : "No fue posible leer las plantillas.";
 
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-[320px_1fr]">
       <aside className="space-y-2 rounded-xl border border-border bg-card p-3">
-        <h3 className="text-sm font-semibold">Plantillas del sistema</h3>
+        <div>
+          <h3 className="text-sm font-semibold">Plantillas del sistema</h3>
+          <p className="text-[11px] text-muted-foreground">
+            {filtradas.length} visibles · {rows?.length ?? 0} registradas
+          </p>
+        </div>
+
+        <div className="space-y-2 rounded-md border border-border/70 bg-background p-2">
+          <Input
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar plantilla"
+            className="h-8 text-xs"
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <Select value={moduloFiltro} onValueChange={setModuloFiltro}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Módulo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos los módulos</SelectItem>
+                {modulos.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {m}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={estadoFiltro} onValueChange={setEstadoFiltro}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="activas">Activas</SelectItem>
+                <SelectItem value="todas">Todas</SelectItem>
+                <SelectItem value="inactivas">Inactivas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {isLoading && (
+          <div className="space-y-2">
+            <Skeleton className="h-16" />
+            <Skeleton className="h-16" />
+            <Skeleton className="h-16" />
+          </div>
+        )}
+
+        {isError && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>No se pudieron leer las plantillas</AlertTitle>
+            <AlertDescription className="space-y-2">
+              <p>{errorMessage}</p>
+              <Button size="sm" variant="outline" onClick={() => refetch()}>
+                <RefreshCw className="mr-1 h-3.5 w-3.5" /> Reintentar
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <ul className="space-y-1">
-          {(rows ?? []).map((r) => {
+          {!isLoading && !isError && filtradas.map((r) => {
             const active = seleccion?.id === r.id;
             return (
               <li key={r.id}>
@@ -93,10 +190,23 @@ export function PlantillasInventarioPanel() {
                     </Badge>
                   </div>
                   <div className="text-[11px] text-muted-foreground">{r.nombre}</div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">
+                    {r.formato ?? "—"} · {r.modulo ?? "—"} · {r.origen ?? "—"}
+                  </div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">
+                    Estado {r.estado ?? "—"} · v{r.version ?? "—"}
+                  </div>
                 </button>
               </li>
             );
           })}
+          {!isLoading && !isError && filtradas.length === 0 && (
+            <li className="rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground">
+              {(rows?.length ?? 0) === 0
+                ? "Aún no hay plantillas registradas."
+                : "No hay plantillas que coincidan con los filtros visibles."}
+            </li>
+          )}
         </ul>
       </aside>
 
@@ -169,10 +279,19 @@ function PlantillaEditor({
         <Badge variant={soloLectura ? "outline" : "default"}>{plantilla.editable_nivel}</Badge>
       </header>
 
+      <div className="grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-3">
+        <Info label="Origen" value={plantilla.origen ?? "—"} />
+        <Info label="Generador" value={plantilla.generador ?? "—"} />
+        <Info label="Estado" value={plantilla.estado ?? "—"} />
+        <Info label="Versión" value={plantilla.version ?? "—"} />
+        <Info label="Dependencia" value={plantilla.dependencia ?? "—"} className="sm:col-span-2" />
+        <Info label="Editabilidad" value={plantilla.editable_nivel} />
+      </div>
+
       {soloLectura ? (
         <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-          DISEÑO ADMINISTRABLE PENDIENTE DE DESARROLLO. Esta plantilla se genera directamente
-          desde código: <code className="rounded bg-muted px-1 py-0.5 text-xs">
+          ORIGEN: {plantilla.origen ?? "CÓDIGO"}. DISEÑO ADMINISTRABLE PENDIENTE DE DESARROLLO.
+          Esta plantilla se genera directamente desde código: <code className="rounded bg-muted px-1 py-0.5 text-xs">
             {plantilla.generador ?? "generador no registrado"}
           </code>
           .
@@ -236,6 +355,15 @@ function PlantillaEditor({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function Info({ label, value, className }: { label: string; value: string; className?: string }) {
+  return (
+    <div className={`rounded-md border border-border/70 bg-background p-2 ${className ?? ""}`}>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-0.5 break-words font-medium text-foreground">{value}</p>
     </div>
   );
 }
