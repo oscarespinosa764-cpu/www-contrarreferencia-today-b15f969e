@@ -3,7 +3,6 @@ import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/app-header";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CuadroMensualPanel } from "@/components/cuadro-turno/cuadro-mensual-panel";
 import { SolicitudesAusentismoPanel } from "@/components/cuadro-turno/solicitudes-ausentismo-panel";
 import { AdministracionPanel } from "@/components/cuadro-turno/administracion-panel";
@@ -27,10 +26,18 @@ export const Route = createFileRoute("/_authenticated/cuadro-turno")({
 function CuadroTurnoPage() {
   const { isAdmin } = useAuth();
   const { tab } = Route.useSearch();
-  const navigate = useNavigate({ from: Route.fullPath });
+  const navigate = useNavigate();
+  const activeTab = tab === "solicitudes" || (isAdmin && tab === "admin") ? tab : "cuadro";
 
   const setTab = (v: string) =>
-    navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, tab: v }), replace: true });
+    navigate({ to: "/cuadro-turno", search: (prev: Record<string, unknown>) => ({ ...prev, tab: v }), replace: true });
+
+  const tabClass = (v: string) =>
+    `inline-flex min-h-9 items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+      activeTab === v
+        ? "bg-background text-foreground shadow"
+        : "text-muted-foreground hover:bg-background/70 hover:text-foreground"
+    }`;
 
   return (
     <div>
@@ -39,17 +46,15 @@ function CuadroTurnoPage() {
         subtitle="Programación Mensual del Equipo Referencia y Contrarreferencia"
       />
 
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="mb-4 flex h-auto w-full flex-wrap justify-start gap-1">
-          <TabsTrigger value="cuadro">Cuadro de Turno</TabsTrigger>
-          <TabsTrigger value="solicitudes">Solicitudes y Ausentismo</TabsTrigger>
-          {isAdmin && <TabsTrigger value="admin">Administración</TabsTrigger>}
-        </TabsList>
+      <div className="mb-4 flex h-auto w-full flex-wrap justify-start gap-1 rounded-lg bg-muted p-1">
+        <button type="button" className={tabClass("cuadro")} onClick={() => setTab("cuadro")}>Cuadro de Turno</button>
+        <button type="button" className={tabClass("solicitudes")} onClick={() => setTab("solicitudes")}>Solicitudes y Ausentismo</button>
+        {isAdmin && <button type="button" className={tabClass("admin")} onClick={() => setTab("admin")}>Administración</button>}
+      </div>
 
-        <TabsContent value="cuadro"><CuadroMensualPanel isAdmin={isAdmin} /></TabsContent>
-        <TabsContent value="solicitudes"><SolicitudesAusentismoPanel isAdmin={isAdmin} /></TabsContent>
-        {isAdmin && <TabsContent value="admin"><AdministracionPanel /></TabsContent>}
-      </Tabs>
+      {activeTab === "cuadro" && <CuadroMensualPanel isAdmin={isAdmin} />}
+      {activeTab === "solicitudes" && <SolicitudesAusentismoPanel isAdmin={isAdmin} />}
+      {activeTab === "admin" && isAdmin && <AdministracionPanel />}
     </div>
   );
 }
