@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { History, CheckCircle2, Users, CalendarPlus, FileCheck2, Clock, RefreshCw, ShieldCheck } from "lucide-react";
+import { History, CheckCircle2, Users, CalendarPlus, Clock, FileCheck2 } from "lucide-react";
 import { fmtFechaHora } from "@/lib/cuadro-turno-utils";
 import { SolicitudesPanel } from "./solicitudes-panel";
 import { AusentismoPanel } from "./ausentismo-panel";
@@ -27,18 +27,15 @@ interface AuditRow {
 
 interface ReqLite {
   status: string | null;
-  request_type: string | null;
-  is_limit_exempt: boolean | null;
-  requires_replacement: boolean | null;
 }
 
-function KpiResumen() {
+function HistorialResumen() {
+  const [verTodo, setVerTodo] = useState(false);
+
   const { data: reqs = [] } = useQuery({
     queryKey: ["shift-requests", "kpi"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("shift_requests")
-        .select("status, request_type, is_limit_exempt, requires_replacement");
+      const { data } = await supabase.from("shift_requests").select("status");
       return (data ?? []) as unknown as ReqLite[];
     },
   });
@@ -46,34 +43,6 @@ function KpiResumen() {
   const total = reqs.length;
   const aprobadas = reqs.filter((r) => r.status === "APROBADA").length;
   const pendientes = reqs.filter((r) => r.status === "PENDIENTE" || r.status === "DEVUELTA PARA AJUSTE").length;
-  const coberturas = reqs.filter((r) => r.requires_replacement && r.status === "APROBADA").length;
-  const exentas = reqs.filter((r) => r.is_limit_exempt).length;
-
-  const items = [
-    { icon: FileCheck2, label: "Total solicitudes", value: total, color: "text-slate-700" },
-    { icon: CheckCircle2, label: "Aprobadas", value: aprobadas, color: "text-emerald-600" },
-    { icon: Clock, label: "Pendientes", value: pendientes, color: "text-amber-600" },
-    { icon: RefreshCw, label: "Coberturas", value: coberturas, color: "text-indigo-600" },
-    { icon: ShieldCheck, label: "Exentas de cupo", value: exentas, color: "text-sky-600" },
-  ];
-
-  return (
-    <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
-      {items.map(({ icon: Icon, label, value, color }) => (
-        <Card key={label} className="p-3">
-          <div className="flex items-center gap-2">
-            <Icon className={`h-4 w-4 ${color}`} />
-            <p className="text-[11px] uppercase text-muted-foreground">{label}</p>
-          </div>
-          <p className="mt-1 text-2xl font-bold">{value}</p>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
-function HistorialResumen() {
-  const [verTodo, setVerTodo] = useState(false);
 
   const { data: aprobados = [] } = useQuery({
     queryKey: ["audit-aprobados"],
@@ -106,13 +75,39 @@ function HistorialResumen() {
 
   return (
     <Card className="p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="flex items-center gap-2 text-sm font-bold">
-          <History className="h-4 w-4" /> Historial de Cambios
-        </h3>
-        <Button size="sm" variant="outline" onClick={() => setVerTodo(true)}>
-          Ver actividad
-        </Button>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="flex items-center gap-2 text-sm font-bold">
+            <History className="h-4 w-4" /> Historial de cambios
+          </h3>
+          <p className="text-[11px] text-muted-foreground">Total de cambios y permisos gestionados</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <FileCheck2 className="h-5 w-5 text-slate-600" />
+            <div>
+              <p className="text-lg font-bold leading-none">{total}</p>
+              <p className="text-[10px] uppercase text-muted-foreground">Solicitudes</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+            <div>
+              <p className="text-lg font-bold leading-none">{aprobadas}</p>
+              <p className="text-[10px] uppercase text-muted-foreground">Aprobadas</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Clock className="h-5 w-5 text-amber-600" />
+            <div>
+              <p className="text-lg font-bold leading-none">{pendientes}</p>
+              <p className="text-[10px] uppercase text-muted-foreground">Pendientes</p>
+            </div>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => setVerTodo(true)}>
+            Ver actividad
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -188,10 +183,9 @@ export function SolicitudesAusentismoPanel({ isAdmin }: { isAdmin: boolean }) {
         <TabsTrigger value="ausentismo">Control de Ausentismo</TabsTrigger>
       </TabsList>
       <TabsContent value="solicitudes" className="space-y-4">
-        <KpiResumen />
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={() => setOpenSolicitud(true)}>
-            <CalendarPlus className="mr-1.5 h-4 w-4" /> Solicitar Permiso / Cambio de Turno
+        <div>
+          <Button size="lg" onClick={() => setOpenSolicitud(true)}>
+            <CalendarPlus className="mr-1.5 h-4 w-4" /> Solicitar permiso / cambio de turno
           </Button>
         </div>
         <HistorialResumen />
