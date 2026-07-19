@@ -940,65 +940,117 @@ function PuntosUsoTabla({
   puntos: PuntoUso[];
   plantillas: PlantillaInv[];
 }) {
+  const qc = useQueryClient();
+  const { isAdmin } = useAuth();
+  const [dialogCrear, setDialogCrear] = useState(false);
+  const [editando, setEditando] = useState<PuntoUso | null>(null);
+
   const nombrePorCodigo = useMemo(() => {
     const m = new Map<string, string>();
     plantillas.forEach((p) => m.set(p.codigo, p.nombre));
     return m;
   }, [plantillas]);
 
+  const eliminar = async (p: PuntoUso) => {
+    if (!confirm(`¿Eliminar el punto de uso ${p.codigo}?`)) return;
+    const { error } = await supabase.from("puntos_de_uso").delete().eq("id", p.id);
+    if (error) return toast.error(error.message);
+    toast.success("Punto de uso eliminado");
+    qc.invalidateQueries({ queryKey: ["cm-puntos-uso"] });
+  };
+
+  const plantillasOpciones = useMemo(
+    () => plantillas.map((p) => ({ codigo: p.codigo, nombre: p.nombre })),
+    [plantillas],
+  );
+
   return (
-    <div className="overflow-x-auto rounded-xl border border-border bg-card">
-      <table className="w-full text-xs">
-        <thead className="bg-muted/50">
-          <tr>
-            <th className="p-2 text-left">Código</th>
-            <th className="p-2 text-left">Nombre</th>
-            <th className="p-2 text-left">Módulo</th>
-            <th className="p-2 text-left">Ruta</th>
-            <th className="p-2 text-left">Acción</th>
-            <th className="p-2 text-left">Salida</th>
-            <th className="p-2 text-left">Plantilla activa</th>
-            <th className="p-2 text-left">Estado</th>
-          </tr>
-        </thead>
-        <tbody>
-          {puntos.map((p) => (
-            <tr key={p.id} className="border-t border-border">
-              <td className="p-2 font-mono">{p.codigo}</td>
-              <td className="p-2">{p.nombre}</td>
-              <td className="p-2">{p.modulo}</td>
-              <td className="p-2 text-muted-foreground">{p.ruta ?? "—"}</td>
-              <td className="p-2 text-muted-foreground">{p.evento ?? p.paso ?? "—"}</td>
-              <td className="p-2">
-                <Badge variant="outline">{p.tipo_salida}</Badge>
-              </td>
-              <td className="p-2">
-                {p.plantilla_codigo ? (
-                  <span>
-                    <span className="font-medium">
-                      {nombrePorCodigo.get(p.plantilla_codigo) ?? p.plantilla_codigo}
-                    </span>
-                    <br />
-                    <span className="text-[10px] text-muted-foreground">{p.plantilla_codigo}</span>
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground">Sin vincular</span>
-                )}
-              </td>
-              <td className="p-2">
-                <Badge variant={p.estado === "ACTIVO" ? "default" : "outline"}>{p.estado}</Badge>
-              </td>
-            </tr>
-          ))}
-          {puntos.length === 0 && (
+    <div className="space-y-2">
+      {isAdmin && (
+        <div className="flex justify-end">
+          <Button size="sm" variant="outline" onClick={() => setDialogCrear(true)}>
+            <Plus className="mr-1 h-3.5 w-3.5" /> Nuevo punto de uso
+          </Button>
+        </div>
+      )}
+      <div className="overflow-x-auto rounded-xl border border-border bg-card">
+        <table className="w-full text-xs">
+          <thead className="bg-muted/50">
             <tr>
-              <td colSpan={8} className="p-6 text-center text-sm text-muted-foreground">
-                No hay puntos de uso registrados.
-              </td>
+              <th className="p-2 text-left">Código</th>
+              <th className="p-2 text-left">Nombre</th>
+              <th className="p-2 text-left">Módulo</th>
+              <th className="p-2 text-left">Ruta</th>
+              <th className="p-2 text-left">Acción</th>
+              <th className="p-2 text-left">Salida</th>
+              <th className="p-2 text-left">Plantilla activa</th>
+              <th className="p-2 text-left">Estado</th>
+              {isAdmin && <th className="p-2 text-left">Acciones</th>}
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {puntos.map((p) => (
+              <tr key={p.id} className="border-t border-border">
+                <td className="p-2 font-mono">{p.codigo}</td>
+                <td className="p-2">{p.nombre}</td>
+                <td className="p-2">{p.modulo}</td>
+                <td className="p-2 text-muted-foreground">{p.ruta ?? "—"}</td>
+                <td className="p-2 text-muted-foreground">{p.evento ?? p.paso ?? "—"}</td>
+                <td className="p-2">
+                  <Badge variant="outline">{p.tipo_salida}</Badge>
+                </td>
+                <td className="p-2">
+                  {p.plantilla_codigo ? (
+                    <span>
+                      <span className="font-medium">
+                        {nombrePorCodigo.get(p.plantilla_codigo) ?? p.plantilla_codigo}
+                      </span>
+                      <br />
+                      <span className="text-[10px] text-muted-foreground">{p.plantilla_codigo}</span>
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">Sin vincular</span>
+                  )}
+                </td>
+                <td className="p-2">
+                  <Badge variant={p.estado === "ACTIVO" ? "default" : "outline"}>{p.estado}</Badge>
+                </td>
+                {isAdmin && (
+                  <td className="p-2 whitespace-nowrap">
+                    <Button size="icon" variant="ghost" onClick={() => setEditando(p)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={() => eliminar(p)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </td>
+                )}
+              </tr>
+            ))}
+            {puntos.length === 0 && (
+              <tr>
+                <td colSpan={isAdmin ? 9 : 8} className="p-6 text-center text-sm text-muted-foreground">
+                  No hay puntos de uso registrados.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <PuntoUsoFormDialog
+        open={dialogCrear}
+        onOpenChange={setDialogCrear}
+        modo="crear"
+        plantillas={plantillasOpciones}
+      />
+      <PuntoUsoFormDialog
+        open={!!editando}
+        onOpenChange={(o) => { if (!o) setEditando(null); }}
+        modo="editar"
+        inicial={editando as PuntoUsoFormValue | null}
+        plantillas={plantillasOpciones}
+      />
     </div>
   );
 }
