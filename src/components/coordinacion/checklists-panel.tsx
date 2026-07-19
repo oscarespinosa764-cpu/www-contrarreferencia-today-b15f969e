@@ -102,6 +102,8 @@ export function ChecklistsPanel() {
   });
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [dialogCrear, setDialogCrear] = useState(false);
+  const [dialogEditar, setDialogEditar] = useState(false);
   const modulos = useMemo(
     () => Array.from(new Set((checklists ?? []).map((c) => c.modulo))).sort(),
     [checklists],
