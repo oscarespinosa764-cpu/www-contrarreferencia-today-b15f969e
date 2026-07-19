@@ -1,65 +1,69 @@
 
-# Rediseño Cuadro de Turno — plan controlado
+# Rediseño — Catálogo y Plantillas
 
-Estructura actual ya cumple gran parte del prompt: existen las 3 pestañas principales (`Cuadro de Turno`, `Solicitudes y Ausentismo`, `Administración`), las 3 subpestañas (`Solicitudes y Cambios`, `Pendientes de Verificación`, `Control de Ausentismo`), catálogo `shift_types` con color/hora/tipo, tablas `shift_schedules/members/days`, `shift_requests`, `shift_absenteeism_records`, `shift_request_audit`, `shift_return_fragments`, RLS activa. **No se crearán tablas nuevas ni migraciones destructivas.**
+Alcance amplio. Propongo entregarlo en **4 fases** revisables para no malgastar créditos ni desestabilizar el módulo. Confirma qué fases apruebas antes de implementar.
 
-## Fases propuestas (todo frontend, cero migraciones)
+## Inventario reutilizable (verificado)
 
-### F1 · Estado en URL + persistencia de periodo
-- Añadir `validateSearch` (Zod + `fallback`) en `/cuadro-turno` con `vista`, `sub`, `anio`, `mes`, `dia`, `q`, `cargo`, `estado`, `tipo`.
-- `Tabs` y subtabs pasan a leer/escribir la URL sin recargar.
-- Selector año/mes global compartido entre pestañas cuando aplique.
+- Tabla `catalogos` (15 tipos activos, ~372 filas): EAPB (41), IPS (51), ESPECIALIDAD (75), MEDICO (63), EMPRESA_TEP (35), PLACA (58), DEPARTAMENTO (8), MOTIVO_* (24), UNIDAD/UNIDAD_REQUERIDA (8), REGIMEN (6), IPS_LOCAL (2), más el tipo huérfano en minúsculas `ips` (1 fila, se normaliza a IPS).
+- Tabla `plantillas` (80 activas) con `indicativo, categoria, subcategoria, nombre, mensaje, pasos, condicion, activo, archivado`.
+- Componentes existentes que se reutilizan tal cual: `catalogo-maestras.tsx` (CRUD + detección de duplicados + auditoría) y `plantillas-biblioteca.tsx` (biblioteca con pasos y variables).
+- Ruta `/catalogo` con `Tabs` shadcn — se mantiene.
+- Auditoría vía `registrar_auditoria` ya integrada — se mantiene append-only.
+- Sin nuevas tablas obligatorias en Fase 1 y 2.
 
-### F2 · Pantalla CUADRO DE TURNO (referencia imagen 2)
-- **Header controls** (año, mes, Exportar Excel, selector vista Calendario/Matriz/**Lista**, leyenda dinámica desde `shift_types`, buscador colaborador con debounce 400 ms, filtro cargo, botón Agregar).
-- **4 tarjetas de resumen** calculadas del mes real:
-  1. Turnos programados = `count(shift_schedule_days)` del mes activo.
-  2. Coberturas = % desde `shift_requests` aprobadas con `requires_replacement`; si denominador 0 → “Sin coberturas requeridas”.
-  3. Novedades = suma de: días sin cubrir, ausencias vigentes, solicitudes pendientes que afectan programación.
-  4. Disponibilidad = `(colaboradores_activos_con_asignacion − ausencias_dia_actual) / colaboradores_activos * 100`, documentado.
-- **Vista Lista**: nueva vista tabular paginada (server-side, cliente-side sobre la consulta mensual ya existente) con fecha/funcionario/cargo/turno/hora/estado/observaciones + exportación respetando filtros.
-- **Vista Calendario** (ya existe): mejora la celda para máximo 4 asignaciones + “+N más”, click abre modal día; panel derecho “Resumen del día” con donut por `shift_type.color` real.
-- **Leyenda de turnos** deja de estar hardcoded (`A/ADM/D/M/N/T/V/O`) y se pinta desde `shift_types` activos con tooltip (código, nombre, horario, tipo).
+## Fase 1 — Shell visual (nuevo encabezado, 5 KPIs, sin tocar CRUD)
 
-### F3 · Pantalla SOLICITUDES Y CAMBIOS (referencia imagen 1)
-- **Historial de cambios** superior con 3 KPI del periodo: Solicitudes realizadas / Aprobadas / Pendientes (desde `shift_requests` filtradas por mes).
-- **Filtros**: año, mes, funcionario, cargo, estado, tipo, Limpiar. Debounce 400 ms.
-- **Selector vista tarjetas / lista** + ordenamiento (Nombre A-Z/Z-A, Mayor/Menor consumo, Más pendientes, Más coberturas).
-- **Tarjetas de funcionario** (3/2/1 col responsive) alimentadas por `ControlMensualPanel` ya existente, mostrando:
-  - Permisos solicitados (propias) vs Coberturas aceptadas (por otros) — **contadores separados**.
-  - Pendientes / Disponibles / Exentos / % consumo / Total del mes.
-  - Anillo de progreso con color según reglas (VERDE ≥2, AMARILLO =1, ROJO ≤0, GRIS exento).
-- **Detalle de funcionario**: modal con pestañas Resumen / Permisos propios / Coberturas / Pendientes / Excepciones / Historial (carga bajo demanda por query separada).
-- Paginación local (6/12/24) sobre el listado de miembros del mes.
+Solo presentación en `src/routes/_authenticated/catalogo.tsx`:
 
-### F4 · Reglas de consumo (cálculo puro, sin cambios de schema)
-Helper `computeCupo(userId, mes, año)` que aplica prioridad:
-1. `shift_monthly_exceptions` del funcionario/periodo.
-2. Config del funcionario en `shift_schedule_members`.
-3. Config general (constante `CUPO_BASE = 3` ya existente en utils).
+- Título "Catálogo y Plantillas" + subtítulo.
+- 5 tarjetas KPI reales, calculadas con **una** consulta agregada (no N+1):
+  - Categorías activas = `count(distinct tipo) filter (activo)` sobre `catalogos` + agrupador estático de módulos.
+  - Catálogos = `count(distinct tipo)` en `catalogos`.
+  - Plantillas = `count(*) filter (archivado=false and activo=true)` en `plantillas`.
+  - Elementos totales = `count(*) filter (activo)` en `catalogos`.
+  - Última actualización = `max(updated_at)` entre `catalogos` y `plantillas`.
+- Tarjetas clicables que solo cambian filtros/pestañas actuales (sin modal nuevo).
+- Persistencia en URL: `?tab=catalogo|plantillas&modulo=&estado=&q=`.
+- Normaliza el tipo huérfano `ips` (minúscula) a `IPS` con un `UPDATE` puntual (no destructivo).
 
-Separa `consumo_propio` (solicitudes propias aprobadas que consumen) de `consumo_cobertura` (aceptadas como reemplazo). Pendientes → “Consumo provisional”, no descuenta. Nunca divide por 0.
+## Fase 2 — Vista por categorías + búsqueda con debounce
 
-### F5 · Ajustes puntuales
-- Normalizar a MAYÚSCULAS los textos operativos (motivo/observación) al guardar en `SolicitudFormDialog`.
-- Tooltips accesibles en códigos de turno, foco visible, Escape en modales (Radix ya lo cubre — auditar).
-- Confirmar `defaultPreloadStaleTime: 0` y `queryClient.cancelQueries` al cambiar de pestaña.
+Sobre `catalogo-maestras.tsx` (misma tabla, sin migraciones):
 
-## Fuera de alcance (no se toca)
-Entrantes, Salientes, PHD/PAD/O2, Referencias Internas, Historial, Indicadores, Red, Alertas, Auth, correo, dominios, RLS existente, service role, catálogo `shift_types`, tabla `profiles`.
+- Lista lateral de categorías (12 grupos derivados de `TIPO_META.modulo` + agrupador extendido) con conteo real por tipo.
+- Grid central de tarjetas por categoría (icono + nombre + descripción + N catálogos + N elementos).
+- Buscador con debounce 400ms sobre `valor/extra1/extra2/tipo`.
+- Filtros: módulo, estado (activo/inactivo/todos).
+- Al clicar una tarjeta → abre panel lateral (no modal doble) con los elementos del catálogo (ya existe el CRUD, se envuelve).
+- Reutiliza el diálogo de creación/edición actual; no se cambia la lógica de duplicados.
 
-## Modelo de datos — reuso total
+## Fase 3 — Modal amplio de categoría con pestañas Catálogos/Elementos/Configuración/Historial
 
-| Concepto | Tabla real | Acción |
-|---|---|---|
-| Catálogo turnos | `shift_types` | reuso |
-| Programación mensual | `shift_schedules` + `shift_schedule_members` + `shift_schedule_days` | reuso |
-| Solicitudes | `shift_requests` | reuso |
-| Auditoría solicitudes | `shift_request_audit` | reuso |
-| Ausentismo | `shift_absenteeism_records` | reuso |
-| Devolución tiempo | `shift_return_fragments` + `shift_request_recovery_logs` | reuso |
-| Excepciones cupo | `shift_monthly_exceptions` | reuso |
+- Un solo modal principal (`max-w-[92vw]`, `h-[82vh]`).
+- Pestañas internas; los detalles abren en panel lateral **dentro** del modal.
+- "Configuración" muestra el `usadoEn` que ya está en `TIPO_META` (inventario estático, no búsqueda en archivos).
+- "Historial de cambios" consume `audit_logs` filtrado por `tabla='catalogos'` + `registro_id`.
+- Advertencia de impacto antes de desactivar: motivo obligatorio + auditoría.
 
-## Confirmación necesaria
+## Fase 4 — Plantillas Generales (modal amplio, pestañas Mis/Todas/Compartidas/Eliminadas)
 
-¿Ejecuto las 5 fases en orden en una sola tanda (grande, ~10-14 archivos frontend), o prefieres que empiece solo por **F1 + F2** (pantalla Cuadro de Turno con URL state, 4 tarjetas y vista Lista) y luego seguimos con F3-F5 en el siguiente turno?
+- Reutiliza `plantillas-biblioteca.tsx` completo dentro del mismo modal.
+- Pestañas Mis/Todas/Eliminadas derivadas de columnas actuales (`created_by` si existe, `archivado`).
+- "Compartidas conmigo" queda como **placeholder deshabilitado** (no hay tabla de sharing y crearla está fuera de alcance sin autorización explícita).
+- Vista previa con `aplicarVariables` ya implementado.
+- Sin Storage nuevo: las plantillas actuales son texto (`mensaje`), no archivos DOCX/PDF — el prompt pide constructor multi-formato **solo si ya existe**, y no existe, así que se declara explícitamente fuera de alcance.
+
+## Fuera de alcance (declarado, para no gastar créditos)
+
+Estos puntos del prompt requieren tablas y features nuevos que hoy no existen. Los dejo explícitamente pendientes salvo que los autorices por separado:
+
+1. Sistema de sharing de plantillas (tabla `plantilla_permisos`).
+2. Editor DOCX/PDF/HTML y Storage privado para archivos binarios.
+3. Versionado explícito de plantillas (tabla `plantilla_versiones`).
+4. Motor de dependencias dinámicas (tabla `catalogo_dependencias`) — se usa el mapa estático `TIPO_META.usadoEn`.
+5. Constructor de formularios.
+
+## Confirmación
+
+Responde **"dale F1"**, **"F1+F2"**, **"todas"** o indica qué fases y qué elementos del fuera-de-alcance quieres incluir. Empiezo apenas confirmes.
