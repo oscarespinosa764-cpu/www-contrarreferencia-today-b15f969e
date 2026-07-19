@@ -164,7 +164,7 @@ function detectarClusters(rows: CatRow[], umbral = 0.82) {
   return Object.values(groups).filter((g) => g.length > 1);
 }
 
-export function CatalogoMaestras() {
+export function CatalogoMaestras({ moduloFijo }: { moduloFijo?: string } = {}) {
   const qc = useQueryClient();
   const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
@@ -172,7 +172,10 @@ export function CatalogoMaestras() {
     const t = setTimeout(() => setQ(qInput), 250);
     return () => clearTimeout(t);
   }, [qInput]);
-  const [modulo, setModulo] = useState("Todos");
+  const [modulo, setModulo] = useState(moduloFijo ?? "Todos");
+  useEffect(() => {
+    if (moduloFijo) setModulo(moduloFijo);
+  }, [moduloFijo]);
   const [tipoSel, setTipoSel] = useState<string | null>(null);
   const [nuevoValor, setNuevoValor] = useState("");
   // Origen para documentos de entrega (DOC_ENTREGA) al agregar en línea.
