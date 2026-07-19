@@ -190,7 +190,7 @@ export function SolicitudesAusentismoPanel({ isAdmin }: { isAdmin: boolean }) {
         </div>
         <HistorialResumen />
         <ControlMensualPanel />
-        {isAdmin ? <SolicitudesPanel /> : <MiTurnoPanel />}
+        {!isAdmin && <MiTurnoPanel />}
       </TabsContent>
       <TabsContent value="pendientes">
         {isAdmin ? <PendientesVerificacionPanel /> : <MiTurnoPanel />}
