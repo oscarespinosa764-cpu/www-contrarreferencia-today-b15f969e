@@ -63,7 +63,6 @@ export function ChecklistFormDialog({ open, onOpenChange, modo, inicial }: Props
             codigo: codigo.trim().toUpperCase(),
             nombre: nombre.trim().toUpperCase(),
             modulo: modulo.toUpperCase(),
-            descripcion: descripcion.trim() || null,
             activo,
             estado_revision: "BORRADOR",
           })
@@ -86,7 +85,6 @@ export function ChecklistFormDialog({ open, onOpenChange, modo, inicial }: Props
           .update({
             nombre: nombre.trim().toUpperCase(),
             modulo: modulo.toUpperCase(),
-            descripcion: descripcion.trim() || null,
             activo,
           })
           .eq("id", inicial.id);
