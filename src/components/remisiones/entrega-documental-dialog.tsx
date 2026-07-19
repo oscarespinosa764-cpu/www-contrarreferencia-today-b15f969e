@@ -474,29 +474,12 @@ export function EntregaDocumentalDialog({
                       disabled={!!sesionId}
                     />
                     <span className="flex-1">{d.label}</span>
-                    {!sesionId && (
-                      <button onClick={() => quitarDoc(i)} className="text-muted-foreground hover:text-destructive">
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    )}
                   </div>
                 ))}
-                {!sesionId && (
-                  <div className="flex items-center gap-2 pt-1">
-                    <Input
-                      value={nuevoDoc}
-                      onChange={(e) => setNuevoDoc(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), agregarDoc())}
-                      uppercase
-                      placeholder="Agregar documento…"
-                      className="h-8 text-sm"
-                    />
-                    <Button type="button" size="sm" variant="outline" onClick={agregarDoc}>
-                      <Plus className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                )}
               </div>
+              <p className="text-[10.5px] text-muted-foreground">
+                Los ítems se administran desde Control de Mando → Listas de chequeo.
+              </p>
             </div>
           ) : (
             <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
