@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Trash2, CheckCircle2, Archive, AlertTriangle, RefreshCw } from "lucide-react";
+import { Plus, Trash2, CheckCircle2, Archive, AlertTriangle, RefreshCw, Pencil } from "lucide-react";
+import { ChecklistFormDialog } from "./checklist-form-dialog";
 
 // ============================================================
 // Panel administrativo de LISTAS DE CHEQUEO (Fase Q4).
