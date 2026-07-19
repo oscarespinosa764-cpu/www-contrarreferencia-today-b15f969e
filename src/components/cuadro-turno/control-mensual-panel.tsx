@@ -116,27 +116,29 @@ export function ControlMensualPanel({ soloUsuario }: { soloUsuario?: boolean }) 
   const { data: miembros = [] } = useQuery({
     queryKey: ["control-miembros"],
     queryFn: async (): Promise<Miembro[]> => {
-      const [{ data: members }, { data: profs }] = await Promise.all([
-        supabase
-          .from("shift_schedule_members")
-          .select("full_name, role_name, user_id, active")
-          .eq("active", true),
-        supabase.from("profiles").select("nombre, cargo, user_id, activo").eq("activo", true),
-      ]);
+      // Fuente canónica única: profiles activos (tienen user_id estable y
+      // nombre oficial completo). shift_schedule_members es un roster
+      // importado con nombres abreviados y sin user_id: usarlo aquí duplica
+      // tarjetas (p. ej. "EDNA DELGADO" vs "EDNA CECILIA DELGADO MIRANDA").
+      // Sus datos de turno siguen intactos; solo cambia la fuente de la lista.
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("nombre, cargo, user_id, activo")
+        .eq("activo", true);
       const map = new Map<string, Miembro>();
       (profs ?? []).forEach((p) => {
-        const n = (p.nombre || "").trim();
-        if (n && !map.has(n))
-          map.set(n, { nombre: n, cargo: p.cargo, userId: p.user_id, activo: !!p.activo });
-      });
-      (members ?? []).forEach((m) => {
-        const n = (m.full_name || "").trim();
-        if (n && !map.has(n))
-          map.set(n, { nombre: n, cargo: m.role_name, userId: m.user_id, activo: !!m.active });
+        const n = (p.nombre || "").replace(/\s+/g, " ").trim();
+        const cargo = (p.cargo || "").trim();
+        if (!n || !p.user_id) return;
+        // Excluir usuarios técnicos/de prueba de la vista predeterminada.
+        if (/PRUEBA/i.test(n) || /PRUEBA/i.test(cargo)) return;
+        if (!map.has(p.user_id))
+          map.set(p.user_id, { nombre: n, cargo: p.cargo, userId: p.user_id, activo: !!p.activo });
       });
       return Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
     },
   });
+
 
   const cargosDisponibles = useMemo(() => {
     const set = new Set<string>();
