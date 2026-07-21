@@ -98,15 +98,22 @@ export const getMyDeviceStatus = createServerFn({ method: "POST" })
             eq: (k: string, v: unknown) => {
               maybeSingle: () => Promise<{ data: Record<string, unknown> | null }>;
             };
-            order: (c: string, o: { ascending: boolean }) => {
-              limit: (n: number) => Promise<{ data: Record<string, unknown>[] | null }>;
-            };
           };
         };
       };
     };
 
-    let device: Record<string, unknown> | null = null;
+    type DeviceRow = {
+      id: string;
+      device_public_id: string;
+      estado: string;
+      nombre_dispositivo: string | null;
+      autorizado_at: string | null;
+      expiracion_at: string | null;
+      motivo: string | null;
+    };
+
+    let device: DeviceRow | null = null;
     if (data.devicePublicId) {
       const r = await admin
         .from("authorized_devices")
@@ -114,7 +121,7 @@ export const getMyDeviceStatus = createServerFn({ method: "POST" })
         .eq("user_id", context.userId)
         .eq("device_public_id", data.devicePublicId)
         .maybeSingle();
-      device = r.data;
+      device = (r.data as unknown as DeviceRow) ?? null;
     }
 
     const sid = await getCurrentSessionId(context);
@@ -131,6 +138,7 @@ export const getMyDeviceStatus = createServerFn({ method: "POST" })
 
     return { mode, device, sessionLinked };
   });
+
 
 // ---------- Registrar + solicitar ----------
 
