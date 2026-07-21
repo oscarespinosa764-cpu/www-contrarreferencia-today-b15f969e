@@ -1451,6 +1451,9 @@ function HistorialPage() {
         datosReferencia,
         seguimientos: segPDFpara(r.id, v(r.servicio) || eapb),
       },
+      casoId: r.id,
+      tabla: "referencia_interna",
+      vista: "interna",
     };
   };
 
