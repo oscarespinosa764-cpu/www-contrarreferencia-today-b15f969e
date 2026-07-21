@@ -126,7 +126,13 @@ export async function verifyEcdsaSignature(
     );
     const sig = base64urlDecode(signatureB64u);
     const data = new TextEncoder().encode(challenge);
-    return await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, key, sig, data);
+    return await crypto.subtle.verify(
+      { name: "ECDSA", hash: "SHA-256" },
+      key,
+      sig.buffer.slice(sig.byteOffset, sig.byteOffset + sig.byteLength) as ArrayBuffer,
+      data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer,
+    );
+
   } catch (e) {
     console.error("[devices] verifyEcdsaSignature", e);
     return false;
