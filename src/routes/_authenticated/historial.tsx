@@ -2909,3 +2909,154 @@ function BuscarPacienteDialog({
     </Dialog>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Etapa 3 · Diálogos de "Información rápida" y "Auditoría del caso"
+// ---------------------------------------------------------------------------
+function InfoCasoDialog({ caso, onClose }: { caso: Construido | null; onClose: () => void }) {
+  return (
+    <Dialog open={!!caso} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Información rápida del caso</DialogTitle>
+        </DialogHeader>
+        {caso && (
+          <div className="grid gap-3 text-sm">
+            <div className="rounded-lg border border-border bg-muted/30 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Paciente</p>
+              <p className="mt-0.5 text-sm font-semibold">{caso.paciente}</p>
+              <p className="text-xs text-muted-foreground">Documento: {caso.documento || "—"}</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Datos de referencia</p>
+              <div className="mt-1.5 grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
+                <p><span className="font-medium text-muted-foreground">Tipo:</span> {caso.bloque.tipoDocumento}</p>
+                <p><span className="font-medium text-muted-foreground">Estado:</span> {caso.estado}</p>
+                <p><span className="font-medium text-muted-foreground">Código:</span> {caso.codigo || "—"}</p>
+                <p><span className="font-medium text-muted-foreground">Fecha base:</span> {fmtFechaHora(caso.fechaBase)}</p>
+              </div>
+              <div className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
+                {caso.bloque.datosReferencia.slice(0, 12).map((c, i) => (
+                  <p key={i} className="text-xs">
+                    <span className="font-medium text-muted-foreground">{c.label}:</span> {c.value}
+                  </p>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-lg border border-dashed border-border bg-muted/20 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Últimos seguimientos ({caso.bloque.seguimientos.length})
+              </p>
+              <div className="mt-1.5 max-h-48 space-y-1.5 overflow-auto">
+                {caso.bloque.seguimientos.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Sin seguimientos registrados.</p>
+                ) : (
+                  caso.bloque.seguimientos.slice(0, 6).map((s, i) => (
+                    <div key={i} className="rounded border border-border bg-background p-2 text-xs">
+                      <p className="font-medium">{s.fecha} · {s.estado || "—"}</p>
+                      <p className="text-muted-foreground">{s.accion || "—"} · {s.funcionario || "—"}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cerrar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+type AuditRow = {
+  id: string;
+  created_at: string;
+  actor_email: string | null;
+  accion: string;
+  modulo: string | null;
+  tabla: string | null;
+  registro_id: string | null;
+  resultado: string | null;
+  detalles: unknown;
+};
+
+function AuditoriaCasoDialog({
+  caso,
+  onClose,
+  habilitado,
+}: {
+  caso: Construido | null;
+  onClose: () => void;
+  habilitado: boolean;
+}) {
+  const { data: rows = [], isLoading } = useQuery({
+    queryKey: ["audit-log-caso", caso?.casoId, caso?.tabla],
+    enabled: !!caso && habilitado,
+    queryFn: async () => {
+      if (!caso) return [] as AuditRow[];
+      const { data, error } = await supabase
+        .from("audit_logs")
+        .select("id, created_at, actor_email, accion, modulo, tabla, registro_id, resultado, detalles")
+        .eq("registro_id", caso.casoId)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return (data ?? []) as AuditRow[];
+    },
+  });
+
+  return (
+    <Dialog open={!!caso} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Auditoría del caso</DialogTitle>
+        </DialogHeader>
+        {!habilitado ? (
+          <p className="rounded-md border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+            Esta información solo está disponible para el administrador/coordinador.
+          </p>
+        ) : caso ? (
+          <div className="space-y-2 text-sm">
+            <div className="rounded-md border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
+              Caso <span className="font-semibold text-foreground">{caso.referencia}</span> · Tabla{" "}
+              <span className="font-mono text-foreground">{caso.tabla}</span>
+            </div>
+            {isLoading ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">Cargando eventos…</p>
+            ) : rows.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                No hay eventos de auditoría registrados para este caso.
+              </p>
+            ) : (
+              <div className="max-h-[420px] space-y-1.5 overflow-auto">
+                {rows.map((r) => (
+                  <div key={r.id} className="rounded-md border border-border bg-card p-2 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-semibold">{r.accion}</p>
+                      <p className="text-muted-foreground">{fmtFechaHora(r.created_at)}</p>
+                    </div>
+                    <p className="text-muted-foreground">
+                      Actor: <span className="text-foreground">{r.actor_email ?? "—"}</span>
+                      {r.modulo ? <> · Módulo: <span className="text-foreground">{r.modulo}</span></> : null}
+                      {r.resultado ? <> · Resultado: <span className="text-foreground">{r.resultado}</span></> : null}
+                    </p>
+                    {r.detalles ? (
+                      <pre className="mt-1 max-h-32 overflow-auto rounded bg-muted/40 p-1.5 text-[10px] leading-snug">
+                        {JSON.stringify(r.detalles, null, 2)}
+                      </pre>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : null}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cerrar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
