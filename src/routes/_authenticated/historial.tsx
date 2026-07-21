@@ -1361,6 +1361,9 @@ function HistorialPage() {
         datosReferencia,
         seguimientos: segPDFpara(r.id, eapb || v(r.ips_receptora)),
       },
+      casoId: r.id,
+      tabla: "remisiones",
+      vista: "salientes",
     };
   };
 
