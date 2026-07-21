@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AutoComplete } from "@/components/rc/autocomplete";
+import { AppDateTimeInput } from "@/components/ui/app-time-picker";
 import {
   EVO_CANALES,
   canalesFaltantes,
