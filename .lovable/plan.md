@@ -1,82 +1,93 @@
-## Objetivo
+## Contexto verificado (no se modifica lo existente)
 
-Implementar control de acceso por navegador autorizado usando solo la infraestructura actual (Lovable Cloud, Auth, RLS, server functions, Web Crypto + IndexedDB). Dejar el sistema en modo **BOOTSTRAP**, autorizar el navegador del administrador principal, verificar todo, y **detenerse antes de activar ENFORCED** (activación manual desde Control de Mando).
+Ya existe infraestructura reutilizable — se aprovecha íntegra:
 
-## Alcance
+- Tabla `notification_channels` (con `bot_token`, `destination_id`, `allowed_alert_types`, `message_template`, `enabled`, `config_status`, `last_*`).
+- Tabla `notification_logs` (con `alert_type`, `module`, `reference_id`, `recipient`, `status`, `sent_at`, `created_by`).
+- Server functions en `src/lib/notifications.functions.ts`: `getNotificationChannels`, `saveChannelConfig`, `clearChannelToken`, `testChannelConnection`, `sendManualNotification`, `dispatchEventNotification`, `getNotificationLogs`.
+- Helpers server-only en `src/lib/notifications.server.ts` (`enviarTelegram` ya llama `sendMessage`).
+- Panel `NotificacionesExternasPanel` en Control de Mando.
+- Motor de alertas en `alertas-coordinacion.functions.ts` + evaluador cron.
 
-Aplica a todas las rutas bajo `/_authenticated/*`. Se excluyen: `/login`, `/activar-cuenta`, `/firma-entrega`, `/privacidad`, y endpoints públicos QR/webhooks bajo `/api/public/*` y `/lovable/*`.
+**Limitación detectada:** `notification_channels` hoy es 1 fila por `channel_type` (upsert por `channel_type`). Para soportar **varios destinos Telegram** (grupo Coordinación, grupo Red, grupo Admin) se necesita permitir múltiples filas por tipo. Se hace con migración no destructiva.
 
-NO se modifican módulos clínicos, plantillas, catálogos, firma QR, cuadro de turno, ni Auth existente.
+**Decisión de arquitectura:** El token del bot deja de vivir en `notification_channels.bot_token` para Telegram y pasa a leerse **solo** desde el Secret `TELEGRAM_BOT_TOKEN`. Cada fila Telegram guarda únicamente el destino (chat_id + metadatos). Slack (webhook por canal) permanece como está — no se toca.
 
-## Arquitectura
+## Ejecución progresiva (según sección 15 del prompt)
 
-### Credencial del navegador (Web Crypto + IndexedDB)
-- Par ECDSA P-256 generado en el navegador, `privateKey` **no exportable** guardada en IndexedDB.
-- Clave pública (JWK) enviada al servidor y almacenada en `authorized_devices.public_key`.
-- Login: servidor emite challenge → navegador firma → server function verifica firma con la clave pública y vincula `session_id` a `authorized_device_sessions`.
+### Etapa 1 — Secret + esquema multi-destino (esta iteración)
 
-### Base de datos (nuevas tablas, todas con RLS + GRANTs)
-- `authorized_devices` — un dispositivo por (user_id, device_public_id), estados PENDIENTE/AUTORIZADO/RECHAZADO/REVOCADO/BLOQUEADO/EXPIRADO.
-- `device_access_requests` — solicitudes de aprobación con idempotencia (índice único parcial sobre (user_id, device_id) WHERE estado='PENDIENTE').
-- `authorized_device_sessions` — vínculo sesión Auth ↔ dispositivo, estados ACTIVA/REVOCADA/EXPIRADA/CERRADA.
-- `device_challenges` — retos criptográficos de un solo uso, TTL corto.
-- `device_recovery_codes` — códigos de recuperación (solo hash, un solo uso, vigencia corta).
-- `system_settings` (o reutilizar si existe) — clave `device_access_mode` con valor DISABLED/BOOTSTRAP/ENFORCED/EMERGENCY_RECOVERY, leído solo en servidor.
+1. Solicitar `TELEGRAM_BOT_TOKEN` vía `add_secret`.
+2. Migración:
+   - Quitar el constraint `UNIQUE(channel_type)` en `notification_channels`.
+   - Añadir columnas: `chat_type` (private/group/supergroup/channel), `allowed_priorities text[]`, `allowed_modules text[]`, `schedule jsonb`, `silent bool`, `created_by uuid`.
+   - Añadir índice compuesto `(channel_type, enabled)`.
+   - Para Telegram, `bot_token` deja de usarse (se ignora en el nuevo flujo; se mantiene la columna por compatibilidad con Slack).
+   - Migrar la fila Telegram existente (si existe): conservarla como primer destino.
+3. Ajustar RLS: los admin siguen viendo todo; añadir GRANTs si falta.
 
-### Funciones SQL (SECURITY DEFINER, search_path='')
-- `public.is_current_session_device_authorized()` — devuelve boolean, verifica usuario activo, sesión, dispositivo AUTORIZADO no revocado/expirado, vínculo con `auth.jwt() ->> 'session_id'`, modo global. **En modo BOOTSTRAP** devuelve `true` para el admin bootstrap identificado, sin exigir dispositivo. **En modo DISABLED** devuelve siempre `true`. En **ENFORCED** exige todo.
-- `public.get_device_access_mode()` — lectura del modo, stable.
-- Función helper para consumir challenge + registrar sesión (usada solo por server functions autorizadas).
+### Etapa 2 — Edge function `telegram-bot` (una sola, multi-acción)
 
-### RLS
-- **NO** se reemplazan políticas existentes. Se **añade** `AND public.is_current_session_device_authorized()` a las políticas de tablas sensibles ya listadas.
-- Fase 1 (esta entrega): agregar la verificación a tablas más críticas: `profiles`, `user_roles`, `casos_entrantes`, `remisiones`, `referencia_interna`, `domiciliarios`, `seguimientos`, `historicos_casos`, `plantillas`, `plantillas_versiones`, `catalogos`, `checklists`, `audit_logs`, `alertas_coordinacion`, `avisos`, `shift_requests`, `entrega_firmas` (mantener excepción a firma QR pública server-side vía service role).
-- Como la función devuelve `true` en modo BOOTSTRAP/DISABLED, no rompe el sistema actual.
+Nueva Edge Function en `supabase/functions/telegram-bot/index.ts` que expone acciones internas (invocada solo desde server functions con service role, nunca desde React):
 
-### Server functions (nuevas, en `src/lib/devices.functions.ts`)
-- `requestDeviceChallenge` — emite challenge (protegido por `requireSupabaseAuth`).
-- `registerDeviceAndRequest` — recibe public_key + firma del challenge, crea `authorized_devices` PENDIENTE + `device_access_requests`.
-- `verifyDeviceAndLinkSession` — verifica firma, vincula `session_id` actual en `authorized_device_sessions`.
-- `getMyDeviceStatus` — estado limitado de solicitud/dispositivo del propio usuario (para pantalla pendiente).
-- `bootstrapAuthorizeCurrentDevice` — solo en modo BOOTSTRAP y solo para admin bootstrap: registra + autoriza + vincula el dispositivo actual.
-- Admin: `listDevices`, `listDeviceRequests`, `adminApproveDevice`, `adminRejectDevice`, `adminRevokeDevice`, `adminBlockDevice`, `adminUnblockDevice`, `adminRenameDevice`, `adminSetExpiration`, `adminCloseSession`, `adminCloseAllDeviceSessions`, `adminSetGlobalMode` (ENFORCED requiere reautenticación + frase). Todas exigen admin autorizado, no autoaprobar, escriben auditoría vía `registrarAuditoriaServer`.
-- `generateRecoveryCode`, `consumeRecoveryCode` (un solo uso).
+- `getMe` — valida token, devuelve `id/username/first_name` (sin token).
+- `getUpdates` — corre una sola vez, devuelve lista de destinos únicos (`chat.id/type/title/username/last_date`); no guarda nada.
+- `sendMessage` — envía a un `chat_id` concreto, respeta `retry_after` de Telegram, devuelve `{ok, message_id, error_code, description}` sanitizado.
 
-### Frontend
-- `src/lib/device-credential.ts` — helper Web Crypto/IndexedDB (generar par, firmar challenge, leer public JWK).
-- `src/lib/device-guard.tsx` — `DeviceGate` que envuelve el layout `_authenticated`. Estados: `VALIDANDO` → (autorizado → children) / (pendiente → `PantallaPendiente`) / (rechazado/revocado/bloqueado/expirado → pantalla informativa) / (error).
-- Se monta en `src/routes/_authenticated.tsx` **envolviendo el `Outlet`**, tras la resolución de Auth. No se toca la lógica de la ruta ni `AuthProvider`.
-- Panel Control de Mando: nueva pestaña **"Dispositivos"** en `src/routes/_authenticated/control-mando.tsx`, componente `src/components/coordinacion/dispositivos-panel.tsx` con tarjetas KPI, tablas por estado, acciones administrativas, botón "Autorizar este dispositivo administrador" (solo BOOTSTRAP), botón "Activar restricción de dispositivos" (deshabilitado hasta cumplir requisitos, con confirmación de frase).
-- Perfil: sección "Mis dispositivos" (vista simple del usuario, cerrar sesiones, solicitar revocación) — añadido a `usuarios-panel` o nueva subventana.
+El token se lee **solo** con `Deno.env.get("TELEGRAM_BOT_TOKEN")`. Nunca sale de la función.
 
-### Modo BOOTSTRAP
-- Migración deja `device_access_mode='BOOTSTRAP'`.
-- Admin bootstrap: identificado por rol admin + email `coordreferencia@cedimips.com` (patrón existente en `handle_new_user`). Configurable en `system_settings.bootstrap_admin_user_id` una vez autorizado.
-- **NO se activa ENFORCED en la misma migración.** Botón manual + confirmación + reautenticación.
+### Etapa 3 — Server functions Telegram (admin-only)
 
-## Pasos de entrega
+En un nuevo archivo `src/lib/telegram.functions.ts` (para no inflar `notifications.functions.ts`), todas con `requireSupabaseAuth` + verificación admin:
 
-1. Migración: tablas + índices + funciones SQL + `device_access_mode='BOOTSTRAP'` + GRANTs + RLS de las tablas nuevas.
-2. Migración fase 2 (misma migración, seguro porque la función devuelve `true` en BOOTSTRAP): añadir `AND is_current_session_device_authorized()` a políticas de tablas sensibles listadas.
-3. Server functions en `src/lib/devices.functions.ts` + `src/lib/devices.server.ts` (verificación de firma ECDSA con WebCrypto en Worker).
-4. Cliente: `device-credential.ts`, `device-guard.tsx`, integración en `_authenticated.tsx`.
-5. UI Control de Mando: `dispositivos-panel.tsx` + pestaña, botón autorizar bootstrap, botón activar ENFORCED (deshabilitado por defecto, verificaciones previas).
-6. UI perfil: "Mis dispositivos".
-7. Auditoría: agregar acciones DEVICE_* al allowlist en `src/lib/auditoria-allowlist.ts`.
+- `telegramStatus()` → `{token_configured, bot_username, destinos_count}`.
+- `telegramValidateBot()` → llama `getMe`, guarda auditoría `TELEGRAM_BOT_VALIDATED`.
+- `telegramDetectDestinations()` → llama `getUpdates`, devuelve lista candidata (no persiste).
+- `telegramSaveDestination({display_name, chat_id, chat_type, chat_title, description, allowed_alert_types, allowed_priorities, allowed_modules, schedule, silent, enabled})` → inserta/actualiza fila `channel_type='telegram'`.
+- `telegramDeleteDestination(id)`, `telegramToggleDestination(id, enabled)`.
+- `telegramSendTest(id)` → envía mensaje canónico de prueba (sin PHI), registra log + auditoría.
+- `telegramListDestinations()` → devuelve destinos con `chat_id` enmascarado para no-admin (los admin ven completo).
+- `telegramResendAlert(log_id, motivo)` → reenvío autorizado con auditoría.
 
-## Fuera de alcance / no se toca
+### Etapa 4 — Adaptar despacho de eventos
 
-- Auth, login, activar-cuenta, firma QR, correos, dominios, GitHub, módulos clínicos, plantillas, catálogos, cuadro de turno, reportes.
-- No se activa ENFORCED. Queda como acción manual del administrador tras verificar bootstrap + reingreso + segundo dispositivo + recuperación.
+Modificar `dispatchEventNotification` y `despacharAlertaCoordinacion` para Telegram:
 
-## Notas técnicas
+- Iterar sobre **todos** los destinos Telegram habilitados (no una única fila).
+- Filtrar por `allowed_alert_types` **y** `allowed_priorities` **y** `allowed_modules` **y** `schedule` de cada destino.
+- Idempotencia: `idempotency_key = alert_type + reference_id + destino_id + version`. Añadir columna `idempotency_key text` + índice único parcial en `notification_logs` para status='sent'.
+- Reintentos: si Telegram devuelve `retry_after`, marcar `REINTENTO` con `next_retry_at`. Errores de permisos (403 bot expulsado, 400 chat not found) → `FALLIDA` sin reintentar, alerta al admin.
+- Estados en logs: `pending/sent/error/retry/discarded`.
+- Enviar **solo por Edge Function** (nada desde el navegador).
 
-- Verificación ECDSA en el Worker: `crypto.subtle.verify` está disponible (Web Crypto en runtime Cloudflare) — sin dependencias nativas.
-- Challenge: 32 bytes aleatorios, TTL 2 min, hash SHA-256 almacenado, `used_at` marcado al consumir.
-- `session_id`: leído del claim `session_id` del JWT (`context.claims.session_id`).
-- Polling pantalla pendiente: cada 15 s vía `getMyDeviceStatus` (limitado al propio user_id, sin exponer otros datos).
-- Storage privado: los buckets existentes (`firmas`, `permiso-soportes`) ya son privados; se documenta que futuras rutas server-side privadas deben llamar `is_current_session_device_authorized()`.
+### Etapa 5 — UI en Control de Mando → Notificaciones externas
 
-## Confirmación antes de continuar
+Rediseñar la sección Telegram de `notificaciones-externas-panel.tsx`:
 
-Este plan crea 5 tablas nuevas, ~15 server functions, 1 pantalla nueva y modifica RLS en ~17 tablas (añadiendo un AND, sin romper nada porque en BOOTSTRAP la función devuelve `true`). Es una entrega grande. ¿Apruebas que proceda con la implementación en un solo lote, dejando el sistema en BOOTSTRAP y con el botón de ENFORCED visible pero deshabilitado hasta cumplir las pruebas descritas?
+- Card superior: estado (`TOKEN CONFIGURADO: SÍ/NO`, bot username, destinos activos, última prueba, último error).
+- Botones: **Validar bot**, **Detectar destinos**, **Agregar destino manual**, **Desactivar todo**.
+- Tabla de destinos: nombre, tipo (PRIVATE/GROUP/SUPERGROUP/CHANNEL), chat_id enmascarado, tipos permitidos, prioridades permitidas, módulos, estado, última prueba. Acciones por fila: **Probar**, **Editar**, **Habilitar/Deshabilitar**, **Eliminar**.
+- Diálogo "Detectar destinos": muestra instrucciones (agregar bot, enviar mensaje, presionar detectar), lista resultado de `getUpdates` con botón *Agregar como destino*.
+- Diálogo "Editar destino": selectores múltiples para tipos de alerta / prioridades / módulos, horario, silencioso, enlace.
+- **En ningún momento** se muestra el token; solo `TOKEN CONFIGURADO: SÍ/NO`.
+
+### Etapa 6 — Auditoría + pruebas guiadas
+
+- Registrar en `audit_logs` cada acción (`TELEGRAM_BOT_VALIDATED`, `TELEGRAM_DESTINATION_CREATED/UPDATED/DISABLED`, `TELEGRAM_TEST_SENT`, `TELEGRAM_ALERT_SENT/FAILED`, `TELEGRAM_RULE_LINKED/UNLINKED`, `TELEGRAM_RESEND`). Nunca token ni PHI.
+- Ejecutar en preview las pruebas 1–4 del prompt (token ausente / válido / grupo / canal sin permisos) y reportar.
+- Confirmar antes de activar despacho automático de alertas reales.
+
+## Alcance explícitamente EXCLUIDO
+
+- Sin Zapier / Make / n8n / WhatsApp / otros.
+- Sin webhook de Telegram (solo `sendMessage` saliente + `getUpdates` manual).
+- Sin llamadas a Telegram desde React.
+- Sin exponer token en frontend, tablas, logs ni respuestas.
+- Sin crear un segundo motor de alertas o segunda tabla de reglas.
+- Slack, correo, avisos operativos, motor clínico: no se tocan.
+
+## Confirmación necesaria
+
+Voy a ejecutar **Etapa 1 + Etapa 2 + Etapa 3** en la siguiente iteración (secret, migración, edge function, server functions y auditoría), sin activar despacho automático. Etapa 4 (adaptación del despacho) y Etapa 5 (UI de detección/gestión multi-destino) van en una segunda iteración una vez validemos `getMe` y detectemos el primer grupo. Etapa 6 al final.
+
+¿Sigo con esta secuencia?
