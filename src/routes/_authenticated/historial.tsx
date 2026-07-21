@@ -542,6 +542,12 @@ type Construido = {
   datosPaciente: CampoPDF[];
   referencia: string;
   bloque: BloqueCaso;
+  /** ID del caso en la tabla origen — usado para auditoría y export puntual. */
+  casoId: string;
+  /** Tabla origen: casos_entrantes | remisiones | domiciliarios | referencia_interna. */
+  tabla: "casos_entrantes" | "remisiones" | "domiciliarios" | "referencia_interna";
+  /** Vista de historial a la que pertenece — usado para reutilizar exportador. */
+  vista: "entrantes" | "salientes" | "phd" | "interna";
 };
 
 type ResultadosBitacora = {
@@ -676,7 +682,7 @@ function historicoAGenerico(h: HistoricoCaso): Generico {
 }
 
 function HistorialPage() {
-  const { canEdit, user } = useAuth();
+  const { canEdit, isAdmin, user } = useAuth();
   const usuario =
     (user?.user_metadata?.nombre as string) || user?.email || "Usuario autenticado";
   const qc = useQueryClient();
@@ -1308,6 +1314,9 @@ function HistorialPage() {
       referencia: v(b.documento) || v(b.codigo) || g.key,
       datosPaciente,
       bloque: { tipoDocumento: "REMISIÓN ENTRANTE", datosReferencia, seguimientos },
+      casoId: v(b.id) || g.key,
+      tabla: "casos_entrantes",
+      vista: "entrantes",
     };
   };
 
@@ -1352,6 +1361,9 @@ function HistorialPage() {
         datosReferencia,
         seguimientos: segPDFpara(r.id, eapb || v(r.ips_receptora)),
       },
+      casoId: r.id,
+      tabla: "remisiones",
+      vista: "salientes",
     };
   };
 
@@ -1399,6 +1411,9 @@ function HistorialPage() {
         datosReferencia,
         seguimientos: segPDFpara(r.id, eapb),
       },
+      casoId: r.id,
+      tabla: "domiciliarios",
+      vista: "phd",
     };
   };
 
@@ -1436,6 +1451,9 @@ function HistorialPage() {
         datosReferencia,
         seguimientos: segPDFpara(r.id, v(r.servicio) || eapb),
       },
+      casoId: r.id,
+      tabla: "referencia_interna",
+      vista: "interna",
     };
   };
 
@@ -1537,6 +1555,60 @@ function HistorialPage() {
     auditar("exportar_pdf_bitacora_consolidada", { documento: doc, casos: cs.length, filtros });
     toast.success("Bitácora consolidada generada");
   };
+
+  // ---- Etapa 3 · Menú contextual enriquecido -----------------------------
+  const [infoCaso, setInfoCaso] = useState<Construido | null>(null);
+  const [audCaso, setAudCaso] = useState<Construido | null>(null);
+
+  const copiarCodigo = (c: Construido) => {
+    const cod = (c.codigo || "").trim();
+    if (!cod) {
+      toast.info("Este caso no tiene código de gestión.");
+      return;
+    }
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(cod);
+      toast.success(`Código copiado: ${cod}`);
+      auditar("copiar_codigo_gestion", { caso: c.casoId, tabla: c.tabla, codigo: cod });
+    } else {
+      toast.error("El navegador no permite copiar automáticamente.");
+    }
+  };
+
+  const exportarCasoExcel = (c: Construido) => {
+    let sec: Seccion | null = null;
+    if (c.vista === "entrantes") {
+      const grupo = gruposF.find((g) => v(g.base.id) === c.casoId);
+      if (grupo) {
+        sec = seccionRecibidas([
+          {
+            base: grupo.base as unknown as GrupoEntrante["base"],
+            eventos: grupo.eventos as unknown as Record<string, unknown>[],
+            estadoLabel: grupo.estadoFinal.label,
+          },
+        ]);
+      }
+    } else if (c.vista === "salientes") {
+      const row = (remisionesF as Remision[]).find((r) => r.id === c.casoId);
+      if (row) sec = seccionRemisiones([row as unknown as Record<string, unknown>], segMap);
+    } else if (c.vista === "phd") {
+      const row = (phdF as Generico[]).find((r) => r.id === c.casoId);
+      if (row) sec = seccionPHD([row as unknown as Record<string, unknown>], segMap);
+    } else if (c.vista === "interna") {
+      const row = (internasF as Generico[]).find((r) => r.id === c.casoId);
+      if (row) sec = seccionInternas([row as unknown as Record<string, unknown>], segMap);
+    }
+    if (!sec || sec.rows.length === 0) {
+      toast.info("No fue posible localizar el caso para exportar.");
+      return;
+    }
+    const nombre = `caso_${(c.referencia || c.casoId || "sin_ref").replace(/[^\w\-]+/g, "_")}`;
+    descargarLibro([sec], usuario, `Caso=${c.referencia}; Vista=${c.vista}`, nombre);
+    auditar("exportar_excel_caso", { caso: c.casoId, tabla: c.tabla, vista: c.vista });
+    toast.success("Excel del caso generado");
+  };
+
+
 
 
 
@@ -1809,6 +1881,11 @@ function HistorialPage() {
               onToggleCaso={(k) => setCasoExpandido((p) => (p === k ? null : k))}
               onBitacoraCaso={pdfConstruido}
               onBitacoraUnificada={pdfConsolidado}
+              onInfoCaso={(c) => setInfoCaso(c)}
+              onCopiarCodigo={copiarCodigo}
+              onExportarExcelCaso={exportarCasoExcel}
+              onVerAuditoriaCaso={(c) => setAudCaso(c)}
+              puedeAuditar={isAdmin}
             />
           )
         ) : cargando ? (
@@ -1879,6 +1956,9 @@ function HistorialPage() {
           setLimite(20);
         }}
       />
+
+      <InfoCasoDialog caso={infoCaso} onClose={() => setInfoCaso(null)} />
+      <AuditoriaCasoDialog caso={audCaso} onClose={() => setAudCaso(null)} habilitado={isAdmin} />
 
     </div>
   );
@@ -2378,6 +2458,12 @@ function CasoConMenu({
   expanded,
   onVerSecuencia,
   onBitacora,
+  onInfo,
+  onCopiarCodigo,
+  onExportarExcel,
+  onVerAuditoria,
+  puedeAuditar,
+  codigo,
   sequenceItems,
   documento,
   children,
@@ -2385,11 +2471,18 @@ function CasoConMenu({
   expanded: boolean;
   onVerSecuencia: () => void;
   onBitacora: () => void;
+  onInfo: () => void;
+  onCopiarCodigo: () => void;
+  onExportarExcel: () => void;
+  onVerAuditoria: () => void;
+  puedeAuditar: boolean;
+  codigo: string;
   sequenceItems: Construido[];
   documento: string;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const tieneCodigo = codigo.trim().length > 0;
   return (
     <div>
       <Popover open={open} onOpenChange={setOpen}>
@@ -2398,10 +2491,18 @@ function CasoConMenu({
             {children}
           </div>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-60 p-1.5">
+        <PopoverContent align="start" className="w-72 p-1.5">
+          <MenuBtn
+            icon={Search}
+            label="Información rápida del caso"
+            onClick={() => {
+              onInfo();
+              setOpen(false);
+            }}
+          />
           <MenuBtn
             icon={Clock}
-            label={expanded ? "Ocultar secuencia del caso" : "Ver secuencia del caso"}
+            label={expanded ? "Ocultar historial completo" : "Ver historial completo"}
             onClick={() => {
               onVerSecuencia();
               setOpen(false);
@@ -2409,12 +2510,40 @@ function CasoConMenu({
           />
           <MenuBtn
             icon={FileText}
-            label="Generar bitácora de este caso"
+            label="Exportar bitácora PDF de este caso"
             onClick={() => {
               onBitacora();
               setOpen(false);
             }}
           />
+          {tieneCodigo && (
+            <MenuBtn
+              icon={Copy}
+              label="Copiar código de gestión"
+              onClick={() => {
+                onCopiarCodigo();
+                setOpen(false);
+              }}
+            />
+          )}
+          <MenuBtn
+            icon={FileSpreadsheet}
+            label="Exportar este caso a Excel"
+            onClick={() => {
+              onExportarExcel();
+              setOpen(false);
+            }}
+          />
+          {puedeAuditar && (
+            <MenuBtn
+              icon={ListTree}
+              label="Ver auditoría del caso"
+              onClick={() => {
+                onVerAuditoria();
+                setOpen(false);
+              }}
+            />
+          )}
           <MenuBtn icon={X} label="Cancelar" onClick={() => setOpen(false)} danger />
         </PopoverContent>
       </Popover>
@@ -2426,6 +2555,7 @@ function CasoConMenu({
     </div>
   );
 }
+
 
 // Resumen compacto de un caso (por case_id).
 function CasoResumenRow({
@@ -2493,6 +2623,11 @@ function PacienteResultado({
   onToggleCaso,
   onBitacoraCaso,
   onBitacoraUnificada,
+  onInfoCaso,
+  onCopiarCodigo,
+  onExportarExcelCaso,
+  onVerAuditoriaCaso,
+  puedeAuditar,
 }: {
   vista: Vista;
   nombre: string;
@@ -2511,6 +2646,11 @@ function PacienteResultado({
   onToggleCaso: (key: string) => void;
   onBitacoraCaso: (c: Construido) => void;
   onBitacoraUnificada: (cs: Construido[], doc: string, filtros: string) => void;
+  onInfoCaso: (c: Construido) => void;
+  onCopiarCodigo: (c: Construido) => void;
+  onExportarExcelCaso: (c: Construido) => void;
+  onVerAuditoriaCaso: (c: Construido) => void;
+  puedeAuditar: boolean;
 }) {
   const rows = useMemo(() => {
     if (vista === "entrantes")
@@ -2557,6 +2697,12 @@ function PacienteResultado({
             expanded={casoExpandido === row.key}
             onVerSecuencia={() => onToggleCaso(row.key)}
             onBitacora={() => onBitacoraCaso(row.construido)}
+            onInfo={() => onInfoCaso(row.construido)}
+            onCopiarCodigo={() => onCopiarCodigo(row.construido)}
+            onExportarExcel={() => onExportarExcelCaso(row.construido)}
+            onVerAuditoria={() => onVerAuditoriaCaso(row.construido)}
+            puedeAuditar={puedeAuditar}
+            codigo={row.construido.codigo}
             sequenceItems={[row.construido]}
             documento={documento}
           >
@@ -2758,6 +2904,157 @@ function BuscarPacienteDialog({
           <Button className="bg-status-blue text-white hover:bg-status-blue/90" onClick={aceptar}>
             <Check className="mr-1.5 h-4 w-4" /> Aceptar
           </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Etapa 3 · Diálogos de "Información rápida" y "Auditoría del caso"
+// ---------------------------------------------------------------------------
+function InfoCasoDialog({ caso, onClose }: { caso: Construido | null; onClose: () => void }) {
+  return (
+    <Dialog open={!!caso} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Información rápida del caso</DialogTitle>
+        </DialogHeader>
+        {caso && (
+          <div className="grid gap-3 text-sm">
+            <div className="rounded-lg border border-border bg-muted/30 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Paciente</p>
+              <p className="mt-0.5 text-sm font-semibold">{caso.paciente}</p>
+              <p className="text-xs text-muted-foreground">Documento: {caso.documento || "—"}</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Datos de referencia</p>
+              <div className="mt-1.5 grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
+                <p><span className="font-medium text-muted-foreground">Tipo:</span> {caso.bloque.tipoDocumento}</p>
+                <p><span className="font-medium text-muted-foreground">Estado:</span> {caso.estado}</p>
+                <p><span className="font-medium text-muted-foreground">Código:</span> {caso.codigo || "—"}</p>
+                <p><span className="font-medium text-muted-foreground">Fecha base:</span> {fmtFechaHora(caso.fechaBase)}</p>
+              </div>
+              <div className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
+                {caso.bloque.datosReferencia.slice(0, 12).map((c, i) => (
+                  <p key={i} className="text-xs">
+                    <span className="font-medium text-muted-foreground">{c.label}:</span> {c.value}
+                  </p>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-lg border border-dashed border-border bg-muted/20 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Últimos seguimientos ({caso.bloque.seguimientos.length})
+              </p>
+              <div className="mt-1.5 max-h-48 space-y-1.5 overflow-auto">
+                {caso.bloque.seguimientos.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Sin seguimientos registrados.</p>
+                ) : (
+                  caso.bloque.seguimientos.slice(0, 6).map((s, i) => (
+                    <div key={i} className="rounded border border-border bg-background p-2 text-xs">
+                      <p className="font-medium">{s.fecha} · {s.estado || "—"}</p>
+                      <p className="text-muted-foreground">{s.accion || "—"} · {s.funcionario || "—"}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cerrar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+type AuditRow = {
+  id: string;
+  created_at: string;
+  actor_email: string | null;
+  accion: string;
+  modulo: string | null;
+  tabla: string | null;
+  registro_id: string | null;
+  resultado: string | null;
+  detalles: unknown;
+};
+
+function AuditoriaCasoDialog({
+  caso,
+  onClose,
+  habilitado,
+}: {
+  caso: Construido | null;
+  onClose: () => void;
+  habilitado: boolean;
+}) {
+  const { data: rows = [], isLoading } = useQuery({
+    queryKey: ["audit-log-caso", caso?.casoId, caso?.tabla],
+    enabled: !!caso && habilitado,
+    queryFn: async () => {
+      if (!caso) return [] as AuditRow[];
+      const { data, error } = await supabase
+        .from("audit_logs")
+        .select("id, created_at, actor_email, accion, modulo, tabla, registro_id, resultado, detalles")
+        .eq("registro_id", caso.casoId)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return (data ?? []) as AuditRow[];
+    },
+  });
+
+  return (
+    <Dialog open={!!caso} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Auditoría del caso</DialogTitle>
+        </DialogHeader>
+        {!habilitado ? (
+          <p className="rounded-md border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+            Esta información solo está disponible para el administrador/coordinador.
+          </p>
+        ) : caso ? (
+          <div className="space-y-2 text-sm">
+            <div className="rounded-md border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
+              Caso <span className="font-semibold text-foreground">{caso.referencia}</span> · Tabla{" "}
+              <span className="font-mono text-foreground">{caso.tabla}</span>
+            </div>
+            {isLoading ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">Cargando eventos…</p>
+            ) : rows.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                No hay eventos de auditoría registrados para este caso.
+              </p>
+            ) : (
+              <div className="max-h-[420px] space-y-1.5 overflow-auto">
+                {rows.map((r) => (
+                  <div key={r.id} className="rounded-md border border-border bg-card p-2 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-semibold">{r.accion}</p>
+                      <p className="text-muted-foreground">{fmtFechaHora(r.created_at)}</p>
+                    </div>
+                    <p className="text-muted-foreground">
+                      Actor: <span className="text-foreground">{r.actor_email ?? "—"}</span>
+                      {r.modulo ? <> · Módulo: <span className="text-foreground">{r.modulo}</span></> : null}
+                      {r.resultado ? <> · Resultado: <span className="text-foreground">{r.resultado}</span></> : null}
+                    </p>
+                    {r.detalles ? (
+                      <pre className="mt-1 max-h-32 overflow-auto rounded bg-muted/40 p-1.5 text-[10px] leading-snug">
+                        {JSON.stringify(r.detalles, null, 2)}
+                      </pre>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : null}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cerrar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
