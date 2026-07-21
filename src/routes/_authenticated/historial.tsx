@@ -1314,6 +1314,9 @@ function HistorialPage() {
       referencia: v(b.documento) || v(b.codigo) || g.key,
       datosPaciente,
       bloque: { tipoDocumento: "REMISIÓN ENTRANTE", datosReferencia, seguimientos },
+      casoId: v(b.id) || g.key,
+      tabla: "casos_entrantes",
+      vista: "entrantes",
     };
   };
 
