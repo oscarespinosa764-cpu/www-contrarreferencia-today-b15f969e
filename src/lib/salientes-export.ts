@@ -17,7 +17,7 @@ import type { Remision } from "@/components/remisiones/caso-remision-card";
 const INSTITUCION = "CENTRO DE IMAGENES DIAGNOSTICAS CEDIM I.P.S S.A.S";
 const NIT = "NIT: 900559103-5";
 const PIE_DEFAULT = "SISTEMA DE REFERENCIA Y CONTRARREFERENCIA";
-const TITULO_DEFAULT = "REPORTE GENERAL OPERATIVO — SALIENTES";
+const TITULO_DEFAULT = "REPORTE GENERAL OPERATIVO — REMISIONES ACTIVAS";
 const NAVY: [number, number, number] = [31, 56, 100];
 const LIGHT_BLUE: [number, number, number] = [221, 235, 247];
 
