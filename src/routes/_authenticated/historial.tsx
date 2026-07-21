@@ -1957,6 +1957,9 @@ function HistorialPage() {
         }}
       />
 
+      <InfoCasoDialog caso={infoCaso} onClose={() => setInfoCaso(null)} />
+      <AuditoriaCasoDialog caso={audCaso} onClose={() => setAudCaso(null)} habilitado={isAdmin} />
+
     </div>
   );
 }
