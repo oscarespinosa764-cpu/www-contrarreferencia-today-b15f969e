@@ -53,8 +53,10 @@ export const AUDIT_MODULOS = new Set<string>([
   "cuadro_turno",
   "ausentismo",
   "firmas",
+  "dispositivos",
   "otros",
 ]);
+
 
 /** Tablas que pueden verse afectadas por una acción auditada. */
 export const AUDIT_TABLAS = new Set<string>([
