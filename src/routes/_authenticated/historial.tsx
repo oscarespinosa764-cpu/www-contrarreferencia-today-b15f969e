@@ -424,6 +424,38 @@ function dentroPeriodo(raw: string | null, periodo: Periodo): boolean {
   return true;
 }
 
+// Rango de fechas (ISO) equivalente al filtro cliente `pasaPeriodo`, para
+// aplicar server-side sobre `created_at` y evitar los topes de 1000/5000.
+function periodoRange(periodo: Periodo, fecha?: Date): { start?: string; end?: string } {
+  if (fecha) {
+    const s = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+    const e = new Date(s); e.setDate(e.getDate() + 1);
+    return { start: s.toISOString(), end: e.toISOString() };
+  }
+  if (periodo === "Todos") return {};
+  const now = new Date();
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (periodo === "Hoy") return { start: startToday.toISOString() };
+  if (periodo === "Esta semana") {
+    const ws = new Date(startToday);
+    ws.setDate(ws.getDate() - ((ws.getDay() + 6) % 7));
+    return { start: ws.toISOString() };
+  }
+  if (periodo === "Este mes") {
+    const s = new Date(now.getFullYear(), now.getMonth(), 1);
+    return { start: s.toISOString() };
+  }
+  if (periodo === "Mes anterior") {
+    const s = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const e = new Date(now.getFullYear(), now.getMonth(), 1);
+    return { start: s.toISOString(), end: e.toISOString() };
+  }
+  return {};
+}
+
+const docBuscableServer = (doc: string): boolean =>
+  doc.length >= 4 && /^\d+$/.test(doc);
+
 function tieneTipo(eventos: Caso[], tipo: string): boolean {
   return eventos.some((e) => (e.tipo || "").toUpperCase().includes(tipo));
 }
