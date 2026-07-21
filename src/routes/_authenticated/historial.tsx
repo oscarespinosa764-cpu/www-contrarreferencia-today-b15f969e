@@ -1881,6 +1881,11 @@ function HistorialPage() {
               onToggleCaso={(k) => setCasoExpandido((p) => (p === k ? null : k))}
               onBitacoraCaso={pdfConstruido}
               onBitacoraUnificada={pdfConsolidado}
+              onInfoCaso={(c) => setInfoCaso(c)}
+              onCopiarCodigo={copiarCodigo}
+              onExportarExcelCaso={exportarCasoExcel}
+              onVerAuditoriaCaso={(c) => setAudCaso(c)}
+              puedeAuditar={isAdmin}
             />
           )
         ) : cargando ? (
