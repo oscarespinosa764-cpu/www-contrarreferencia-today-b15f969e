@@ -24,8 +24,9 @@ const LIGHT_BLUE: [number, number, number] = [221, 235, 247];
 const v = (x: unknown): string => (x === null || x === undefined ? "" : String(x).trim());
 const hoy = () => new Date().toISOString().slice(0, 10);
 
-// Contadores compartidos por el bloque de tarjetas superiores (Reporte General
-// y Entrega de Turno usan exactamente la misma fila resumen).
+// Contadores compartidos por el bloque de tarjetas superiores.
+// El Reporte General usa un subconjunto de tarjetas centrado en estados
+// activos de remisiones. Entrega de Turno usa el conjunto completo.
 function tarjetasResumen(p: {
   activas: number;
   especiales: number;
@@ -35,13 +36,39 @@ function tarjetasResumen(p: {
 }): [string, string][] {
   const c = p.contadores ?? {};
   return [
-    // Reporte General: solo 5 tarjetas resumen (institucionales, proporcionadas).
     ["REMISIONES ACTIVAS", String(p.activas)],
     ["PENDIENTES ACEPTACIÓN", String(c.acepPendiente ?? 0)],
     ["ACEPTADO SIN AMB.", String(c.acepSinAmb ?? 0)],
     ["ACEPTADO CON AMB.", String(c.acepConAmb ?? 0)],
     ["DESISTIMIENTOS", String(c.desistimientos ?? 0)],
   ];
+}
+
+// Resumen exclusivo del Reporte General — solo estados activos de remisiones.
+// No incluye desistimientos, PHD/PAD/O2 ni categorías terminales.
+function tarjetasResumenActivas(p: {
+  activas: number;
+  contadores?: Record<string, number>;
+}): [string, string][] {
+  const c = p.contadores ?? {};
+  return [
+    ["TOTAL REMISIONES ACTIVAS", String(p.activas)],
+    ["PENDIENTES DE ACEPTACIÓN", String(c.acepPendiente ?? 0)],
+    ["ACEPTADAS SIN AMBULANCIA", String(c.acepSinAmb ?? 0)],
+    ["ACEPTADAS CON AMBULANCIA", String(c.acepConAmb ?? 0)],
+    ["EGRESADAS PEND. LLEGADA", String(c.egresPendLlegada ?? 0)],
+  ];
+}
+
+// Definición canónica de REMISIÓN ACTIVA: excluye estados terminales y
+// desistimientos. Se aplica tanto al resumen como a la tabla del reporte,
+// garantizando una única fuente de verdad.
+const ESTADOS_TERMINALES = /CERRAD|CANCEL|DESIST|DISENT|FINALIZ|ARCHIV|ANUL|LLEGADA CONFIRM/i;
+export function esRemisionActiva(r: { estado?: string | null; archivado?: boolean | null }): boolean {
+  if (r.archivado) return false;
+  const e = String(r.estado ?? "").toUpperCase();
+  if (!e) return true; // sin estado explícito se considera aún activa
+  return !ESTADOS_TERMINALES.test(e);
 }
 
 const imgCache = new Map<string, string | null>();
