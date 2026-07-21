@@ -808,16 +808,15 @@ function HistorialPage() {
   );
 
   const { data: pendientes, isLoading: loadingPen } = useQuery({
-    queryKey: ["historial-pendientes", rangoStart ?? null, rangoEnd ?? null, docServer || null],
+    queryKey: ["historial-pendientes", rangoStart ?? null, rangoEnd ?? null],
     queryFn: async () => {
       let q = supabase
         .from("pendientes")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(docServer || rangoStart || rangoEnd ? 20000 : 2000);
+        .limit(rangoStart || rangoEnd ? 20000 : 2000);
       if (rangoStart) q = q.gte("created_at", rangoStart);
       if (rangoEnd) q = q.lt("created_at", rangoEnd);
-      if (docServer) q = q.eq("documento", docServer);
       const { data, error } = await q;
       if (error) throw error;
       return data as Generico[];
