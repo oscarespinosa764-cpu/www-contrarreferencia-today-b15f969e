@@ -2450,6 +2450,12 @@ function CasoConMenu({
   expanded,
   onVerSecuencia,
   onBitacora,
+  onInfo,
+  onCopiarCodigo,
+  onExportarExcel,
+  onVerAuditoria,
+  puedeAuditar,
+  codigo,
   sequenceItems,
   documento,
   children,
@@ -2457,11 +2463,18 @@ function CasoConMenu({
   expanded: boolean;
   onVerSecuencia: () => void;
   onBitacora: () => void;
+  onInfo: () => void;
+  onCopiarCodigo: () => void;
+  onExportarExcel: () => void;
+  onVerAuditoria: () => void;
+  puedeAuditar: boolean;
+  codigo: string;
   sequenceItems: Construido[];
   documento: string;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const tieneCodigo = codigo.trim().length > 0;
   return (
     <div>
       <Popover open={open} onOpenChange={setOpen}>
@@ -2470,10 +2483,18 @@ function CasoConMenu({
             {children}
           </div>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-60 p-1.5">
+        <PopoverContent align="start" className="w-72 p-1.5">
+          <MenuBtn
+            icon={Search}
+            label="Información rápida del caso"
+            onClick={() => {
+              onInfo();
+              setOpen(false);
+            }}
+          />
           <MenuBtn
             icon={Clock}
-            label={expanded ? "Ocultar secuencia del caso" : "Ver secuencia del caso"}
+            label={expanded ? "Ocultar historial completo" : "Ver historial completo"}
             onClick={() => {
               onVerSecuencia();
               setOpen(false);
@@ -2481,12 +2502,40 @@ function CasoConMenu({
           />
           <MenuBtn
             icon={FileText}
-            label="Generar bitácora de este caso"
+            label="Exportar bitácora PDF de este caso"
             onClick={() => {
               onBitacora();
               setOpen(false);
             }}
           />
+          {tieneCodigo && (
+            <MenuBtn
+              icon={Copy}
+              label="Copiar código de gestión"
+              onClick={() => {
+                onCopiarCodigo();
+                setOpen(false);
+              }}
+            />
+          )}
+          <MenuBtn
+            icon={FileSpreadsheet}
+            label="Exportar este caso a Excel"
+            onClick={() => {
+              onExportarExcel();
+              setOpen(false);
+            }}
+          />
+          {puedeAuditar && (
+            <MenuBtn
+              icon={ListTree}
+              label="Ver auditoría del caso"
+              onClick={() => {
+                onVerAuditoria();
+                setOpen(false);
+              }}
+            />
+          )}
           <MenuBtn icon={X} label="Cancelar" onClick={() => setOpen(false)} danger />
         </PopoverContent>
       </Popover>
@@ -2498,6 +2547,7 @@ function CasoConMenu({
     </div>
   );
 }
+
 
 // Resumen compacto de un caso (por case_id).
 function CasoResumenRow({
