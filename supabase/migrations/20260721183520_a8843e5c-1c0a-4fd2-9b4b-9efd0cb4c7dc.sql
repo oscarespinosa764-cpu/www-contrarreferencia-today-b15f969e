@@ -1,0 +1,2 @@
+CREATE INDEX IF NOT EXISTS idx_casos_entrantes_created_at ON public.casos_entrantes USING btree (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_casos_entrantes_documento ON public.casos_entrantes USING btree (documento);
