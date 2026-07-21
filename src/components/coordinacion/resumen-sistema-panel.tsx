@@ -178,7 +178,7 @@ function KpiCard({ card }: { card: Card }) {
   const valor =
     q.isLoading
       ? "…"
-      : q.data === null
+      : q.data == null
         ? "—"
         : new Intl.NumberFormat("es-CO").format(q.data);
   return (
