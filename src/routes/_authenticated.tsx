@@ -8,6 +8,7 @@ import { useNotifVencimientosMonitor } from "@/lib/use-notif-vencimientos";
 import { SessionTimeout } from "@/components/session-timeout";
 import { ConsentimientoGate } from "@/components/consentimiento-gate";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { DeviceGate } from "@/components/device-gate";
 import cedimLogo from "@/assets/cedim-logo.png";
 import {
   LayoutDashboard,
@@ -365,7 +366,9 @@ function AuthenticatedLayout() {
         </div>
 
         <main className="app-surface flex-1 overflow-auto p-4 sm:p-6">
-          <Outlet />
+          <DeviceGate>
+            <Outlet />
+          </DeviceGate>
         </main>
       </div>
       <SessionTimeout />

@@ -11,6 +11,7 @@ import { AlertasAvisosAdmin } from "@/components/coordinacion/alertas-avisos-adm
 import { ChecklistsPanel } from "@/components/coordinacion/checklists-panel";
 import { PlantillasInventarioPanel } from "@/components/coordinacion/plantillas-inventario-panel";
 import { AuditoriaPanel } from "@/components/coordinacion/auditoria-panel";
+import { DispositivosPanel } from "@/components/coordinacion/dispositivos-panel";
 
 import { useAuth } from "@/lib/auth";
 
@@ -40,8 +41,9 @@ function ControlMandoPage() {
       />
 
       <Tabs defaultValue="usuarios" className="w-full">
-        <TabsList className="mb-4 grid h-auto w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-8">
+        <TabsList className="mb-4 grid h-auto w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-9">
           <TabsTrigger className="whitespace-normal" value="usuarios">Usuarios</TabsTrigger>
+          <TabsTrigger className="whitespace-normal" value="dispositivos">Dispositivos</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="historicos">Históricos</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="alertas">Alertas y avisos</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="checklists">Listas de chequeo</TabsTrigger>
@@ -56,6 +58,9 @@ function ControlMandoPage() {
             <UsuariosPanel />
             <ControlMandoPanel />
           </div>
+        </TabsContent>
+        <TabsContent value="dispositivos">
+          <DispositivosPanel />
         </TabsContent>
         <TabsContent value="historicos">
           <div className="space-y-4">
