@@ -542,6 +542,12 @@ type Construido = {
   datosPaciente: CampoPDF[];
   referencia: string;
   bloque: BloqueCaso;
+  /** ID del caso en la tabla origen — usado para auditoría y export puntual. */
+  casoId: string;
+  /** Tabla origen: casos_entrantes | remisiones | domiciliarios | referencia_interna. */
+  tabla: "casos_entrantes" | "remisiones" | "domiciliarios" | "referencia_interna";
+  /** Vista de historial a la que pertenece — usado para reutilizar exportador. */
+  vista: "entrantes" | "salientes" | "phd" | "interna";
 };
 
 type ResultadosBitacora = {
