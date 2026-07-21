@@ -689,24 +689,37 @@ function HistorialPage() {
   const [casoExpandido, setCasoExpandido] = useState<string | null>(null);
   const [limite, setLimite] = useState(20);
 
+  // Rango del período/fecha específica y documento normalizado, usados como
+  // filtros server-side para no depender del cap de 1000/5000 registros.
+  const { start: rangoStart, end: rangoEnd } = useMemo(
+    () => periodoRange(periodo, fechaEspecifica),
+    [periodo, fechaEspecifica],
+  );
+  const docTrimEarly = docBusca.trim();
+  const docServer = docBuscableServer(docTrimEarly) ? docTrimEarly : "";
+
   const { data: casos, isLoading } = useQuery({
-    queryKey: ["historial-casos"],
+    queryKey: ["historial-casos", rangoStart ?? null, rangoEnd ?? null, docServer || null],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("casos_entrantes")
         .select(
           "id, codigo, tipo, cod_ref, documento, nombres, apellidos, ips, unidad, especialidad, estado, fecha, fecha_vence, detalle, eapb, regimen, texto_ia, created_at",
         )
         .order("created_at", { ascending: false })
-        .limit(1000);
+        .limit(docServer ? 20000 : 3000);
+      if (rangoStart) q = q.gte("created_at", rangoStart);
+      if (rangoEnd) q = q.lt("created_at", rangoEnd);
+      if (docServer) q = q.eq("documento", docServer);
+      const { data, error } = await q;
       if (error) throw error;
       return data as Caso[];
     },
   });
 
-  const { data: historicos, isLoading: loadingHist } = useQuery({
-    queryKey: ["historicos-casos-importados"],
-    queryFn: fetchHistoricosCasos,
+  const { data: historicos, isLoading: loadingHist } = useQuery<HistoricoCaso[]>({
+    queryKey: ["historicos-casos-importados", rangoStart ?? null, rangoEnd ?? null, docServer || null],
+    queryFn: () => fetchHistoricosCasos({ start: rangoStart, end: rangoEnd, documento: docServer || undefined }),
   });
 
   const historicosEntrantes = useMemo(
