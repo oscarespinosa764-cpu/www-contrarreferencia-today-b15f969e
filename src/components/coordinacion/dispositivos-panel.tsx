@@ -24,6 +24,7 @@ import {
 import {
   getPublicKeyJwk,
   signChallenge,
+  getLocalDevicePublicId,
   setLocalDevicePublicId,
   clearLocalDevice,
 } from "@/lib/devices-client";
