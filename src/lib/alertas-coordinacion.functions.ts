@@ -81,7 +81,7 @@ export const crearAlertaCoordinacion = createServerFn({ method: "POST" })
     try {
       const { data: reglaDb } = await supabaseAdmin
         .from("reglas_coordinacion")
-        .select("notificar_externo, canales, requiere_crue, nombre, modulo")
+        .select("notificar_externo, canales, requiere_crue, nombre, modulo, subventana, prioridad")
         .eq("codigo", data.codigo)
         .eq("archivado", false)
         .maybeSingle();
@@ -93,6 +93,8 @@ export const crearAlertaCoordinacion = createServerFn({ method: "POST" })
           requiereCrue: !!reglaDb.requiere_crue,
           referenceId: idempotencyKey,
           module: data.modulo ?? reglaDb.modulo ?? regla?.modulo ?? null,
+          prioridad: data.prioridad ?? reglaDb.prioridad ?? regla?.prioridad ?? null,
+          subventana: reglaDb.subventana ?? regla?.subventana ?? null,
           userId,
           vars: {
             tipo_alerta: reglaDb.nombre ?? regla?.nombre ?? data.codigo,
