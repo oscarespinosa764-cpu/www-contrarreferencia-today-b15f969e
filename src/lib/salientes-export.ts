@@ -173,7 +173,16 @@ export async function descargarReporteGeneralPDF(params: {
   const TITULO = pickText(cfg, "encabezado_titulo", TITULO_DEFAULT);
   const SUBTITULO = pickText(cfg, "encabezado_subtitulo", "");
   const PIE = pickText(cfg, "pie_leyenda", PIE_DEFAULT);
-  const INCLUYE_PHD = pickBool(cfg, "incluye_seccion_phd", true);
+  // La sección PHD fue retirada del Reporte General por definición del alcance.
+  // La bandera de plantilla se ignora intencionalmente y se mantiene solo para
+  // compatibilidad con configuraciones existentes en `plantillas_inventario`.
+  void pickBool;
+
+  // Filtro canónico único: el resumen y la tabla parten de la misma lista de
+  // remisiones activas, garantizando que los conteos coincidan con las filas.
+  const remisionesActivas = (params.remisiones ?? []).filter((r) =>
+    esRemisionActiva(r as unknown as { estado?: string | null; archivado?: boolean | null }),
+  );
 
   const { jsPDF } = await import("jspdf");
   const autoTable = (await import("jspdf-autotable")).default;
