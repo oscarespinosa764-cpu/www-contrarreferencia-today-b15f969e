@@ -139,9 +139,13 @@ export function DeviceGate({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  // Modo EMERGENCY_RECOVERY: solo el administrador entra sin firma; el resto queda bloqueado
+  // El administrador real puede entrar desde cualquier navegador; el control aplica al rol operativo.
+  if (isAdmin && (mode === "ENFORCED" || mode === "EMERGENCY_RECOVERY")) {
+    return <>{children}</>;
+  }
+
+  // Modo EMERGENCY_RECOVERY: solo el administrador entra; el resto queda bloqueado
   if (mode === "EMERGENCY_RECOVERY") {
-    if (isAdmin) return <>{children}</>;
     return (
       <BlockCard
         title="Acceso en recuperación"

@@ -440,12 +440,16 @@ async function adminChangeDeviceState(
     from: (t: string) => {
       select: (c: string) => {
         eq: (k: string, v: unknown) => {
-          maybeSingle: () => Promise<{ data: { id: string; user_id: string; estado: string } | null }>;
+          eq: (k: string, v: unknown) => {
+            maybeSingle: () => Promise<{ data: Record<string, unknown> | null }>;
+          };
+          maybeSingle: () => Promise<{ data: Record<string, unknown> | null }>;
         };
       };
       update: (r: Record<string, unknown>) => {
         eq: (k: string, v: unknown) => Promise<{ error: unknown }>;
       };
+      upsert: (r: Record<string, unknown>, o?: Record<string, unknown>) => Promise<{ error: unknown }>;
     };
   };
   const { data: dev } = await admin
@@ -454,9 +458,12 @@ async function adminChangeDeviceState(
     .eq("id", deviceId)
     .maybeSingle();
   if (!dev) throw new Error("Dispositivo inexistente.");
-  if (dev.user_id === actorId && nuevo === "AUTORIZADO") {
-    throw new Error("No puede autoaprobar su propio dispositivo.");
-  }
+  const { data: pendingRequest } = await admin
+    .from("device_access_requests")
+    .select("session_id")
+    .eq("device_id", deviceId)
+    .eq("estado", "PENDIENTE")
+    .maybeSingle();
 
   const now = new Date().toISOString();
   const patch: Record<string, unknown> = { estado: nuevo, motivo: motivo ?? null };
@@ -488,6 +495,20 @@ async function adminChangeDeviceState(
         revisado_por: actorId,
       })
       .eq("device_id", deviceId);
+  }
+  if (nuevo === "AUTORIZADO" && typeof pendingRequest?.session_id === "string" && pendingRequest.session_id) {
+    await admin
+      .from("authorized_device_sessions")
+      .upsert(
+        {
+          user_id: dev.user_id,
+          device_id: deviceId,
+          auth_session_id: pendingRequest.session_id,
+          estado: "ACTIVA",
+          ultima_validacion_at: now,
+        },
+        { onConflict: "auth_session_id" },
+      );
   }
   if (nuevo === "REVOCADO" || nuevo === "BLOQUEADO") {
     await admin
