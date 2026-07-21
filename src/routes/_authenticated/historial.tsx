@@ -2615,6 +2615,11 @@ function PacienteResultado({
   onToggleCaso,
   onBitacoraCaso,
   onBitacoraUnificada,
+  onInfoCaso,
+  onCopiarCodigo,
+  onExportarExcelCaso,
+  onVerAuditoriaCaso,
+  puedeAuditar,
 }: {
   vista: Vista;
   nombre: string;
