@@ -1643,11 +1643,16 @@ export type Database = {
       notification_channels: {
         Row: {
           allowed_alert_types: Json
+          allowed_modules: Json
+          allowed_priorities: Json
           bot_token: string | null
           channel_type: string
+          chat_title: string | null
+          chat_type: string | null
           config_status: string
           created_at: string
           created_by: string | null
+          description: string | null
           destination_id: string | null
           destination_label: string | null
           display_name: string | null
@@ -1657,19 +1662,27 @@ export type Database = {
           last_error_message: string | null
           last_success_at: string | null
           last_test_at: string | null
+          link_url: string | null
           message_template: string | null
+          schedule: Json
           settings: Json
+          silent: boolean
           token_configured: boolean
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           allowed_alert_types?: Json
+          allowed_modules?: Json
+          allowed_priorities?: Json
           bot_token?: string | null
           channel_type: string
+          chat_title?: string | null
+          chat_type?: string | null
           config_status?: string
           created_at?: string
           created_by?: string | null
+          description?: string | null
           destination_id?: string | null
           destination_label?: string | null
           display_name?: string | null
@@ -1679,19 +1692,27 @@ export type Database = {
           last_error_message?: string | null
           last_success_at?: string | null
           last_test_at?: string | null
+          link_url?: string | null
           message_template?: string | null
+          schedule?: Json
           settings?: Json
+          silent?: boolean
           token_configured?: boolean
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           allowed_alert_types?: Json
+          allowed_modules?: Json
+          allowed_priorities?: Json
           bot_token?: string | null
           channel_type?: string
+          chat_title?: string | null
+          chat_type?: string | null
           config_status?: string
           created_at?: string
           created_by?: string | null
+          description?: string | null
           destination_id?: string | null
           destination_label?: string | null
           display_name?: string | null
@@ -1701,8 +1722,11 @@ export type Database = {
           last_error_message?: string | null
           last_success_at?: string | null
           last_test_at?: string | null
+          link_url?: string | null
           message_template?: string | null
+          schedule?: Json
           settings?: Json
+          silent?: boolean
           token_configured?: boolean
           updated_at?: string
           updated_by?: string | null
@@ -1713,13 +1737,16 @@ export type Database = {
         Row: {
           alert_type: string | null
           attempts: number
+          channel_id: string | null
           channel_type: string
           created_at: string
           created_by: string | null
           error_message: string | null
           id: string
+          idempotency_key: string | null
           message_preview: string | null
           module: string | null
+          next_retry_at: string | null
           recipient: string | null
           reference_id: string | null
           sent_at: string | null
@@ -1728,13 +1755,16 @@ export type Database = {
         Insert: {
           alert_type?: string | null
           attempts?: number
+          channel_id?: string | null
           channel_type: string
           created_at?: string
           created_by?: string | null
           error_message?: string | null
           id?: string
+          idempotency_key?: string | null
           message_preview?: string | null
           module?: string | null
+          next_retry_at?: string | null
           recipient?: string | null
           reference_id?: string | null
           sent_at?: string | null
@@ -1743,19 +1773,30 @@ export type Database = {
         Update: {
           alert_type?: string | null
           attempts?: number
+          channel_id?: string | null
           channel_type?: string
           created_at?: string
           created_by?: string | null
           error_message?: string | null
           id?: string
+          idempotency_key?: string | null
           message_preview?: string | null
           module?: string | null
+          next_retry_at?: string | null
           recipient?: string | null
           reference_id?: string | null
           sent_at?: string | null
           status?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notification_logs_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "notification_channels"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pendientes: {
         Row: {
