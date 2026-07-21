@@ -204,7 +204,40 @@ export function DispositivosPanel() {
         </div>
       </Panel>
 
+      {modeQ.data?.mode === "BOOTSTRAP" ? (
+        <Panel title="Autorizar este navegador como administrador">
+          <p className="mb-3 text-sm text-muted-foreground">
+            Estás en modo <span className="font-mono font-bold">BOOTSTRAP</span>. Registra este
+            navegador como dispositivo administrador antes de activar <span className="font-mono">ENFORCED</span>.
+            Cada navegador debe registrarse por separado (llaves criptográficas locales, no exportables).
+          </p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="sm:col-span-2">
+              <Label htmlFor="boot-nombre">Nombre para este dispositivo</Label>
+              <Input
+                id="boot-nombre"
+                className="mt-1"
+                value={nombreBoot}
+                onChange={(e) => setNombreBoot(e.target.value)}
+                placeholder="Ej. Estación coordinación · Chrome"
+              />
+            </div>
+            <div className="flex items-end">
+              <Button
+                onClick={() => bootstrapMut.mutate()}
+                disabled={bootstrapMut.isPending}
+                className="w-full"
+              >
+                {bootstrapMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                Autorizar este dispositivo
+              </Button>
+            </div>
+          </div>
+        </Panel>
+      ) : null}
+
       <Panel title={`Solicitudes pendientes (${requests.length})`}>
+
         {requests.length === 0 ? (
           <p className="text-sm text-muted-foreground">No hay solicitudes pendientes.</p>
         ) : (
