@@ -4,6 +4,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ControlMandoPanel } from "@/components/coordinacion/control-mando-panel";
 import { HistoricosPanel } from "@/components/coordinacion/historicos-panel";
 import { AlmacenamientoPanel } from "@/components/coordinacion/almacenamiento-panel";
+import { ResumenSistemaPanel } from "@/components/coordinacion/resumen-sistema-panel";
+import { ActividadDatosPanel } from "@/components/coordinacion/actividad-datos-panel";
 import { UsuariosPanel } from "@/components/coordinacion/usuarios-panel";
 import { DictadoPanel } from "@/components/coordinacion/dictado-panel";
 import { NotificacionesExternasPanel } from "@/components/coordinacion/notificaciones-externas-panel";
@@ -44,7 +46,7 @@ function ControlMandoPage() {
         <TabsList className="mb-4 grid h-auto w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-9">
           <TabsTrigger className="whitespace-normal" value="usuarios">Usuarios</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="dispositivos">Dispositivos</TabsTrigger>
-          <TabsTrigger className="whitespace-normal" value="historicos">Históricos</TabsTrigger>
+          <TabsTrigger className="whitespace-normal" value="historicos">Datos, importaciones y respaldo</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="alertas">Alertas y avisos</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="checklists">Listas de chequeo</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="plantillas">Plantillas del sistema</TabsTrigger>
@@ -63,7 +65,18 @@ function ControlMandoPage() {
           <DispositivosPanel />
         </TabsContent>
         <TabsContent value="historicos">
+          <div className="mb-4 rounded-xl border bg-card p-5">
+            <h2 className="text-lg font-bold text-foreground">Datos, importaciones y respaldo</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Administre importaciones, exportaciones, copias de seguridad, almacenamiento y
+              depuración controlada de información. Los detalles de cada módulo se consultan
+              en su sección correspondiente (Historial, Auditoría, Plantillas, Listas,
+              Dispositivos, Catálogos, Reglas).
+            </p>
+          </div>
           <div className="space-y-4">
+            <ResumenSistemaPanel />
+            <ActividadDatosPanel />
             <AlmacenamientoPanel />
             <HistoricosPanel />
           </div>
