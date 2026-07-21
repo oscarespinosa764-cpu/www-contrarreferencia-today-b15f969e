@@ -293,21 +293,19 @@ function RemisionesPage() {
         internas: stats.internas,
         pendientes: stats.generales,
         usuario: miNombreExport(),
-        domiciliarios: (domiciliarios ?? []) as unknown as Record<string, unknown>[],
         contadores: {
           acepPendiente: stats.acepPendiente,
           acepSinAmb: stats.acepPendiente,
           acepConAmb: stats.acepCoordinada,
           desistimientos: stats.desistIps + stats.desistGeneral,
-          altaPrioridad: count((r) => /ALTA|VITAL|URGENTE/i.test(r.prioridad || "")),
-          sinSeguimiento: count((r) => {
-            const upd = (r as unknown as Record<string, unknown>).evolucion_actualizada_at as string | undefined;
-            return !upd || Date.now() - new Date(upd).getTime() > 24 * 3600 * 1000;
-          }),
         },
       });
 
-      auditarExport("exportar_reporte_general", { registros: remisiones?.length ?? 0 });
+      auditarExport("exportar_reporte_remisiones_activas", {
+        tipo: "REPORTE_GENERAL_REMISIONES_ACTIVAS",
+        registros_totales: remisiones?.length ?? 0,
+        filtros: { estados: "activos", excluye: ["PHD", "PAD", "O2", "ESPECIALES", "terminales"] },
+      });
       toast.success("Reporte general generado");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo generar el reporte. Intente nuevamente.");
