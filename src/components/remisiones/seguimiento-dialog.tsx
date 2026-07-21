@@ -1079,11 +1079,15 @@ export function SeguimientoDialog({
             `SE CONFIRMA LLEGADA DE AMBULANCIA.\nFECHA/HORA LLEGADA: ${riLlegFecha} ${riLlegHora}`,
             detalle,
           );
-        case TI.TEP_ACTIVACION:
+        case TI.TEP_ACTIVACION: {
+          const fechaTep = riTepFecha
+            ? new Date(riTepFecha).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })
+            : "—";
           return appendNota(
-            `SE ACTIVA PROVEEDOR CONTRATADO DE TEP.\nPROVEEDOR: ${riTepProveedor || "—"}\nPACIENTE: ${paciente}\nDOCUMENTO: ${documento ?? "—"}\nSERVICIO/UBICACIÓN: ${casoInterna?.servicio ?? "—"}\nTIPO SOLICITUD: ${casoInterna?.tipo_solicitud ?? "—"}\nTIPO AMBULANCIA: ${casoInterna?.tipo_ambulancia ?? "—"}\nEAPB/ERP: ${casoInterna?.eapb ?? "—"}`,
+            `SE ACTIVA PROVEEDOR CONTRATADO DE TEP.\nFECHA/HORA ACTIVACIÓN: ${fechaTep}\nPROVEEDOR: ${riTepProveedor || "—"}\nPACIENTE: ${paciente}\nDOCUMENTO: ${documento ?? "—"}\nSERVICIO/UBICACIÓN: ${casoInterna?.servicio ?? "—"}\nTIPO SOLICITUD: ${casoInterna?.tipo_solicitud ?? "—"}\nTIPO AMBULANCIA: ${casoInterna?.tipo_ambulancia ?? "—"}\nEAPB/ERP: ${casoInterna?.eapb ?? "—"}`,
             detalle,
           );
+        }
         case TI.AMB_COORDINADA_ESP:
           return appendNota(
             `AMBULANCIA COORDINADA CON PROVEEDOR DE TEP.`,
@@ -1091,7 +1095,7 @@ export function SeguimientoDialog({
           );
         case T.CAMBIO_UNIDAD:
           return appendNota(
-            `CAMBIO DE UNIDAD.\nNUEVA UNIDAD: ${nuevaUnidad || "—"}\nNUEVA CAMA: ${nuevaCama || "—"}`,
+            `CAMBIO DE UNIDAD.\nUNIDAD ANTERIOR: ${unidadActual || "—"}\nCAMA ANTERIOR: ${camaActual || "—"}\nNUEVA UNIDAD: ${nuevaUnidad || "—"}\nNUEVA CAMA: ${nuevaCama || "—"}\nFECHA/HORA: ${new Date().toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })}`,
             detalle,
           );
         default:
