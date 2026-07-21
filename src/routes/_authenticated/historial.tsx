@@ -2684,6 +2684,12 @@ function PacienteResultado({
             expanded={casoExpandido === row.key}
             onVerSecuencia={() => onToggleCaso(row.key)}
             onBitacora={() => onBitacoraCaso(row.construido)}
+            onInfo={() => onInfoCaso(row.construido)}
+            onCopiarCodigo={() => onCopiarCodigo(row.construido)}
+            onExportarExcel={() => onExportarExcelCaso(row.construido)}
+            onVerAuditoria={() => onVerAuditoriaCaso(row.construido)}
+            puedeAuditar={puedeAuditar}
+            codigo={row.construido.codigo}
             sequenceItems={[row.construido]}
             documento={documento}
           >
