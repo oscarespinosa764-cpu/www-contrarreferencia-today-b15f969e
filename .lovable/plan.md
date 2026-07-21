@@ -1,100 +1,82 @@
+## Objetivo
 
-# Dashboard Operativo Salientes — Agrupación por etapas + Entrega documental (QR/Portada/Acta/Índigo)
+Implementar control de acceso por navegador autorizado usando solo la infraestructura actual (Lovable Cloud, Auth, RLS, server functions, Web Crypto + IndexedDB). Dejar el sistema en modo **BOOTSTRAP**, autorizar el navegador del administrador principal, verificar todo, y **detenerse antes de activar ENFORCED** (activación manual desde Control de Mando).
 
-Alcance limitado: NO tocar máquina de estados, RLS, indicadores, historial ni otros módulos. Reutilizar catálogos, checklists, plantillas, firma QR y auditoría existentes.
+## Alcance
 
-## Parte A — Organización visual por etapas
+Aplica a todas las rutas bajo `/_authenticated/*`. Se excluyen: `/login`, `/activar-cuenta`, `/firma-entrega`, `/privacidad`, y endpoints públicos QR/webhooks bajo `/api/public/*` y `/lovable/*`.
 
-Se agregan encabezados de grupo (sticky, colapsables, con contador) sobre las listas ya existentes en `remisiones.tsx`. La agrupación es **derivada** del estado + trazabilidad, no cambia datos.
+NO se modifican módulos clínicos, plantillas, catálogos, firma QR, cuadro de turno, ni Auth existente.
 
-Reglas de clasificación (server-safe, calculadas en cliente sobre lo ya cargado):
+## Arquitectura
 
-**Remisiones** (5 grupos)
-1. `PENDIENTE DE ACEPTACIÓN` — estado ∈ {PENDIENTE_ACEPTACION, EN_GESTION, PENDIENTE_RESPUESTA}
-2. `ACEPTADO — PENDIENTE COORDINACIÓN DE AMBULANCIA` — aceptado y `ultimaAsignacionAmbulanciaVigente(caso) == null`
-3. `ACEPTADO — AMBULANCIA COORDINADA` — aceptado y asignación vigente (no cancelada/reemplazada) y sin egreso
-4. `EGRESADO — PENDIENTE CONFIRMACIÓN DE LLEGADA A IPS RECEPTORA` — con evento EGRESO y sin LLEGADA
-5. `FINALIZADOS` (colapsado por defecto) — LLEGADA_CONFIRMADA o cierre.
+### Credencial del navegador (Web Crypto + IndexedDB)
+- Par ECDSA P-256 generado en el navegador, `privateKey` **no exportable** guardada en IndexedDB.
+- Clave pública (JWK) enviada al servidor y almacenada en `authorized_devices.public_key`.
+- Login: servidor emite challenge → navegador firma → server function verifica firma con la clave pública y vincula `session_id` a `authorized_device_sessions`.
 
-**PHD/PAD/O2/Especiales** (5 grupos)
-1. Pendiente de aceptación
-2. Aceptado — pendiente egreso (no requiere ambulancia)
-3. Aceptado — pendiente coordinación de ambulancia
-4. Ambulancia coordinada — pendiente egreso
-5. Cerrados
+### Base de datos (nuevas tablas, todas con RLS + GRANTs)
+- `authorized_devices` — un dispositivo por (user_id, device_public_id), estados PENDIENTE/AUTORIZADO/RECHAZADO/REVOCADO/BLOQUEADO/EXPIRADO.
+- `device_access_requests` — solicitudes de aprobación con idempotencia (índice único parcial sobre (user_id, device_id) WHERE estado='PENDIENTE').
+- `authorized_device_sessions` — vínculo sesión Auth ↔ dispositivo, estados ACTIVA/REVOCADA/EXPIRADA/CERRADA.
+- `device_challenges` — retos criptográficos de un solo uso, TTL corto.
+- `device_recovery_codes` — códigos de recuperación (solo hash, un solo uso, vigencia corta).
+- `system_settings` (o reutilizar si existe) — clave `device_access_mode` con valor DISABLED/BOOTSTRAP/ENFORCED/EMERGENCY_RECOVERY, leído solo en servidor.
 
-**Referencias Internas** (4 grupos)
-1. Pendiente de coordinación
-2. Coordinado — pendiente realización
-3. Pendiente de finalización
-4. Finalizados
+### Funciones SQL (SECURITY DEFINER, search_path='')
+- `public.is_current_session_device_authorized()` — devuelve boolean, verifica usuario activo, sesión, dispositivo AUTORIZADO no revocado/expirado, vínculo con `auth.jwt() ->> 'session_id'`, modo global. **En modo BOOTSTRAP** devuelve `true` para el admin bootstrap identificado, sin exigir dispositivo. **En modo DISABLED** devuelve siempre `true`. En **ENFORCED** exige todo.
+- `public.get_device_access_mode()` — lectura del modo, stable.
+- Función helper para consumir challenge + registrar sesión (usada solo por server functions autorizadas).
 
-Detalles:
-- Nuevo helper `src/lib/salientes-grupos.ts`: funciones puras `clasificarRemision(caso, seguimientos)`, `clasificarPHD`, `clasificarRI` + tipo `GrupoId`. Reutiliza `neg-crue.ts`/`remisiones-utils.ts`; lee empresa/ambulancia vigente desde `seguimientos` estructurados (tipo `AMBULANCIA_COORDINADA` no cancelada) y no de texto libre.
-- Nuevo componente `src/components/remisiones/grupo-etapa.tsx`: encabezado con icono, título, descripción, contador y toggle expand/collapse. Sin dependencia de color; sticky en desktop.
-- Modificar `src/routes/_authenticated/remisiones.tsx` para envolver cada pestaña con los grupos. Aplica filtros primero, luego agrupa; contadores post-filtro.
-- Casos inconsistentes → sección `REVISAR CLASIFICACIÓN` visible solo si rol admin/coordinador.
+### RLS
+- **NO** se reemplazan políticas existentes. Se **añade** `AND public.is_current_session_device_authorized()` a las políticas de tablas sensibles ya listadas.
+- Fase 1 (esta entrega): agregar la verificación a tablas más críticas: `profiles`, `user_roles`, `casos_entrantes`, `remisiones`, `referencia_interna`, `domiciliarios`, `seguimientos`, `historicos_casos`, `plantillas`, `plantillas_versiones`, `catalogos`, `checklists`, `audit_logs`, `alertas_coordinacion`, `avisos`, `shift_requests`, `entrega_firmas` (mantener excepción a firma QR pública server-side vía service role).
+- Como la función devuelve `true` en modo BOOTSTRAP/DISABLED, no rompe el sistema actual.
 
-## Parte B — Entrega documental / Firma QR / Portada / Acta / Índigo
+### Server functions (nuevas, en `src/lib/devices.functions.ts`)
+- `requestDeviceChallenge` — emite challenge (protegido por `requireSupabaseAuth`).
+- `registerDeviceAndRequest` — recibe public_key + firma del challenge, crea `authorized_devices` PENDIENTE + `device_access_requests`.
+- `verifyDeviceAndLinkSession` — verifica firma, vincula `session_id` actual en `authorized_device_sessions`.
+- `getMyDeviceStatus` — estado limitado de solicitud/dispositivo del propio usuario (para pantalla pendiente).
+- `bootstrapAuthorizeCurrentDevice` — solo en modo BOOTSTRAP y solo para admin bootstrap: registra + autoriza + vincula el dispositivo actual.
+- Admin: `listDevices`, `listDeviceRequests`, `adminApproveDevice`, `adminRejectDevice`, `adminRevokeDevice`, `adminBlockDevice`, `adminUnblockDevice`, `adminRenameDevice`, `adminSetExpiration`, `adminCloseSession`, `adminCloseAllDeviceSessions`, `adminSetGlobalMode` (ENFORCED requiere reautenticación + frase). Todas exigen admin autorizado, no autoaprobar, escriben auditoría vía `registrarAuditoriaServer`.
+- `generateRecoveryCode`, `consumeRecoveryCode` (un solo uso).
 
-### B1. Empresa de ambulancia (bug de "no hay empresa")
-- Añadir en `src/lib/remisiones-utils.ts` (o helper nuevo) `getEmpresaAmbulanciaVigente(caso, seguimientos)` con prioridad: (1) asignación activa, (2) último seguimiento `AMBULANCIA_COORDINADA` no cancelado, (3) TEP vinculado, (4) snapshot. Excluye cancelados/rechazados.
-- `entrega-documental-dialog.tsx` consume ese helper (no busca en texto libre). Si no hay → mensaje + botón "IR AL SEGUIMIENTO DE AMBULANCIA" y QR deshabilitado.
+### Frontend
+- `src/lib/device-credential.ts` — helper Web Crypto/IndexedDB (generar par, firmar challenge, leer public JWK).
+- `src/lib/device-guard.tsx` — `DeviceGate` que envuelve el layout `_authenticated`. Estados: `VALIDANDO` → (autorizado → children) / (pendiente → `PantallaPendiente`) / (rechazado/revocado/bloqueado/expirado → pantalla informativa) / (error).
+- Se monta en `src/routes/_authenticated.tsx` **envolviendo el `Outlet`**, tras la resolución de Auth. No se toca la lógica de la ruta ni `AuthProvider`.
+- Panel Control de Mando: nueva pestaña **"Dispositivos"** en `src/routes/_authenticated/control-mando.tsx`, componente `src/components/coordinacion/dispositivos-panel.tsx` con tarjetas KPI, tablas por estado, acciones administrativas, botón "Autorizar este dispositivo administrador" (solo BOOTSTRAP), botón "Activar restricción de dispositivos" (deshabilitado hasta cumplir requisitos, con confirmación de frase).
+- Perfil: sección "Mis dispositivos" (vista simple del usuario, cerrar sesiones, solicitar revocación) — añadido a `usuarios-panel` o nueva subventana.
 
-### B2. Modal inicial (mínimo)
-Campos: Empresa (auto, RO) · IPS (auto, RO) · Nombre acepta* · Cargo acepta* · Fecha/hora (auto RO) · Tipo origen* · Checklist (Entregado/No entregado/No aplica) · Botón "Generar QR de firma".
-- Eliminar del modal inicial: campos de tripulante/cargo, botón Portada, botón Acta, plantilla Índigo, botón X por ítem, "Agregar documento" en lista maestra, y el bloque duplicado inferior "ENTREGA SEGURA (EPS)".
-- Mantener bloque separado `DOCUMENTOS ADICIONALES DE ESTA ENTREGA` (no toca lista maestra).
-- Uppercase forzado en Nombre/Cargo acepta.
+### Modo BOOTSTRAP
+- Migración deja `device_access_mode='BOOTSTRAP'`.
+- Admin bootstrap: identificado por rol admin + email `coordreferencia@cedimips.com` (patrón existente en `handle_new_user`). Configurable en `system_settings.bootstrap_admin_user_id` una vez autorizado.
+- **NO se activa ENFORCED en la misma migración.** Botón manual + confirmación + reautenticación.
 
-### B3. Checklist (una sola representación)
-- El `ChecklistRunner` es la única lista visible. Radio-tri por ítem: ENTREGADO / NO ENTREGADO / NO APLICA (extender `checklist-runner.tsx`, respetando su versión y guardado). No permite eliminar/editar/agregar ítems maestros.
+## Pasos de entrega
 
-### B4. Página pública QR (`/firma-entrega`)
-Campos rediseñados (obligatorios en MAYÚSCULAS):
-- Nombre y apellido del RESPONSABLE DEL TRASLADO*
-- Cargo del responsable del traslado*
-- ¿La persona responsable es la misma que firma? SÍ / NO (radio)
-  - Si NO → Nombre y apellido de quien firma* + Cargo de quien firma*
-- Empresa de ambulancia (prellenada RO) + acción "Reportar empresa diferente" (guarda `empresa_declarada` + motivo, no sobrescribe)
-- Tipo de ambulancia* (select desde catálogo `TIPO_AMBULANCIA`)
-- Teléfono de contacto* (obligatorio, validar formato)
-- Firma* + declaración
-- **Eliminar** campo "Documento o identificación laboral"
-- En "Documentos entregados" solo mostrar los marcados ENTREGADO.
+1. Migración: tablas + índices + funciones SQL + `device_access_mode='BOOTSTRAP'` + GRANTs + RLS de las tablas nuevas.
+2. Migración fase 2 (misma migración, seguro porque la función devuelve `true` en BOOTSTRAP): añadir `AND is_current_session_device_authorized()` a políticas de tablas sensibles listadas.
+3. Server functions en `src/lib/devices.functions.ts` + `src/lib/devices.server.ts` (verificación de firma ECDSA con WebCrypto en Worker).
+4. Cliente: `device-credential.ts`, `device-guard.tsx`, integración en `_authenticated.tsx`.
+5. UI Control de Mando: `dispositivos-panel.tsx` + pestaña, botón autorizar bootstrap, botón activar ENFORCED (deshabilitado por defecto, verificaciones previas).
+6. UI perfil: "Mis dispositivos".
+7. Auditoría: agregar acciones DEVICE_* al allowlist en `src/lib/auditoria-allowlist.ts`.
 
-### B5. Persistencia firma
-Extender `entrega_firmas` (nueva migración additive, no destructiva) con columnas:
-- `responsable_nombre`, `responsable_cargo`
-- `firmante_es_responsable boolean`
-- `firmante_telefono` (ya existía; hacer obligatorio en payload)
-- `tipo_ambulancia`
-- `empresa_declarada`, `empresa_declarada_motivo` (opcionales)
-- Quitar uso de `firmante_documento` en nuevas firmas (columna se conserva).
+## Fuera de alcance / no se toca
 
-Ajustar `entrega-firma.functions.ts` handler `firmarEntrega`:
-- Validar nuevos campos con Zod.
-- Rate-limit ya existente; token único uso; auditoría.
+- Auth, login, activar-cuenta, firma QR, correos, dominios, GitHub, módulos clínicos, plantillas, catálogos, cuadro de turno, reportes.
+- No se activa ENFORCED. Queda como acción manual del administrador tras verificar bootstrap + reingreso + segundo dispositivo + recuperación.
 
-### B6. Post-firma
-- El modal secundario (dialog de entrega) muestra "FIRMA RECIBIDA" con resumen y aparecen botones **Portada** y **Acta** (vista previa + descarga bajo demanda, no persistidos).
-- Portada usa RESPONSABLE (no firmante); Acta incluye responsable + firmante + misma-persona sí/no + empresa + tipo + teléfono + docs (entregado/no entregado/no aplica) + versión checklist/plantilla + código.
-- Extender `entrega-firma-pdf.ts` para ambos documentos (reutilizar generador actual).
+## Notas técnicas
 
-### B7. Cierre y Plantilla Índigo
-- Al cerrar modal de entrega, volver al modal de Seguimiento con datos preservados.
-- En Seguimiento aparece la sección "Plantilla para Índigo" (usando `generarPlantillaIndigoCorta` extendida) sólo cuando la entrega esté FIRMADA; con botones Copiar y Registrar seguimiento (no auto-registrar).
+- Verificación ECDSA en el Worker: `crypto.subtle.verify` está disponible (Web Crypto en runtime Cloudflare) — sin dependencias nativas.
+- Challenge: 32 bytes aleatorios, TTL 2 min, hash SHA-256 almacenado, `used_at` marcado al consumir.
+- `session_id`: leído del claim `session_id` del JWT (`context.claims.session_id`).
+- Polling pantalla pendiente: cada 15 s vía `getMyDeviceStatus` (limitado al propio user_id, sin exponer otros datos).
+- Storage privado: los buckets existentes (`firmas`, `permiso-soportes`) ya son privados; se documenta que futuras rutas server-side privadas deben llamar `is_current_session_device_authorized()`.
 
-## Cambios de archivos
-- **Nuevo**: `src/lib/salientes-grupos.ts`, `src/components/remisiones/grupo-etapa.tsx`.
-- **Modificar**: `src/routes/_authenticated/remisiones.tsx`, `src/components/remisiones/entrega-documental-dialog.tsx`, `src/components/remisiones/seguimiento-dialog.tsx`, `src/components/remisiones/phd-ciclo-panel.tsx`, `src/components/coordinacion/checklist-runner.tsx`, `src/lib/entrega-documental.ts`, `src/lib/entrega-firma.functions.ts`, `src/routes/firma-entrega.tsx`, `src/lib/entrega-firma-pdf.ts`, `src/lib/remisiones-utils.ts`.
-- **Migración**: ADD COLUMNS a `entrega_firmas` (idempotente); sin cambios en RLS existentes (mantiene fail-closed).
+## Confirmación antes de continuar
 
-## Fuera de alcance (no tocar)
-Historial, indicadores, cuadro de turno, catálogos maestros, reglas/alertas/avisos, usuarios/auth, autenticación admin/service_role, otros módulos.
-
-## Pruebas
-Ejecutar `tsgo --noEmit` al final y validar visualmente con Playwright los 5 grupos de Remisiones y el flujo QR completo (responsable ≠ firmante).
-
----
-Este es un cambio grande (≈10 archivos + 1 migración). ¿Apruebas para implementar en una sola pasada?
+Este plan crea 5 tablas nuevas, ~15 server functions, 1 pantalla nueva y modifica RLS en ~17 tablas (añadiendo un AND, sin romper nada porque en BOOTSTRAP la función devuelve `true`). Es una entrega grande. ¿Apruebas que proceda con la implementación en un solo lote, dejando el sistema en BOOTSTRAP y con el botón de ENFORCED visible pero deshabilitado hasta cumplir las pruebas descritas?

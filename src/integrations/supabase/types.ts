@@ -152,6 +152,140 @@ export type Database = {
         }
         Relationships: []
       }
+      authorized_device_sessions: {
+        Row: {
+          auth_session_id: string
+          creado_at: string
+          device_id: string
+          estado: string
+          expira_at: string | null
+          id: string
+          motivo_revocacion: string | null
+          revocado_at: string | null
+          ultima_validacion_at: string
+          user_id: string
+        }
+        Insert: {
+          auth_session_id: string
+          creado_at?: string
+          device_id: string
+          estado?: string
+          expira_at?: string | null
+          id?: string
+          motivo_revocacion?: string | null
+          revocado_at?: string | null
+          ultima_validacion_at?: string
+          user_id: string
+        }
+        Update: {
+          auth_session_id?: string
+          creado_at?: string
+          device_id?: string
+          estado?: string
+          expira_at?: string | null
+          id?: string
+          motivo_revocacion?: string | null
+          revocado_at?: string | null
+          ultima_validacion_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "authorized_device_sessions_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "authorized_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      authorized_devices: {
+        Row: {
+          autorizado_at: string | null
+          autorizado_por: string | null
+          bloqueado_at: string | null
+          bloqueado_por: string | null
+          created_at: string
+          credential_version: number
+          descripcion: string | null
+          device_public_id: string
+          estado: string
+          expiracion_at: string | null
+          id: string
+          motivo: string | null
+          navegador: string | null
+          nombre_dispositivo: string | null
+          public_key: Json
+          rechazado_at: string | null
+          rechazado_por: string | null
+          revocado_at: string | null
+          revocado_por: string | null
+          sistema_operativo: string | null
+          solicitado_at: string
+          tipo_dispositivo: string | null
+          ultima_actividad_at: string | null
+          updated_at: string
+          user_agent_resumido: string | null
+          user_id: string
+        }
+        Insert: {
+          autorizado_at?: string | null
+          autorizado_por?: string | null
+          bloqueado_at?: string | null
+          bloqueado_por?: string | null
+          created_at?: string
+          credential_version?: number
+          descripcion?: string | null
+          device_public_id?: string
+          estado?: string
+          expiracion_at?: string | null
+          id?: string
+          motivo?: string | null
+          navegador?: string | null
+          nombre_dispositivo?: string | null
+          public_key: Json
+          rechazado_at?: string | null
+          rechazado_por?: string | null
+          revocado_at?: string | null
+          revocado_por?: string | null
+          sistema_operativo?: string | null
+          solicitado_at?: string
+          tipo_dispositivo?: string | null
+          ultima_actividad_at?: string | null
+          updated_at?: string
+          user_agent_resumido?: string | null
+          user_id: string
+        }
+        Update: {
+          autorizado_at?: string | null
+          autorizado_por?: string | null
+          bloqueado_at?: string | null
+          bloqueado_por?: string | null
+          created_at?: string
+          credential_version?: number
+          descripcion?: string | null
+          device_public_id?: string
+          estado?: string
+          expiracion_at?: string | null
+          id?: string
+          motivo?: string | null
+          navegador?: string | null
+          nombre_dispositivo?: string | null
+          public_key?: Json
+          rechazado_at?: string | null
+          rechazado_por?: string | null
+          revocado_at?: string | null
+          revocado_por?: string | null
+          sistema_operativo?: string | null
+          solicitado_at?: string
+          tipo_dispositivo?: string | null
+          ultima_actividad_at?: string | null
+          updated_at?: string
+          user_agent_resumido?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       avisos: {
         Row: {
           archivado: boolean
@@ -659,6 +793,140 @@ export type Database = {
           paciente?: string | null
           tipo?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      device_access_requests: {
+        Row: {
+          created_at: string
+          device_id: string
+          estado: string
+          expiracion_solicitud: string | null
+          id: string
+          ip_enmascarada: string | null
+          motivo: string | null
+          navegador: string | null
+          observacion_admin: string | null
+          revisado_at: string | null
+          revisado_por: string | null
+          session_id: string | null
+          sistema_operativo: string | null
+          solicitado_at: string
+          tipo_dispositivo: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          estado?: string
+          expiracion_solicitud?: string | null
+          id?: string
+          ip_enmascarada?: string | null
+          motivo?: string | null
+          navegador?: string | null
+          observacion_admin?: string | null
+          revisado_at?: string | null
+          revisado_por?: string | null
+          session_id?: string | null
+          sistema_operativo?: string | null
+          solicitado_at?: string
+          tipo_dispositivo?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          estado?: string
+          expiracion_solicitud?: string | null
+          id?: string
+          ip_enmascarada?: string | null
+          motivo?: string | null
+          navegador?: string | null
+          observacion_admin?: string | null
+          revisado_at?: string | null
+          revisado_por?: string | null
+          session_id?: string | null
+          sistema_operativo?: string | null
+          solicitado_at?: string
+          tipo_dispositivo?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_access_requests_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "authorized_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      device_challenges: {
+        Row: {
+          challenge_hash: string
+          created_at: string
+          device_id: string | null
+          expires_at: string
+          id: string
+          purpose: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          challenge_hash: string
+          created_at?: string
+          device_id?: string | null
+          expires_at: string
+          id?: string
+          purpose: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          challenge_hash?: string
+          created_at?: string
+          device_id?: string | null
+          expires_at?: string
+          id?: string
+          purpose?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      device_recovery_codes: {
+        Row: {
+          code_hash: string
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          motivo: string | null
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          code_hash: string
+          created_at?: string
+          created_by: string
+          expires_at: string
+          id?: string
+          motivo?: string | null
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          code_hash?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          motivo?: string | null
+          used_at?: string | null
+          used_by?: string | null
         }
         Relationships: []
       }
@@ -3229,6 +3497,27 @@ export type Database = {
         }
         Relationships: []
       }
+      system_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
       turnos: {
         Row: {
           activo: boolean
@@ -3413,6 +3702,7 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      get_device_access_mode: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -3421,6 +3711,7 @@ export type Database = {
         Returns: boolean
       }
       is_active_member: { Args: { _user_id: string }; Returns: boolean }
+      is_current_session_device_authorized: { Args: never; Returns: boolean }
       move_to_dlq: {
         Args: {
           dlq_name: string

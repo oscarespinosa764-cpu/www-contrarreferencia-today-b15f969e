@@ -53,8 +53,10 @@ export const AUDIT_MODULOS = new Set<string>([
   "cuadro_turno",
   "ausentismo",
   "firmas",
+  "dispositivos",
   "otros",
 ]);
+
 
 /** Tablas que pueden verse afectadas por una acción auditada. */
 export const AUDIT_TABLAS = new Set<string>([
@@ -91,9 +93,14 @@ export const AUDIT_TABLAS = new Set<string>([
   "shift_types",
   "entrega_firmas",
   "notification_logs",
+  "authorized_devices",
+  "device_access_requests",
+  "authorized_device_sessions",
+  "system_settings",
   "auth",
   "varios",
 ]);
+
 
 // Una acción legítima siempre es un identificador tipo slug (snake_case o
 // código en mayúsculas como INICIO_SESION). Esto bloquea espacios, signos de
