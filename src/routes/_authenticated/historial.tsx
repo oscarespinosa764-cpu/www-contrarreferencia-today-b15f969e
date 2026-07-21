@@ -682,7 +682,7 @@ function historicoAGenerico(h: HistoricoCaso): Generico {
 }
 
 function HistorialPage() {
-  const { canEdit, user } = useAuth();
+  const { canEdit, isAdmin, user } = useAuth();
   const usuario =
     (user?.user_metadata?.nombre as string) || user?.email || "Usuario autenticado";
   const qc = useQueryClient();
