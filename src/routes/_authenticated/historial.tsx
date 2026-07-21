@@ -1411,6 +1411,9 @@ function HistorialPage() {
         datosReferencia,
         seguimientos: segPDFpara(r.id, eapb),
       },
+      casoId: r.id,
+      tabla: "domiciliarios",
+      vista: "phd",
     };
   };
 
