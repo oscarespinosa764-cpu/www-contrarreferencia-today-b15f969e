@@ -2662,6 +2662,43 @@ export function SeguimientoDialog({
                 </div>
               )}
 
+              {/* ACTIVACIÓN DE PROVEEDOR CONTRATADO DE TEP */}
+              {esTepActivacion && (
+                <div className={sectionCls}>
+                  <p className={labelCls}>Activación de proveedor contratado de TEP</p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Fecha y hora de activación *</Label>
+                      <AppDateTimeInput
+                        value={riTepFecha}
+                        onChange={setRiTepFecha}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Proveedor contratado *</Label>
+                      <select
+                        value={riTepProveedor}
+                        onChange={(e) => setRiTepProveedor(e.target.value)}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        required
+                      >
+                        <option value="" disabled>Seleccione proveedor…</option>
+                        {empresasTepInterna.map((p) => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                      {!proveedorSem && empresasTepInterna.length > 0 && (
+                        <p className="text-[11px] text-status-amber">
+                          NO SE ENCONTRÓ EL PROVEEDOR PREDETERMINADO SEM EN EL CATÁLOGO.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+
 
 
 
