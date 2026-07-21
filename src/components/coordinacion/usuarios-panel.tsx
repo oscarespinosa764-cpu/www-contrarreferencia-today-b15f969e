@@ -248,7 +248,18 @@ export function UsuariosPanel() {
     const res = await cambiarEstadoFn({ data: { userId, activo } });
     if (!res.ok) return toast.error(res.error ?? "No se pudo actualizar el estado.");
     toast.success(activo ? "Usuario activado correctamente." : "Usuario desactivado correctamente.");
+    // Invalidar todas las query keys que dependen de la lista de usuarios activos
+    // para que los selectores operativos reflejen el cambio sin recargar.
     qc.invalidateQueries({ queryKey: ["usuarios"] });
+    qc.invalidateQueries({ queryKey: ["auxiliares-turno"] });
+    qc.invalidateQueries({ queryKey: ["funcionarios"] });
+    qc.invalidateQueries({ queryKey: ["funcionarios-activos"] });
+    qc.invalidateQueries({ queryKey: ["profiles"] });
+    qc.invalidateQueries({ queryKey: ["personal"] });
+    qc.invalidateQueries({ queryKey: ["responsables"] });
+    qc.invalidateQueries({ queryKey: ["coordinadores"] });
+    qc.invalidateQueries({ queryKey: ["cuadro-turno-personal"] });
+    qc.invalidateQueries({ queryKey: ["shift-schedule-members"] });
   };
 
   const confirmarDesactivacion = async () => {
