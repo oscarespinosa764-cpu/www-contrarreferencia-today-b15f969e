@@ -2633,6 +2633,11 @@ function PacienteResultado({
   onToggleCaso: (key: string) => void;
   onBitacoraCaso: (c: Construido) => void;
   onBitacoraUnificada: (cs: Construido[], doc: string, filtros: string) => void;
+  onInfoCaso: (c: Construido) => void;
+  onCopiarCodigo: (c: Construido) => void;
+  onExportarExcelCaso: (c: Construido) => void;
+  onVerAuditoriaCaso: (c: Construido) => void;
+  puedeAuditar: boolean;
 }) {
   const rows = useMemo(() => {
     if (vista === "entrantes")
