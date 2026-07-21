@@ -89,6 +89,38 @@ export function DispositivosPanel() {
 
   const [nuevoModo, setNuevoModo] = useState<string>("");
   const [frase, setFrase] = useState("");
+  const [nombreBoot, setNombreBoot] = useState("");
+
+  const reqCh = useServerFn(requestDeviceChallenge);
+  const bootstrap = useServerFn(bootstrapAuthorizeCurrentDevice);
+
+  const bootstrapMut = useMutation({
+    mutationFn: async () => {
+      await clearLocalDevice();
+      const publicKey = await getPublicKeyJwk();
+      const { challenge } = (await reqCh({
+        data: { purpose: "REGISTER_DEVICE" },
+      })) as { challenge: string };
+      const signature = await signChallenge(challenge);
+      const res = (await bootstrap({
+        data: {
+          publicKey,
+          challenge,
+          signature,
+          nombreDispositivo: nombreBoot.trim() || undefined,
+        },
+      })) as { devicePublicId: string };
+      await setLocalDevicePublicId(res.devicePublicId);
+      return res;
+    },
+    onSuccess: () => {
+      toast.success("Este dispositivo quedó AUTORIZADO como administrador.");
+      setNombreBoot("");
+      refresh();
+    },
+    onError: (e: unknown) =>
+      toast.error(e instanceof Error ? e.message : "No se pudo autorizar este dispositivo."),
+  });
 
   const changeMode = useMutation({
     mutationFn: async () =>
