@@ -338,7 +338,7 @@ export async function descargarReporteGeneralPDF(params: {
     doc.setTextColor(0);
   }
 
-  doc.save(`Reporte_General_Operativo_Salientes_${hoy()}.pdf`);
+  doc.save(`REPORTE_REMISIONES_ACTIVAS_${hoy()}.pdf`);
 }
 
 // ===========================================================================
