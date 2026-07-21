@@ -1494,7 +1494,10 @@ export function SeguimientoDialog({
             hora_llegada: riLlegHora.trim() || null,
           };
         case TI.TEP_ACTIVACION:
-          return { proveedor: riTepProveedor.trim() || null };
+          return {
+            proveedor: riTepProveedor.trim() || null,
+            fecha_activacion: riTepFecha.trim() || null,
+          };
         case TI.AMB_COORDINADA_ESP:
           return { proveedor: riTepProveedor.trim() || null };
         case T.CAMBIO_UNIDAD:
