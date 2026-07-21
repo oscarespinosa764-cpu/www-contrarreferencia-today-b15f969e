@@ -17,15 +17,16 @@ import type { Remision } from "@/components/remisiones/caso-remision-card";
 const INSTITUCION = "CENTRO DE IMAGENES DIAGNOSTICAS CEDIM I.P.S S.A.S";
 const NIT = "NIT: 900559103-5";
 const PIE_DEFAULT = "SISTEMA DE REFERENCIA Y CONTRARREFERENCIA";
-const TITULO_DEFAULT = "REPORTE GENERAL OPERATIVO — SALIENTES";
+const TITULO_DEFAULT = "REPORTE GENERAL OPERATIVO — REMISIONES ACTIVAS";
 const NAVY: [number, number, number] = [31, 56, 100];
 const LIGHT_BLUE: [number, number, number] = [221, 235, 247];
 
 const v = (x: unknown): string => (x === null || x === undefined ? "" : String(x).trim());
 const hoy = () => new Date().toISOString().slice(0, 10);
 
-// Contadores compartidos por el bloque de tarjetas superiores (Reporte General
-// y Entrega de Turno usan exactamente la misma fila resumen).
+// Contadores compartidos por el bloque de tarjetas superiores.
+// El Reporte General usa un subconjunto de tarjetas centrado en estados
+// activos de remisiones. Entrega de Turno usa el conjunto completo.
 function tarjetasResumen(p: {
   activas: number;
   especiales: number;
@@ -35,13 +36,39 @@ function tarjetasResumen(p: {
 }): [string, string][] {
   const c = p.contadores ?? {};
   return [
-    // Reporte General: solo 5 tarjetas resumen (institucionales, proporcionadas).
     ["REMISIONES ACTIVAS", String(p.activas)],
     ["PENDIENTES ACEPTACIÓN", String(c.acepPendiente ?? 0)],
     ["ACEPTADO SIN AMB.", String(c.acepSinAmb ?? 0)],
     ["ACEPTADO CON AMB.", String(c.acepConAmb ?? 0)],
     ["DESISTIMIENTOS", String(c.desistimientos ?? 0)],
   ];
+}
+
+// Resumen exclusivo del Reporte General — solo estados activos de remisiones.
+// No incluye desistimientos, PHD/PAD/O2 ni categorías terminales.
+function tarjetasResumenActivas(p: {
+  activas: number;
+  contadores?: Record<string, number>;
+}): [string, string][] {
+  const c = p.contadores ?? {};
+  return [
+    ["TOTAL REMISIONES ACTIVAS", String(p.activas)],
+    ["PENDIENTES DE ACEPTACIÓN", String(c.acepPendiente ?? 0)],
+    ["ACEPTADAS SIN AMBULANCIA", String(c.acepSinAmb ?? 0)],
+    ["ACEPTADAS CON AMBULANCIA", String(c.acepConAmb ?? 0)],
+    ["EGRESADAS PEND. LLEGADA", String(c.egresPendLlegada ?? 0)],
+  ];
+}
+
+// Definición canónica de REMISIÓN ACTIVA: excluye estados terminales y
+// desistimientos. Se aplica tanto al resumen como a la tabla del reporte,
+// garantizando una única fuente de verdad.
+const ESTADOS_TERMINALES = /CERRAD|CANCEL|DESIST|DISENT|FINALIZ|ARCHIV|ANUL|LLEGADA CONFIRM/i;
+export function esRemisionActiva(r: { estado?: string | null; archivado?: boolean | null }): boolean {
+  if (r.archivado) return false;
+  const e = String(r.estado ?? "").toUpperCase();
+  if (!e) return true; // sin estado explícito se considera aún activa
+  return !ESTADOS_TERMINALES.test(e);
 }
 
 const imgCache = new Map<string, string | null>();
@@ -146,7 +173,16 @@ export async function descargarReporteGeneralPDF(params: {
   const TITULO = pickText(cfg, "encabezado_titulo", TITULO_DEFAULT);
   const SUBTITULO = pickText(cfg, "encabezado_subtitulo", "");
   const PIE = pickText(cfg, "pie_leyenda", PIE_DEFAULT);
-  const INCLUYE_PHD = pickBool(cfg, "incluye_seccion_phd", true);
+  // La sección PHD fue retirada del Reporte General por definición del alcance.
+  // La bandera de plantilla se ignora intencionalmente y se mantiene solo para
+  // compatibilidad con configuraciones existentes en `plantillas_inventario`.
+  void pickBool;
+
+  // Filtro canónico único: el resumen y la tabla parten de la misma lista de
+  // remisiones activas, garantizando que los conteos coincidan con las filas.
+  const remisionesActivas = (params.remisiones ?? []).filter((r) =>
+    esRemisionActiva(r as unknown as { estado?: string | null; archivado?: boolean | null }),
+  );
 
   const { jsPDF } = await import("jspdf");
   const autoTable = (await import("jspdf-autotable")).default;
@@ -184,8 +220,36 @@ export async function descargarReporteGeneralPDF(params: {
     { align: "center" },
   );
 
-  // ── Tarjetas resumen (idénticas a Entrega de Turno) ─────────────────────
-  const cont = tarjetasResumen(params);
+  // Recalcular métricas del resumen a partir de la lista filtrada, garantizando
+  // que la suma de las categorías coincida con las filas de la tabla.
+  const norm = (s: unknown) => String(s ?? "").toUpperCase();
+  const acepPend = remisionesActivas.filter((r) => {
+    const e = norm(r.estado);
+    return /PENDIENTE/.test(e) && !/AMBULANCIA/.test(e);
+  }).length;
+  const acepSinAmb = remisionesActivas.filter((r) => {
+    const e = norm(r.estado);
+    return /AMBULANCIA/.test(e) && /PENDIENTE|SIN PROGRAM/.test(e);
+  }).length;
+  const acepConAmb = remisionesActivas.filter((r) => {
+    const e = norm(r.estado);
+    return /AMBULANCIA/.test(e) && /COORDINAD|CON PROGRAM/.test(e);
+  }).length;
+  const egresPendLlegada = remisionesActivas.filter((r) => {
+    const e = norm(r.estado);
+    return /EGRES/.test(e) && /PENDIENTE|LLEGADA/.test(e) && !/CONFIRM/.test(e);
+  }).length;
+
+  const cont = tarjetasResumenActivas({
+    activas: remisionesActivas.length,
+    contadores: {
+      ...(params.contadores ?? {}),
+      acepPendiente: acepPend,
+      acepSinAmb,
+      acepConAmb,
+      egresPendLlegada,
+    },
+  });
   autoTable(doc, {
     startY: 33,
     theme: "grid",
@@ -196,7 +260,7 @@ export async function descargarReporteGeneralPDF(params: {
     ] as never,
     margin: { left: 12, right: 12 },
   });
-  let y = finalY() + 8; // separación visual antes de la sección
+  let y = finalY() + 8;
 
   // ── Banda de sección REMISIONES ACTIVAS ─────────────────────────────────
   doc.setFillColor(NAVY[0], NAVY[1], NAVY[2]);
@@ -213,7 +277,7 @@ export async function descargarReporteGeneralPDF(params: {
     "CIE-10", "ESP. TRAT.", "ESP. RECEP.", "REMISIÓN POR", "MOTIVO", "TIPO TRÁMITE",
     "EAPB", "RÉGIMEN", "RADICACIÓN", "ESTADO", "IPS RECEPTORA", "TIPO AMB", "SOPORTES",
   ]];
-  const body = (params.remisiones ?? []).map((r) => {
+  const body = remisionesActivas.map((r) => {
     const rr = r as unknown as Record<string, unknown>;
     return [
       fmtFechaHora(r.fecha_inicio),
@@ -252,47 +316,9 @@ export async function descargarReporteGeneralPDF(params: {
     tableWidth: "auto",
   });
 
-  // ── Sección PHD / PAD / O2 / ESPECIALES ACTIVOS ─────────────────────────
-  if (INCLUYE_PHD) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    y = ((doc as any).lastAutoTable?.finalY ?? y) + 8;
-    if (y > pageH - 24) {
-      doc.addPage();
-      y = 16;
-    }
-    doc.setFillColor(NAVY[0], NAVY[1], NAVY[2]);
-    doc.rect(8, y - 4, pageW - 16, 6, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8.5);
-    doc.text("PHD / PAD / O2 / ESPECIALES ACTIVOS", pageW / 2, y, { align: "center" });
-    doc.setTextColor(0);
-    y += 5;
-
-    const dom = (params.domiciliarios ?? []).filter(
-      (d) => !(d as { archivado?: boolean }).archivado,
-    );
-    const bodyDom = dom.map((it) => [
-      fmtFechaHora((it.fecha_inicio as string) ?? (it.created_at as string)),
-      v(it.paciente ?? it.paciente_asunto),
-      v(it.documento),
-      v(it.tipo ?? it.servicio ?? it.asunto),
-      v(it.eapb ?? it.asegurador),
-      v(it.estado ?? it.prioridad),
-      v(it.observaciones ?? it.detalle),
-    ]);
-    autoTable(doc, {
-      startY: y,
-      head: [["FECHA", "PACIENTE", "DOCUMENTO", "TIPO", "EAPB", "ESTADO", "OBSERVACIONES"]] as never,
-      body: (bodyDom.length
-        ? bodyDom
-        : [[{ content: "Sin registros activos", colSpan: 7, styles: { halign: "center", textColor: [130, 130, 130], fontStyle: "italic" } }]]) as never,
-      theme: "grid",
-      styles: { fontSize: 6.5, cellPadding: 1, overflow: "linebreak", lineColor: [140, 140, 140], lineWidth: 0.15 },
-      headStyles: { fillColor: NAVY, textColor: [255, 255, 255], fontStyle: "bold", fontSize: 6.5 },
-      margin: { left: 8, right: 8 },
-    });
-  }
+  // Sección PHD / PAD / O2 / ESPECIALES eliminada del alcance del Reporte
+  // General por definición institucional. Este reporte muestra exclusivamente
+  // Remisiones Activas.
 
 
   // ── Pie en todas las páginas ────────────────────────────────────────────
@@ -312,7 +338,7 @@ export async function descargarReporteGeneralPDF(params: {
     doc.setTextColor(0);
   }
 
-  doc.save(`Reporte_General_Operativo_Salientes_${hoy()}.pdf`);
+  doc.save(`REPORTE_REMISIONES_ACTIVAS_${hoy()}.pdf`);
 }
 
 // ===========================================================================
