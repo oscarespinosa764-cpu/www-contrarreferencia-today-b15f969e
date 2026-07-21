@@ -2670,6 +2670,7 @@ export function SeguimientoDialog({
                     <div className="space-y-1.5">
                       <Label className={labelCls}>Fecha y hora de activación *</Label>
                       <AppDateTimeInput
+                        name="ri_tep_fecha"
                         value={riTepFecha}
                         onChange={setRiTepFecha}
                         required
