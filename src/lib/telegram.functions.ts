@@ -23,13 +23,14 @@ async function auditar(
   resultado: "exito" | "fallo" = "exito",
 ) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  await supabaseAdmin.rpc("registrar_auditoria_srv", {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabaseAdmin as any).rpc("registrar_auditoria_srv", {
     _user_id: userId,
     _accion: accion,
     _modulo: "notificaciones_telegram",
     _tabla: "notification_channels",
     _resultado: resultado,
-    _detalles: detalles ?? null,
+    _detalles: (detalles ?? null) as unknown,
   });
 }
 
@@ -135,7 +136,7 @@ const saveSchema = z.object({
   allowed_alert_types: z.array(z.string().max(60)).max(50).default([]),
   allowed_priorities: z.array(z.string().max(40)).max(10).default([]),
   allowed_modules: z.array(z.string().max(60)).max(50).default([]),
-  schedule: z.record(z.unknown()).optional().default({}),
+  schedule: z.record(z.string(), z.unknown()).optional().default({}),
   silent: z.boolean().default(false),
   link_url: z.string().url().max(300).optional().nullable(),
   enabled: z.boolean().default(true),
