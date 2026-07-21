@@ -423,7 +423,7 @@ export const adminListDeviceRequests = createServerFn({ method: "POST" })
       )
       .eq("estado", "PENDIENTE")
       .order("solicitado_at", { ascending: false });
-    return data ?? [];
+    return (data ?? []) as ReqRow[];
   });
 
 // ---------- Panel admin: acciones ----------
