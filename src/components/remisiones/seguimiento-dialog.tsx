@@ -1809,6 +1809,7 @@ export function SeguimientoDialog({
       }
       if (esInterna && tipoSeg === TI.TEP_ACTIVACION) {
         if (!riTepProveedor.trim()) return toast.error("Selecciona el proveedor de TEP");
+        if (!riTepFecha.trim()) return toast.error("Indica la fecha y hora de activación del TEP");
       }
 
       // Cambio en especialidad: exige cambio real, conservar una activa y motivo.
