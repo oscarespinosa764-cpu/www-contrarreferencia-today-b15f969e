@@ -18,7 +18,15 @@ import {
   adminUnblockDevice,
   getSystemMode,
   adminSetGlobalMode,
+  requestDeviceChallenge,
+  bootstrapAuthorizeCurrentDevice,
 } from "@/lib/devices.functions";
+import {
+  getPublicKeyJwk,
+  signChallenge,
+  setLocalDevicePublicId,
+  clearLocalDevice,
+} from "@/lib/devices-client";
 
 type Device = {
   id: string;
