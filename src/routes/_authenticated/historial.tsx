@@ -1556,6 +1556,60 @@ function HistorialPage() {
     toast.success("Bitácora consolidada generada");
   };
 
+  // ---- Etapa 3 · Menú contextual enriquecido -----------------------------
+  const [infoCaso, setInfoCaso] = useState<Construido | null>(null);
+  const [audCaso, setAudCaso] = useState<Construido | null>(null);
+
+  const copiarCodigo = (c: Construido) => {
+    const cod = (c.codigo || "").trim();
+    if (!cod) {
+      toast.info("Este caso no tiene código de gestión.");
+      return;
+    }
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(cod);
+      toast.success(`Código copiado: ${cod}`);
+      auditar("copiar_codigo_gestion", { caso: c.casoId, tabla: c.tabla, codigo: cod });
+    } else {
+      toast.error("El navegador no permite copiar automáticamente.");
+    }
+  };
+
+  const exportarCasoExcel = (c: Construido) => {
+    let sec: Seccion | null = null;
+    if (c.vista === "entrantes") {
+      const grupo = gruposF.find((g) => v(g.base.id) === c.casoId);
+      if (grupo) {
+        sec = seccionRecibidas([
+          {
+            base: grupo.base as unknown as GrupoEntrante["base"],
+            eventos: grupo.eventos as unknown as Record<string, unknown>[],
+            estadoLabel: grupo.estadoFinal.label,
+          },
+        ]);
+      }
+    } else if (c.vista === "salientes") {
+      const row = (remisionesF as Remision[]).find((r) => r.id === c.casoId);
+      if (row) sec = seccionRemisiones([row as unknown as Record<string, unknown>], segMap);
+    } else if (c.vista === "phd") {
+      const row = (phdF as Generico[]).find((r) => r.id === c.casoId);
+      if (row) sec = seccionPHD([row as unknown as Record<string, unknown>], segMap);
+    } else if (c.vista === "interna") {
+      const row = (internasF as Generico[]).find((r) => r.id === c.casoId);
+      if (row) sec = seccionInternas([row as unknown as Record<string, unknown>], segMap);
+    }
+    if (!sec || sec.rows.length === 0) {
+      toast.info("No fue posible localizar el caso para exportar.");
+      return;
+    }
+    const nombre = `caso_${(c.referencia || c.casoId || "sin_ref").replace(/[^\w\-]+/g, "_")}`;
+    descargarLibro([sec], usuario, `Caso=${c.referencia}; Vista=${c.vista}`, nombre);
+    auditar("exportar_excel_caso", { caso: c.casoId, tabla: c.tabla, vista: c.vista });
+    toast.success("Excel del caso generado");
+  };
+
+
+
 
 
   const cargando =
