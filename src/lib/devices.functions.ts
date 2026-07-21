@@ -375,10 +375,17 @@ export const adminListDevices = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     if (!(await isCallerAdminAuthorized(context.userId))) throw new Error("Solo administrador.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    type DeviceListRow = {
+      id: string; user_id: string; device_public_id: string;
+      nombre_dispositivo: string | null; descripcion: string | null;
+      navegador: string | null; sistema_operativo: string | null; tipo_dispositivo: string | null;
+      estado: string; autorizado_at: string | null; expiracion_at: string | null;
+      ultima_actividad_at: string | null; motivo: string | null; created_at: string;
+    };
     const { data } = await (supabaseAdmin as unknown as {
       from: (t: string) => {
         select: (c: string) => {
-          order: (c: string, o: { ascending: boolean }) => Promise<{ data: unknown[] | null }>;
+          order: (c: string, o: { ascending: boolean }) => Promise<{ data: DeviceListRow[] | null }>;
         };
       };
     })
@@ -387,7 +394,7 @@ export const adminListDevices = createServerFn({ method: "POST" })
         "id, user_id, device_public_id, nombre_dispositivo, descripcion, navegador, sistema_operativo, tipo_dispositivo, estado, autorizado_at, expiracion_at, ultima_actividad_at, motivo, created_at",
       )
       .order("created_at", { ascending: false });
-    return data ?? [];
+    return (data ?? []) as DeviceListRow[];
   });
 
 export const adminListDeviceRequests = createServerFn({ method: "POST" })
@@ -395,14 +402,20 @@ export const adminListDeviceRequests = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     if (!(await isCallerAdminAuthorized(context.userId))) throw new Error("Solo administrador.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    type ReqRow = {
+      id: string; user_id: string; device_id: string; estado: string;
+      solicitado_at: string; navegador: string | null; sistema_operativo: string | null;
+      tipo_dispositivo: string | null; motivo: string | null;
+    };
     const { data } = await (supabaseAdmin as unknown as {
       from: (t: string) => {
         select: (c: string) => {
           eq: (k: string, v: unknown) => {
-            order: (c: string, o: { ascending: boolean }) => Promise<{ data: unknown[] | null }>;
+            order: (c: string, o: { ascending: boolean }) => Promise<{ data: ReqRow[] | null }>;
           };
         };
       };
+
     })
       .from("device_access_requests")
       .select(
