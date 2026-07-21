@@ -37,6 +37,7 @@ import {
 import { Send, RefreshCw, Trash2, KeyRound, Loader2, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { fmtFechaHora } from "@/lib/cuadro-turno-utils";
+import { TelegramMultiPanel } from "./telegram-multi-panel";
 
 interface Channel {
   channel_type: string;
@@ -109,16 +110,17 @@ export function NotificacionesExternasPanel() {
 
   return (
     <div className="space-y-4">
-      {/* ---- Canales reales (Telegram + Slack) ---- */}
-      {(["telegram", "slack"] as const).map((tipo) => (
-        <CanalPanel
-          key={tipo}
-          channelType={tipo}
-          channel={channels.find((c) => c.channel_type === tipo)}
-          onRefetch={refetch}
-          onManual={() => setManualOpen(true)}
-        />
-      ))}
+      {/* ---- Telegram multi-destino (token en Cloud Secrets) ---- */}
+      <TelegramMultiPanel />
+
+      {/* ---- Slack (webhook por canal) ---- */}
+      <CanalPanel
+        channelType="slack"
+        channel={channels.find((c) => c.channel_type === "slack")}
+        onRefetch={refetch}
+        onManual={() => setManualOpen(true)}
+      />
+
 
       {/* ---- Canales preparados (inactivos) ---- */}
       <div className="grid gap-3 sm:grid-cols-2">
