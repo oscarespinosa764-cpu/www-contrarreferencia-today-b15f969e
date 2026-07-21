@@ -100,7 +100,12 @@ function RemisionesPage() {
   const { data: auxiliares } = useQuery({
     queryKey: ["auxiliares-turno"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("user_id, nombre").order("nombre");
+      // Regla canónica: solo usuarios ACTIVOS son seleccionables para recibir turno.
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, nombre")
+        .eq("activo", true)
+        .order("nombre");
       return data ?? [];
     },
   });
