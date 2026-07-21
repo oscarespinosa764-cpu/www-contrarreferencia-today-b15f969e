@@ -351,6 +351,7 @@ export function SeguimientoDialog({
   const [riLlegHora, setRiLlegHora] = useState("");
   // Referencia interna — flujo especial TEP.
   const [riTepProveedor, setRiTepProveedor] = useState("");
+  const [riTepFecha, setRiTepFecha] = useState(""); // "YYYY-MM-DDTHH:mm"
 
 
   // Revisión autorización estancia hospitalaria (seguimiento de trazabilidad)
@@ -658,6 +659,19 @@ export function SeguimientoDialog({
   const espHayCambio = espCierreList.length > 0 || espNuevasLimpias.length > 0;
   const esCambioEsp = esSaliente && tipoSeg === T.CAMBIO_ESPECIALIDAD;
   const esCambioUnidad = esSaliente && tipoSeg === T.CAMBIO_UNIDAD;
+  const esTepActivacion = esInterna && tipoSeg === TI.TEP_ACTIVACION;
+  // Proveedor SEM (predeterminado en flujos de ambulancia/TEP).
+  const SEM_MATCH = "SERVICIOS DE EMERGENCIAS MEDICAS DEL CAQUETA";
+  const proveedorSem = useMemo(
+    () => empresasTepInterna.find((p) => p.toUpperCase().includes(SEM_MATCH)) ?? "",
+    [empresasTepInterna],
+  );
+  // Preselección SEM al abrir el bloque TEP.
+  useEffect(() => {
+    if (esTepActivacion && !riTepProveedor && proveedorSem) {
+      setRiTepProveedor(proveedorSem);
+    }
+  }, [esTepActivacion, proveedorSem, riTepProveedor]);
   // Ubicación institucional actual (unidad = servicio de la remisión, cama del caso).
   const unidadActual = (caso?.servicio ?? "").trim();
   const camaActual = (caso?.cama ?? "").trim();
@@ -1707,6 +1721,7 @@ export function SeguimientoDialog({
     setRiLlegFecha("");
     setRiLlegHora("");
     setRiTepProveedor("");
+    setRiTepFecha("");
 
   };
 

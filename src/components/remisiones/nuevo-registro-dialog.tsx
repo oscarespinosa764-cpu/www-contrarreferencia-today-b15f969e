@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { PlantillasEnPaso } from "@/components/coordinacion/plantillas-en-paso";
 import { IndigoPanel } from "./indigo-panel";
 import { AutoComplete } from "@/components/rc/autocomplete";
+import { AppDateTimeInput } from "@/components/ui/app-time-picker";
 import {
   generarPlantillaInicio,
   codigoInicial,
@@ -61,6 +62,10 @@ export function NuevoRegistroDialog({
 
   // --- Ref. Interna ---
   const [internaEapb, setInternaEapb] = useState("");
+  const [riTipoSol, setRiTipoSol] = useState("");
+  const [riProveedor, setRiProveedor] = useState("");
+  const [riFechaCoord, setRiFechaCoord] = useState(""); // "YYYY-MM-DDTHH:mm"
+
 
   // --- Pendiente ---
   const [pendTipo, setPendTipo] = useState("");
@@ -164,6 +169,33 @@ export function NuevoRegistroDialog({
     },
   });
 
+  // Catálogo de proveedores de ambulancia / TEP (canónico: EMPRESA_TEP).
+  const { data: proveedoresAmb = [] } = useQuery({
+    queryKey: ["cat-empresa-tep-nuevo-registro"],
+    enabled: open,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor")
+        .eq("tipo", "EMPRESA_TEP")
+        .eq("activo", true)
+        .order("valor");
+      return (data ?? []).map((r) => r.valor as string);
+    },
+  });
+  const SEM_MATCH = "SERVICIOS DE EMERGENCIAS MEDICAS DEL CAQUETA";
+  const proveedorSem = useMemo(
+    () => proveedoresAmb.find((p) => p.toUpperCase().includes(SEM_MATCH)) ?? "",
+    [proveedoresAmb],
+  );
+  // Preseleccionar SEM cuando se elige COORDINAR AMBULANCIA y aún no hay proveedor.
+  useMemo(() => {
+    if (riTipoSol === "COORDINAR AMBULANCIA" && !riProveedor && proveedorSem) {
+      setRiProveedor(proveedorSem);
+    }
+    return null;
+  }, [riTipoSol, proveedorSem, riProveedor]);
+
   // Opciones de EAPB para el autocompletado.
   const eapbOptions = useMemo(() => eapbList.map((e) => e.valor), [eapbList]);
   const eapbActual = useMemo(
@@ -240,6 +272,9 @@ export function NuevoRegistroDialog({
     setPhdTipoAmb("");
     setPhdRegimen("");
     setInternaEapb("");
+    setRiTipoSol("");
+    setRiProveedor("");
+    setRiFechaCoord("");
     setPendTipo("");
     setPendCual("");
     setPendDestinoTipo("");
@@ -474,18 +509,28 @@ export function NuevoRegistroDialog({
   const handleRefInterna = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+    const tipoSol = String(f.get("tipo_solicitud") ?? "");
+    const esCoordAmb = tipoSol === "COORDINAR AMBULANCIA";
+    const fechaCoordRaw = String(f.get("fecha_coordinacion") ?? "").trim();
+    const proveedorAmb = String(f.get("proveedor_ambulancia") ?? "").trim();
+    if (esCoordAmb) {
+      if (!fechaCoordRaw) return toast.error("Indica la fecha y hora de coordinación.");
+      if (!proveedorAmb) return toast.error("Selecciona el proveedor de ambulancia.");
+    }
+    const fechaCoordIso = esCoordAmb && fechaCoordRaw ? new Date(fechaCoordRaw).toISOString() : null;
     const { data: u } = await supabase.auth.getUser();
     const { data: internaIns, error } = await supabase.from("referencia_interna").insert({
-      fecha_inicio: null,
+      fecha_inicio: fechaCoordIso,
       fecha_radicado: new Date().toISOString(),
       servicio: String(f.get("servicio")),
       paciente: String(f.get("paciente")),
       tipo_documento: String(f.get("tipo_documento")),
       documento: String(f.get("documento")),
-      tipo_solicitud: String(f.get("tipo_solicitud")),
+      tipo_solicitud: tipoSol,
       tipo_ambulancia: String(f.get("tipo_ambulancia")),
       eapb: internaEapb || null,
       observaciones: String(f.get("observaciones")),
+      proveedor_prestador: esCoordAmb ? proveedorAmb : null,
       estado: "ACTIVO",
       evolucion: "sin",
       created_by: u.user?.id,
@@ -1066,21 +1111,34 @@ export function NuevoRegistroDialog({
                   required
                 />
                 <PatientBlock key={`ri-pac-${resetKey}`} />
-                <SelectField
-                  name="tipo_solicitud"
-                  label="Tipo de solicitud"
-                  options={[
-                    "RESONANCIA",
-                    "INTERCONSULTA",
-                    "ECOGRAFIA",
-                    "TAC",
-                    "RX",
-                    "URGENCIAS VITALES",
-                    "REMISIONES ESPECIALES",
-                    "EVACUACION DE SEDES AMBULATORIAS",
-                  ]}
-                  required
-                />
+                <div className="space-y-1.5">
+                  <Label htmlFor="ri-tipo-sol" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Tipo de solicitud <span className="ml-0.5 text-status-red">*</span>
+                  </Label>
+                  <select
+                    id="ri-tipo-sol"
+                    name="tipo_solicitud"
+                    required
+                    value={riTipoSol}
+                    onChange={(e) => setRiTipoSol(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <option value="" disabled>Seleccione…</option>
+                    {[
+                      "RESONANCIA",
+                      "INTERCONSULTA",
+                      "ECOGRAFIA",
+                      "TAC",
+                      "RX",
+                      "URGENCIAS VITALES",
+                      "REMISIONES ESPECIALES",
+                      "EVACUACION DE SEDES AMBULATORIAS",
+                      "COORDINAR AMBULANCIA",
+                    ].map((o) => (
+                      <option key={o} value={o}>{o}</option>
+                    ))}
+                  </select>
+                </div>
                 <SelectField
                   name="tipo_ambulancia"
                   label="Tipo de ambulancia"
@@ -1097,6 +1155,47 @@ export function NuevoRegistroDialog({
                   />
                 </div>
               </div>
+
+              {/* Campos dinámicos para COORDINAR AMBULANCIA */}
+              {riTipoSol === "COORDINAR AMBULANCIA" && (
+                <div className="grid gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="ri-fecha-coord" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Fecha y hora de coordinación <span className="ml-0.5 text-status-red">*</span>
+                    </Label>
+                    <AppDateTimeInput
+                      id="ri-fecha-coord"
+                      name="fecha_coordinacion"
+                      required
+                      value={riFechaCoord}
+                      onChange={setRiFechaCoord}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="ri-proveedor" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Proveedor de ambulancia <span className="ml-0.5 text-status-red">*</span>
+                    </Label>
+                    <select
+                      id="ri-proveedor"
+                      name="proveedor_ambulancia"
+                      required
+                      value={riProveedor}
+                      onChange={(e) => setRiProveedor(e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="" disabled>Seleccione proveedor…</option>
+                      {proveedoresAmb.map((p) => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                    {!proveedorSem && proveedoresAmb.length > 0 && (
+                      <p className="text-[11px] text-status-amber">
+                        NO SE ENCONTRÓ EL PROVEEDOR PREDETERMINADO SEM EN EL CATÁLOGO.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label htmlFor="ri-obs" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Observaciones
