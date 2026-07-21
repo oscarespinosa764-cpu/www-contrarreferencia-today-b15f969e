@@ -3,6 +3,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
+import { AppDateTimeInput } from "@/components/ui/app-time-picker";
+
 
 export function Field({
   name,
@@ -42,25 +44,33 @@ export function Field({
         : type === "month"
           ? "1900-01"
           : undefined;
+  // Campos de fecha + hora: reemplazamos el nativo `datetime-local` por el
+  // nuevo control (calendario actual + reloj analógico 24 h). Los campos de
+  // solo fecha (`type="date"`) siguen usando el `<Input>` nativo actual.
+  const esDatetime = type === "datetime-local";
   return (
     <div className="space-y-1.5">
       <Label htmlFor={name} className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
         {required && <span className="ml-0.5 text-status-red">*</span>}
       </Label>
-      <Input
-        id={name}
-        name={name}
-        type={type}
-        required={required}
-        defaultValue={defaultValue}
-        placeholder={placeholder}
-        readOnly={readOnly}
-        max={dateMax}
-        min={dateMin}
-        uppercase={autoUpper}
-        className={readOnly ? "cursor-not-allowed bg-muted text-muted-foreground" : undefined}
-      />
+      {esDatetime && !readOnly ? (
+        <AppDateTimeInput id={name} name={name} required={required} defaultValue={defaultValue} />
+      ) : (
+        <Input
+          id={name}
+          name={name}
+          type={type}
+          required={required}
+          defaultValue={defaultValue}
+          placeholder={placeholder}
+          readOnly={readOnly}
+          max={dateMax}
+          min={dateMin}
+          uppercase={autoUpper}
+          className={readOnly ? "cursor-not-allowed bg-muted text-muted-foreground" : undefined}
+        />
+      )}
 
     </div>
   );

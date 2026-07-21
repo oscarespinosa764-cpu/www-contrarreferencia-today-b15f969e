@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AutoComplete } from "@/components/rc/autocomplete";
+import { AppDateTimeInput } from "@/components/ui/app-time-picker";
 import {
   EVO_CANALES,
   canalesFaltantes,
@@ -351,6 +352,7 @@ export function SeguimientoDialog({
   const [riLlegHora, setRiLlegHora] = useState("");
   // Referencia interna — flujo especial TEP.
   const [riTepProveedor, setRiTepProveedor] = useState("");
+  const [riTepFecha, setRiTepFecha] = useState(""); // "YYYY-MM-DDTHH:mm"
 
 
   // Revisión autorización estancia hospitalaria (seguimiento de trazabilidad)
@@ -658,6 +660,19 @@ export function SeguimientoDialog({
   const espHayCambio = espCierreList.length > 0 || espNuevasLimpias.length > 0;
   const esCambioEsp = esSaliente && tipoSeg === T.CAMBIO_ESPECIALIDAD;
   const esCambioUnidad = esSaliente && tipoSeg === T.CAMBIO_UNIDAD;
+  const esTepActivacion = esInterna && tipoSeg === TI.TEP_ACTIVACION;
+  // Proveedor SEM (predeterminado en flujos de ambulancia/TEP).
+  const SEM_MATCH = "SERVICIOS DE EMERGENCIAS MEDICAS DEL CAQUETA";
+  const proveedorSem = useMemo(
+    () => empresasTepInterna.find((p) => p.toUpperCase().includes(SEM_MATCH)) ?? "",
+    [empresasTepInterna],
+  );
+  // Preselección SEM al abrir el bloque TEP.
+  useEffect(() => {
+    if (esTepActivacion && !riTepProveedor && proveedorSem) {
+      setRiTepProveedor(proveedorSem);
+    }
+  }, [esTepActivacion, proveedorSem, riTepProveedor]);
   // Ubicación institucional actual (unidad = servicio de la remisión, cama del caso).
   const unidadActual = (caso?.servicio ?? "").trim();
   const camaActual = (caso?.cama ?? "").trim();
@@ -1064,11 +1079,15 @@ export function SeguimientoDialog({
             `SE CONFIRMA LLEGADA DE AMBULANCIA.\nFECHA/HORA LLEGADA: ${riLlegFecha} ${riLlegHora}`,
             detalle,
           );
-        case TI.TEP_ACTIVACION:
+        case TI.TEP_ACTIVACION: {
+          const fechaTep = riTepFecha
+            ? new Date(riTepFecha).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })
+            : "—";
           return appendNota(
-            `SE ACTIVA PROVEEDOR CONTRATADO DE TEP.\nPROVEEDOR: ${riTepProveedor || "—"}\nPACIENTE: ${paciente}\nDOCUMENTO: ${documento ?? "—"}\nSERVICIO/UBICACIÓN: ${casoInterna?.servicio ?? "—"}\nTIPO SOLICITUD: ${casoInterna?.tipo_solicitud ?? "—"}\nTIPO AMBULANCIA: ${casoInterna?.tipo_ambulancia ?? "—"}\nEAPB/ERP: ${casoInterna?.eapb ?? "—"}`,
+            `SE ACTIVA PROVEEDOR CONTRATADO DE TEP.\nFECHA/HORA ACTIVACIÓN: ${fechaTep}\nPROVEEDOR: ${riTepProveedor || "—"}\nPACIENTE: ${paciente}\nDOCUMENTO: ${documento ?? "—"}\nSERVICIO/UBICACIÓN: ${casoInterna?.servicio ?? "—"}\nTIPO SOLICITUD: ${casoInterna?.tipo_solicitud ?? "—"}\nTIPO AMBULANCIA: ${casoInterna?.tipo_ambulancia ?? "—"}\nEAPB/ERP: ${casoInterna?.eapb ?? "—"}`,
             detalle,
           );
+        }
         case TI.AMB_COORDINADA_ESP:
           return appendNota(
             `AMBULANCIA COORDINADA CON PROVEEDOR DE TEP.`,
@@ -1076,7 +1095,7 @@ export function SeguimientoDialog({
           );
         case T.CAMBIO_UNIDAD:
           return appendNota(
-            `CAMBIO DE UNIDAD.\nNUEVA UNIDAD: ${nuevaUnidad || "—"}\nNUEVA CAMA: ${nuevaCama || "—"}`,
+            `CAMBIO DE UNIDAD.\nUNIDAD ANTERIOR: ${unidadActual || "—"}\nCAMA ANTERIOR: ${camaActual || "—"}\nNUEVA UNIDAD: ${nuevaUnidad || "—"}\nNUEVA CAMA: ${nuevaCama || "—"}\nFECHA/HORA: ${new Date().toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })}`,
             detalle,
           );
         default:
@@ -1475,7 +1494,10 @@ export function SeguimientoDialog({
             hora_llegada: riLlegHora.trim() || null,
           };
         case TI.TEP_ACTIVACION:
-          return { proveedor: riTepProveedor.trim() || null };
+          return {
+            proveedor: riTepProveedor.trim() || null,
+            fecha_activacion: riTepFecha.trim() || null,
+          };
         case TI.AMB_COORDINADA_ESP:
           return { proveedor: riTepProveedor.trim() || null };
         case T.CAMBIO_UNIDAD:
@@ -1707,6 +1729,7 @@ export function SeguimientoDialog({
     setRiLlegFecha("");
     setRiLlegHora("");
     setRiTepProveedor("");
+    setRiTepFecha("");
 
   };
 
@@ -1789,6 +1812,7 @@ export function SeguimientoDialog({
       }
       if (esInterna && tipoSeg === TI.TEP_ACTIVACION) {
         if (!riTepProveedor.trim()) return toast.error("Selecciona el proveedor de TEP");
+        if (!riTepFecha.trim()) return toast.error("Indica la fecha y hora de activación del TEP");
       }
 
       // Cambio en especialidad: exige cambio real, conservar una activa y motivo.
@@ -2645,6 +2669,44 @@ export function SeguimientoDialog({
                   )}
                 </div>
               )}
+
+              {/* ACTIVACIÓN DE PROVEEDOR CONTRATADO DE TEP */}
+              {esTepActivacion && (
+                <div className={sectionCls}>
+                  <p className={labelCls}>Activación de proveedor contratado de TEP</p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Fecha y hora de activación *</Label>
+                      <AppDateTimeInput
+                        name="ri_tep_fecha"
+                        value={riTepFecha}
+                        onChange={setRiTepFecha}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Proveedor contratado *</Label>
+                      <select
+                        value={riTepProveedor}
+                        onChange={(e) => setRiTepProveedor(e.target.value)}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        required
+                      >
+                        <option value="" disabled>Seleccione proveedor…</option>
+                        {empresasTepInterna.map((p) => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                      {!proveedorSem && empresasTepInterna.length > 0 && (
+                        <p className="text-[11px] text-status-amber">
+                          NO SE ENCONTRÓ EL PROVEEDOR PREDETERMINADO SEM EN EL CATÁLOGO.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
 
 
 

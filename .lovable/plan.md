@@ -1,93 +1,96 @@
-## Contexto verificado (no se modifica lo existente)
+# Plan — Reloj de hora + Ref. Internas (Coord. ambulancia / Activación TEP / Cambio de unidad)
 
-Ya existe infraestructura reutilizable — se aprovecha íntegra:
+## Alcance (estricto)
 
-- Tabla `notification_channels` (con `bot_token`, `destination_id`, `allowed_alert_types`, `message_template`, `enabled`, `config_status`, `last_*`).
-- Tabla `notification_logs` (con `alert_type`, `module`, `reference_id`, `recipient`, `status`, `sent_at`, `created_by`).
-- Server functions en `src/lib/notifications.functions.ts`: `getNotificationChannels`, `saveChannelConfig`, `clearChannelToken`, `testChannelConnection`, `sendManualNotification`, `dispatchEventNotification`, `getNotificationLogs`.
-- Helpers server-only en `src/lib/notifications.server.ts` (`enviarTelegram` ya llama `sendMessage`).
-- Panel `NotificacionesExternasPanel` en Control de Mando.
-- Motor de alertas en `alertas-coordinacion.functions.ts` + evaluador cron.
+- **NO** se toca ningún selector de fecha. Los calendarios actuales (shadcn `Calendar` dentro de `Popover`) siguen intactos.
+- **SÍ** se reemplaza únicamente el control de hora (los actuales `type="time"` / `datetime-local` / listas verticales del navegador) por un reloj analógico 24h reutilizable.
+- Nuevo tipo de solicitud **COORDINAR AMBULANCIA** en Ref. Internas → Nuevo registro.
+- Seguimiento de Ref. Internas: **ACTIVACIÓN DE PROVEEDOR CONTRATADO DE TEP** y **CAMBIO DE UNIDAD** con sus campos dinámicos y plantilla Índigo.
 
-**Limitación detectada:** `notification_channels` hoy es 1 fila por `channel_type` (upsert por `channel_type`). Para soportar **varios destinos Telegram** (grupo Coordinación, grupo Red, grupo Admin) se necesita permitir múltiples filas por tipo. Se hace con migración no destructiva.
+## 1. Componente central `AppTimePicker`
 
-**Decisión de arquitectura:** El token del bot deja de vivir en `notification_channels.bot_token` para Telegram y pasa a leerse **solo** desde el Secret `TELEGRAM_BOT_TOKEN`. Cada fila Telegram guarda únicamente el destino (chat_id + metadatos). Slack (webhook por canal) permanece como está — no se toca.
+Nuevo `src/components/ui/app-time-picker.tsx`:
 
-## Ejecución progresiva (según sección 15 del prompt)
+- Diálogo compacto (`Dialog` shadcn) con reloj analógico SVG 24h.
+- Anillo exterior 1–11, anillo interior 13–23, 00 y 12 arriba.
+- Dos pasos: HORA → MINUTOS (marcas 00,05…55) + input manual 00–59.
+- Header con `HH:mm` editable por teclado. Botones CANCELAR / ACEPTAR. Escape/Enter.
+- Wrapper `AppDateTimeField` que compone el **calendario actual** (sin modificarlo) + `AppTimePicker` y devuelve un único ISO local.
+- Wrapper `AppTimeField` para campos de solo hora.
 
-### Etapa 1 — Secret + esquema multi-destino (esta iteración)
+## 2. Migración quirúrgica de campos de hora
 
-1. Solicitar `TELEGRAM_BOT_TOKEN` vía `add_secret`.
-2. Migración:
-   - Quitar el constraint `UNIQUE(channel_type)` en `notification_channels`.
-   - Añadir columnas: `chat_type` (private/group/supergroup/channel), `allowed_priorities text[]`, `allowed_modules text[]`, `schedule jsonb`, `silent bool`, `created_by uuid`.
-   - Añadir índice compuesto `(channel_type, enabled)`.
-   - Para Telegram, `bot_token` deja de usarse (se ignora en el nuevo flujo; se mantiene la columna por compatibilidad con Slack).
-   - Migrar la fila Telegram existente (si existe): conservarla como primer destino.
-3. Ajustar RLS: los admin siguen viendo todo; añadir GRANTs si falta.
+Reemplazar sólo estos ocupantes de `type="time"` / `datetime-local` (inventario `rg`):
 
-### Etapa 2 — Edge function `telegram-bot` (una sola, multi-acción)
+| Archivo | Campos |
+|---|---|
+| `src/components/remisiones/form-bits.tsx` | rama `type="datetime-local"` de `Field` → delega a `AppDateTimeField`. |
+| `src/components/remisiones/nuevo-registro-dialog.tsx` | fechas/hora operativas del formulario (registro, coordinación). |
+| `src/components/remisiones/seguimiento-dialog.tsx` | inputs `datetime-local` del seguimiento. |
+| `src/components/remisiones/phd-seguimiento-dialog.tsx` | igual. |
+| `src/components/rc/registrar-wizard.tsx` | inputs `datetime-local`. |
+| `src/components/coordinacion/usuario-actividad-dialog.tsx` | rangos con hora. |
 
-Nueva Edge Function en `supabase/functions/telegram-bot/index.ts` que expone acciones internas (invocada solo desde server functions con service role, nunca desde React):
+Campos de solo fecha, timestamps automáticos, filtros y fechas históricas: **sin cambios**.
 
-- `getMe` — valida token, devuelve `id/username/first_name` (sin token).
-- `getUpdates` — corre una sola vez, devuelve lista de destinos únicos (`chat.id/type/title/username/last_date`); no guarda nada.
-- `sendMessage` — envía a un `chat_id` concreto, respeta `retry_after` de Telegram, devuelve `{ok, message_id, error_code, description}` sanitizado.
+## 3. Nuevo Registro Ref. Internas → COORDINAR AMBULANCIA
 
-El token se lee **solo** con `Deno.env.get("TELEGRAM_BOT_TOKEN")`. Nunca sale de la función.
+En `nuevo-registro-dialog.tsx` (rama Ref. Interna ya existente):
 
-### Etapa 3 — Server functions Telegram (admin-only)
+- Agregar `COORDINAR AMBULANCIA` a la lista `tiposRefInterna` (ya incluida en L1145 según grep; verificar y garantizar).
+- Cuando `tipo_solicitud === "COORDINAR AMBULANCIA"`, mostrar:
+  - `Fecha y hora de coordinación` (obligatoria) usando `AppDateTimeField`.
+  - `Proveedor de ambulancia` (Combobox alimentado por catálogo `TIPO_AMBULANCIA` / proveedores de ambulancia existente, filtrando activos).
+  - Preseleccionar el proveedor cuyo nombre normalizado matchee `SERVICIOS DE EMERGENCIAS MEDICAS DEL CAQUETA` o alias `SEM`. Si no existe, dejar vacío y mostrar toast informativo.
+- Persistir en `metadata` del caso: `coordinacion_ambulancia: { fecha_hora, proveedor_id?, proveedor_nombre }`.
 
-En un nuevo archivo `src/lib/telegram.functions.ts` (para no inflar `notifications.functions.ts`), todas con `requireSupabaseAuth` + verificación admin:
+## 4. Seguimiento Ref. Internas
 
-- `telegramStatus()` → `{token_configured, bot_username, destinos_count}`.
-- `telegramValidateBot()` → llama `getMe`, guarda auditoría `TELEGRAM_BOT_VALIDATED`.
-- `telegramDetectDestinations()` → llama `getUpdates`, devuelve lista candidata (no persiste).
-- `telegramSaveDestination({display_name, chat_id, chat_type, chat_title, description, allowed_alert_types, allowed_priorities, allowed_modules, schedule, silent, enabled})` → inserta/actualiza fila `channel_type='telegram'`.
-- `telegramDeleteDestination(id)`, `telegramToggleDestination(id, enabled)`.
-- `telegramSendTest(id)` → envía mensaje canónico de prueba (sin PHI), registra log + auditoría.
-- `telegramListDestinations()` → devuelve destinos con `chat_id` enmascarado para no-admin (los admin ven completo).
-- `telegramResendAlert(log_id, motivo)` → reenvío autorizado con auditoría.
+En `seguimiento-dialog.tsx` (modal actual, sin duplicar):
 
-### Etapa 4 — Adaptar despacho de eventos
+### 4.1 ACTIVACIÓN DE PROVEEDOR CONTRATADO DE TEP
+- Mostrar `Fecha y hora de activación` (`AppDateTimeField`) + `Proveedor TEP` (Combobox catálogo proveedores TEP existente, activos, SEM por defecto).
+- Guardar estructurado dentro del payload del seguimiento (`metadata.activacion_tep`).
+- Plantilla Índigo:
+  ```
+  SE ACTIVA PROVEEDOR CONTRATADO DE TEP.
+  PROVEEDOR: <nombre>
+  FECHA Y HORA DE ACTIVACIÓN: <DD/MM/YYYY, HH:mm>
+  PACIENTE: … DOCUMENTO: … SERVICIO/UBICACIÓN: … TIPO DE SOLICITUD: …
+  OBSERVACIONES: …
+  ```
+  Regenera al cambiar proveedor/fecha/hora; ya no imprime `PROVEEDOR: —`.
 
-Modificar `dispatchEventNotification` y `despacharAlertaCoordinacion` para Telegram:
+### 4.2 CAMBIO DE UNIDAD
+- Campos: `Unidad` (Combobox catálogo unidades/servicios existente, activos) y `Cama` (texto uppercase).
+- Guardar `metadata.cambio_unidad: { unidad_anterior, unidad_nueva, cama }`; actualizar `caso.unidad` con la nueva conservando la anterior en metadata (trazabilidad, sin sobrescribir historial).
+- Plantilla Índigo con Paciente, Documento, Unidad anterior, Nueva unidad, Cama, Fecha automática, Observaciones. Sin bloque de proveedor.
 
-- Iterar sobre **todos** los destinos Telegram habilitados (no una única fila).
-- Filtrar por `allowed_alert_types` **y** `allowed_priorities` **y** `allowed_modules` **y** `schedule` de cada destino.
-- Idempotencia: `idempotency_key = alert_type + reference_id + destino_id + version`. Añadir columna `idempotency_key text` + índice único parcial en `notification_logs` para status='sent'.
-- Reintentos: si Telegram devuelve `retry_after`, marcar `REINTENTO` con `next_retry_at`. Errores de permisos (403 bot expulsado, 400 chat not found) → `FALLIDA` sin reintentar, alerta al admin.
-- Estados en logs: `pending/sent/error/retry/discarded`.
-- Enviar **solo por Edge Function** (nada desde el navegador).
+### 4.3 UI condicional
+Al cambiar `tipo_seguimiento`, ocultar/limpiar campos no aplicables y regenerar plantilla; el botón Registrar sigue deshabilitado hasta completar los obligatorios.
 
-### Etapa 5 — UI en Control de Mando → Notificaciones externas
+## 5. Catálogos (reutilización)
 
-Rediseñar la sección Telegram de `notificaciones-externas-panel.tsx`:
+- Proveedores de ambulancia: fuente ya usada en el formulario (`TIPO_AMBULANCIA` u opción concreta de proveedores en Red). Se lee el mismo hook `useCatalogo` / `useCatalogos`. No se crea tabla.
+- Proveedores TEP: idem, catálogo existente `PROVEEDOR_TEP` (o el que use el seguimiento hoy).
+- Unidades: catálogo `SEDE`/`UNIDAD` ya presente (usar el mismo que el resto de la app). No hardcode.
 
-- Card superior: estado (`TOKEN CONFIGURADO: SÍ/NO`, bot username, destinos activos, última prueba, último error).
-- Botones: **Validar bot**, **Detectar destinos**, **Agregar destino manual**, **Desactivar todo**.
-- Tabla de destinos: nombre, tipo (PRIVATE/GROUP/SUPERGROUP/CHANNEL), chat_id enmascarado, tipos permitidos, prioridades permitidas, módulos, estado, última prueba. Acciones por fila: **Probar**, **Editar**, **Habilitar/Deshabilitar**, **Eliminar**.
-- Diálogo "Detectar destinos": muestra instrucciones (agregar bot, enviar mensaje, presionar detectar), lista resultado de `getUpdates` con botón *Agregar como destino*.
-- Diálogo "Editar destino": selectores múltiples para tipos de alerta / prioridades / módulos, horario, silencioso, enlace.
-- **En ningún momento** se muestra el token; solo `TOKEN CONFIGURADO: SÍ/NO`.
+## 6. Validación / auditoría
 
-### Etapa 6 — Auditoría + pruebas guiadas
+- El servidor que persiste caso/seguimiento ya valida usuario, dispositivo y RLS; se agrega validación mínima de tipos/valores en handler (`ISO date`, `proveedor_id` presente en catálogo activo, `unidad` en catálogo activo) donde ya se hace la escritura.
+- Se emiten eventos en `audit_logs` con `tipo`, `fecha`, `proveedor_id/unidad_id/cama` (sin PHI extra) reutilizando `registrar_auditoria`.
 
-- Registrar en `audit_logs` cada acción (`TELEGRAM_BOT_VALIDATED`, `TELEGRAM_DESTINATION_CREATED/UPDATED/DISABLED`, `TELEGRAM_TEST_SENT`, `TELEGRAM_ALERT_SENT/FAILED`, `TELEGRAM_RULE_LINKED/UNLINKED`, `TELEGRAM_RESEND`). Nunca token ni PHI.
-- Ejecutar en preview las pruebas 1–4 del prompt (token ausente / válido / grupo / canal sin permisos) y reportar.
-- Confirmar antes de activar despacho automático de alertas reales.
+## 7. Fuera de alcance (no se toca)
 
-## Alcance explícitamente EXCLUIDO
+Remisiones (fuera de Ref. Internas), Entrantes, PHD/PAD/O2, Cuadro de Turno, Auth, dispositivos, firma QR, reportes. Ningún calendario. Ningún campo de solo fecha. Ningún timestamp automático.
 
-- Sin Zapier / Make / n8n / WhatsApp / otros.
-- Sin webhook de Telegram (solo `sendMessage` saliente + `getUpdates` manual).
-- Sin llamadas a Telegram desde React.
-- Sin exponer token en frontend, tablas, logs ni respuestas.
-- Sin crear un segundo motor de alertas o segunda tabla de reglas.
-- Slack, correo, avisos operativos, motor clínico: no se tocan.
+## Archivos a crear / editar
 
-## Confirmación necesaria
+- **Nuevo**: `src/components/ui/app-time-picker.tsx` (reloj + wrappers).
+- **Editar**:
+  - `src/components/remisiones/form-bits.tsx` (rama datetime-local).
+  - `src/components/remisiones/nuevo-registro-dialog.tsx` (COORDINAR AMBULANCIA + campos dinámicos).
+  - `src/components/remisiones/seguimiento-dialog.tsx` (Activación TEP + Cambio de unidad + plantilla).
+  - `src/components/remisiones/phd-seguimiento-dialog.tsx`, `src/components/rc/registrar-wizard.tsx`, `src/components/coordinacion/usuario-actividad-dialog.tsx` (sustitución puntual de `datetime-local`).
 
-Voy a ejecutar **Etapa 1 + Etapa 2 + Etapa 3** en la siguiente iteración (secret, migración, edge function, server functions y auditoría), sin activar despacho automático. Etapa 4 (adaptación del despacho) y Etapa 5 (UI de detección/gestión multi-destino) van en una segunda iteración una vez validemos `getMe` y detectemos el primer grupo. Etapa 6 al final.
-
-¿Sigo con esta secuencia?
+Confirma para implementar.
