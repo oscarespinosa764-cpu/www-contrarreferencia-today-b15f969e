@@ -557,18 +557,25 @@ const joinList = (x: unknown): string => (Array.isArray(x) ? x.filter(Boolean).j
 const HISTORICOS_SELECT =
   "id,seccion,tipo_caso,fuente_hoja,fuente_archivo,radicado,paciente,documento,ips,estado,asegurador,fecha,detalle,created_at";
 
-async function fetchHistoricosCasos(): Promise<HistoricoCaso[]> {
-  // La tabla histórica supera los 20k registros. Traer todo con paginación
-  // infinita ordenando por `fecha` (sin índice) tumba el Historial. Se limita
-  // a los registros más recientes por `created_at` (que sí es rápido). Con
-  // 5000 filas cubrimos ampliamente la vista de "Últimos 10" y las consultas
-  // por documento; el resto queda accesible vía exportación.
-  const { data, error } = await supabase
+async function fetchHistoricosCasos(opts: {
+  start?: string;
+  end?: string;
+  documento?: string;
+}): Promise<HistoricoCaso[]> {
+  // La tabla histórica supera los 20k registros. Para no traerla completa se
+  // aplican filtros server-side (rango de `created_at` + documento cuando
+  // aplica). Sin filtros: cap defensivo de 5000 registros más recientes.
+  const hasFilter = !!(opts.start || opts.end || opts.documento);
+  let q = supabase
     .from("historicos_casos")
     .select(HISTORICOS_SELECT)
     .eq("archivado", false)
     .order("created_at", { ascending: false })
-    .limit(5000);
+    .limit(hasFilter ? 20000 : 5000);
+  if (opts.start) q = q.gte("created_at", opts.start);
+  if (opts.end) q = q.lt("created_at", opts.end);
+  if (opts.documento) q = q.eq("documento", opts.documento);
+  const { data, error } = await q;
   if (error) throw error;
   return (data ?? []) as HistoricoCaso[];
 }
