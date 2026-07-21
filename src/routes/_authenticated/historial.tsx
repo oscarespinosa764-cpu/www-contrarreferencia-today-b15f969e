@@ -746,13 +746,17 @@ function HistorialPage() {
   );
 
   const { data: remisionesActivas, isLoading: loadingSal } = useQuery({
-    queryKey: ["historial-remisiones-full"],
+    queryKey: ["historial-remisiones-full", rangoStart ?? null, rangoEnd ?? null, docServer || null],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("remisiones")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(1000);
+        .limit(docServer || rangoStart || rangoEnd ? 20000 : 3000);
+      if (rangoStart) q = q.gte("created_at", rangoStart);
+      if (rangoEnd) q = q.lt("created_at", rangoEnd);
+      if (docServer) q = q.eq("documento", docServer);
+      const { data, error } = await q;
       if (error) throw error;
       return data as Remision[];
     },
@@ -764,26 +768,34 @@ function HistorialPage() {
   );
 
   const { data: phd, isLoading: loadingPhd } = useQuery({
-    queryKey: ["historial-domiciliarios"],
+    queryKey: ["historial-domiciliarios", rangoStart ?? null, rangoEnd ?? null, docServer || null],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("domiciliarios")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(1000);
+        .limit(docServer || rangoStart || rangoEnd ? 20000 : 3000);
+      if (rangoStart) q = q.gte("created_at", rangoStart);
+      if (rangoEnd) q = q.lt("created_at", rangoEnd);
+      if (docServer) q = q.eq("documento", docServer);
+      const { data, error } = await q;
       if (error) throw error;
       return data as Generico[];
     },
   });
 
   const { data: internas, isLoading: loadingInt } = useQuery({
-    queryKey: ["historial-internas"],
+    queryKey: ["historial-internas", rangoStart ?? null, rangoEnd ?? null, docServer || null],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("referencia_interna")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(1000);
+        .limit(docServer || rangoStart || rangoEnd ? 20000 : 3000);
+      if (rangoStart) q = q.gte("created_at", rangoStart);
+      if (rangoEnd) q = q.lt("created_at", rangoEnd);
+      if (docServer) q = q.eq("documento", docServer);
+      const { data, error } = await q;
       if (error) throw error;
       return data as Generico[];
     },
@@ -796,13 +808,17 @@ function HistorialPage() {
   );
 
   const { data: pendientes, isLoading: loadingPen } = useQuery({
-    queryKey: ["historial-pendientes"],
+    queryKey: ["historial-pendientes", rangoStart ?? null, rangoEnd ?? null, docServer || null],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("pendientes")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(1000);
+        .limit(docServer || rangoStart || rangoEnd ? 20000 : 2000);
+      if (rangoStart) q = q.gte("created_at", rangoStart);
+      if (rangoEnd) q = q.lt("created_at", rangoEnd);
+      if (docServer) q = q.eq("documento", docServer);
+      const { data, error } = await q;
       if (error) throw error;
       return data as Generico[];
     },
