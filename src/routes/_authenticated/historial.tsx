@@ -564,20 +564,28 @@ async function fetchHistoricosCasos(opts: {
 }): Promise<HistoricoCaso[]> {
   // La tabla histórica supera los 20k registros. Para no traerla completa se
   // aplican filtros server-side (rango de `created_at` + documento cuando
-  // aplica). Sin filtros: cap defensivo de 5000 registros más recientes.
+  // aplica). Sin filtros: cap defensivo de 5000 registros más recientes POR
+  // SECCIÓN (entrantes se importaron antes que salientes, por lo que un cap
+  // global dejaba fuera todos los entrantes recientes).
   const hasFilter = !!(opts.start || opts.end || opts.documento);
-  let q = supabase
-    .from("historicos_casos")
-    .select(HISTORICOS_SELECT)
-    .eq("archivado", false)
-    .order("created_at", { ascending: false })
-    .limit(hasFilter ? 20000 : 5000);
-  if (opts.start) q = q.gte("created_at", opts.start);
-  if (opts.end) q = q.lt("created_at", opts.end);
-  if (opts.documento) q = q.eq("documento", opts.documento);
-  const { data, error } = await q;
-  if (error) throw error;
-  return (data ?? []) as HistoricoCaso[];
+  const perSection = hasFilter ? 20000 : 5000;
+  const build = (seccion: string) => {
+    let q = supabase
+      .from("historicos_casos")
+      .select(HISTORICOS_SELECT)
+      .eq("archivado", false)
+      .eq("seccion", seccion)
+      .order("created_at", { ascending: false })
+      .limit(perSection);
+    if (opts.start) q = q.gte("created_at", opts.start);
+    if (opts.end) q = q.lt("created_at", opts.end);
+    if (opts.documento) q = q.eq("documento", opts.documento);
+    return q;
+  };
+  const [ent, sal] = await Promise.all([build("entrante"), build("saliente")]);
+  if (ent.error) throw ent.error;
+  if (sal.error) throw sal.error;
+  return [...((ent.data ?? []) as HistoricoCaso[]), ...((sal.data ?? []) as HistoricoCaso[])];
 }
 
 
