@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -90,13 +90,28 @@ export function DispositivosPanel() {
   const [nuevoModo, setNuevoModo] = useState<string>("");
   const [frase, setFrase] = useState("");
   const [nombreBoot, setNombreBoot] = useState("");
+  const [currentLocalId, setCurrentLocalId] = useState<string | null>(null);
 
   const reqCh = useServerFn(requestDeviceChallenge);
   const bootstrap = useServerFn(bootstrapAuthorizeCurrentDevice);
 
+  useEffect(() => {
+    getLocalDevicePublicId().then(setCurrentLocalId).catch(() => setCurrentLocalId(null));
+  }, []);
+
   const bootstrapMut = useMutation({
     mutationFn: async () => {
-      await clearLocalDevice();
+      const localId = currentLocalId ?? (await getLocalDevicePublicId());
+      const existing = devices.find((d) => d.device_public_id === localId);
+      if (existing?.estado === "AUTORIZADO") {
+        return { devicePublicId: existing.device_public_id };
+      }
+      if (existing?.estado === "PENDIENTE") {
+        await approve({ data: { deviceId: existing.id } });
+        await setLocalDevicePublicId(existing.device_public_id);
+        return { devicePublicId: existing.device_public_id };
+      }
+      if (!existing) await clearLocalDevice();
       const publicKey = await getPublicKeyJwk();
       const { challenge } = (await reqCh({
         data: { purpose: "REGISTER_DEVICE" },
@@ -111,6 +126,7 @@ export function DispositivosPanel() {
         },
       })) as { devicePublicId: string };
       await setLocalDevicePublicId(res.devicePublicId);
+      setCurrentLocalId(res.devicePublicId);
       return res;
     },
     onSuccess: () => {
@@ -146,6 +162,7 @@ export function DispositivosPanel() {
   };
 
   const devices = devicesQ.data ?? [];
+  const currentDevice = currentLocalId ? devices.find((d) => d.device_public_id === currentLocalId) : null;
   const requests = (reqQ.data as { id: string; device_id: string; navegador: string | null; sistema_operativo: string | null; solicitado_at: string }[]) ?? [];
 
   return (
@@ -206,11 +223,17 @@ export function DispositivosPanel() {
 
       {modeQ.data?.mode === "BOOTSTRAP" ? (
         <Panel title="Autorizar este navegador como administrador">
-          <p className="mb-3 text-sm text-muted-foreground">
-            Estás en modo <span className="font-mono font-bold">BOOTSTRAP</span>. Registra este
-            navegador como dispositivo administrador antes de activar <span className="font-mono">ENFORCED</span>.
-            Cada navegador debe registrarse por separado (llaves criptográficas locales, no exportables).
-          </p>
+          {currentDevice?.estado === "AUTORIZADO" ? (
+            <p className="mb-3 text-sm font-semibold text-status-green">
+              Este navegador ya está AUTORIZADO como dispositivo administrador.
+            </p>
+          ) : (
+            <p className="mb-3 text-sm text-muted-foreground">
+              Estás en modo <span className="font-mono font-bold">BOOTSTRAP</span>. Registra este
+              navegador como dispositivo administrador antes de activar <span className="font-mono">ENFORCED</span>.
+              Cada navegador debe registrarse por separado (llaves criptográficas locales, no exportables).
+            </p>
+          )}
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="sm:col-span-2">
               <Label htmlFor="boot-nombre">Nombre para este dispositivo</Label>
@@ -225,11 +248,11 @@ export function DispositivosPanel() {
             <div className="flex items-end">
               <Button
                 onClick={() => bootstrapMut.mutate()}
-                disabled={bootstrapMut.isPending}
+                disabled={bootstrapMut.isPending || currentDevice?.estado === "AUTORIZADO"}
                 className="w-full"
               >
                 {bootstrapMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
-                Autorizar este dispositivo
+                {currentDevice?.estado === "PENDIENTE" ? "Aprobar este dispositivo" : "Autorizar este dispositivo"}
               </Button>
             </div>
           </div>
