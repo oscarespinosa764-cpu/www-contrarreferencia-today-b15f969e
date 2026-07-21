@@ -110,62 +110,168 @@ function renderCoord(tpl: string, vars: DespachoCoordVars): string {
     .trim();
 }
 
-/**
- * Despacha una alerta de coordinación a los canales externos indicados en la regla.
- * Idempotente por (canal + referencia) dentro de la ventana de deduplicación.
- * `supabaseAdmin` se pasa desde el handler para no importar client.server aquí.
- */
+/* -------------------------------------------------------------------------
+ * Etapa 4 — Despacho automático de ALERTAS DE COORDINACIÓN.
+ *
+ * Aplica TODOS los filtros del destino antes de enviar:
+ *   1. destino habilitado
+ *   2. tipo de alerta permitido (allowed_alert_types)
+ *   3. prioridad permitida (allowed_priorities)
+ *   4. módulo permitido (allowed_modules)
+ *   5. horario permitido (schedule)
+ *   6. idempotencia por (channel_id + alert_type + reference_id) en logs
+ *
+ * Sanitiza los mensajes para NUNCA incluir PHI (nombre, documento,
+ * diagnóstico, observaciones clínicas). Los errores 400/403 de Telegram
+ * se marcan permanentes (sin reintento). Los errores temporales fijan
+ * next_retry_at con backoff exponencial.
+ * ----------------------------------------------------------------------- */
+
+function mapPrioridad(p?: string | null): string {
+  const v = (p ?? "").toUpperCase();
+  if (v === "CRITICO" || v === "CRÍTICO") return "Crítico";
+  if (v === "ALTO") return "Alerta";
+  if (v === "BAJO" || v === "MEDIO") return "Informativo";
+  return p ?? "";
+}
+
+function mapModulo(mod?: string | null, subventana?: string | null): string {
+  const s = (subventana ?? "").toUpperCase();
+  if (s === "ENTRANTES") return "entrantes";
+  if (s === "SALIENTES") return "salientes";
+  const m = (mod ?? "").toLowerCase();
+  if (m.includes("phd")) return "phd";
+  if (m.includes("cuadro") || m.includes("turno")) return "cuadro_turno";
+  if (m.includes("coord")) return "coordinacion";
+  return m || "otros";
+}
+
+// schedule = { enabled?, days?[0..6], start?"HH:MM", end?"HH:MM", tz? }.
+function dentroDeHorario(schedule: unknown): boolean {
+  const s = (schedule ?? {}) as {
+    enabled?: boolean; days?: number[]; start?: string; end?: string; tz?: string;
+  };
+  if (!s || typeof s !== "object" || !s.enabled) return true;
+  const tz = s.tz ?? "America/Bogota";
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz, weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(new Date());
+  const wdMap: Record<string, number> = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };
+  const wd = wdMap[parts.find((p) => p.type === "weekday")?.value ?? "Mon"] ?? 1;
+  const hh = parts.find((p) => p.type === "hour")?.value ?? "00";
+  const mm = parts.find((p) => p.type === "minute")?.value ?? "00";
+  const nowMin = parseInt(hh, 10) * 60 + parseInt(mm, 10);
+  if (Array.isArray(s.days) && s.days.length > 0 && !s.days.includes(wd)) return false;
+  const toMin = (t?: string) => {
+    if (!t) return null;
+    const m = /^(\d{1,2}):(\d{2})$/.exec(t);
+    return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : null;
+  };
+  const a = toMin(s.start); const b = toMin(s.end);
+  if (a == null || b == null) return true;
+  return a <= b ? nowMin >= a && nowMin <= b : nowMin >= a || nowMin <= b;
+}
+
+// Solo campos NO clínicos. Cualquier PHI recibida por error se descarta.
+function sanitizarVars(vars: DespachoCoordVars): Required<Pick<DespachoCoordVars,
+  "tipo_alerta" | "modulo" | "codigo" | "estado" | "accion" | "fecha_hora">> {
+  const clip = (v?: string) => (v ?? "").toString().slice(0, 140).replace(/[\u0000-\u001F\u007F]/g, " ").trim();
+  return {
+    tipo_alerta: clip(vars.tipo_alerta),
+    modulo: clip(vars.modulo),
+    codigo: clip(vars.codigo),
+    estado: clip(vars.estado),
+    accion: clip(vars.accion),
+    fecha_hora: clip(vars.fecha_hora) || new Date().toLocaleString("es-CO"),
+  };
+}
+
+function backoffProximo(intentos: number): string {
+  const escalones = [1, 5, 15, 60]; // minutos
+  const min = escalones[Math.min(intentos, escalones.length - 1)];
+  return new Date(Date.now() + min * 60_000).toISOString();
+}
+
 export async function despacharAlertaCoordinacion(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabaseAdmin: any,
-  args: DespachoCoordArgs,
-): Promise<{ enviados: number; intentados: number }> {
+  args: DespachoCoordArgs & { prioridad?: string | null; subventana?: string | null },
+): Promise<{ enviados: number; intentados: number; motivos: string[] }> {
+  const motivos: string[] = [];
   const seleccion = (args.canales ?? []).filter((c) => c === "telegram" || c === "slack");
-  if (seleccion.length === 0) return { enviados: 0, intentados: 0 };
+  if (seleccion.length === 0) return { enviados: 0, intentados: 0, motivos: ["sin_canales_regla"] };
 
   const { data: canales } = await supabaseAdmin
     .from("notification_channels")
-    .select("channel_type, enabled, message_template, bot_token, destination_id, destination_label")
+    .select("id, channel_type, enabled, bot_token, destination_id, destination_label, allowed_alert_types, allowed_priorities, allowed_modules, schedule, silent")
     .eq("enabled", true)
     .in("channel_type", seleccion);
 
-  const lista: any[] = canales ?? []; // eslint-disable-line @typescript-eslint/no-explicit-any
-  if (lista.length === 0) return { enviados: 0, intentados: 0 };
+  const lista = (canales ?? []) as Array<Record<string, unknown>>;
+  if (lista.length === 0) return { enviados: 0, intentados: 0, motivos: ["sin_destinos_activos"] };
 
-  const win = args.dedupMinutes ?? 60;
   const alertType = "ALERTA_COORDINACION";
+  const prioLabel = mapPrioridad(args.prioridad);
+  const moduloDest = mapModulo(args.module, args.subventana);
+  const varsSeguras = sanitizarVars(args.vars);
+
   let enviados = 0;
   let intentados = 0;
 
   for (const cfg of lista) {
-    if (!cfg.bot_token) continue;
-    if (cfg.channel_type === "telegram" && !cfg.destination_id) continue;
+    const chId = cfg.id as string;
+    const chType = cfg.channel_type as string;
+    const chSilent = !!cfg.silent;
+    const allowedTypes = (Array.isArray(cfg.allowed_alert_types) ? cfg.allowed_alert_types : []) as string[];
+    const allowedPrios = (Array.isArray(cfg.allowed_priorities) ? cfg.allowed_priorities : []) as string[];
+    const allowedMods = (Array.isArray(cfg.allowed_modules) ? cfg.allowed_modules : []) as string[];
 
-    if (args.referenceId) {
-      const since = new Date(Date.now() - win * 60000).toISOString();
+    if (allowedTypes.length > 0 && !allowedTypes.includes(alertType)) {
+      motivos.push(`${chId}:tipo_no_permitido`); continue;
+    }
+    if (allowedPrios.length > 0 && prioLabel && !allowedPrios.includes(prioLabel)) {
+      motivos.push(`${chId}:prioridad_no_permitida`); continue;
+    }
+    if (allowedMods.length > 0 && !allowedMods.includes(moduloDest)) {
+      motivos.push(`${chId}:modulo_no_permitido`); continue;
+    }
+    if (!dentroDeHorario(cfg.schedule)) {
+      motivos.push(`${chId}:fuera_de_horario`); continue;
+    }
+
+    const idemKey = args.referenceId ? `${chId}:${alertType}:${args.referenceId}` : null;
+    if (idemKey) {
       const { data: prev } = await supabaseAdmin
         .from("notification_logs")
         .select("id")
-        .eq("channel_type", cfg.channel_type)
-        .eq("alert_type", alertType)
-        .eq("reference_id", args.referenceId)
+        .eq("idempotency_key", idemKey)
         .eq("status", "sent")
-        .gte("created_at", since)
         .limit(1);
-      if (prev && prev.length > 0) continue;
+      if (prev && prev.length > 0) {
+        motivos.push(`${chId}:duplicado`); continue;
+      }
     }
 
     intentados++;
-    const base = cfg.channel_type === "slack" ? PLANTILLA_COORD_SLACK : PLANTILLA_COORD_TELEGRAM;
-    let text = renderCoord(base, args.vars);
-    if (args.requiereCrue) {
-      text += cfg.channel_type === "slack" ? "\n\n:rotating_light: *NOTIFICAR AL CRUE*" : "\n\n🚑 NOTIFICAR AL CRUE";
-    }
 
-    const res =
-      cfg.channel_type === "slack"
-        ? await enviarSlack(cfg.bot_token, text)
-        : await enviarTelegram(cfg.bot_token, cfg.destination_id, text);
+    let res: { ok: boolean; error?: string; permanent?: boolean; retry_after?: number; error_code?: number };
+    if (chType === "telegram") {
+      const destId = cfg.destination_id as string | null;
+      if (!destId) { motivos.push(`${chId}:sin_destino`); continue; }
+      const { tgSendMessage, isTelegramTokenConfigured } = await import("./telegram.server");
+      if (!isTelegramTokenConfigured()) {
+        res = { ok: false, error: "TELEGRAM_BOT_TOKEN no configurado", permanent: true };
+      } else {
+        const text = renderCoord(PLANTILLA_COORD_TELEGRAM, varsSeguras) + (args.requiereCrue ? "\n\n🚑 NOTIFICAR AL CRUE" : "");
+        const r = await tgSendMessage(destId, text, { silent: chSilent });
+        res = { ok: r.ok, error: r.description, permanent: r.permanent, retry_after: r.retry_after, error_code: r.error_code };
+      }
+    } else {
+      const token = cfg.bot_token as string | null;
+      if (!token) { motivos.push(`${chId}:sin_webhook`); continue; }
+      const text = renderCoord(PLANTILLA_COORD_SLACK, varsSeguras) + (args.requiereCrue ? "\n\n:rotating_light: *NOTIFICAR AL CRUE*" : "");
+      res = await enviarSlack(token, text);
+    }
 
     const now = new Date().toISOString();
     await supabaseAdmin
@@ -173,24 +279,36 @@ export async function despacharAlertaCoordinacion(
       .update(
         res.ok
           ? { last_success_at: now, last_error_at: null, last_error_message: null, config_status: "conectado" }
-          : { last_error_at: now, last_error_message: res.error || "Error desconocido" },
+          : { last_error_at: now, last_error_message: (res.error || "Error").slice(0, 200) },
       )
-      .eq("channel_type", cfg.channel_type);
+      .eq("id", chId);
+
+    let logStatus: "sent" | "error" | "retry";
+    let nextRetry: string | null = null;
+    if (res.ok) logStatus = "sent";
+    else if (res.permanent || (res.error_code && [400, 401, 403].includes(res.error_code))) logStatus = "error";
+    else {
+      logStatus = "retry";
+      nextRetry = res.retry_after ? new Date(Date.now() + res.retry_after * 1000).toISOString() : backoffProximo(1);
+    }
 
     await supabaseAdmin.from("notification_logs").insert({
-      channel_type: cfg.channel_type,
+      channel_id: chId,
+      channel_type: chType,
       alert_type: alertType,
-      module: args.module || null,
+      module: moduloDest,
       reference_id: args.referenceId || null,
-      recipient: cfg.channel_type === "slack" ? cfg.destination_label || "webhook" : cfg.destination_id,
-      message_preview: text.slice(0, 140),
-      status: res.ok ? "sent" : "error",
-      error_message: res.ok ? null : res.error,
+      idempotency_key: idemKey,
+      recipient: chType === "slack" ? (cfg.destination_label as string) || "webhook" : (cfg.destination_id as string),
+      message_preview: renderCoord(PLANTILLA_COORD_TELEGRAM, varsSeguras).slice(0, 140),
+      status: logStatus,
+      error_message: res.ok ? null : `[${res.error_code ?? 0}] ${(res.error ?? "").slice(0, 180)}`,
       sent_at: res.ok ? now : null,
+      next_retry_at: nextRetry,
       created_by: args.userId,
     });
     if (res.ok) enviados++;
   }
 
-  return { enviados, intentados };
+  return { enviados, intentados, motivos };
 }
