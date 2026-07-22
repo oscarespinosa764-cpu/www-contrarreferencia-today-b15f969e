@@ -1127,7 +1127,7 @@ export function SeguimientoDialog({
           );
         case T.CAMBIO_UNIDAD:
           return appendNota(
-            `CAMBIO DE UNIDAD.\nUNIDAD ANTERIOR: ${unidadActual || "—"}\nCAMA ANTERIOR: ${camaActual || "—"}\nNUEVA UNIDAD: ${nuevaUnidad || "—"}\nNUEVA CAMA: ${nuevaCama || "—"}\nFECHA/HORA: ${new Date().toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })}`,
+            `CAMBIO DE UNIDAD.\nUNIDAD ANTERIOR: ${unidadActual || "UNIDAD ACTUAL NO REGISTRADA"}\nCAMA ANTERIOR: ${camaActual || "CAMA ACTUAL NO REGISTRADA"}\nNUEVA UNIDAD: ${nuevaUnidadNorm || "—"}\nNUEVA CAMA: ${nuevaCamaNorm || "—"}\nFECHA/HORA: ${new Date().toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })}`,
             detalle,
           );
         default:
