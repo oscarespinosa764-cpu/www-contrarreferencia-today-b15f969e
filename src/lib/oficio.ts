@@ -7,13 +7,19 @@
 import { limpiarMarcadores } from "./rc-utils";
 
 // Las imágenes deben tener URL ABSOLUTA para verse también cuando el oficio
-// se pega en el correo (Gmail / Outlook). URLs inmutables del CDN.
-const ASSET_BASE = "https://look-see-html.lovable.app";
+// se pega en el correo (Gmail / Outlook). Se apunta al dominio publicado
+// institucional (estable y con CDN público) — el host anterior
+// `look-see-html.lovable.app` dejaba las imágenes rotas (404).
+const ASSET_BASE = "https://www.contrarreferencia.today";
 export const IMG = {
   logo: ASSET_BASE + "/__l5e/assets-v1/debb769e-6a9d-4c3b-984a-fac1313767e8/cedim-logo.png",
   cruz: ASSET_BASE + "/__l5e/assets-v1/68052705-29b9-400b-9419-d72818b6134c/cruz-referencia.png",
   mascota: ASSET_BASE + "/__l5e/assets-v1/b2238e85-eeda-4f5c-a307-7d2906a913b9/ceci-mascota.png",
 };
+
+// onerror inline: si la imagen bloquea o falla, ocultamos el <img> y quitamos
+// el ícono nativo de "imagen rota". Es HTML plano, seguro para correo.
+const IMG_FALLBACK = `this.onerror=null;this.style.display='none';`;
 
 export const INSTITUCION = {
   nombre: "CEDIM IPS",
