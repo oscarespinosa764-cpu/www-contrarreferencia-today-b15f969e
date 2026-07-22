@@ -17,6 +17,9 @@ import { PlantillasInventarioPanel } from "@/components/coordinacion/plantillas-
 import { AuditoriaPanel } from "@/components/coordinacion/auditoria-panel";
 import { DispositivosPanel } from "@/components/coordinacion/dispositivos-panel";
 import { CategoriasView } from "@/components/catalogo/categorias-view";
+import { ReglasAdmin } from "@/components/coordinacion/reglas-admin";
+
+
 
 import { useAuth } from "@/lib/auth";
 
