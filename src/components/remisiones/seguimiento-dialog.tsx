@@ -545,7 +545,7 @@ export function SeguimientoDialog({
   // Catálogo de unidades / servicios activos (para CAMBIO DE UNIDAD).
   const { data: catUnidades = [] } = useQuery({
     queryKey: ["cat-unidad-seg"],
-    enabled: open && esSaliente,
+    enabled: open && (esSaliente || esInterna),
     queryFn: async () => {
       const { data } = await supabase
         .from("catalogos")
@@ -566,6 +566,22 @@ export function SeguimientoDialog({
         out.push(v);
       }
       return out;
+    },
+  });
+
+  // Catálogo de tipos de ambulancia activos (para CONFIRMACIÓN DE PROGRAMACIÓN en RI).
+  const { data: catTipoAmbulancia = [] } = useQuery({
+    queryKey: ["cat-tipo-ambulancia-seg"],
+    enabled: open && esInterna,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor")
+        .eq("tipo", "TIPO_AMBULANCIA")
+        .eq("activo", true)
+        .order("orden", { ascending: true })
+        .order("valor", { ascending: true });
+      return (data ?? []).map((r) => String(r.valor ?? "").trim()).filter(Boolean);
     },
   });
 
@@ -659,7 +675,7 @@ export function SeguimientoDialog({
   );
   const espHayCambio = espCierreList.length > 0 || espNuevasLimpias.length > 0;
   const esCambioEsp = esSaliente && tipoSeg === T.CAMBIO_ESPECIALIDAD;
-  const esCambioUnidad = esSaliente && tipoSeg === T.CAMBIO_UNIDAD;
+  const esCambioUnidad = (esSaliente || esInterna) && tipoSeg === T.CAMBIO_UNIDAD;
   const esTepActivacion = esInterna && tipoSeg === TI.TEP_ACTIVACION;
   // Proveedor SEM (predeterminado en flujos de ambulancia/TEP).
   const SEM_MATCH = "SERVICIOS DE EMERGENCIAS MEDICAS DEL CAQUETA";
@@ -673,9 +689,25 @@ export function SeguimientoDialog({
       setRiTepProveedor(proveedorSem);
     }
   }, [esTepActivacion, proveedorSem, riTepProveedor]);
+  // Cama vigente de RI: se deriva del último CAMBIO DE UNIDAD registrado
+  // (referencia_interna no tiene columna `cama`; se guarda estructurada en
+  // el seguimiento). Si no existe, queda vacía.
+  const camaActualRi = useMemo(() => {
+    if (!esInterna) return "";
+    const rows = (historial ?? []) as { tipo_seguimiento?: string; detalles?: unknown; archivado?: boolean }[];
+    const last = rows.find(
+      (h) =>
+        !h.archivado &&
+        (h.tipo_seguimiento ?? "").toUpperCase() === "CAMBIO DE UNIDAD",
+    );
+    const det = (last?.detalles ?? {}) as Record<string, unknown>;
+    return String(det["cama_nueva"] ?? det["nueva_cama"] ?? "").trim().toUpperCase();
+  }, [esInterna, historial]);
   // Ubicación institucional actual (unidad = servicio de la remisión, cama del caso).
-  const unidadActual = (caso?.servicio ?? "").trim();
-  const camaActual = (caso?.cama ?? "").trim();
+  const unidadActual = (
+    esInterna ? (casoInterna?.servicio ?? "") : (caso?.servicio ?? "")
+  ).trim();
+  const camaActual = esInterna ? camaActualRi : (caso?.cama ?? "").trim();
   // Sanitiza la cama: mayúsculas, sin espacios extremos, sin HTML, máximo 30 chars.
   const sanitizarCama = (raw: string) =>
     raw
@@ -1071,7 +1103,7 @@ export function SeguimientoDialog({
           return appendNota(generarPlantillaRefInternaCulminacion(), detalle);
         case TI.PROG_AMB:
           return appendNota(
-            `SE CONFIRMA PROGRAMACIÓN DE AMBULANCIA.\nFECHA/HORA RECOGIDA: ${riRecFecha} ${riRecHora}\nTIPO AMBULANCIA: ${riRecTipoAmb || "—"}`,
+            `SE CONFIRMA PROGRAMACIÓN DE AMBULANCIA.\nFECHA/HORA RECOGIDA: ${(riRecFecha && riRecHora) ? `${riRecFecha}, ${riRecHora}` : "—"}\nTIPO AMBULANCIA: ${riRecTipoAmb || "—"}`,
             detalle,
           );
         case TI.LLEGADA_AMB:
@@ -1095,7 +1127,7 @@ export function SeguimientoDialog({
           );
         case T.CAMBIO_UNIDAD:
           return appendNota(
-            `CAMBIO DE UNIDAD.\nUNIDAD ANTERIOR: ${unidadActual || "—"}\nCAMA ANTERIOR: ${camaActual || "—"}\nNUEVA UNIDAD: ${nuevaUnidad || "—"}\nNUEVA CAMA: ${nuevaCama || "—"}\nFECHA/HORA: ${new Date().toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })}`,
+            `CAMBIO DE UNIDAD.\nUNIDAD ANTERIOR: ${unidadActual || "UNIDAD ACTUAL NO REGISTRADA"}\nCAMA ANTERIOR: ${camaActual || "CAMA ACTUAL NO REGISTRADA"}\nNUEVA UNIDAD: ${nuevaUnidadNorm || "—"}\nNUEVA CAMA: ${nuevaCamaNorm || "—"}\nFECHA/HORA: ${new Date().toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })}`,
             detalle,
           );
         default:
@@ -1501,7 +1533,15 @@ export function SeguimientoDialog({
         case TI.AMB_COORDINADA_ESP:
           return { proveedor: riTepProveedor.trim() || null };
         case T.CAMBIO_UNIDAD:
-          return { nueva_unidad: nuevaUnidad.trim() || null, nueva_cama: nuevaCama.trim() || null };
+          return {
+            unidad_anterior: unidadActual || null,
+            cama_anterior: camaActual || null,
+            nueva_unidad: nuevaUnidadNorm || null,
+            nueva_cama: nuevaCamaNorm || null,
+            // Alias compatibles con el detalle guardado por remisiones salientes.
+            unidad_nueva: nuevaUnidadNorm || null,
+            cama_nueva: nuevaCamaNorm || null,
+          };
         default:
           return null;
       }
@@ -2003,9 +2043,11 @@ export function SeguimientoDialog({
         update.especialidades_tratantes = espActivasFinal.join(", ");
       }
       // Cambio de unidad: actualiza servicio (unidad) y cama sin tocar estado / aceptación.
+      // En Referencia Interna la tabla no tiene columna `cama`; la nueva cama queda
+      // persistida estructurada dentro de `seguimientos.detalles` para trazabilidad.
       if (esCambioUnidad) {
         update.servicio = nuevaUnidadNorm;
-        update.cama = nuevaCamaNorm;
+        if (esSaliente) update.cama = nuevaCamaNorm;
       }
       // Evolución diaria salientes v2: refleja estado en la tarjeta.
       if (esEvolucionSal) {
@@ -2706,6 +2748,55 @@ export function SeguimientoDialog({
                   </div>
                 </div>
               )}
+
+              {/* CONFIRMACIÓN DE PROGRAMACIÓN DE AMBULANCIA (RI) */}
+              {esInterna && tipoSeg === TI.PROG_AMB && (
+                <div className={sectionCls}>
+                  <p className={labelCls}>Confirmación de programación de ambulancia</p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Fecha y hora de recogida *</Label>
+                      <AppDateTimeInput
+                        name="ri_rec_fecha_hora"
+                        value={(() => {
+                          const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(riRecFecha.trim());
+                          if (!m || !isHoraValida(riRecHora)) return "";
+                          return `${m[3]}-${m[2]}-${m[1]}T${riRecHora}`;
+                        })()}
+                        onChange={(iso) => {
+                          if (!iso) {
+                            setRiRecFecha("");
+                            setRiRecHora("");
+                            return;
+                          }
+                          const [d, t] = iso.split("T");
+                          if (!d || !t) return;
+                          const [y, mo, da] = d.split("-");
+                          setRiRecFecha(`${da}/${mo}/${y}`);
+                          setRiRecHora(t.slice(0, 5));
+                        }}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Tipo de ambulancia *</Label>
+                      <select
+                        value={riRecTipoAmb}
+                        onChange={(e) => setRiRecTipoAmb(e.target.value)}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        required
+                      >
+                        <option value="" disabled>Seleccione…</option>
+                        {catTipoAmbulancia.map((v) => (
+                          <option key={v} value={v}>{v}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+
 
 
 
