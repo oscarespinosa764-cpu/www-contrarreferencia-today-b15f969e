@@ -1,69 +1,29 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Layers, Truck, Ban, Users, Package } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Settings2 } from "lucide-react";
 import { CategoriaModal } from "./categoria-modal";
-
-const TIPO_MODULO: Record<string, string> = {
-  IPS: "Remisiones",
-  IPS_LOCAL: "Remisiones",
-  DEPARTAMENTO: "Remisiones",
-  EAPB: "Remisiones",
-  ESPECIALIDAD: "Remisiones",
-  MEDICO: "Remisiones",
-  REGIMEN: "Remisiones",
-  TIPO_TRAMITE: "Remisiones",
-  DOC_ENTREGA: "Remisiones",
-  EMPRESA_TEP: "Ambulancias",
-  PLACA: "Ambulancias",
-  UNIDAD: "Ambulancias",
-  UNIDAD_REQUERIDA: "Ambulancias",
-  MOTIVO_CANCELACION: "Motivos",
-  MOTIVO_NEG: "Motivos",
-  MOTIVO_PERMISO: "Talento Humano",
-};
-
-const CATS = [
-  {
-    key: "Remisiones",
-    icon: Layers,
-    tone: "bg-status-blue/10 text-status-blue",
-    desc: "IPS, EAPB, especialidades, médicos, trámites y entregas.",
-  },
-  {
-    key: "Ambulancias",
-    icon: Truck,
-    tone: "bg-emerald-500/10 text-emerald-600",
-    desc: "Empresas TEP, placas, unidades y unidades requeridas.",
-  },
-  {
-    key: "Motivos",
-    icon: Ban,
-    tone: "bg-amber-500/10 text-amber-600",
-    desc: "Motivos de cancelación y negación.",
-  },
-  {
-    key: "Talento Humano",
-    icon: Users,
-    tone: "bg-violet-500/10 text-violet-600",
-    desc: "Motivos de permiso del cuadro de turno.",
-  },
-  {
-    key: "Otros",
-    icon: Package,
-    tone: "bg-slate-500/10 text-slate-600",
-    desc: "Catálogos sin módulo asignado.",
-  },
-];
+import { AdminCategoriasDialog } from "./admin-categorias-dialog";
+import {
+  useCatalogoConfigDerivada,
+  iconoDe,
+  type CatalogoCategoria,
+} from "@/lib/catalogo-categorias";
+import { useAuth } from "@/lib/auth";
 
 type Row = { tipo: string; activo: boolean };
 
 export function CategoriasView() {
   const [open, setOpen] = useState<string | null>(null);
+  const [adminOpen, setAdminOpen] = useState(false);
+  const { isAdmin } = useAuth();
+  const config = useCatalogoConfigDerivada();
+  const queryClient = useQueryClient();
 
-  const { data: counts } = useQuery({
+  const { data: counts, isError: countsError } = useQuery({
     queryKey: ["catalogo-categorias-counts"],
     staleTime: 30_000,
     queryFn: async () => {
@@ -72,82 +32,117 @@ export function CategoriasView() {
         .select("tipo, activo")
         .limit(5000);
       if (error) throw error;
-      const acc: Record<
-        string,
-        { tipos: Set<string>; total: number; activos: number }
-      > = {};
-      for (const c of CATS)
-        acc[c.key] = { tipos: new Set(), total: 0, activos: 0 };
-      ((data ?? []) as Row[]).forEach((r) => {
-        const m = TIPO_MODULO[r.tipo] ?? "Otros";
-        if (!acc[m]) acc[m] = { tipos: new Set(), total: 0, activos: 0 };
-        acc[m].tipos.add(r.tipo);
-        acc[m].total++;
-        if (r.activo) acc[m].activos++;
-      });
-      return acc;
+      return (data ?? []) as Row[];
     },
   });
 
-  const cats = useMemo(
-    () =>
-      CATS.filter((c) => {
-        const info = counts?.[c.key];
-        return c.key !== "Otros" || (info && info.total > 0);
-      }),
-    [counts],
-  );
+  const cards = useMemo(() => {
+    const acc: Record<
+      string,
+      { cat: CatalogoCategoria; tipos: Set<string>; total: number; activos: number }
+    > = {};
+    for (const c of config.categorias) {
+      if (!c.activo) continue;
+      acc[c.nombre] = { cat: c, tipos: new Set(), total: 0, activos: 0 };
+    }
+    for (const r of counts ?? []) {
+      const nombre = config.tipoModulo[r.tipo];
+      if (!nombre || !acc[nombre]) continue;
+      acc[nombre].tipos.add(r.tipo);
+      acc[nombre].total++;
+      if (r.activo) acc[nombre].activos++;
+    }
+    return Object.values(acc)
+      .filter((v) => v.cat.codigo !== "OTROS" || v.total > 0)
+      .sort((a, b) => a.cat.orden - b.cat.orden);
+  }, [config.categorias, config.tipoModulo, counts]);
+
+  if (config.isError) {
+    return (
+      <Card className="p-6 text-center">
+        <p className="text-sm font-semibold text-destructive">
+          Error de configuración de categorías
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          No fue posible cargar la configuración persistente.
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-3"
+          onClick={() => config.refetch()}
+        >
+          Reintentar
+        </Button>
+      </Card>
+    );
+  }
 
   return (
     <>
+      {isAdmin && (
+        <div className="mb-3 flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-full"
+            onClick={() => setAdminOpen(true)}
+          >
+            <Settings2 className="mr-1.5 h-4 w-4" /> Administrar categorías
+          </Button>
+        </div>
+      )}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {cats.map((c) => {
-          const Icon = c.icon;
-          const info = counts?.[c.key];
+        {config.isLoading && cards.length === 0 && (
+          <p className="col-span-full py-6 text-center text-sm text-muted-foreground">
+            Cargando categorías…
+          </p>
+        )}
+        {!config.isLoading && cards.length === 0 && (
+          <p className="col-span-full py-6 text-center text-sm text-muted-foreground">
+            {countsError ? "Error cargando conteos." : "Sin categorías configuradas."}
+          </p>
+        )}
+        {cards.map(({ cat, tipos, total, activos }) => {
+          const Icon = iconoDe(cat.icono);
           return (
             <Card
-              key={c.key}
+              key={cat.id}
               role="button"
               tabIndex={0}
-              onClick={() => setOpen(c.key)}
+              onClick={() => setOpen(cat.nombre)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  setOpen(c.key);
+                  setOpen(cat.nombre);
                 }
               }}
               className="cursor-pointer p-5 transition hover:border-primary/40 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              aria-label={`Abrir categoría ${c.key}`}
+              aria-label={`Abrir categoría ${cat.nombre}`}
             >
               <div className="flex items-start gap-3">
-                <div
-                  className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl ${c.tone}`}
-                >
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
                   <Icon className="h-6 w-6" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="truncate text-base font-black text-foreground">
-                      {c.key}
+                      {cat.nombre}
                     </p>
                     <Badge variant="secondary" className="shrink-0 text-[10px]">
-                      {info?.tipos.size ?? 0} catálogos
+                      {tipos.size} catálogos
                     </Badge>
                   </div>
                   <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                    {c.desc}
+                    {cat.descripcion ?? ""}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-muted-foreground">
                     <span>
-                      <strong className="text-foreground">
-                        {info?.total ?? 0}
-                      </strong>{" "}
+                      <strong className="text-foreground">{total}</strong>{" "}
                       elementos
                     </span>
                     <span>
-                      <strong className="text-emerald-600">
-                        {info?.activos ?? 0}
-                      </strong>{" "}
+                      <strong className="text-emerald-600">{activos}</strong>{" "}
                       activos
                     </span>
                   </div>
@@ -158,6 +153,16 @@ export function CategoriasView() {
         })}
       </div>
       {open && <CategoriaModal modulo={open} onClose={() => setOpen(null)} />}
+      {adminOpen && (
+        <AdminCategoriasDialog
+          onClose={() => {
+            setAdminOpen(false);
+            queryClient.invalidateQueries({ queryKey: ["catalogo-categorias-config"] });
+            queryClient.invalidateQueries({ queryKey: ["catalogo-tipos-config"] });
+            queryClient.invalidateQueries({ queryKey: ["catalogo-categorias-counts"] });
+          }}
+        />
+      )}
     </>
   );
 }
