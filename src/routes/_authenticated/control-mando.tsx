@@ -87,6 +87,10 @@ function ControlMandoPage() {
         <TabsContent value="catalogos">
           <CategoriasView />
         </TabsContent>
+        <TabsContent value="reglas">
+          <ReglasAdmin />
+        </TabsContent>
+
         <TabsContent value="historicos">
           <div className="mb-4 rounded-xl border bg-card p-5">
             <h2 className="text-lg font-bold text-foreground">Datos, importaciones y respaldo</h2>
