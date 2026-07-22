@@ -73,7 +73,7 @@ const groups: NavGroup[] = [
     adminOnly: true,
     items: [
       { to: "/indicadores", label: "Indicadores", icon: BarChart3 },
-      { to: "/catalogo", label: "Catálogos", icon: BookOpen },
+      { to: "/control-mando", label: "Catálogos", icon: BookOpen, search: { tab: "catalogos" } },
       { to: "/control-mando", label: "Control de Mando", icon: Gauge },
       { to: "/reglas", label: "Alertas y Avisos Operativos", icon: Zap },
     ],
