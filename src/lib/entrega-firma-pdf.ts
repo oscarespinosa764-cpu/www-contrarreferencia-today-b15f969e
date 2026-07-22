@@ -510,20 +510,37 @@ export async function descargarChecklistPDF(d: EntregaDatos) {
 
 /**
  * PDF FINAL "LISTA DE CHEQUEO CONFIRMADA" firmado por QR — formato GU-FR oficial.
+ * FASE 6: consume la configuración publicada en plantillas_inventario
+ * (código ENTREGA_FIRMA_QR) para presentación autorizada. Fallback: defaults.
  * No persiste. Compactado para caber en UNA sola página tamaño carta: el bloque de
  * firmante, aceptación, firma y código de verificación quedan siempre en la misma hoja.
  */
-export async function descargarFirmadoPDF(d: EntregaDatos, f: FirmaDatos) {
+export async function descargarFirmadoPDF(
+  d: EntregaDatos,
+  f: FirmaDatos,
+  cfgOverride?: ListaChequeoConfirmadaConfig,
+) {
   const { jsPDF } = await import("jspdf");
   const autoTable = (await import("jspdf-autotable")).default;
-  const doc = new jsPDF({ unit: "mm", format: "letter" });
+
+  // 1) Cargar configuración publicada (o usar override para vista previa).
+  const cfg =
+    cfgOverride ?? (await loadListaChequeoConfirmadaConfig()).config;
+
+  const doc = new jsPDF({
+    unit: "mm",
+    format: cfg.page.page_size,
+    orientation: cfg.page.orientation,
+  });
   const pageW = doc.internal.pageSize.getWidth();
 
-  let y = await bannerHeader(doc, 10);
-  y = encabezadoDatos(doc, d, y);
-  y = bandaSeccion(doc, y, "ANTES DEL TRASLADO DEL PACIENTE, VERIFIQUE LA SIGUIENTE DOCUMENTACIÓN:");
-  y = await tablaChecklist(doc, d, y);
-  y = await bloqueResponsable(doc, d, y);
+  let y = await bannerHeader(doc, cfg.page.margin_top, cfg);
+  y = encabezadoDatos(doc, d, y, cfg);
+  y = bandaSeccion(doc, y, cfg.checklist_table.intro_text);
+  y = await tablaChecklist(doc, d, y, cfg);
+  y = await bloqueResponsable(doc, d, y, cfg);
+
+  const s = cfg.signer_section;
 
   // ── DATOS DEL FIRMANTE (grid compacto de 2 columnas) ──────────────────────
   y += 1;
@@ -532,80 +549,85 @@ export async function descargarFirmadoPDF(d: EntregaDatos, f: FirmaDatos) {
     theme: "grid",
     styles: { fontSize: 7.5, cellPadding: 1.2, lineColor: [120, 120, 120], lineWidth: 0.2, valign: "middle" },
     head: [[{
-      content: "DATOS DEL FIRMANTE (PERSONAL DE TRASLADO)",
+      content: s.title,
       colSpan: 4,
       styles: { fillColor: NAVY, textColor: [255, 255, 255], halign: "center", fontStyle: "bold" },
     }]],
     body: [
       [
-        { content: "NOMBRE", styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
+        { content: s.label_nombre, styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
         { content: up(f.nombre) || "—" },
-        { content: "CARGO", styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
+        { content: s.label_cargo, styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
         { content: up(f.cargo) || "—" },
       ],
       [
-        { content: "DOCUMENTO / ID", styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
+        { content: s.label_documento, styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
         { content: up(f.documento) || "—" },
-        { content: "TELÉFONO", styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
+        { content: s.label_telefono, styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
         { content: f.telefono || "—" },
       ],
       [
-        { content: "EMPRESA DE AMBULANCIA", styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
+        { content: s.label_empresa, styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
         { content: up(f.empresa) || "—" },
-        { content: "FECHA/HORA DE FIRMA", styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
+        { content: s.label_fecha_firma, styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
         { content: fmtFecha(f.firmado_at) || "—" },
       ],
     ] as never,
     columnStyles: { 0: { cellWidth: 40 }, 1: { cellWidth: 44 }, 2: { cellWidth: 40 }, 3: { cellWidth: 44 } },
-    margin: { left: 14, right: 14 },
+    margin: { left: cfg.page.margin_left, right: cfg.page.margin_right },
   });
   // @ts-expect-error plugin
   y = (doc.lastAutoTable?.finalY ?? y) + 3;
 
-  // ── ACEPTACIÓN DE RECIBIDO (compacto) ─────────────────────────────────────
+  // ── ACEPTACIÓN DE RECIBIDO ────────────────────────────────────────────────
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
-  doc.text("ACEPTACIÓN DE RECIBIDO", 16, y);
+  doc.text(cfg.acceptance_section.title, cfg.page.margin_left + 2, y);
   y += 4;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
-  const acept = doc.splitTextToSize(`[X] ${TEXTO_ACEPTACION}`, pageW - 32);
-  doc.text(acept, 16, y);
+  const acept = doc.splitTextToSize(
+    `[X] ${cfg.acceptance_section.text}`,
+    pageW - cfg.page.margin_left - cfg.page.margin_right - 4,
+  );
+  doc.text(acept, cfg.page.margin_left + 2, y);
   y += 4 * acept.length + 3;
 
   // ── FIRMA (recuadro pequeño) + CÓDIGO DE VERIFICACIÓN ─────────────────────
+  // NOTA: la firma, el código y el hash son COMPONENTES PROTEGIDOS. Sólo se
+  // configuran sus etiquetas visibles; los valores provienen del backend.
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
-  doc.text("FIRMA", 16, y);
+  doc.text(cfg.verification_section.label_firma, cfg.page.margin_left + 2, y);
   const boxY = y + 1;
   doc.setDrawColor(120);
-  doc.rect(16, boxY, 58, 22);
+  doc.rect(cfg.page.margin_left + 2, boxY, 58, 22);
   if (f.firma_data) {
     try {
-      doc.addImage(f.firma_data, "PNG", 17, boxY + 1, 56, 20);
+      doc.addImage(f.firma_data, "PNG", cfg.page.margin_left + 3, boxY + 1, 56, 20);
     } catch {
       /* firma no renderizable */
     }
   }
-  // Código de verificación a la derecha de la firma.
+  const codeX = cfg.page.margin_left + 68;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
-  doc.text("CÓDIGO DE VERIFICACIÓN", 82, boxY + 5);
+  doc.text(cfg.verification_section.label_codigo, codeX, boxY + 5);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
-  doc.text(f.codigo_verificacion || "—", 82, boxY + 12);
-  if (f.pdf_hash) {
-    // Solo se muestra el código visible; el hash completo se conserva en los datos
-    // estructurados (entrega_firmas.pdf_hash). Aquí se imprime abreviado si cabe.
+  doc.text(f.codigo_verificacion || "—", codeX, boxY + 12);
+  if (f.pdf_hash && cfg.verification_section.show_hash) {
+    // El código y el hash visibles se muestran truncados; el valor real vive
+    // en entrega_firmas.pdf_hash (evidencia inmutable).
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6.5);
     doc.setTextColor(120);
     const hashCorto = f.pdf_hash.length > 40 ? `${f.pdf_hash.slice(0, 40)}…` : f.pdf_hash;
-    doc.text(`Hash de evidencia: ${hashCorto}`, 82, boxY + 18);
+    doc.text(`${cfg.verification_section.label_hash}: ${hashCorto}`, codeX, boxY + 18);
     doc.setTextColor(0);
   }
 
-  pie(doc);
+  pie(doc, cfg);
   const docNum = (d.documento || "remision").replace(/\s+/g, "");
   const fechaArch = new Date().toISOString().slice(0, 10);
   descargar(doc, `Lista_Chequeo_Confirmada_${docNum}_${fechaArch}.pdf`);
