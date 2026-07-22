@@ -1,4 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { z } from "zod";
+import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { AppHeader } from "@/components/app-header";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ControlMandoPanel } from "@/components/coordinacion/control-mando-panel";
@@ -14,15 +16,23 @@ import { ChecklistsPanel } from "@/components/coordinacion/checklists-panel";
 import { PlantillasInventarioPanel } from "@/components/coordinacion/plantillas-inventario-panel";
 import { AuditoriaPanel } from "@/components/coordinacion/auditoria-panel";
 import { DispositivosPanel } from "@/components/coordinacion/dispositivos-panel";
+import { CategoriasView } from "@/components/catalogo/categorias-view";
 
 import { useAuth } from "@/lib/auth";
 
+const searchSchema = z.object({
+  tab: fallback(z.string(), "usuarios").default("usuarios"),
+});
+
 export const Route = createFileRoute("/_authenticated/control-mando")({
+  validateSearch: zodValidator(searchSchema),
   component: ControlMandoPage,
 });
 
 function ControlMandoPage() {
   const { isAdmin } = useAuth();
+  const { tab } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
 
   if (!isAdmin) {
     return (
@@ -42,10 +52,15 @@ function ControlMandoPage() {
         subtitle="Gestión de usuarios, históricos y estado técnico del turno"
       />
 
-      <Tabs defaultValue="usuarios" className="w-full">
-        <TabsList className="mb-4 grid h-auto w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-9">
+      <Tabs
+        value={tab}
+        onValueChange={(v) => navigate({ search: { tab: v } })}
+        className="w-full"
+      >
+        <TabsList className="mb-4 grid h-auto w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-10">
           <TabsTrigger className="whitespace-normal" value="usuarios">Usuarios</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="dispositivos">Dispositivos</TabsTrigger>
+          <TabsTrigger className="whitespace-normal" value="catalogos">Catálogos</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="historicos">Datos, importaciones y respaldo</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="alertas">Alertas y avisos</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="checklists">Listas de chequeo</TabsTrigger>
@@ -63,6 +78,9 @@ function ControlMandoPage() {
         </TabsContent>
         <TabsContent value="dispositivos">
           <DispositivosPanel />
+        </TabsContent>
+        <TabsContent value="catalogos">
+          <CategoriasView />
         </TabsContent>
         <TabsContent value="historicos">
           <div className="mb-4 rounded-xl border bg-card p-5">

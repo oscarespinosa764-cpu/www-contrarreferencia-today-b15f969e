@@ -43,6 +43,7 @@ type NavItem = {
   icon: typeof LayoutDashboard;
   badge?: "seguimientos";
   adminOnly?: boolean;
+  search?: Record<string, string>;
 };
 
 type NavGroup = { label: string; abbr: string; adminOnly?: boolean; items: NavItem[] };
@@ -72,7 +73,7 @@ const groups: NavGroup[] = [
     adminOnly: true,
     items: [
       { to: "/indicadores", label: "Indicadores", icon: BarChart3 },
-      { to: "/catalogo", label: "Catálogos", icon: BookOpen },
+      { to: "/control-mando", label: "Catálogos", icon: BookOpen, search: { tab: "catalogos" } },
       { to: "/control-mando", label: "Control de Mando", icon: Gauge },
       { to: "/reglas", label: "Alertas y Avisos Operativos", icon: Zap },
     ],
@@ -168,8 +169,9 @@ function SidebarContent({
                   const active = path === item.to;
                   return (
                     <Link
-                      key={item.to}
+                      key={`${item.to}-${item.label}`}
                       to={item.to}
+                      search={item.search as never}
                       onClick={onNavigate}
                       title={collapsed ? item.label : undefined}
                       className={`relative flex w-full min-h-[42px] items-center rounded-md text-sm transition-colors ${
