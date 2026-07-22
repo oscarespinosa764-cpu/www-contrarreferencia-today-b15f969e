@@ -64,27 +64,36 @@ export function CategoriaModal({
   const [estado, setEstado] = useState<"TODOS" | "ACTIVO" | "INACTIVO">(
     "TODOS",
   );
+  const config = useCatalogoConfigDerivada();
+  const TIPO_MODULO = config.tipoModulo;
+  const TIPO_LABEL = config.tipoNombre;
 
-  const { data: rows } = useQuery({
-    queryKey: ["catalogo-cat-modal", modulo],
+  const { data: allRows } = useQuery({
+    queryKey: ["catalogo-cat-modal-all"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("catalogos")
         .select("id, tipo, valor, activo, updated_at")
         .limit(5000);
       if (error) throw error;
-      return ((data ?? []) as Row[]).filter(
-        (r) => (TIPO_MODULO[r.tipo] ?? "Otros") === modulo,
-      );
+      return (data ?? []) as Row[];
     },
   });
+
+  const rows = useMemo(
+    () =>
+      (allRows ?? []).filter(
+        (r) => (TIPO_MODULO[r.tipo] ?? "Otros") === modulo,
+      ),
+    [allRows, TIPO_MODULO, modulo],
+  );
 
   const catalogos = useMemo(() => {
     const map = new Map<
       string,
       { tipo: string; total: number; activos: number; ultima: string | null }
     >();
-    (rows ?? []).forEach((r) => {
+    rows.forEach((r) => {
       const m =
         map.get(r.tipo) ??
         { tipo: r.tipo, total: 0, activos: 0, ultima: null as string | null };
@@ -109,7 +118,7 @@ export function CategoriaModal({
       .sort((a, b) =>
         (TIPO_LABEL[a.tipo] ?? a.tipo).localeCompare(TIPO_LABEL[b.tipo] ?? b.tipo),
       );
-  }, [rows, q, estado]);
+  }, [rows, q, estado, TIPO_LABEL]);
 
   const totalCat = new Set((rows ?? []).map((r) => r.tipo)).size;
   const totalElem = (rows ?? []).length;
