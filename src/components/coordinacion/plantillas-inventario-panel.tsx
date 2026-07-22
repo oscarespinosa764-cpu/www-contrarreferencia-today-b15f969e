@@ -676,7 +676,7 @@ function PreviewHtml({ plantilla }: { plantilla: PlantillaInv }) {
 
   // Vista previa PUBLICADA (aplica la configuración vigente del admin).
   const { data: html } = useQuery({
-    queryKey: ["cm-preview-oficio", plantilla.codigo, casoId, plantilla.updated_at],
+    queryKey: ["cm-preview-oficio", plantilla.codigo, casoId, plantilla.id],
     queryFn: async () => {
       if (casoSel) {
         const mensaje = String(casoSel.detalle ?? "").trim() || fixtureOficioMensaje(tipoOficio);
