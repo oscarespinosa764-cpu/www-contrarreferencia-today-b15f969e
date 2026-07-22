@@ -639,10 +639,16 @@ function PreviewHtml({ plantilla }: { plantilla: PlantillaInv }) {
         return "NEG";
       case "ENTRANTES_CANCELACION_HTML":
         return "CAN";
+      case "ENTRANTES_AMPLIACION_HTML":
+        return "AMP";
+      case "ENTRANTES_INGRESO_HTML":
+        return "ING";
       case "ENTRANTES_CRUE_ACEPTACION_HTML":
         return "CRUE_ACEP";
       case "ENTRANTES_CRUE_NEGACION_HTML":
         return "CRUE_NEG";
+      case "ENTRANTES_CRUE_NO_REQUERIMIENTO_HTML":
+        return "CRUE_NR";
       default:
         return "ACEP";
     }
@@ -668,13 +674,19 @@ function PreviewHtml({ plantilla }: { plantilla: PlantillaInv }) {
     [casos, casoId],
   );
 
-  const html = useMemo(() => {
-    if (casoSel) {
-      const mensaje = String(casoSel.detalle ?? "").trim() || fixtureOficioMensaje(tipoOficio);
-      return buildOficioHTML(tipoOficio, casoSel.codigo ?? "S/C", mensaje);
-    }
-    return buildOficioHTML(tipoOficio, FIXTURE_CASO.codigo, fixtureOficioMensaje(tipoOficio));
-  }, [tipoOficio, casoSel]);
+  // Vista previa PUBLICADA (aplica la configuración vigente del admin).
+  const { data: html } = useQuery({
+    queryKey: ["cm-preview-oficio", plantilla.codigo, casoId, plantilla.updated_at],
+    queryFn: async () => {
+      if (casoSel) {
+        const mensaje = String(casoSel.detalle ?? "").trim() || fixtureOficioMensaje(tipoOficio);
+        return buildOficioHTMLPublicado(tipoOficio, casoSel.codigo ?? "S/C", mensaje);
+      }
+      return buildOficioHTMLPublicado(tipoOficio, FIXTURE_CASO.codigo, fixtureOficioMensaje(tipoOficio));
+    },
+  });
+
+  const htmlSafe = html ?? buildOficioHTML(tipoOficio, FIXTURE_CASO.codigo, fixtureOficioMensaje(tipoOficio));
 
   return (
     <div className="space-y-2">
