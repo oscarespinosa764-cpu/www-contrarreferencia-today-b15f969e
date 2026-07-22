@@ -11,6 +11,10 @@
 
 import logoAsset from "@/assets/cedim-logo.png.asset.json";
 import ceciAsset from "@/assets/ceci-mascota.png.asset.json";
+import {
+  loadListaChequeoConfirmadaConfig,
+  type ListaChequeoConfirmadaConfig,
+} from "./lista-chequeo-confirmada-config";
 
 const INSTITUCION = "CENTRO DE IMAGENES DIAGNOSTICAS CEDIM I.P.S S.A.S";
 const NIT = "NIT: 900559103-5";
@@ -24,6 +28,10 @@ const LIGHT: [number, number, number] = [221, 235, 247];
 const TEXTO_ACEPTACION =
   "Declaro que recibo la documentación relacionada en la lista de chequeo para el traslado " +
   "del paciente y que la información registrada corresponde a la entrega realizada.";
+
+// FASE 6: opcional. Sólo el flujo firmado (descargarFirmadoPDF) pasa cfg.
+// Portada y checklist previo conservan comportamiento original (cfg=undefined).
+type CFG = ListaChequeoConfirmadaConfig | undefined;
 
 export type DocumentoChecklist = { label: string; marcado: boolean; grupo?: string };
 
