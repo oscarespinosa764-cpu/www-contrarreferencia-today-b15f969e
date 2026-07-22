@@ -153,13 +153,15 @@ function descargar(doc: Doc, nombre: string) {
 }
 
 /** Línea oficial de tipo de documento con casillas CC/TI/RC/CN + N°. */
-function filaTipoDocumento(doc: Doc, y: number, d: EntregaDatos): number {
+function filaTipoDocumento(doc: Doc, y: number, d: EntregaDatos, cfg?: CFG): number {
   const tipo = up(d.tipo_documento);
   const opts = ["CC", "TI", "RC", "CN"];
+  const labTipo = (cfg?.patient_section.label_tipo_documento ?? "TIPO DE DOCUMENTO") + ":";
+  const labNo = (cfg?.patient_section.label_no_documento ?? "No. DOCUMENTO") + ":";
   doc.setFontSize(8.5);
   doc.setFont("helvetica", "bold");
-  doc.text("TIPO DE DOCUMENTO:", 16, y);
-  let x = 16 + doc.getTextWidth("TIPO DE DOCUMENTO: ") + 2;
+  doc.text(labTipo, 16, y);
+  let x = 16 + doc.getTextWidth(labTipo + " ") + 2;
   doc.setFont("helvetica", "normal");
   for (const lbl of opts) {
     doc.text(lbl, x, y);
@@ -169,9 +171,9 @@ function filaTipoDocumento(doc: Doc, y: number, d: EntregaDatos): number {
     x += 7.5;
   }
   doc.setFont("helvetica", "bold");
-  doc.text("No. DOCUMENTO:", x, y);
+  doc.text(labNo, x, y);
   doc.setFont("helvetica", "normal");
-  doc.text(up(d.documento) || "—", x + doc.getTextWidth("No. DOCUMENTO: ") + 1, y);
+  doc.text(up(d.documento) || "—", x + doc.getTextWidth(labNo + " ") + 1, y);
   return y + 6.5;
 }
 
