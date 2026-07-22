@@ -112,19 +112,23 @@ async function marcaAgua(): Promise<{ logo: string | null; ceci: string | null }
   return { logo, ceci };
 }
 
-function pie(doc: Doc) {
+function pie(doc: Doc, cfg?: CFG) {
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
+  const leyenda = cfg?.footer.left_text ?? PIE;
+  const showGen = cfg ? cfg.footer.show_generated_at : true;
   doc.setDrawColor(180);
   doc.line(14, pageH - 12, pageW - 14, pageH - 12);
   doc.setFont("helvetica", "italic");
   doc.setFontSize(7.5);
   doc.setTextColor(90);
-  doc.text(PIE, pageW / 2, pageH - 8, { align: "center" });
+  doc.text(leyenda, pageW / 2, pageH - 8, { align: "center" });
   doc.setFont("helvetica", "normal");
-  doc.text(`Generado: ${new Date().toLocaleString("es-CO")}`, pageW - 14, pageH - 8, {
-    align: "right",
-  });
+  if (showGen) {
+    doc.text(`Generado: ${new Date().toLocaleString("es-CO")}`, pageW - 14, pageH - 8, {
+      align: "right",
+    });
+  }
   doc.setTextColor(0);
 }
 
