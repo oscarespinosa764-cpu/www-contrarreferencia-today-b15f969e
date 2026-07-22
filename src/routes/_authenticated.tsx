@@ -74,8 +74,10 @@ const groups: NavGroup[] = [
     items: [
       { to: "/indicadores", label: "Indicadores", icon: BarChart3 },
       { to: "/control-mando", label: "Catálogos", icon: BookOpen, search: { tab: "catalogos" } },
+      { to: "/control-mando", label: "Reglas", icon: Zap, search: { tab: "reglas" } },
       { to: "/control-mando", label: "Control de Mando", icon: Gauge },
       { to: "/reglas", label: "Alertas y Avisos Operativos", icon: Zap },
+
     ],
   },
 ];
