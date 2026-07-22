@@ -63,22 +63,20 @@ export const requestDeviceChallenge = createServerFn({ method: "POST" })
         from: (t: string) => {
           select: (c: string) => {
             eq: (k: string, v: unknown) => {
-              eq: (k: string, v: unknown) => {
-                maybeSingle: () => Promise<{ data: { id: string } | null }>;
-              };
+              maybeSingle: () => Promise<{ data: { id: string } | null }>;
             };
           };
         };
       })
         .from("authorized_devices")
         .select("id")
-        .eq("user_id", context.userId)
         .eq("device_public_id", data.devicePublicId)
         .maybeSingle();
       deviceId = dev?.id ?? null;
     }
     return await createChallenge(context.userId, purpose, deviceId);
   });
+
 
 // ---------- Estado propio ----------
 
