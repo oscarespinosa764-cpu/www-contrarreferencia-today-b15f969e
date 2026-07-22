@@ -545,7 +545,7 @@ export function SeguimientoDialog({
   // Catálogo de unidades / servicios activos (para CAMBIO DE UNIDAD).
   const { data: catUnidades = [] } = useQuery({
     queryKey: ["cat-unidad-seg"],
-    enabled: open && esSaliente,
+    enabled: open && (esSaliente || esInterna),
     queryFn: async () => {
       const { data } = await supabase
         .from("catalogos")
@@ -566,6 +566,22 @@ export function SeguimientoDialog({
         out.push(v);
       }
       return out;
+    },
+  });
+
+  // Catálogo de tipos de ambulancia activos (para CONFIRMACIÓN DE PROGRAMACIÓN en RI).
+  const { data: catTipoAmbulancia = [] } = useQuery({
+    queryKey: ["cat-tipo-ambulancia-seg"],
+    enabled: open && esInterna,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor")
+        .eq("tipo", "TIPO_AMBULANCIA")
+        .eq("activo", true)
+        .order("orden", { ascending: true })
+        .order("valor", { ascending: true });
+      return (data ?? []).map((r) => String(r.valor ?? "").trim()).filter(Boolean);
     },
   });
 
