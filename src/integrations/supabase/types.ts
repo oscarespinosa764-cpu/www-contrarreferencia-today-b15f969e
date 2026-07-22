@@ -3720,30 +3720,7 @@ export type Database = {
       }
     }
     Views: {
-      profiles_directorio: {
-        Row: {
-          activo: boolean | null
-          cargo: string | null
-          nombre: string | null
-          sede: string | null
-          user_id: string | null
-        }
-        Insert: {
-          activo?: boolean | null
-          cargo?: string | null
-          nombre?: string | null
-          sede?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          activo?: boolean | null
-          cargo?: string | null
-          nombre?: string | null
-          sede?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       calcular_indicadores_mes: {
@@ -3767,6 +3744,15 @@ export type Database = {
         Returns: number
       }
       get_device_access_mode: { Args: never; Returns: string }
+      get_directorio_activos: {
+        Args: never
+        Returns: {
+          cargo: string
+          nombre: string
+          sede: string
+          user_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
