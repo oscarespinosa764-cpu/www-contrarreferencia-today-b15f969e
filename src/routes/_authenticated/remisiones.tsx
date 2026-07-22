@@ -101,12 +101,10 @@ function RemisionesPage() {
     queryKey: ["auxiliares-turno"],
     queryFn: async () => {
       // Regla canónica: solo usuarios ACTIVOS son seleccionables para recibir turno.
-      const { data } = await supabase
-        .from("profiles")
-        .select("user_id, nombre")
-        .eq("activo", true)
-        .order("nombre");
-      return data ?? [];
+      // Se usa una función SECURITY DEFINER para que usuarios no admin también
+      // puedan ver el directorio (sólo nombre/cargo/sede, sin PII).
+      const { data } = await supabase.rpc("get_directorio_activos");
+      return (data ?? []) as Array<{ user_id: string; nombre: string | null }>;
     },
   });
 
