@@ -31,6 +31,7 @@ import { PuntoUsoFormDialog, type PuntoUsoFormValue } from "./punto-uso-form-dia
 import { buildOficioHTML } from "@/lib/oficio";
 import { ReporteGeneralSalientesEditor } from "./reporte-general-salientes-editor";
 import { ListaChequeoConfirmadaEditor } from "./lista-chequeo-confirmada-editor";
+import { BitacoraEditor } from "./bitacora-editor";
 import { SolicitudPermisoEditor } from "./solicitud-permiso-editor";
 import { fixtureOficioMensaje, FIXTURE_CASO, AVISO_PREVIEW } from "@/lib/plantillas-preview-fixtures";
 import {
@@ -856,6 +857,18 @@ function EditorCampos({
   if (plantilla.codigo === "TH-FR-09") {
     return (
       <SolicitudPermisoEditor
+        plantillaId={plantilla.id}
+        contenidoActual={plantilla.contenido_editable ?? {}}
+        canEdit={canEdit}
+        onSaved={onSaved}
+      />
+    );
+  }
+
+  // Editor especializado para la Bitácora operativa (FASE 8).
+  if (plantilla.codigo === "BITACORA_ENTRANTES") {
+    return (
+      <BitacoraEditor
         plantillaId={plantilla.id}
         contenidoActual={plantilla.contenido_editable ?? {}}
         canEdit={canEdit}

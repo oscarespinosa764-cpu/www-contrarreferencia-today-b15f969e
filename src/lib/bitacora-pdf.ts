@@ -4,16 +4,20 @@
 // con fondo gris, tabla SEGUIMIENTOS REFERENCIA con paginación y pie de página en
 // cada hoja.
 //
-// Pensado para ejecutarse en el navegador (cliente). jsPDF + autotable son
-// librerías 100% JS, compatibles con el bundler.
+// FASE 8: presentación administrable desde Control de Mando → Plantillas del
+// sistema (código BITACORA_ENTRANTES). Los datos operativos (paciente, caso,
+// seguimientos, estados, fechas, responsables y orden cronológico) NO son
+// configurables: sólo etiquetas, encabezados y visibilidad de columnas.
 
 import type { jsPDF } from "jspdf";
 import logoAsset from "@/assets/cedim-logo.png.asset.json";
+import {
+  loadBitacoraConfig,
+  type BitacoraConfig,
+  type BitacoraColumnKey,
+} from "./bitacora-config";
 
-const INSTITUCION = "CENTRO DE IMAGENES DIAGNOSTICAS CEDIM I.P.S S.A.S";
-const NIT = "NIT: 900559103-5";
-const TITULO = "GESTIÓN DE REFERENCIA";
-const PIE = "SISTEMA DE REFERENCIA Y CONTRARREFERENCIA";
+const NIT_FALLBACK = "NIT: 900559103-5";
 
 export type CampoPDF = { label: string; value: string };
 
@@ -47,6 +51,8 @@ export type BitacoraInput = {
   seguimientos: SeguimientoPDF[];
   /** Usuario autenticado que genera el documento. */
   usuario: string;
+  /** Config borrador (vista previa). Si se omite, se carga la versión publicada. */
+  configOverride?: BitacoraConfig;
 };
 
 export type BitacoraConsolidadaInput = {
@@ -54,6 +60,8 @@ export type BitacoraConsolidadaInput = {
   datosPaciente: CampoPDF[];
   bloques: BloqueCaso[];
   usuario: string;
+  /** Config borrador (vista previa). Si se omite, se carga la versión publicada. */
+  configOverride?: BitacoraConfig;
 };
 
 // ---------------------------------------------------------------------------
@@ -62,14 +70,12 @@ export type BitacoraConsolidadaInput = {
 export function limpiarTexto(s: string | null | undefined): string {
   if (!s) return "—";
   let t = String(s);
-  // Quitar marcadores de resaltado/negrilla/markdown manteniendo el contenido.
-  t = t.replace(/={2,}/g, " "); // ==texto==
-  t = t.replace(/`{1,}/g, ""); // backticks
-  t = t.replace(/#{1,}/g, ""); // encabezados markdown
-  t = t.replace(/\*{1,}/g, ""); // **negrilla** / *itálica*
-  t = t.replace(/_{2,}/g, ""); // __subrayado__
-  t = t.replace(/~{1,}/g, ""); // ~tachado~
-  // Normalizar espacios y saltos de línea.
+  t = t.replace(/={2,}/g, " ");
+  t = t.replace(/`{1,}/g, "");
+  t = t.replace(/#{1,}/g, "");
+  t = t.replace(/\*{1,}/g, "");
+  t = t.replace(/_{2,}/g, "");
+  t = t.replace(/~{1,}/g, "");
   t = t.replace(/[ \t]{2,}/g, " ");
   t = t.replace(/[ \t]+\n/g, "\n");
   t = t.replace(/\n{3,}/g, "\n\n");
@@ -135,10 +141,11 @@ function camposGrid(
   y: number,
   margin: number,
   ancho: number,
+  fontSize: number,
 ): number {
   const colW = ancho / 2;
-  const lineH = 5;
-  doc.setFontSize(8);
+  const lineH = Math.max(4, fontSize * 0.62);
+  doc.setFontSize(fontSize);
   let cursor = y + 4;
   for (let i = 0; i < campos.length; i += 2) {
     const fila = campos.slice(i, i + 2);
@@ -171,27 +178,38 @@ function camposGrid(
 // ---------------------------------------------------------------------------
 // Render principal compartido (individual + consolidado).
 // ---------------------------------------------------------------------------
-async function renderBitacora(input: BitacoraConsolidadaInput): Promise<void> {
-  const [{ jsPDF }, autoTableMod] = await Promise.all([
+async function renderBitacora(
+  input: BitacoraConsolidadaInput,
+): Promise<void> {
+  const [{ jsPDF }, autoTableMod, { config }] = await Promise.all([
     import("jspdf"),
     import("jspdf-autotable"),
+    input.configOverride
+      ? Promise.resolve({ config: input.configOverride, fallback: false })
+      : loadBitacoraConfig(),
   ]);
   const autoTable = autoTableMod.default;
-  const logo = await getLogo();
+  const logo = config.header.show_logo ? await getLogo() : null;
 
-  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const doc = new jsPDF({
+    unit: "mm",
+    format: config.page.page_size,
+    orientation: config.page.orientation,
+  });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const margin = 12;
-  const ancho = pageW - margin * 2;
+  const margin = config.page.margin_left;
+  const marginR = config.page.margin_right;
+  const marginT = config.page.margin_top;
+  const marginB = config.page.margin_bottom;
+  const ancho = pageW - margin - marginR;
   const ahora = new Date();
-  const headerBottom = 33;
+  const headerBottom = marginT + 21;
 
   const drawHeader = () => {
     if (logo) {
       try {
-        // Proporción aproximada del logo 650x470.
-        doc.addImage(logo, "PNG", margin, 7, 20, 14.5);
+        doc.addImage(logo, "PNG", margin, marginT - 5, 20, 14.5);
       } catch {
         /* si falla el logo, continuar sin él */
       }
@@ -199,41 +217,60 @@ async function renderBitacora(input: BitacoraConsolidadaInput): Promise<void> {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.setTextColor(15, 35, 65);
-    doc.text(INSTITUCION, pageW / 2, 14, { align: "center" });
+    doc.text(config.header.institution_name, pageW / 2, marginT + 2, { align: "center" });
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(80, 80, 80);
-    doc.text(NIT, pageW - margin, 19, { align: "right" });
+    const nit = [config.header.institution_identifier_label, config.header.institution_identifier_value]
+      .filter(Boolean)
+      .join(" ")
+      .trim() || NIT_FALLBACK;
+    doc.text(nit, pageW - marginR, marginT + 7, { align: "right" });
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.setTextColor(15, 35, 65);
-    doc.text(TITULO, pageW / 2, 22, { align: "center" });
+    doc.text(config.header.report_title, pageW / 2, marginT + 10, { align: "center" });
+    if (config.header.report_subtitle) {
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.text(config.header.report_subtitle, pageW / 2, marginT + 14, { align: "center" });
+    }
     doc.setDrawColor(150, 160, 175);
     doc.setLineWidth(0.3);
-    doc.line(margin, 25, pageW - margin, 25);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
-    doc.setTextColor(90, 90, 90);
-    doc.text(`Fecha De Impresión: ${fechaLarga(ahora)}`, margin, 30);
+    doc.line(margin, marginT + 13, pageW - marginR, marginT + 13);
+    if (config.header.show_generated_at) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(90, 90, 90);
+      doc.text(
+        `${config.header.generated_at_label} ${fechaLarga(ahora)}`,
+        margin,
+        marginT + 18,
+      );
+    }
   };
 
   const drawFooter = (page: number, total: number) => {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.setTextColor(110, 110, 110);
-    doc.text(
-      `Impreso el ${fechaCorta(ahora)} por el usuario ${input.usuario}`,
-      margin,
-      pageH - 9,
-    );
+    if (config.footer.show_generated_by) {
+      doc.text(
+        `Impreso el ${fechaCorta(ahora)} por el usuario ${input.usuario}`,
+        margin,
+        pageH - marginB + 3,
+      );
+    }
     doc.setFont("helvetica", "bold");
-    doc.text(PIE, margin, pageH - 6);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Página ${page}/${total}`, pageW - margin, pageH - 6, { align: "right" });
+    doc.text(config.footer.institution_line, margin, pageH - marginB + 6);
+    if (config.footer.show_page_numbers) {
+      doc.setFont("helvetica", "normal");
+      doc.text(`Página ${page}/${total}`, pageW - marginR, pageH - marginB + 6, { align: "right" });
+    }
   };
 
   const ensureSpace = (need: number, y: number): number => {
-    if (y + need > pageH - 16) {
+    if (y + need > pageH - marginB - 4) {
       doc.addPage();
       drawHeader();
       return headerBottom + 2;
@@ -243,50 +280,72 @@ async function renderBitacora(input: BitacoraConsolidadaInput): Promise<void> {
 
   // Primera página
   drawHeader();
-  let y = 35;
-  y = seccion(doc, "DATOS DEL PACIENTE", y, margin, ancho);
-  y = camposGrid(doc, input.datosPaciente, y, margin, ancho);
+  let y = marginT + 23;
+  y = seccion(doc, config.patient_section.title, y, margin, ancho);
+  y = camposGrid(doc, input.datosPaciente, y, margin, ancho, config.page.base_font_size);
   y += 2;
+
+  // Columnas visibles + mapa clave→getter.
+  const columnas = config.entries_table.columns.filter((c) => c.visible);
+  const getters: Record<BitacoraColumnKey, (s: SeguimientoPDF) => string> = {
+    fecha: (s) => s.fecha || "—",
+    entidad: (s) => s.entidad || "—",
+    observaciones: (s) => limpiarTexto(s.observaciones),
+    estado: (s) => s.estado || "—",
+    accion: (s) => s.accion || "—",
+    funcionario: (s) => s.funcionario || "—",
+  };
+  const alignMap: Record<"left" | "center" | "right", "left" | "center" | "right"> = {
+    left: "left",
+    center: "center",
+    right: "right",
+  };
 
   input.bloques.forEach((bloque, idx) => {
     if (idx > 0) y += 2;
     y = ensureSpace(30, y);
-    y = seccion(doc, "DATOS DE REFERENCIA", y, margin, ancho);
-    y = camposGrid(doc, bloque.datosReferencia, y, margin, ancho);
+    y = seccion(doc, config.case_section.title, y, margin, ancho);
+    y = camposGrid(doc, bloque.datosReferencia, y, margin, ancho, config.page.base_font_size);
     y += 3;
     y = ensureSpace(20, y);
-    y = seccion(doc, "SEGUIMIENTOS REFERENCIA", y, margin, ancho);
+    y = seccion(doc, config.timeline_section.title, y, margin, ancho);
 
     const segs = [...bloque.seguimientos].sort((a, b) => (a._orden ?? 0) - (b._orden ?? 0));
     const body =
       segs.length > 0
-        ? segs.map((s) => [
-            s.fecha,
-            s.entidad || "—",
-            limpiarTexto(s.observaciones),
-            s.estado || "—",
-            s.accion || "—",
-            s.funcionario || "—",
-          ])
-        : [["—", "—", "Sin seguimientos registrados.", "—", "—", "—"]];
+        ? segs.map((s) => columnas.map((c) => getters[c.key](s)))
+        : [columnas.map(() => "—").map((_, i) => (i === 0 ? config.timeline_section.empty_text : "—"))];
+
+    const columnStyles: Record<number, { cellWidth: number | "auto"; halign: "left" | "center" | "right" }> = {};
+    columnas.forEach((c, i) => {
+      columnStyles[i] = {
+        cellWidth: c.width ?? "auto",
+        halign: alignMap[c.alignment],
+      };
+    });
 
     autoTable(doc, {
       startY: y + 1,
-      margin: { left: margin, right: margin, top: headerBottom, bottom: 14 },
-      head: [["Fecha registro", "Entidad", "Observaciones", "Estado", "Acción realizada", "Funcionario"]],
+      margin: { left: margin, right: marginR, top: headerBottom, bottom: marginB + 8 },
+      head: [columnas.map((c) => c.label)],
       body,
-      styles: { fontSize: 7, cellPadding: 1.5, valign: "top", overflow: "linebreak", textColor: [25, 25, 25] },
-      headStyles: { fillColor: [30, 60, 100], textColor: [255, 255, 255], fontSize: 7, fontStyle: "bold" },
+      styles: {
+        fontSize: Math.max(6, config.page.base_font_size - 1),
+        cellPadding: 1.5,
+        valign: "top",
+        overflow: "linebreak",
+        textColor: [25, 25, 25],
+      },
+      headStyles: {
+        fillColor: [30, 60, 100],
+        textColor: [255, 255, 255],
+        fontSize: Math.max(6, config.page.base_font_size - 1),
+        fontStyle: "bold",
+      },
       alternateRowStyles: { fillColor: [243, 246, 250] },
       rowPageBreak: "avoid",
-      columnStyles: {
-        0: { cellWidth: 22 },
-        1: { cellWidth: 26 },
-        2: { cellWidth: "auto" },
-        3: { cellWidth: 22 },
-        4: { cellWidth: 26 },
-        5: { cellWidth: 24 },
-      },
+      showHead: config.timeline_section.repeat_header ? "everyPage" : "firstPage",
+      columnStyles,
       didDrawPage: () => {
         drawHeader();
       },
@@ -313,6 +372,7 @@ export async function generarBitacoraPDF(input: BitacoraInput): Promise<void> {
     referencia: input.referencia,
     datosPaciente: input.datosPaciente,
     usuario: input.usuario,
+    configOverride: input.configOverride,
     bloques: [
       {
         tipoDocumento: input.tipoDocumento,
