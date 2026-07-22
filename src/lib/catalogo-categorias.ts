@@ -50,7 +50,7 @@ export const ICONOS_PERMITIDOS: Record<string, LucideIcon> = {
   "file-text": FileText,
   settings: Settings,
   list: List,
-  map: Map,
+  map: MapIcon,
   shield: Shield,
 };
 
