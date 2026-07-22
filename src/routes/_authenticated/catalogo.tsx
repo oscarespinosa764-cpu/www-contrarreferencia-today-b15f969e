@@ -95,7 +95,7 @@ function CatalogoPage() {
         key: "categorias",
         icon: Layers,
         label: "Categorías",
-        value: k?.categorias ?? "—",
+        value: categoriasActivas || "—",
         hint: "Módulos con listas activas",
         tone: "bg-status-blue/10 text-status-blue",
         onClick: () => navigate({ search: { tab: "catalogo" } }),
