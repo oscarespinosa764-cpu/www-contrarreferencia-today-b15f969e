@@ -1103,7 +1103,7 @@ export function SeguimientoDialog({
           return appendNota(generarPlantillaRefInternaCulminacion(), detalle);
         case TI.PROG_AMB:
           return appendNota(
-            `SE CONFIRMA PROGRAMACIÓN DE AMBULANCIA.\nFECHA/HORA RECOGIDA: ${riRecFecha} ${riRecHora}\nTIPO AMBULANCIA: ${riRecTipoAmb || "—"}`,
+            `SE CONFIRMA PROGRAMACIÓN DE AMBULANCIA.\nFECHA/HORA RECOGIDA: ${(riRecFecha && riRecHora) ? `${riRecFecha}, ${riRecHora}` : "—"}\nTIPO AMBULANCIA: ${riRecTipoAmb || "—"}`,
             detalle,
           );
         case TI.LLEGADA_AMB:
