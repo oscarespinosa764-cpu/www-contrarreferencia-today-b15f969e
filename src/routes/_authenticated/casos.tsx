@@ -34,7 +34,12 @@ function colorPorTipo(tipo: string): MensajeColor {
   return "blue";
 }
 
+type CasosSearch = { f?: string };
+
 export const Route = createFileRoute("/_authenticated/casos")({
+  validateSearch: (s: Record<string, unknown>): CasosSearch => ({
+    f: typeof s.f === "string" ? s.f : undefined,
+  }),
   component: CasosPage,
 });
 
@@ -48,6 +53,9 @@ function esteMes(c: Caso): boolean {
 function CasosPage() {
   const { canEdit } = useAuth();
   const qc = useQueryClient();
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const filtroActivo = search.f === "aceptados-activos";
   const [open, setOpen] = useState(false);
 
   const { data: casos } = useCasos();
@@ -110,6 +118,21 @@ function CasosPage() {
         title="DASHBOARD OPERATIVO ENTRANTES"
         subtitle="Registro de Casos Referencias Entrantes"
       />
+
+      {filtroActivo && (
+        <div className="mb-3 flex items-center justify-between rounded-full border border-status-green/40 bg-status-green/10 px-4 py-1.5 text-xs">
+          <span className="font-semibold uppercase text-status-green">
+            Filtro aplicado: Aceptaciones activas
+          </span>
+          <button
+            type="button"
+            className="text-status-green underline"
+            onClick={() => navigate({ search: {} })}
+          >
+            Limpiar filtro
+          </button>
+        </div>
+      )}
 
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <StatCard

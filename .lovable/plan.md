@@ -1,96 +1,72 @@
-# Plan — Reloj de hora + Ref. Internas (Coord. ambulancia / Activación TEP / Cambio de unidad)
 
-## Alcance (estricto)
+# Mejora Dashboard General — Diagnóstico + Plan
 
-- **NO** se toca ningún selector de fecha. Los calendarios actuales (shadcn `Calendar` dentro de `Popover`) siguen intactos.
-- **SÍ** se reemplaza únicamente el control de hora (los actuales `type="time"` / `datetime-local` / listas verticales del navegador) por un reloj analógico 24h reutilizable.
-- Nuevo tipo de solicitud **COORDINAR AMBULANCIA** en Ref. Internas → Nuevo registro.
-- Seguimiento de Ref. Internas: **ACTIVACIÓN DE PROVEEDOR CONTRATADO DE TEP** y **CAMBIO DE UNIDAD** con sus campos dinámicos y plantilla Índigo.
+Antes de implementar, aquí está el inventario obligatorio (Sección 1) del prompt. Solo tocaré `src/routes/_authenticated/dashboard.tsx` y añadiré parámetros `search` en rutas operativas destino. Nada nuevo en BD, ni motores, ni tablas.
 
-## 1. Componente central `AppTimePicker`
+## A. Inventario — qué existe hoy
 
-Nuevo `src/components/ui/app-time-picker.tsx`:
+| Elemento | Existe hoy | Fuente actual | Acción |
+|---|---|---|---|
+| Remisiones activas | Sí | `metricasRemisiones().activas` (dashboard.tsx) + `/remisiones` | Reutilizar → hacer tarjeta clicable |
+| Pendientes de aceptación | Sí | `metricasRemisiones().pendientesAceptacion` | Reutilizar → clic con filtro |
+| Aceptaciones entrantes activas | Sí | `metricasCasos().pendientesIngreso` | Reutilizar → clic a `/casos` |
+| Seguimientos vencidos | Sí | `/seguimientos` calcula `stats.vencidos` con `calcularVencimiento` | Reutilizar mismo cálculo, tarjeta abre `/seguimientos` |
+| PHD/PAD/O2/Especiales activos | Sí (parcial: `domActivos`) | `domiciliarios` + `metricasRemisiones` | Reutilizar → clic a `/remisiones?tab=phd` |
+| Estado y entrega del turno | Parcial | `getTurno()` + flujo entrega en `/remisiones` (líneas 44–46: `turnoEntrega`, `recibe`, `confirmEntrega`) + `historial_turnos` en BD | Añadir bloque de resumen que consulta `historial_turnos` (última entrega) y botón que navega a `/remisiones` con acción `entrega` |
+| Avisos operativos agrupados por caso | Existe (sin agrupar) | `useAvisosOperativos().combinados` | Añadir capa de agrupación en memoria por `caso_id`/código, prioridad máx, razones concatenadas |
+| Alertas de Entrantes | Existe | `alertas_coordinacion` + `casosNotificacion` | Reutilizar; ya está en dashboard |
+| Indicadores rápidos | Existe | `metricasIndicadores` | Reutilizar; agregar botón "Ver todos" → `/indicadores` |
+| Gate por rol | Existe | `DashboardGate` ya redirige no-admin a `/casos` | Extender: permitir `admin` **y** `coordinador` (rol existente? verificar en `useAuth`) |
 
-- Diálogo compacto (`Dialog` shadcn) con reloj analógico SVG 24h.
-- Anillo exterior 1–11, anillo interior 13–23, 00 y 12 arriba.
-- Dos pasos: HORA → MINUTOS (marcas 00,05…55) + input manual 00–59.
-- Header con `HH:mm` editable por teclado. Botones CANCELAR / ACEPTAR. Escape/Enter.
-- Wrapper `AppDateTimeField` que compone el **calendario actual** (sin modificarlo) + `AppTimePicker` y devuelve un único ISO local.
-- Wrapper `AppTimeField` para campos de solo hora.
+## B. Cambios exactos (mínimos)
 
-## 2. Migración quirúrgica de campos de hora
+### 1. `src/routes/_authenticated/dashboard.tsx` (único archivo principal)
+- Reorganizar en el orden pedido: Encabezado+Turno → Panel Inteligente (5 tarjetas) → Estado/Entrega Turno → Avisos agrupados → Alertas Entrantes → Indicadores rápidos.
+- Hacer las 5 tarjetas principales clicables con `<Link to>`:
+  - Remisiones activas → `/remisiones?tab=remisiones&f=activas`
+  - Pendientes aceptación → `/remisiones?tab=remisiones&f=pendientes`
+  - Aceptaciones entrantes → `/casos?f=aceptados-activos`
+  - Seguimientos vencidos → `/seguimientos?f=vencidos`
+  - PHD/PAD/O2/Especiales → `/remisiones?tab=phd&f=activas`
+- Añadir nota visible: "Los indicadores pueden superponerse según la condición operativa del caso."
+- Nueva sección **Estado y entrega del turno**: turno actual (`getTurno()`), última entrega desde `historial_turnos` (últimos 1), fecha/quien entregó/recibió; botón "Ir a entrega de turno" navega a `/remisiones?accion=entrega`.
+- Agrupar avisos por `caso_id||codigo`: colapsar razones en una sola tarjeta con prioridad máxima. Mostrar máx 8, botón "Ver todos" → `/reglas`.
+- Añadir botón "Ver todos los indicadores" → `/indicadores` en el panel de indicadores rápidos.
+- Añadir cálculo real de "Seguimientos vencidos" reutilizando `calcularVencimiento` (importar de `@/lib/rc-utils`) sobre `casos_entrantes` ya consultados.
+- Estados de UI: loading skeleton, `data===undefined` diferente de conteo 0, botón Reintentar en error (via `useQuery.refetch`).
 
-Reemplazar sólo estos ocupantes de `type="time"` / `datetime-local` (inventario `rg`):
+### 2. Rutas destino — aceptar filtro por query param
+Sin cambiar lógica: solo leer `location.search` con `useSearch({strict:false})` y preseleccionar `estadoFiltro`/`tab` en el `useState` inicial.
 
-| Archivo | Campos |
-|---|---|
-| `src/components/remisiones/form-bits.tsx` | rama `type="datetime-local"` de `Field` → delega a `AppDateTimeField`. |
-| `src/components/remisiones/nuevo-registro-dialog.tsx` | fechas/hora operativas del formulario (registro, coordinación). |
-| `src/components/remisiones/seguimiento-dialog.tsx` | inputs `datetime-local` del seguimiento. |
-| `src/components/remisiones/phd-seguimiento-dialog.tsx` | igual. |
-| `src/components/rc/registrar-wizard.tsx` | inputs `datetime-local`. |
-| `src/components/coordinacion/usuario-actividad-dialog.tsx` | rangos con hora. |
+- `src/routes/_authenticated/remisiones.tsx`: leer `tab`, `f` (activas | pendientes) e inicializar `tab`/`estadoFiltro`.
+- `src/routes/_authenticated/casos.tsx`: leer `f` (aceptados-activos) → activar el filtro que ya existe en `SeguimientoControl`/lista.
+- `src/routes/_authenticated/seguimientos.tsx`: leer `f=vencidos` y aplicar filtro visual (ya calcula `stats.vencidos`; agregar prop/estado local).
 
-Campos de solo fecha, timestamps automáticos, filtros y fechas históricas: **sin cambios**.
+Cuando se aplica filtro por query, mostrar chip "Filtro: X · Limpiar" que hace `navigate({search:{}})`.
 
-## 3. Nuevo Registro Ref. Internas → COORDINAR AMBULANCIA
+### 3. Rol Coordinador
+Verificar `useAuth()`; si no existe `isCoordinator`, usar `hasRole('coordinador')` o similar. Cambiar `DashboardGate`:
+```ts
+if (!isAdmin && !isCoordinator) return <Navigate to="/casos" replace />;
+```
+Operativa sigue redirigido; RLS del servidor no se toca.
 
-En `nuevo-registro-dialog.tsx` (rama Ref. Interna ya existente):
+## C. Fuera de alcance (NO se hace)
+- No nuevas tablas, migraciones, RPC, edge functions.
+- No motor nuevo de SLA/alertas: se reutiliza `calcularVencimiento` + `useAvisosOperativos`.
+- No cambios en `avisos`, `alertas_coordinacion`, `entregas_turno`, `historial_turnos`.
+- No Telegram automático.
+- No rediseño visual global — se conservan tarjetas/tipografía/colores actuales.
+- No lista paralela de pacientes: solo conteos + tarjeta clicable.
 
-- Agregar `COORDINAR AMBULANCIA` a la lista `tiposRefInterna` (ya incluida en L1145 según grep; verificar y garantizar).
-- Cuando `tipo_solicitud === "COORDINAR AMBULANCIA"`, mostrar:
-  - `Fecha y hora de coordinación` (obligatoria) usando `AppDateTimeField`.
-  - `Proveedor de ambulancia` (Combobox alimentado por catálogo `TIPO_AMBULANCIA` / proveedores de ambulancia existente, filtrando activos).
-  - Preseleccionar el proveedor cuyo nombre normalizado matchee `SERVICIOS DE EMERGENCIAS MEDICAS DEL CAQUETA` o alias `SEM`. Si no existe, dejar vacío y mostrar toast informativo.
-- Persistir en `metadata` del caso: `coordinacion_ambulancia: { fecha_hora, proveedor_id?, proveedor_nombre }`.
+## D. Archivos a modificar
+1. `src/routes/_authenticated/dashboard.tsx` — reorganización + tarjetas clicables + turno + agrupación + gate.
+2. `src/routes/_authenticated/remisiones.tsx` — leer search params.
+3. `src/routes/_authenticated/casos.tsx` — leer search params.
+4. `src/routes/_authenticated/seguimientos.tsx` — leer search param `f=vencidos`.
 
-## 4. Seguimiento Ref. Internas
+## E. Riesgos / preguntas
+- **Rol Coordinador**: necesito confirmar el nombre exacto del rol en `user_roles` (¿`coordinador`?) y si `useAuth` lo expone. Si no, extender `useAuth` mínimamente para exponer `isCoordinator`.
+- **`historial_turnos`**: confirmar columnas (`turno`, `entregado_por`, `recibido_por`, `fecha`, `estado`) antes de la consulta.
 
-En `seguimiento-dialog.tsx` (modal actual, sin duplicar):
-
-### 4.1 ACTIVACIÓN DE PROVEEDOR CONTRATADO DE TEP
-- Mostrar `Fecha y hora de activación` (`AppDateTimeField`) + `Proveedor TEP` (Combobox catálogo proveedores TEP existente, activos, SEM por defecto).
-- Guardar estructurado dentro del payload del seguimiento (`metadata.activacion_tep`).
-- Plantilla Índigo:
-  ```
-  SE ACTIVA PROVEEDOR CONTRATADO DE TEP.
-  PROVEEDOR: <nombre>
-  FECHA Y HORA DE ACTIVACIÓN: <DD/MM/YYYY, HH:mm>
-  PACIENTE: … DOCUMENTO: … SERVICIO/UBICACIÓN: … TIPO DE SOLICITUD: …
-  OBSERVACIONES: …
-  ```
-  Regenera al cambiar proveedor/fecha/hora; ya no imprime `PROVEEDOR: —`.
-
-### 4.2 CAMBIO DE UNIDAD
-- Campos: `Unidad` (Combobox catálogo unidades/servicios existente, activos) y `Cama` (texto uppercase).
-- Guardar `metadata.cambio_unidad: { unidad_anterior, unidad_nueva, cama }`; actualizar `caso.unidad` con la nueva conservando la anterior en metadata (trazabilidad, sin sobrescribir historial).
-- Plantilla Índigo con Paciente, Documento, Unidad anterior, Nueva unidad, Cama, Fecha automática, Observaciones. Sin bloque de proveedor.
-
-### 4.3 UI condicional
-Al cambiar `tipo_seguimiento`, ocultar/limpiar campos no aplicables y regenerar plantilla; el botón Registrar sigue deshabilitado hasta completar los obligatorios.
-
-## 5. Catálogos (reutilización)
-
-- Proveedores de ambulancia: fuente ya usada en el formulario (`TIPO_AMBULANCIA` u opción concreta de proveedores en Red). Se lee el mismo hook `useCatalogo` / `useCatalogos`. No se crea tabla.
-- Proveedores TEP: idem, catálogo existente `PROVEEDOR_TEP` (o el que use el seguimiento hoy).
-- Unidades: catálogo `SEDE`/`UNIDAD` ya presente (usar el mismo que el resto de la app). No hardcode.
-
-## 6. Validación / auditoría
-
-- El servidor que persiste caso/seguimiento ya valida usuario, dispositivo y RLS; se agrega validación mínima de tipos/valores en handler (`ISO date`, `proveedor_id` presente en catálogo activo, `unidad` en catálogo activo) donde ya se hace la escritura.
-- Se emiten eventos en `audit_logs` con `tipo`, `fecha`, `proveedor_id/unidad_id/cama` (sin PHI extra) reutilizando `registrar_auditoria`.
-
-## 7. Fuera de alcance (no se toca)
-
-Remisiones (fuera de Ref. Internas), Entrantes, PHD/PAD/O2, Cuadro de Turno, Auth, dispositivos, firma QR, reportes. Ningún calendario. Ningún campo de solo fecha. Ningún timestamp automático.
-
-## Archivos a crear / editar
-
-- **Nuevo**: `src/components/ui/app-time-picker.tsx` (reloj + wrappers).
-- **Editar**:
-  - `src/components/remisiones/form-bits.tsx` (rama datetime-local).
-  - `src/components/remisiones/nuevo-registro-dialog.tsx` (COORDINAR AMBULANCIA + campos dinámicos).
-  - `src/components/remisiones/seguimiento-dialog.tsx` (Activación TEP + Cambio de unidad + plantilla).
-  - `src/components/remisiones/phd-seguimiento-dialog.tsx`, `src/components/rc/registrar-wizard.tsx`, `src/components/coordinacion/usuario-actividad-dialog.tsx` (sustitución puntual de `datetime-local`).
-
-Confirma para implementar.
+Si apruebas el plan responderé con la implementación en un solo pase, tocando solo esos 4 archivos.

@@ -9,11 +9,19 @@ import { useNotifVencimientos } from "@/lib/use-notif-vencimientos";
 import { SeguimientoControl } from "@/components/rc/seguimiento-control";
 import { calcularVencimiento } from "@/lib/rc-utils";
 
+type SeguimientosSearch = { f?: string };
+
 export const Route = createFileRoute("/_authenticated/seguimientos")({
+  validateSearch: (s: Record<string, unknown>): SeguimientosSearch => ({
+    f: typeof s.f === "string" ? s.f : undefined,
+  }),
   component: SeguimientosPage,
 });
 
 function SeguimientosPage() {
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const filtroActivo = search.f === "vencidos";
   const { data: casos } = useCasos();
   const { data: catalogos } = useCatalogos();
   const { data: plantillas } = usePlantillas();
@@ -48,6 +56,21 @@ function SeguimientosPage() {
     <div>
       <AppHeader title="Seguimientos" subtitle="Control de tiempos de los cupos aceptados y direccionamientos activos" />
 
+      {filtroActivo && (
+        <div className="mb-3 flex items-center justify-between rounded-full border border-status-red/40 bg-status-red/10 px-4 py-1.5 text-xs">
+          <span className="font-semibold uppercase text-status-red">
+            Filtro aplicado: Vencidos ({stats.vencidos})
+          </span>
+          <button
+            type="button"
+            className="text-status-red underline"
+            onClick={() => navigate({ search: {} })}
+          >
+            Limpiar filtro
+          </button>
+        </div>
+      )}
+
       <div className="mb-4 grid grid-cols-3 gap-3">
         <StatCard title="Cupos activos" value={stats.activos} caption="En seguimiento" color="green" />
         <StatCard title="Próximos a vencer" value={stats.porVencer} caption="≤ 60 min" color="amber" />
@@ -55,7 +78,7 @@ function SeguimientosPage() {
       </div>
 
       <Panel
-        title="Cupos en seguimiento"
+        title={filtroActivo ? "Cupos en seguimiento · Vencidos priorizados" : "Cupos en seguimiento"}
         action={
           <Button size="sm" variant={enabled ? "secondary" : "outline"} className="rounded-full" onClick={toggleNotif}>
             {enabled ? <Bell className="mr-1.5 h-4 w-4" /> : <BellOff className="mr-1.5 h-4 w-4" />}
