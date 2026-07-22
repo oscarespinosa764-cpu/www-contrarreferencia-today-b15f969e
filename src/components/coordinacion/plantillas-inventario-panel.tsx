@@ -31,6 +31,7 @@ import { PuntoUsoFormDialog, type PuntoUsoFormValue } from "./punto-uso-form-dia
 import { buildOficioHTML } from "@/lib/oficio";
 import { ReporteGeneralSalientesEditor } from "./reporte-general-salientes-editor";
 import { ListaChequeoConfirmadaEditor } from "./lista-chequeo-confirmada-editor";
+import { SolicitudPermisoEditor } from "./solicitud-permiso-editor";
 import { fixtureOficioMensaje, FIXTURE_CASO, AVISO_PREVIEW } from "@/lib/plantillas-preview-fixtures";
 import {
   listarVersionesPlantilla,
@@ -843,6 +844,18 @@ function EditorCampos({
   if (plantilla.codigo === "ENTREGA_FIRMA_QR") {
     return (
       <ListaChequeoConfirmadaEditor
+        plantillaId={plantilla.id}
+        contenidoActual={plantilla.contenido_editable ?? {}}
+        canEdit={canEdit}
+        onSaved={onSaved}
+      />
+    );
+  }
+
+  // Editor especializado para Solicitud de permiso / cambio de turno (FASE 7).
+  if (plantilla.codigo === "TH-FR-09") {
+    return (
+      <SolicitudPermisoEditor
         plantillaId={plantilla.id}
         contenidoActual={plantilla.contenido_editable ?? {}}
         canEdit={canEdit}
