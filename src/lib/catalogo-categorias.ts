@@ -15,7 +15,7 @@ import {
   FileText,
   Settings,
   List,
-  Map,
+  Map as MapIcon,
   Shield,
   type LucideIcon,
 } from "lucide-react";
