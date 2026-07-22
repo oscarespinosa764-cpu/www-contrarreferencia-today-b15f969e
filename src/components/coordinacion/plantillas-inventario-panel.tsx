@@ -891,6 +891,19 @@ function EditorCampos({
     );
   }
 
+  // Editor único para los OFICIOS institucionales HTML de Entrantes (FASE 9).
+  if (isOficioEntrantesCode(plantilla.codigo)) {
+    return (
+      <OficioEditor
+        plantillaId={plantilla.id}
+        codigo={plantilla.codigo}
+        contenidoActual={plantilla.contenido_editable ?? {}}
+        canEdit={canEdit}
+        onSaved={onSaved}
+      />
+    );
+  }
+
   if (entries.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
