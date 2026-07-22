@@ -158,7 +158,7 @@ function Dashboard() {
     <div>
       <AppHeader
         title="Dashboard General"
-        subtitle={`Centro Ejecutivo de Coordinación · Turno ${turnoActual.nombre} (${turnoActual.rango})`}
+        subtitle={`Centro Ejecutivo de Coordinación · Turno ${turnoActual.nombre} (${`${turnoActual.inicio}:00 - ${turnoActual.fin}:00`})`}
       />
 
       {/* PANEL INTELIGENTE — Tarjetas resumen clicables */}
@@ -246,7 +246,7 @@ function Dashboard() {
             <div className="min-w-0 flex-1">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Turno actual</p>
               <p className="truncate text-sm font-bold text-foreground">
-                {turnoActual.nombre} · {turnoActual.rango}
+                {turnoActual.nombre} · {`${turnoActual.inicio}:00 - ${turnoActual.fin}:00`}
               </p>
             </div>
           </div>
