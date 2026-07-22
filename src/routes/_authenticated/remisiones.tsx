@@ -28,19 +28,30 @@ import { GrupoEtapa } from "@/components/remisiones/grupo-etapa";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { toast } from "sonner";
 
+type RemisionesSearch = { tab?: string; f?: string; accion?: string };
+
 export const Route = createFileRoute("/_authenticated/remisiones")({
+  validateSearch: (s: Record<string, unknown>): RemisionesSearch => ({
+    tab: typeof s.tab === "string" ? s.tab : undefined,
+    f: typeof s.f === "string" ? s.f : undefined,
+    accion: typeof s.accion === "string" ? s.accion : undefined,
+  }),
   component: RemisionesPage,
 });
 
 function RemisionesPage() {
   const { canEdit, user } = useAuth();
   const qc = useQueryClient();
+  const search = Route.useSearch();
+  const initialTab = search.tab && ["remisiones", "especiales", "internas", "pendientes"].includes(search.tab) ? search.tab : "remisiones";
+  const initialEstado =
+    search.f === "pendientes" ? "pendiente" : search.f === "aceptadas" ? "aceptad" : "todos";
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [prioridad, setPrioridad] = useState("todas");
-  const [estadoFiltro, setEstadoFiltro] = useState("todos");
+  const [estadoFiltro, setEstadoFiltro] = useState(initialEstado);
   const [eps, setEps] = useState("todas");
-  const [tab, setTab] = useState("remisiones");
+  const [tab, setTab] = useState(initialTab);
   const [turnoEntrega, setTurnoEntrega] = useState<string>(getTurno().nombre);
   const [recibe, setRecibe] = useState("");
   const [confirmEntrega, setConfirmEntrega] = useState(false);

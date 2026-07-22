@@ -9,7 +9,12 @@ import { useNotifVencimientos } from "@/lib/use-notif-vencimientos";
 import { SeguimientoControl } from "@/components/rc/seguimiento-control";
 import { calcularVencimiento } from "@/lib/rc-utils";
 
+type SeguimientosSearch = { f?: string };
+
 export const Route = createFileRoute("/_authenticated/seguimientos")({
+  validateSearch: (s: Record<string, unknown>): SeguimientosSearch => ({
+    f: typeof s.f === "string" ? s.f : undefined,
+  }),
   component: SeguimientosPage,
 });
 

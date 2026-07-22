@@ -34,7 +34,12 @@ function colorPorTipo(tipo: string): MensajeColor {
   return "blue";
 }
 
+type CasosSearch = { f?: string };
+
 export const Route = createFileRoute("/_authenticated/casos")({
+  validateSearch: (s: Record<string, unknown>): CasosSearch => ({
+    f: typeof s.f === "string" ? s.f : undefined,
+  }),
   component: CasosPage,
 });
 
