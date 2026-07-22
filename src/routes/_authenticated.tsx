@@ -43,6 +43,7 @@ type NavItem = {
   icon: typeof LayoutDashboard;
   badge?: "seguimientos";
   adminOnly?: boolean;
+  search?: Record<string, string>;
 };
 
 type NavGroup = { label: string; abbr: string; adminOnly?: boolean; items: NavItem[] };
