@@ -29,6 +29,7 @@ import {
 import { PlantillaFormDialog, type PlantillaFormValue } from "./plantilla-form-dialog";
 import { PuntoUsoFormDialog, type PuntoUsoFormValue } from "./punto-uso-form-dialog";
 import { buildOficioHTML } from "@/lib/oficio";
+import { ReporteGeneralSalientesEditor } from "./reporte-general-salientes-editor";
 import { fixtureOficioMensaje, FIXTURE_CASO, AVISO_PREVIEW } from "@/lib/plantillas-preview-fixtures";
 import {
   listarVersionesPlantilla,
