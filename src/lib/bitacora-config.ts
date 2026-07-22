@@ -104,7 +104,7 @@ export const BitacoraConfigSchema = z.object({
     .prefault(() => ({})),
   entries_table: z
     .object({
-      columns: z.array(ColumnSchema).min(1).max(BITACORA_COLUMN_KEYS.length).default(DEFAULT_COLUMNS),
+      columns: z.array(ColumnSchema).min(1).max(BITACORA_COLUMN_KEYS.length).default(() => DEFAULT_COLUMNS.map((c) => ColumnSchema.parse(c))),
     })
     .prefault(() => ({ columns: DEFAULT_COLUMNS })),
   footer: z
