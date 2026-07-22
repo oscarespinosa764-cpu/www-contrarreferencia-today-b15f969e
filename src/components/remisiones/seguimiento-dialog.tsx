@@ -1533,7 +1533,15 @@ export function SeguimientoDialog({
         case TI.AMB_COORDINADA_ESP:
           return { proveedor: riTepProveedor.trim() || null };
         case T.CAMBIO_UNIDAD:
-          return { nueva_unidad: nuevaUnidad.trim() || null, nueva_cama: nuevaCama.trim() || null };
+          return {
+            unidad_anterior: unidadActual || null,
+            cama_anterior: camaActual || null,
+            nueva_unidad: nuevaUnidadNorm || null,
+            nueva_cama: nuevaCamaNorm || null,
+            // Alias compatibles con el detalle guardado por remisiones salientes.
+            unidad_nueva: nuevaUnidadNorm || null,
+            cama_nueva: nuevaCamaNorm || null,
+          };
         default:
           return null;
       }
