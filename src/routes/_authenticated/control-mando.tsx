@@ -52,10 +52,15 @@ function ControlMandoPage() {
         subtitle="Gestión de usuarios, históricos y estado técnico del turno"
       />
 
-      <Tabs defaultValue="usuarios" className="w-full">
-        <TabsList className="mb-4 grid h-auto w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-9">
+      <Tabs
+        value={tab}
+        onValueChange={(v) => navigate({ search: { tab: v } })}
+        className="w-full"
+      >
+        <TabsList className="mb-4 grid h-auto w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-10">
           <TabsTrigger className="whitespace-normal" value="usuarios">Usuarios</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="dispositivos">Dispositivos</TabsTrigger>
+          <TabsTrigger className="whitespace-normal" value="catalogos">Catálogos</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="historicos">Datos, importaciones y respaldo</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="alertas">Alertas y avisos</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="checklists">Listas de chequeo</TabsTrigger>
