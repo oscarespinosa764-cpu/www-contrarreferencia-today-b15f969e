@@ -28,7 +28,9 @@ import {
 } from "lucide-react";
 import { PlantillaFormDialog, type PlantillaFormValue } from "./plantilla-form-dialog";
 import { PuntoUsoFormDialog, type PuntoUsoFormValue } from "./punto-uso-form-dialog";
-import { buildOficioHTML } from "@/lib/oficio";
+import { buildOficioHTML, buildOficioHTMLPublicado } from "@/lib/oficio";
+import { isOficioEntrantesCode } from "@/lib/oficio-config";
+import { OficioEditor } from "./oficio-editor";
 import { ReporteGeneralSalientesEditor } from "./reporte-general-salientes-editor";
 import { ListaChequeoConfirmadaEditor } from "./lista-chequeo-confirmada-editor";
 import { BitacoraEditor } from "./bitacora-editor";
