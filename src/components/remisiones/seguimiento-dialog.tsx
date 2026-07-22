@@ -2749,6 +2749,55 @@ export function SeguimientoDialog({
                 </div>
               )}
 
+              {/* CONFIRMACIÓN DE PROGRAMACIÓN DE AMBULANCIA (RI) */}
+              {esInterna && tipoSeg === TI.PROG_AMB && (
+                <div className={sectionCls}>
+                  <p className={labelCls}>Confirmación de programación de ambulancia</p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Fecha y hora de recogida *</Label>
+                      <AppDateTimeInput
+                        name="ri_rec_fecha_hora"
+                        value={(() => {
+                          const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(riRecFecha.trim());
+                          if (!m || !isHoraValida(riRecHora)) return "";
+                          return `${m[3]}-${m[2]}-${m[1]}T${riRecHora}`;
+                        })()}
+                        onChange={(iso) => {
+                          if (!iso) {
+                            setRiRecFecha("");
+                            setRiRecHora("");
+                            return;
+                          }
+                          const [d, t] = iso.split("T");
+                          if (!d || !t) return;
+                          const [y, mo, da] = d.split("-");
+                          setRiRecFecha(`${da}/${mo}/${y}`);
+                          setRiRecHora(t.slice(0, 5));
+                        }}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Tipo de ambulancia *</Label>
+                      <select
+                        value={riRecTipoAmb}
+                        onChange={(e) => setRiRecTipoAmb(e.target.value)}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        required
+                      >
+                        <option value="" disabled>Seleccione…</option>
+                        {catTipoAmbulancia.map((v) => (
+                          <option key={v} value={v}>{v}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+
+
 
 
 
