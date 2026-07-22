@@ -14,44 +14,7 @@ import { Card } from "@/components/ui/card";
 import { AlertTriangle, Search } from "lucide-react";
 import { CatalogoMaestras } from "./catalogo-maestras";
 import { fmtFechaHora } from "@/lib/cuadro-turno-utils";
-
-const TIPO_MODULO: Record<string, string> = {
-  IPS: "Remisiones",
-  IPS_LOCAL: "Remisiones",
-  DEPARTAMENTO: "Remisiones",
-  EAPB: "Remisiones",
-  ESPECIALIDAD: "Remisiones",
-  MEDICO: "Remisiones",
-  REGIMEN: "Remisiones",
-  TIPO_TRAMITE: "Remisiones",
-  DOC_ENTREGA: "Remisiones",
-  EMPRESA_TEP: "Ambulancias",
-  PLACA: "Ambulancias",
-  UNIDAD: "Ambulancias",
-  UNIDAD_REQUERIDA: "Ambulancias",
-  MOTIVO_CANCELACION: "Motivos",
-  MOTIVO_NEG: "Motivos",
-  MOTIVO_PERMISO: "Talento Humano",
-};
-
-const TIPO_LABEL: Record<string, string> = {
-  IPS: "IPS / Red",
-  EAPB: "EAPB / Aseguradoras",
-  TIPO_TRAMITE: "Tipos de trámite",
-  IPS_LOCAL: "IPS red local",
-  DEPARTAMENTO: "Departamentos",
-  ESPECIALIDAD: "Especialidades",
-  MEDICO: "Médicos / Profesionales",
-  REGIMEN: "Regímenes",
-  EMPRESA_TEP: "Empresas TEP",
-  PLACA: "Placas",
-  UNIDAD: "Unidades",
-  UNIDAD_REQUERIDA: "Unidades requeridas",
-  MOTIVO_CANCELACION: "Motivos de cancelación",
-  MOTIVO_NEG: "Motivos de negación",
-  DOC_ENTREGA: "Documentos de entrega",
-  MOTIVO_PERMISO: "Motivos de permiso",
-};
+import { useCatalogoConfigDerivada } from "@/lib/catalogo-categorias";
 
 const USO_EN: Record<string, string> = {
   IPS: "Remisiones · Red operativa",
