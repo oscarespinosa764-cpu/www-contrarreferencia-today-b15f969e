@@ -101,7 +101,10 @@ export function OficioEditor({ plantillaId, codigo, contenidoActual, canEdit, on
   }, [initial]);
 
   const set = <K extends keyof OficioConfig>(section: K, value: Partial<OficioConfig[K]>) => {
-    setDraft((d) => ({ ...d, [section]: { ...d[section], ...value } as OficioConfig[K] }));
+    setDraft((d) => ({
+      ...d,
+      [section]: { ...(d[section] as object), ...(value as object) } as OficioConfig[K],
+    }));
     setDirty(true);
   };
 
