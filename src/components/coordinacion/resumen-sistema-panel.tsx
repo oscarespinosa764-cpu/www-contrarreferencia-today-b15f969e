@@ -75,7 +75,7 @@ const CARDS: Card[] = [
     label: "Registros de catálogos",
     icon: BookOpen,
     fetch: () => countRows("catalogos"),
-    linkTo: "/catalogo",
+    linkTo: "/control-mando?tab=catalogos",
     linkLabel: "Abrir catálogos",
   },
   {
