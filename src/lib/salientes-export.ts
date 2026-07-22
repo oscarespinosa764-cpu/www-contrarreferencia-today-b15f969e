@@ -12,6 +12,13 @@ import * as XLSX from "xlsx";
 import logoAsset from "@/assets/cedim-logo.png.asset.json";
 import { fmtFechaHora, fmtEdad, fmtTranscurrido } from "./remisiones-utils";
 import { getPlantillaConfig, pickText, pickBool } from "./plantillas-inventario-config";
+import {
+  loadReporteGeneralSalientesConfig,
+  getIndicatorsResolved,
+  getColumnsResolved,
+  INDICATOR_DEFAULT_LABELS,
+  type ColumnKey,
+} from "./reporte-general-salientes-config";
 import type { Remision } from "@/components/remisiones/caso-remision-card";
 
 const INSTITUCION = "CENTRO DE IMAGENES DIAGNOSTICAS CEDIM I.P.S S.A.S";
@@ -169,13 +176,16 @@ export async function descargarReporteGeneralPDF(params: {
   contadores?: Record<string, number>;
   domiciliarios?: Record<string, unknown>[];
 }): Promise<void> {
-  const cfg = await getPlantillaConfig("REPORTE_GENERAL_SALIENTES");
-  const TITULO = pickText(cfg, "encabezado_titulo", TITULO_DEFAULT);
-  const SUBTITULO = pickText(cfg, "encabezado_subtitulo", "");
-  const PIE = pickText(cfg, "pie_leyenda", PIE_DEFAULT);
-  // La sección PHD fue retirada del Reporte General por definición del alcance.
-  // La bandera de plantilla se ignora intencionalmente y se mantiene solo para
-  // compatibilidad con configuraciones existentes en `plantillas_inventario`.
+  // ── Configuración administrada (Fase 5). Nunca lanza: ante entrada
+  //    inválida o ausente usa defaults (fallback seguro).
+  const { config: rcfg, fallback } = await loadReporteGeneralSalientesConfig();
+  if (fallback) {
+    // eslint-disable-next-line no-console
+    console.warn("[REPORTE_GENERAL_SALIENTES] usando configuración por defecto (fallback).");
+  }
+  // Compatibilidad con la sección PHD/negaciones del alcance histórico:
+  // se mantiene la lectura por compatibilidad con configuraciones previas
+  // aunque ya no se rendericen en este reporte.
   void pickBool;
 
   // Filtro canónico único: el resumen y la tabla parten de la misma lista de
@@ -186,10 +196,14 @@ export async function descargarReporteGeneralPDF(params: {
 
   const { jsPDF } = await import("jspdf");
   const autoTable = (await import("jspdf-autotable")).default;
-  const doc = new jsPDF({ unit: "mm", format: "legal", orientation: "landscape" });
+  const doc = new jsPDF({
+    unit: "mm",
+    format: rcfg.page.page_size,
+    orientation: rcfg.page.orientation,
+  });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const logo = await getImg((logoAsset as { url: string }).url);
+  const logo = rcfg.header.show_logo ? await getImg((logoAsset as { url: string }).url) : null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const finalY = (): number => (doc as any).lastAutoTable?.finalY ?? 0;
 
@@ -198,27 +212,34 @@ export async function descargarReporteGeneralPDF(params: {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
   doc.setTextColor(110);
-  doc.text(INSTITUCION, pageW / 2, 11, { align: "center" });
-  doc.text(NIT, pageW / 2, 15, { align: "center" });
+  const align = rcfg.header.alignment;
+  const xAlign = align === "left" ? 12 : align === "right" ? pageW - 12 : pageW / 2;
+  const nitLine = `${rcfg.header.institution_identifier_label} ${rcfg.header.institution_identifier_value}`.trim();
+  doc.text(rcfg.header.institution_name, xAlign, 11, { align });
+  doc.text(nitLine, xAlign, 15, { align });
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
   doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
-  doc.text(TITULO, pageW / 2, 22, { align: "center" });
-  if (SUBTITULO) {
+  doc.text(rcfg.header.report_title, xAlign, 22, { align });
+  if (rcfg.header.report_subtitle) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(90);
-    doc.text(SUBTITULO, pageW / 2, 26.5, { align: "center" });
+    doc.text(rcfg.header.report_subtitle, xAlign, 26.5, { align });
   }
   doc.setTextColor(0);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.text(
-    `Generado por: ${params.usuario}   ·   ${new Date().toLocaleString("es-CO")}`,
-    pageW / 2,
-    28,
-    { align: "center" },
-  );
+  if (rcfg.header.show_generated_by || rcfg.header.show_generated_at) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    const parts: string[] = [];
+    if (rcfg.header.show_generated_by) {
+      parts.push(`${rcfg.header.generated_by_label}: ${params.usuario}`);
+    }
+    if (rcfg.header.show_generated_at) {
+      parts.push(new Date().toLocaleString("es-CO"));
+    }
+    doc.text(parts.join("   ·   "), xAlign, 28, { align });
+  }
 
   // Recalcular métricas del resumen a partir de la lista filtrada, garantizando
   // que la suma de las categorías coincida con las filas de la tabla.
@@ -240,26 +261,30 @@ export async function descargarReporteGeneralPDF(params: {
     return /EGRES/.test(e) && /PENDIENTE|LLEGADA/.test(e) && !/CONFIRM/.test(e);
   }).length;
 
-  const cont = tarjetasResumenActivas({
-    activas: remisionesActivas.length,
-    contadores: {
-      ...(params.contadores ?? {}),
-      acepPendiente: acepPend,
-      acepSinAmb,
-      acepConAmb,
-      egresPendLlegada,
-    },
-  });
-  autoTable(doc, {
-    startY: 33,
-    theme: "grid",
-    styles: { fontSize: 7, cellPadding: 1.2, halign: "center", lineColor: [120, 120, 120], lineWidth: 0.2 },
-    body: [
-      cont.map(([k]) => ({ content: k, styles: { fillColor: LIGHT_BLUE, textColor: NAVY, fontStyle: "bold" as const } })),
-      cont.map(([, val]) => ({ content: val, styles: { fontStyle: "bold" as const, fontSize: 10 } })),
-    ] as never,
-    margin: { left: 12, right: 12 },
-  });
+  const indicatorValues: Record<string, number> = {
+    total_activas: remisionesActivas.length,
+    pendientes_aceptacion: acepPend,
+    aceptadas_sin_ambulancia: acepSinAmb,
+    aceptadas_con_ambulancia: acepConAmb,
+    egresadas_pendientes_llegada: egresPendLlegada,
+  };
+  const indicators = getIndicatorsResolved(rcfg);
+  const cont: [string, string][] = indicators.map((i) => [
+    i.label || INDICATOR_DEFAULT_LABELS[i.key],
+    String(indicatorValues[i.key] ?? 0),
+  ]);
+  if (cont.length > 0) {
+    autoTable(doc, {
+      startY: 33,
+      theme: "grid",
+      styles: { fontSize: 7, cellPadding: 1.2, halign: "center", lineColor: [120, 120, 120], lineWidth: 0.2 },
+      body: [
+        cont.map(([k]) => ({ content: k, styles: { fillColor: LIGHT_BLUE, textColor: NAVY, fontStyle: "bold" as const } })),
+        cont.map(([, val]) => ({ content: val, styles: { fontStyle: "bold" as const, fontSize: 10 } })),
+      ] as never,
+      margin: { left: 12, right: 12 },
+    });
+  }
   let y = finalY() + 8;
 
   // ── Banda de sección REMISIONES ACTIVAS ─────────────────────────────────
@@ -272,35 +297,41 @@ export async function descargarReporteGeneralPDF(params: {
   doc.setTextColor(0);
   y += 5;
 
-  const head = [[
-    "F. INICIO", "F. RADICADO", "T. TRÁMITE", "SERVICIO", "PACIENTE", "IDENT.", "EDAD",
-    "CIE-10", "ESP. TRAT.", "ESP. RECEP.", "REMISIÓN POR", "MOTIVO", "TIPO TRÁMITE",
-    "EAPB", "RÉGIMEN", "RADICACIÓN", "ESTADO", "IPS RECEPTORA", "TIPO AMB", "SOPORTES",
-  ]];
+  // Fuente lógica del dato POR COLUMNA (inmutable desde el editor).
+  const columns = getColumnsResolved(rcfg);
+  const columnGetter: Record<ColumnKey, (r: Remision, rr: Record<string, unknown>) => string> = {
+    fecha_inicio: (r) => fmtFechaHora(r.fecha_inicio),
+    fecha_radicado: (_r, rr) => fmtFechaHora(rr.fecha_radicado as string),
+    tiempo_tramite: (r) => fmtTranscurrido(r.fecha_inicio),
+    servicio: (r) => v(r.servicio),
+    paciente: (r) => v(r.paciente),
+    identificacion: (r) => v(r.documento),
+    edad: (r) => fmtEdad(r.edad),
+    cie10: (r) => v(r.cie10),
+    especialidades_tratantes: (r) => v(r.especialidades_tratantes),
+    especialidades_receptoras: (r) => v(r.especialidades_receptoras),
+    remision_por: (_r, rr) => v(rr.remision_por),
+    motivo: (_r, rr) => v(rr.especificacion),
+    tipo_tramite: (_r, rr) => v(rr.tipo_tramite),
+    eapb: (r) => v(r.eapb || r.asegurador),
+    regimen: (r) => v(r.regimen),
+    radicacion: (r) => v(r.codigo_radicacion),
+    estado: (r) => v(r.estado),
+    ips_receptora: (_r, rr) => v(rr.ips_receptora),
+    tipo_ambulancia: (r) => v(r.tipo_ambulancia),
+    soportes: (_r, rr) => v(rr.soportes),
+  };
+  const head = [columns.map((c) => c.label)];
   const body = remisionesActivas.map((r) => {
     const rr = r as unknown as Record<string, unknown>;
-    return [
-      fmtFechaHora(r.fecha_inicio),
-      fmtFechaHora(rr.fecha_radicado as string),
-      fmtTranscurrido(r.fecha_inicio),
-      v(r.servicio),
-      v(r.paciente),
-      v(r.documento),
-      fmtEdad(r.edad),
-      v(r.cie10),
-      v(r.especialidades_tratantes),
-      v(r.especialidades_receptoras),
-      v(rr.remision_por),
-      v(rr.especificacion),
-      v(rr.tipo_tramite),
-      v(r.eapb || r.asegurador),
-      v(r.regimen),
-      v(r.codigo_radicacion),
-      v(r.estado),
-      v(rr.ips_receptora),
-      v(r.tipo_ambulancia),
-      v(rr.soportes),
-    ];
+    return columns.map((c) => columnGetter[c.key](r, rr));
+  });
+  const columnStyles: Record<number, { cellWidth?: number; halign?: "left" | "center" | "right" }> = {};
+  columns.forEach((c, idx) => {
+    const s: { cellWidth?: number; halign?: "left" | "center" | "right" } = {};
+    if (typeof c.width === "number") s.cellWidth = c.width;
+    if (c.alignment) s.halign = c.alignment;
+    if (Object.keys(s).length) columnStyles[idx] = s;
   });
 
   autoTable(doc, {
@@ -308,12 +339,14 @@ export async function descargarReporteGeneralPDF(params: {
     head: head as never,
     body: (body.length
       ? body
-      : [[{ content: "Sin remisiones activas", colSpan: 20, styles: { halign: "center", textColor: [130, 130, 130], fontStyle: "italic" } }]]) as never,
+      : [[{ content: "Sin remisiones activas", colSpan: columns.length || 1, styles: { halign: "center", textColor: [130, 130, 130], fontStyle: "italic" } }]]) as never,
     theme: "grid",
-    styles: { fontSize: 5.6, cellPadding: 0.9, overflow: "linebreak", valign: "top", lineColor: [140, 140, 140], lineWidth: 0.15 },
-    headStyles: { fillColor: NAVY, textColor: [255, 255, 255], fontStyle: "bold", fontSize: 5.6, halign: "center" },
-    margin: { left: 8, right: 8 },
+    styles: { fontSize: rcfg.page.base_font_size, cellPadding: 0.9, overflow: "linebreak", valign: "top", lineColor: [140, 140, 140], lineWidth: 0.15 },
+    headStyles: { fillColor: NAVY, textColor: [255, 255, 255], fontStyle: "bold", fontSize: rcfg.page.base_font_size, halign: "center" },
+    columnStyles,
+    margin: { left: rcfg.page.margin_left, right: rcfg.page.margin_right },
     tableWidth: "auto",
+    showHead: rcfg.table.repeat_header ? "everyPage" : "firstPage",
   });
 
   // Sección PHD / PAD / O2 / ESPECIALES eliminada del alcance del Reporte
@@ -330,11 +363,27 @@ export async function descargarReporteGeneralPDF(params: {
     doc.setFont("helvetica", "italic");
     doc.setFontSize(7);
     doc.setTextColor(90);
-    doc.text(PIE, pageW / 2, pageH - 6, { align: "center" });
+    if (rcfg.footer.left_text) {
+      doc.text(rcfg.footer.left_text, 12, pageH - 6, { align: "left" });
+    }
     doc.setFont("helvetica", "normal");
-    doc.text(`Página ${i} de ${total} · Generado: ${new Date().toLocaleString("es-CO")}`, pageW - 12, pageH - 6, {
-      align: "right",
-    });
+    const rightParts: string[] = [];
+    if (rcfg.footer.show_page_number) {
+      rightParts.push(
+        rcfg.footer.show_total_pages ? `Página ${i} de ${total}` : `Página ${i}`,
+      );
+    }
+    if (rcfg.footer.show_generated_at) {
+      rightParts.push(`${rcfg.footer.generated_at_label}: ${new Date().toLocaleString("es-CO")}`);
+    }
+    if (rcfg.footer.show_system_name && rcfg.footer.system_name) {
+      rightParts.push(rcfg.footer.system_name);
+    }
+    if (rightParts.length) {
+      const rightAlign = rcfg.footer.alignment;
+      const xR = rightAlign === "left" ? 12 : rightAlign === "center" ? pageW / 2 : pageW - 12;
+      doc.text(rightParts.join(" · "), xR, pageH - 6, { align: rightAlign });
+    }
     doc.setTextColor(0);
   }
 

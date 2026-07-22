@@ -29,6 +29,7 @@ import {
 import { PlantillaFormDialog, type PlantillaFormValue } from "./plantilla-form-dialog";
 import { PuntoUsoFormDialog, type PuntoUsoFormValue } from "./punto-uso-form-dialog";
 import { buildOficioHTML } from "@/lib/oficio";
+import { ReporteGeneralSalientesEditor } from "./reporte-general-salientes-editor";
 import { fixtureOficioMensaje, FIXTURE_CASO, AVISO_PREVIEW } from "@/lib/plantillas-preview-fixtures";
 import {
   listarVersionesPlantilla,
@@ -822,6 +823,18 @@ function EditorCampos({
         </code>
         ) y no expone campos editables. Para modificar su diseño se requiere una integración técnica.
       </div>
+    );
+  }
+
+  // Editor especializado para el Reporte General Operativo de Salientes (FASE 5).
+  if (plantilla.codigo === "REPORTE_GENERAL_SALIENTES") {
+    return (
+      <ReporteGeneralSalientesEditor
+        plantillaId={plantilla.id}
+        contenidoActual={plantilla.contenido_editable ?? {}}
+        canEdit={canEdit}
+        onSaved={onSaved}
+      />
     );
   }
 
