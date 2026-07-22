@@ -169,8 +169,9 @@ function SidebarContent({
                   const active = path === item.to;
                   return (
                     <Link
-                      key={item.to}
+                      key={`${item.to}-${item.label}`}
                       to={item.to}
+                      search={item.search as never}
                       onClick={onNavigate}
                       title={collapsed ? item.label : undefined}
                       className={`relative flex w-full min-h-[42px] items-center rounded-md text-sm transition-colors ${
