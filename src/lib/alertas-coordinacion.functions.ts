@@ -92,13 +92,6 @@ export const crearAlertaCoordinacion = createServerFn({ method: "POST" })
     // Despacho a canales externos según la regla de coordinación (si aplica).
     // No bloquea la creación de la alerta: si falla, la alerta ya quedó registrada.
     try {
-      const { data: reglaDb } = await supabaseAdmin
-        .from("reglas_coordinacion")
-        .select("notificar_externo, canales, requiere_crue, nombre, modulo, subventana, prioridad")
-        .eq("codigo", data.codigo)
-        .eq("archivado", false)
-        .maybeSingle();
-
       if (reglaDb?.notificar_externo && (reglaDb.canales?.length ?? 0) > 0) {
         const { despacharAlertaCoordinacion } = await import("./notifications.server");
         await despacharAlertaCoordinacion(supabaseAdmin, {
