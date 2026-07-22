@@ -221,9 +221,7 @@ export const verifyDeviceAndLinkSession = createServerFn({ method: "POST" })
       from: (t: string) => {
         select: (c: string) => {
           eq: (k: string, v: unknown) => {
-            eq: (k: string, v: unknown) => {
-              maybeSingle: () => Promise<{ data: Record<string, unknown> | null }>;
-            };
+            maybeSingle: () => Promise<{ data: Record<string, unknown> | null }>;
           };
         };
         insert: (r: Record<string, unknown>) => Promise<{ error: unknown }>;
@@ -232,6 +230,7 @@ export const verifyDeviceAndLinkSession = createServerFn({ method: "POST" })
         };
       };
     };
+
 
     const { data: dev } = await admin
       .from("authorized_devices")
