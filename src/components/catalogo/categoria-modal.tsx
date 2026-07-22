@@ -14,44 +14,7 @@ import { Card } from "@/components/ui/card";
 import { AlertTriangle, Search } from "lucide-react";
 import { CatalogoMaestras } from "./catalogo-maestras";
 import { fmtFechaHora } from "@/lib/cuadro-turno-utils";
-
-const TIPO_MODULO: Record<string, string> = {
-  IPS: "Remisiones",
-  IPS_LOCAL: "Remisiones",
-  DEPARTAMENTO: "Remisiones",
-  EAPB: "Remisiones",
-  ESPECIALIDAD: "Remisiones",
-  MEDICO: "Remisiones",
-  REGIMEN: "Remisiones",
-  TIPO_TRAMITE: "Remisiones",
-  DOC_ENTREGA: "Remisiones",
-  EMPRESA_TEP: "Ambulancias",
-  PLACA: "Ambulancias",
-  UNIDAD: "Ambulancias",
-  UNIDAD_REQUERIDA: "Ambulancias",
-  MOTIVO_CANCELACION: "Motivos",
-  MOTIVO_NEG: "Motivos",
-  MOTIVO_PERMISO: "Talento Humano",
-};
-
-const TIPO_LABEL: Record<string, string> = {
-  IPS: "IPS / Red",
-  EAPB: "EAPB / Aseguradoras",
-  TIPO_TRAMITE: "Tipos de trámite",
-  IPS_LOCAL: "IPS red local",
-  DEPARTAMENTO: "Departamentos",
-  ESPECIALIDAD: "Especialidades",
-  MEDICO: "Médicos / Profesionales",
-  REGIMEN: "Regímenes",
-  EMPRESA_TEP: "Empresas TEP",
-  PLACA: "Placas",
-  UNIDAD: "Unidades",
-  UNIDAD_REQUERIDA: "Unidades requeridas",
-  MOTIVO_CANCELACION: "Motivos de cancelación",
-  MOTIVO_NEG: "Motivos de negación",
-  DOC_ENTREGA: "Documentos de entrega",
-  MOTIVO_PERMISO: "Motivos de permiso",
-};
+import { useCatalogoConfigDerivada } from "@/lib/catalogo-categorias";
 
 const USO_EN: Record<string, string> = {
   IPS: "Remisiones · Red operativa",
@@ -101,27 +64,36 @@ export function CategoriaModal({
   const [estado, setEstado] = useState<"TODOS" | "ACTIVO" | "INACTIVO">(
     "TODOS",
   );
+  const config = useCatalogoConfigDerivada();
+  const TIPO_MODULO = config.tipoModulo;
+  const TIPO_LABEL = config.tipoNombre;
 
-  const { data: rows } = useQuery({
-    queryKey: ["catalogo-cat-modal", modulo],
+  const { data: allRows } = useQuery({
+    queryKey: ["catalogo-cat-modal-all"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("catalogos")
         .select("id, tipo, valor, activo, updated_at")
         .limit(5000);
       if (error) throw error;
-      return ((data ?? []) as Row[]).filter(
-        (r) => (TIPO_MODULO[r.tipo] ?? "Otros") === modulo,
-      );
+      return (data ?? []) as Row[];
     },
   });
+
+  const rows = useMemo(
+    () =>
+      (allRows ?? []).filter(
+        (r) => (TIPO_MODULO[r.tipo] ?? "Otros") === modulo,
+      ),
+    [allRows, TIPO_MODULO, modulo],
+  );
 
   const catalogos = useMemo(() => {
     const map = new Map<
       string,
       { tipo: string; total: number; activos: number; ultima: string | null }
     >();
-    (rows ?? []).forEach((r) => {
+    rows.forEach((r) => {
       const m =
         map.get(r.tipo) ??
         { tipo: r.tipo, total: 0, activos: 0, ultima: null as string | null };
@@ -146,7 +118,7 @@ export function CategoriaModal({
       .sort((a, b) =>
         (TIPO_LABEL[a.tipo] ?? a.tipo).localeCompare(TIPO_LABEL[b.tipo] ?? b.tipo),
       );
-  }, [rows, q, estado]);
+  }, [rows, q, estado, TIPO_LABEL]);
 
   const totalCat = new Set((rows ?? []).map((r) => r.tipo)).size;
   const totalElem = (rows ?? []).length;

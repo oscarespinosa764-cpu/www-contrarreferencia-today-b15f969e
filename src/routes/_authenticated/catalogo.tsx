@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlantillasBiblioteca } from "@/components/coordinacion/plantillas-biblioteca";
 import { CategoriasView } from "@/components/catalogo/categorias-view";
+import { useCatalogoConfigDerivada } from "@/lib/catalogo-categorias";
 import {
   BookOpen,
   Mail,
@@ -39,31 +40,10 @@ export const Route = createFileRoute("/_authenticated/catalogo")({
 });
 
 type Kpis = {
-  categorias: number;
   catalogos: number;
   elementos: number;
   plantillas: number;
   ultimaActualizacion: Date | null;
-};
-
-// Agrupador estático de módulos (misma fuente que TIPO_META en catalogo-maestras)
-const MODULO_POR_TIPO: Record<string, string> = {
-  IPS: "Remisiones",
-  IPS_LOCAL: "Remisiones",
-  DEPARTAMENTO: "Remisiones",
-  EAPB: "Remisiones",
-  ESPECIALIDAD: "Remisiones",
-  MEDICO: "Remisiones",
-  REGIMEN: "Remisiones",
-  TIPO_TRAMITE: "Remisiones",
-  DOC_ENTREGA: "Remisiones",
-  EMPRESA_TEP: "Ambulancias",
-  PLACA: "Ambulancias",
-  UNIDAD: "Ambulancias",
-  UNIDAD_REQUERIDA: "Ambulancias",
-  MOTIVO_CANCELACION: "Motivos",
-  MOTIVO_NEG: "Motivos",
-  MOTIVO_PERMISO: "Talento Humano",
 };
 
 function useKpis() {
@@ -84,9 +64,6 @@ function useKpis() {
       ]);
       const activos = (cats ?? []).filter((c) => c.activo);
       const tiposActivos = new Set(activos.map((c) => c.tipo));
-      const modulosActivos = new Set(
-        [...tiposActivos].map((t) => MODULO_POR_TIPO[t] ?? "Otros"),
-      );
       const ult =
         [
           ...(cats ?? []).map((c) => c.updated_at),
@@ -96,7 +73,6 @@ function useKpis() {
           .map((d) => new Date(d as string).getTime())
           .sort((a, b) => b - a)[0] ?? null;
       return {
-        categorias: modulosActivos.size,
         catalogos: tiposActivos.size,
         elementos: activos.length,
         plantillas: (plantillas ?? []).filter((p) => p.activo).length,
@@ -110,6 +86,8 @@ function CatalogoPage() {
   const { tab } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const { data: k } = useKpis();
+  const config = useCatalogoConfigDerivada();
+  const categoriasActivas = config.categorias.filter((c) => c.activo).length;
 
   const kpis = useMemo(
     () => [
@@ -117,7 +95,7 @@ function CatalogoPage() {
         key: "categorias",
         icon: Layers,
         label: "Categorías",
-        value: k?.categorias ?? "—",
+        value: categoriasActivas || "—",
         hint: "Módulos con listas activas",
         tone: "bg-status-blue/10 text-status-blue",
         onClick: () => navigate({ search: { tab: "catalogo" } }),

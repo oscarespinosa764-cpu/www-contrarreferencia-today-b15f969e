@@ -421,6 +421,48 @@ export type Database = {
         }
         Relationships: []
       }
+      catalogo_categorias: {
+        Row: {
+          activo: boolean
+          codigo: string
+          created_at: string
+          created_by: string | null
+          descripcion: string | null
+          icono: string
+          id: string
+          nombre: string
+          orden: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          activo?: boolean
+          codigo: string
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          icono?: string
+          id?: string
+          nombre: string
+          orden?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          activo?: boolean
+          codigo?: string
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          icono?: string
+          id?: string
+          nombre?: string
+          orden?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       catalogo_dependencias: {
         Row: {
           campo: string | null
@@ -479,6 +521,53 @@ export type Database = {
             columns: ["elemento_id"]
             isOneToOne: false
             referencedRelation: "catalogos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalogo_tipos: {
+        Row: {
+          activo: boolean
+          categoria_id: string
+          created_at: string
+          created_by: string | null
+          descripcion: string | null
+          nombre_visible: string
+          orden: number
+          tipo: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          activo?: boolean
+          categoria_id: string
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          nombre_visible: string
+          orden?: number
+          tipo: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          activo?: boolean
+          categoria_id?: string
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          nombre_visible?: string
+          orden?: number
+          tipo?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalogo_tipos_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "catalogo_categorias"
             referencedColumns: ["id"]
           },
         ]
