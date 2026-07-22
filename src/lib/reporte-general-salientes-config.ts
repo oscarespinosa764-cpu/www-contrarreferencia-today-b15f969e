@@ -168,7 +168,7 @@ export const ReporteGeneralSalientesConfigSchema = z.object({
       margin_left: z.number().min(4).max(40).default(8),
       base_font_size: z.number().min(5).max(9).default(5.6),
     })
-    .default({}),
+    .default(() => ({})),
   header: z
     .object({
       institution_name: z.string().trim().max(160).default("CENTRO DE IMAGENES DIAGNOSTICAS CEDIM I.P.S S.A.S"),
@@ -182,18 +182,18 @@ export const ReporteGeneralSalientesConfigSchema = z.object({
       show_generated_at: z.boolean().default(true),
       alignment: AlignEnum.default("center"),
     })
-    .default({}),
+    .default(() => ({})),
   summary: z
     .object({
       indicators: z.array(IndicatorItem).max(INDICATOR_KEYS.length).default([]),
     })
-    .default({}),
+    .default(() => ({})),
   table: z
     .object({
       columns: z.array(ColumnItem).max(COLUMN_KEYS.length).default([]),
       repeat_header: z.boolean().default(true),
     })
-    .default({}),
+    .default(() => ({})),
   footer: z
     .object({
       left_text: z.string().trim().max(160).default("SISTEMA DE REFERENCIA Y CONTRARREFERENCIA"),
@@ -205,7 +205,7 @@ export const ReporteGeneralSalientesConfigSchema = z.object({
       system_name: z.string().trim().max(80).default(""),
       alignment: AlignEnum.default("right"),
     })
-    .default({}),
+    .default(() => ({})),
 });
 
 export type ReporteGeneralSalientesConfig = z.infer<typeof ReporteGeneralSalientesConfigSchema>;
