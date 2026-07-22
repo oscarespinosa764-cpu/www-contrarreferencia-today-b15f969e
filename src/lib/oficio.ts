@@ -152,7 +152,7 @@ export function buildOficioHTML(tipo: string, codigo: string, mensaje: string): 
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse"><tr>`,
     // logo
     `<td style="vertical-align:middle;width:96px;padding-right:14px">`,
-    `<img src="${IMG.logo}" alt="${INSTITUCION.nombre}" width="92" style="display:block;width:92px;height:auto;border:0" /></td>`,
+    `<img src="${IMG.logo}" alt="${INSTITUCION.nombre}" width="92" style="display:block;width:92px;height:auto;border:0" onerror="${IMG_FALLBACK}" /></td>`,
     // membrete centrado
     `<td style="vertical-align:middle;text-align:center">`,
     `<div style="font-size:12px;font-weight:700;letter-spacing:2px;color:${TEAL};text-transform:uppercase">${INSTITUCION.nombre}</div>`,
@@ -161,7 +161,7 @@ export function buildOficioHTML(tipo: string, codigo: string, mensaje: string): 
     `</td>`,
     // mascota institucional CECI (reemplaza la cruz médica)
     `<td style="vertical-align:middle;width:84px;text-align:right;padding-left:10px">`,
-    `<img src="${IMG.mascota}" alt="CECI - Mascota institucional CEDIM IPS" width="66" style="display:block;width:66px;height:auto;border:0;margin-left:auto" /></td>`,
+    `<img src="${IMG.mascota}" alt="" width="66" style="display:block;width:66px;height:auto;border:0;margin-left:auto" onerror="${IMG_FALLBACK}" /></td>`,
     `</tr></table>`,
     `</div>`,
 
