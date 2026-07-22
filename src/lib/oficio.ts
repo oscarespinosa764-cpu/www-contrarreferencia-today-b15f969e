@@ -7,13 +7,19 @@
 import { limpiarMarcadores } from "./rc-utils";
 
 // Las imágenes deben tener URL ABSOLUTA para verse también cuando el oficio
-// se pega en el correo (Gmail / Outlook). URLs inmutables del CDN.
-const ASSET_BASE = "https://look-see-html.lovable.app";
+// se pega en el correo (Gmail / Outlook). Se apunta al dominio publicado
+// institucional (estable y con CDN público) — el host anterior
+// `look-see-html.lovable.app` dejaba las imágenes rotas (404).
+const ASSET_BASE = "https://www.contrarreferencia.today";
 export const IMG = {
   logo: ASSET_BASE + "/__l5e/assets-v1/debb769e-6a9d-4c3b-984a-fac1313767e8/cedim-logo.png",
   cruz: ASSET_BASE + "/__l5e/assets-v1/68052705-29b9-400b-9419-d72818b6134c/cruz-referencia.png",
   mascota: ASSET_BASE + "/__l5e/assets-v1/b2238e85-eeda-4f5c-a307-7d2906a913b9/ceci-mascota.png",
 };
+
+// onerror inline: si la imagen bloquea o falla, ocultamos el <img> y quitamos
+// el ícono nativo de "imagen rota". Es HTML plano, seguro para correo.
+const IMG_FALLBACK = `this.onerror=null;this.style.display='none';`;
 
 export const INSTITUCION = {
   nombre: "CEDIM IPS",
@@ -146,7 +152,7 @@ export function buildOficioHTML(tipo: string, codigo: string, mensaje: string): 
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse"><tr>`,
     // logo
     `<td style="vertical-align:middle;width:96px;padding-right:14px">`,
-    `<img src="${IMG.logo}" alt="${INSTITUCION.nombre}" width="92" style="display:block;width:92px;height:auto;border:0" /></td>`,
+    `<img src="${IMG.logo}" alt="${INSTITUCION.nombre}" width="92" style="display:block;width:92px;height:auto;border:0" onerror="${IMG_FALLBACK}" /></td>`,
     // membrete centrado
     `<td style="vertical-align:middle;text-align:center">`,
     `<div style="font-size:12px;font-weight:700;letter-spacing:2px;color:${TEAL};text-transform:uppercase">${INSTITUCION.nombre}</div>`,
@@ -155,7 +161,7 @@ export function buildOficioHTML(tipo: string, codigo: string, mensaje: string): 
     `</td>`,
     // mascota institucional CECI (reemplaza la cruz médica)
     `<td style="vertical-align:middle;width:84px;text-align:right;padding-left:10px">`,
-    `<img src="${IMG.mascota}" alt="CECI - Mascota institucional CEDIM IPS" width="66" style="display:block;width:66px;height:auto;border:0;margin-left:auto" /></td>`,
+    `<img src="${IMG.mascota}" alt="" width="66" style="display:block;width:66px;height:auto;border:0;margin-left:auto" onerror="${IMG_FALLBACK}" /></td>`,
     `</tr></table>`,
     `</div>`,
 
