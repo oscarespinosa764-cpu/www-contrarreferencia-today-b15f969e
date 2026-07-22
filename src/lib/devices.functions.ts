@@ -93,6 +93,7 @@ export const getMyDeviceStatus = createServerFn({ method: "POST" })
             k: string,
             v: unknown,
           ) => {
+            maybeSingle: () => Promise<{ data: Record<string, unknown> | null }>;
             eq: (k: string, v: unknown) => {
               maybeSingle: () => Promise<{ data: Record<string, unknown> | null }>;
             };
@@ -116,11 +117,11 @@ export const getMyDeviceStatus = createServerFn({ method: "POST" })
       const r = await admin
         .from("authorized_devices")
         .select("id, device_public_id, estado, nombre_dispositivo, autorizado_at, expiracion_at, motivo")
-        .eq("user_id", context.userId)
         .eq("device_public_id", data.devicePublicId)
         .maybeSingle();
       device = (r.data as unknown as DeviceRow) ?? null;
     }
+
 
     const sid = await getCurrentSessionId(context);
     let sessionLinked = false;
