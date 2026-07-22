@@ -36,10 +36,16 @@ export function fixtureOficioMensaje(tipo: string): string {
       return `No se acepta el caso del paciente *${FIXTURE_PACIENTE.nombre}*.\n\n- Motivo: ==criterio clínico==\n- Fecha: ${new Date().toLocaleDateString("es-CO")}`;
     case "CAN":
       return `Se registra la cancelación del caso ${FIXTURE_CASO.codigo}.\n\nMotivo: solicitado por la IPS remitente.`;
+    case "AMP":
+      return `Se registra *ampliación* de información para el caso ${FIXTURE_CASO.codigo}.\n\n- Nuevo dato: ==evolución clínica==\n- Fecha: ${new Date().toLocaleDateString("es-CO")}`;
+    case "ING":
+      return `Se confirma el *ingreso* del paciente *${FIXTURE_PACIENTE.nombre}* a la ${FIXTURE_CASO.ips_receptora}.\n\n- Sede: ${FIXTURE_CASO.sede}`;
     case "CRUE_ACEP":
       return `Se acepta el direccionamiento del CRUE para el paciente *${FIXTURE_PACIENTE.nombre}*.`;
     case "CRUE_NEG":
       return `No es posible aceptar el direccionamiento del CRUE.\n\n- Motivo: capacidad instalada agotada.`;
+    case "CRUE_NR":
+      return `Se informa que *no se requiere* direccionamiento del CRUE para el caso ${FIXTURE_CASO.codigo}.`;
     default:
       return "Contenido de prueba.";
   }
