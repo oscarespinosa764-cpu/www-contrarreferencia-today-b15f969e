@@ -675,7 +675,7 @@ export function SeguimientoDialog({
   );
   const espHayCambio = espCierreList.length > 0 || espNuevasLimpias.length > 0;
   const esCambioEsp = esSaliente && tipoSeg === T.CAMBIO_ESPECIALIDAD;
-  const esCambioUnidad = esSaliente && tipoSeg === T.CAMBIO_UNIDAD;
+  const esCambioUnidad = (esSaliente || esInterna) && tipoSeg === T.CAMBIO_UNIDAD;
   const esTepActivacion = esInterna && tipoSeg === TI.TEP_ACTIVACION;
   // Proveedor SEM (predeterminado en flujos de ambulancia/TEP).
   const SEM_MATCH = "SERVICIOS DE EMERGENCIAS MEDICAS DEL CAQUETA";
@@ -689,9 +689,25 @@ export function SeguimientoDialog({
       setRiTepProveedor(proveedorSem);
     }
   }, [esTepActivacion, proveedorSem, riTepProveedor]);
+  // Cama vigente de RI: se deriva del último CAMBIO DE UNIDAD registrado
+  // (referencia_interna no tiene columna `cama`; se guarda estructurada en
+  // el seguimiento). Si no existe, queda vacía.
+  const camaActualRi = useMemo(() => {
+    if (!esInterna) return "";
+    const rows = (historial ?? []) as { tipo_seguimiento?: string; detalles?: unknown; archivado?: boolean }[];
+    const last = rows.find(
+      (h) =>
+        !h.archivado &&
+        (h.tipo_seguimiento ?? "").toUpperCase() === "CAMBIO DE UNIDAD",
+    );
+    const det = (last?.detalles ?? {}) as Record<string, unknown>;
+    return String(det["cama_nueva"] ?? det["nueva_cama"] ?? "").trim().toUpperCase();
+  }, [esInterna, historial]);
   // Ubicación institucional actual (unidad = servicio de la remisión, cama del caso).
-  const unidadActual = (caso?.servicio ?? "").trim();
-  const camaActual = (caso?.cama ?? "").trim();
+  const unidadActual = (
+    esInterna ? (casoInterna?.servicio ?? "") : (caso?.servicio ?? "")
+  ).trim();
+  const camaActual = esInterna ? camaActualRi : (caso?.cama ?? "").trim();
   // Sanitiza la cama: mayúsculas, sin espacios extremos, sin HTML, máximo 30 chars.
   const sanitizarCama = (raw: string) =>
     raw
