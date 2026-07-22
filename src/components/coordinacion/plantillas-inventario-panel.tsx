@@ -713,7 +713,7 @@ function PreviewHtml({ plantilla }: { plantilla: PlantillaInv }) {
       <iframe
         title={`Vista previa ${plantilla.codigo}`}
         sandbox=""
-        srcDoc={`<!doctype html><html><head><meta charset="utf-8"/><style>body{margin:0;background:#f8fafc;padding:24px;font-family:'Segoe UI',Arial,sans-serif}</style></head><body>${html}</body></html>`}
+        srcDoc={`<!doctype html><html><head><meta charset="utf-8"/><style>body{margin:0;background:#f8fafc;padding:24px;font-family:'Segoe UI',Arial,sans-serif}</style></head><body>${htmlSafe}</body></html>`}
         className="h-[640px] w-full rounded-lg border border-border bg-white"
       />
     </div>
