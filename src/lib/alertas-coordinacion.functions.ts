@@ -39,6 +39,19 @@ export const crearAlertaCoordinacion = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    // Fase 11 — Gating por configuración administrativa (Control de Mando → Reglas).
+    // Si la regla existe en `reglas_coordinacion` y está inactiva/archivada, no se
+    // genera nueva alerta. Si la fila no existe (código no sembrado), se mantiene
+    // el fallback del catálogo estático para no romper eventos legítimos.
+    const { data: reglaDb } = await supabaseAdmin
+      .from("reglas_coordinacion")
+      .select("notificar_externo, canales, requiere_crue, nombre, modulo, subventana, prioridad, activo, archivado")
+      .eq("codigo", data.codigo)
+      .maybeSingle();
+    if (reglaDb && (reglaDb.archivado || !reglaDb.activo)) {
+      return { ok: true, created: false, skipped: true, reason: "regla_inactiva" as const };
+    }
+
     // Idempotente: si ya existe la alerta con esa clave, no se duplica.
     const { data: existente } = await supabaseAdmin
       .from("alertas_coordinacion")
@@ -79,13 +92,6 @@ export const crearAlertaCoordinacion = createServerFn({ method: "POST" })
     // Despacho a canales externos según la regla de coordinación (si aplica).
     // No bloquea la creación de la alerta: si falla, la alerta ya quedó registrada.
     try {
-      const { data: reglaDb } = await supabaseAdmin
-        .from("reglas_coordinacion")
-        .select("notificar_externo, canales, requiere_crue, nombre, modulo, subventana, prioridad")
-        .eq("codigo", data.codigo)
-        .eq("archivado", false)
-        .maybeSingle();
-
       if (reglaDb?.notificar_externo && (reglaDb.canales?.length ?? 0) > 0) {
         const { despacharAlertaCoordinacion } = await import("./notifications.server");
         await despacharAlertaCoordinacion(supabaseAdmin, {
