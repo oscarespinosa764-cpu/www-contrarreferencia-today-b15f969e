@@ -63,22 +63,20 @@ export const requestDeviceChallenge = createServerFn({ method: "POST" })
         from: (t: string) => {
           select: (c: string) => {
             eq: (k: string, v: unknown) => {
-              eq: (k: string, v: unknown) => {
-                maybeSingle: () => Promise<{ data: { id: string } | null }>;
-              };
+              maybeSingle: () => Promise<{ data: { id: string } | null }>;
             };
           };
         };
       })
         .from("authorized_devices")
         .select("id")
-        .eq("user_id", context.userId)
         .eq("device_public_id", data.devicePublicId)
         .maybeSingle();
       deviceId = dev?.id ?? null;
     }
     return await createChallenge(context.userId, purpose, deviceId);
   });
+
 
 // ---------- Estado propio ----------
 
@@ -95,6 +93,7 @@ export const getMyDeviceStatus = createServerFn({ method: "POST" })
             k: string,
             v: unknown,
           ) => {
+            maybeSingle: () => Promise<{ data: Record<string, unknown> | null }>;
             eq: (k: string, v: unknown) => {
               maybeSingle: () => Promise<{ data: Record<string, unknown> | null }>;
             };
@@ -118,11 +117,11 @@ export const getMyDeviceStatus = createServerFn({ method: "POST" })
       const r = await admin
         .from("authorized_devices")
         .select("id, device_public_id, estado, nombre_dispositivo, autorizado_at, expiracion_at, motivo")
-        .eq("user_id", context.userId)
         .eq("device_public_id", data.devicePublicId)
         .maybeSingle();
       device = (r.data as unknown as DeviceRow) ?? null;
     }
+
 
     const sid = await getCurrentSessionId(context);
     let sessionLinked = false;
@@ -222,9 +221,7 @@ export const verifyDeviceAndLinkSession = createServerFn({ method: "POST" })
       from: (t: string) => {
         select: (c: string) => {
           eq: (k: string, v: unknown) => {
-            eq: (k: string, v: unknown) => {
-              maybeSingle: () => Promise<{ data: Record<string, unknown> | null }>;
-            };
+            maybeSingle: () => Promise<{ data: Record<string, unknown> | null }>;
           };
         };
         insert: (r: Record<string, unknown>) => Promise<{ error: unknown }>;
@@ -234,12 +231,13 @@ export const verifyDeviceAndLinkSession = createServerFn({ method: "POST" })
       };
     };
 
+
     const { data: dev } = await admin
       .from("authorized_devices")
       .select("id, public_key, estado, expiracion_at")
-      .eq("user_id", context.userId)
       .eq("device_public_id", data.devicePublicId)
       .maybeSingle();
+
 
     if (!dev) return { status: "NOT_FOUND" as const };
     const estado = dev.estado as string;

@@ -201,6 +201,7 @@ export type Database = {
       }
       authorized_devices: {
         Row: {
+          alcance: string
           autorizado_at: string | null
           autorizado_por: string | null
           bloqueado_at: string | null
@@ -229,6 +230,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          alcance?: string
           autorizado_at?: string | null
           autorizado_por?: string | null
           bloqueado_at?: string | null
@@ -257,6 +259,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          alcance?: string
           autorizado_at?: string | null
           autorizado_por?: string | null
           bloqueado_at?: string | null
@@ -2066,6 +2069,8 @@ export type Database = {
           activo: boolean
           cargo: string | null
           created_at: string
+          es_cuenta_prueba: boolean
+          es_cuenta_sistema: boolean
           id: string
           nombre: string | null
           numero_documento: string | null
@@ -2080,6 +2085,8 @@ export type Database = {
           activo?: boolean
           cargo?: string | null
           created_at?: string
+          es_cuenta_prueba?: boolean
+          es_cuenta_sistema?: boolean
           id?: string
           nombre?: string | null
           numero_documento?: string | null
@@ -2094,6 +2101,8 @@ export type Database = {
           activo?: boolean
           cargo?: string | null
           created_at?: string
+          es_cuenta_prueba?: boolean
+          es_cuenta_sistema?: boolean
           id?: string
           nombre?: string | null
           numero_documento?: string | null
