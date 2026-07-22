@@ -2035,9 +2035,11 @@ export function SeguimientoDialog({
         update.especialidades_tratantes = espActivasFinal.join(", ");
       }
       // Cambio de unidad: actualiza servicio (unidad) y cama sin tocar estado / aceptación.
+      // En Referencia Interna la tabla no tiene columna `cama`; la nueva cama queda
+      // persistida estructurada dentro de `seguimientos.detalles` para trazabilidad.
       if (esCambioUnidad) {
         update.servicio = nuevaUnidadNorm;
-        update.cama = nuevaCamaNorm;
+        if (esSaliente) update.cama = nuevaCamaNorm;
       }
       // Evolución diaria salientes v2: refleja estado en la tarjeta.
       if (esEvolucionSal) {
