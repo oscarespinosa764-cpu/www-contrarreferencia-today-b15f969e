@@ -1,4 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { z } from "zod";
+import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { AppHeader } from "@/components/app-header";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ControlMandoPanel } from "@/components/coordinacion/control-mando-panel";
@@ -14,6 +16,7 @@ import { ChecklistsPanel } from "@/components/coordinacion/checklists-panel";
 import { PlantillasInventarioPanel } from "@/components/coordinacion/plantillas-inventario-panel";
 import { AuditoriaPanel } from "@/components/coordinacion/auditoria-panel";
 import { DispositivosPanel } from "@/components/coordinacion/dispositivos-panel";
+import { CategoriasView } from "@/components/catalogo/categorias-view";
 
 import { useAuth } from "@/lib/auth";
 
