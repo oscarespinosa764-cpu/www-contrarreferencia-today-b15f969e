@@ -30,6 +30,7 @@ import { PlantillaFormDialog, type PlantillaFormValue } from "./plantilla-form-d
 import { PuntoUsoFormDialog, type PuntoUsoFormValue } from "./punto-uso-form-dialog";
 import { buildOficioHTML } from "@/lib/oficio";
 import { ReporteGeneralSalientesEditor } from "./reporte-general-salientes-editor";
+import { ListaChequeoConfirmadaEditor } from "./lista-chequeo-confirmada-editor";
 import { fixtureOficioMensaje, FIXTURE_CASO, AVISO_PREVIEW } from "@/lib/plantillas-preview-fixtures";
 import {
   listarVersionesPlantilla,
@@ -830,6 +831,18 @@ function EditorCampos({
   if (plantilla.codigo === "REPORTE_GENERAL_SALIENTES") {
     return (
       <ReporteGeneralSalientesEditor
+        plantillaId={plantilla.id}
+        contenidoActual={plantilla.contenido_editable ?? {}}
+        canEdit={canEdit}
+        onSaved={onSaved}
+      />
+    );
+  }
+
+  // Editor especializado para la Lista de Chequeo Confirmada (FASE 6).
+  if (plantilla.codigo === "ENTREGA_FIRMA_QR") {
+    return (
+      <ListaChequeoConfirmadaEditor
         plantillaId={plantilla.id}
         contenidoActual={plantilla.contenido_editable ?? {}}
         canEdit={canEdit}

@@ -11,6 +11,10 @@
 
 import logoAsset from "@/assets/cedim-logo.png.asset.json";
 import ceciAsset from "@/assets/ceci-mascota.png.asset.json";
+import {
+  loadListaChequeoConfirmadaConfig,
+  type ListaChequeoConfirmadaConfig,
+} from "./lista-chequeo-confirmada-config";
 
 const INSTITUCION = "CENTRO DE IMAGENES DIAGNOSTICAS CEDIM I.P.S S.A.S";
 const NIT = "NIT: 900559103-5";
@@ -24,6 +28,10 @@ const LIGHT: [number, number, number] = [221, 235, 247];
 const TEXTO_ACEPTACION =
   "Declaro que recibo la documentación relacionada en la lista de chequeo para el traslado " +
   "del paciente y que la información registrada corresponde a la entrega realizada.";
+
+// FASE 6: opcional. Sólo el flujo firmado (descargarFirmadoPDF) pasa cfg.
+// Portada y checklist previo conservan comportamiento original (cfg=undefined).
+type CFG = ListaChequeoConfirmadaConfig | undefined;
 
 export type DocumentoChecklist = { label: string; marcado: boolean; grupo?: string };
 
@@ -104,19 +112,23 @@ async function marcaAgua(): Promise<{ logo: string | null; ceci: string | null }
   return { logo, ceci };
 }
 
-function pie(doc: Doc) {
+function pie(doc: Doc, cfg?: CFG) {
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
+  const leyenda = cfg?.footer.left_text ?? PIE;
+  const showGen = cfg ? cfg.footer.show_generated_at : true;
   doc.setDrawColor(180);
   doc.line(14, pageH - 12, pageW - 14, pageH - 12);
   doc.setFont("helvetica", "italic");
   doc.setFontSize(7.5);
   doc.setTextColor(90);
-  doc.text(PIE, pageW / 2, pageH - 8, { align: "center" });
+  doc.text(leyenda, pageW / 2, pageH - 8, { align: "center" });
   doc.setFont("helvetica", "normal");
-  doc.text(`Generado: ${new Date().toLocaleString("es-CO")}`, pageW - 14, pageH - 8, {
-    align: "right",
-  });
+  if (showGen) {
+    doc.text(`Generado: ${new Date().toLocaleString("es-CO")}`, pageW - 14, pageH - 8, {
+      align: "right",
+    });
+  }
   doc.setTextColor(0);
 }
 
@@ -141,13 +153,15 @@ function descargar(doc: Doc, nombre: string) {
 }
 
 /** Línea oficial de tipo de documento con casillas CC/TI/RC/CN + N°. */
-function filaTipoDocumento(doc: Doc, y: number, d: EntregaDatos): number {
+function filaTipoDocumento(doc: Doc, y: number, d: EntregaDatos, cfg?: CFG): number {
   const tipo = up(d.tipo_documento);
   const opts = ["CC", "TI", "RC", "CN"];
+  const labTipo = (cfg?.patient_section.label_tipo_documento ?? "TIPO DE DOCUMENTO") + ":";
+  const labNo = (cfg?.patient_section.label_no_documento ?? "No. DOCUMENTO") + ":";
   doc.setFontSize(8.5);
   doc.setFont("helvetica", "bold");
-  doc.text("TIPO DE DOCUMENTO:", 16, y);
-  let x = 16 + doc.getTextWidth("TIPO DE DOCUMENTO: ") + 2;
+  doc.text(labTipo, 16, y);
+  let x = 16 + doc.getTextWidth(labTipo + " ") + 2;
   doc.setFont("helvetica", "normal");
   for (const lbl of opts) {
     doc.text(lbl, x, y);
@@ -157,9 +171,9 @@ function filaTipoDocumento(doc: Doc, y: number, d: EntregaDatos): number {
     x += 7.5;
   }
   doc.setFont("helvetica", "bold");
-  doc.text("No. DOCUMENTO:", x, y);
+  doc.text(labNo, x, y);
   doc.setFont("helvetica", "normal");
-  doc.text(up(d.documento) || "—", x + doc.getTextWidth("No. DOCUMENTO: ") + 1, y);
+  doc.text(up(d.documento) || "—", x + doc.getTextWidth(labNo + " ") + 1, y);
   return y + 6.5;
 }
 
@@ -242,9 +256,16 @@ export async function descargarPortadaPDF(d: EntregaDatos) {
 }
 
 /** Encabezado institucional tipo Excel GU-FR (logo + GESTIÓN DE URGENCIAS + versión). */
-async function bannerHeader(doc: Doc, startY: number): Promise<number> {
+async function bannerHeader(doc: Doc, startY: number, cfg?: CFG): Promise<number> {
   const autoTable = (await import("jspdf-autotable")).default;
   const { logo } = await marcaAgua();
+  const area = cfg?.header.document_area ?? "GESTIÓN DE URGENCIAS";
+  const codeLbl = cfg?.header.format_code_label ?? "GU-FR-";
+  const verLbl = cfg?.header.version_label ?? "Versión:";
+  const verVal = cfg?.header.version_value ?? "1";
+  const aprobLbl = cfg?.header.approval_label ?? "Aprobado:";
+  const title = cfg?.header.document_title ?? "Lista de Chequeo de Documentación Referencia";
+  const showLogo = cfg ? cfg.header.show_logo : true;
 
   autoTable(doc, {
     startY,
@@ -259,21 +280,18 @@ async function bannerHeader(doc: Doc, startY: number): Promise<number> {
     body: [
       [
         { content: "", rowSpan: 3, styles: { halign: "center", fillColor: [255, 255, 255] } },
-        { content: "GESTIÓN DE URGENCIAS", styles: { halign: "center", fontStyle: "bold" } },
-        { content: "GU-FR-", styles: { halign: "center", fontStyle: "bold" } },
+        { content: area, styles: { halign: "center", fontStyle: "bold" } },
+        { content: codeLbl, styles: { halign: "center", fontStyle: "bold" } },
         { content: "" },
       ],
       [
         { content: "Formato", styles: { halign: "center" } },
-        { content: "Versión:", styles: { fontStyle: "bold" } },
-        { content: "1", styles: { halign: "center" } },
+        { content: verLbl, styles: { fontStyle: "bold" } },
+        { content: verVal, styles: { halign: "center" } },
       ],
       [
-        {
-          content: "Lista de Chequeo de Documentación Referencia",
-          styles: { halign: "center", fontStyle: "bold" },
-        },
-        { content: "Aprobado:", styles: { fontStyle: "bold" } },
+        { content: title, styles: { halign: "center", fontStyle: "bold" } },
+        { content: aprobLbl, styles: { fontStyle: "bold" } },
         { content: "" },
       ],
     ],
@@ -287,13 +305,21 @@ async function bannerHeader(doc: Doc, startY: number): Promise<number> {
   });
   // @ts-expect-error lastAutoTable lo agrega el plugin
   const finalY = doc.lastAutoTable?.finalY ?? startY + 20;
-  if (logo) doc.addImage(logo, "PNG", 17, startY + 2, 24, 15);
+  if (logo && showLogo) doc.addImage(logo, "PNG", 17, startY + 2, 24, 15);
   return finalY + 4;
 }
 
 /** Construye la tabla oficial GU-FR con barras de agrupación por categoría. */
-async function tablaChecklist(doc: Doc, d: EntregaDatos, startY: number): Promise<number> {
+async function tablaChecklist(doc: Doc, d: EntregaDatos, startY: number, cfg?: CFG): Promise<number> {
   const autoTable = (await import("jspdf-autotable")).default;
+  const t = cfg?.checklist_table;
+  const colN = t?.col_numero ?? "N°";
+  const colDet = t?.col_detalle ?? "DETALLE";
+  const colRef = t?.col_referencia ?? "REFERENCIA";
+  const colPer = t?.col_personal ?? "PERSONAL DE TRASLADO";
+  const lblC = t?.label_c ?? "C";
+  const lblNC = t?.label_nc ?? "NC";
+  const lblNA = t?.label_na ?? "NA";
 
   const body: unknown[] = [];
   let grupoActual: string | null = null;
@@ -351,18 +377,18 @@ async function tablaChecklist(doc: Doc, d: EntregaDatos, startY: number): Promis
     },
     head: [
       [
-        { content: "N°", rowSpan: 2 },
-        { content: "DETALLE", rowSpan: 2 },
-        { content: "REFERENCIA", colSpan: 3 },
-        { content: "PERSONAL DE TRASLADO", colSpan: 3 },
+        { content: colN, rowSpan: 2 },
+        { content: colDet, rowSpan: 2 },
+        { content: colRef, colSpan: 3 },
+        { content: colPer, colSpan: 3 },
       ],
       [
-        { content: "C" },
-        { content: "NC" },
-        { content: "NA" },
-        { content: "C" },
-        { content: "NC" },
-        { content: "NA" },
+        { content: lblC },
+        { content: lblNC },
+        { content: lblNA },
+        { content: lblC },
+        { content: lblNC },
+        { content: lblNA },
       ],
     ],
     body: body as never,
@@ -374,12 +400,13 @@ async function tablaChecklist(doc: Doc, d: EntregaDatos, startY: number): Promis
 }
 
 /** Bloque responsable + observaciones (formato oficial). */
-async function bloqueResponsable(doc: Doc, d: EntregaDatos, y: number): Promise<number> {
+async function bloqueResponsable(doc: Doc, d: EntregaDatos, y: number, cfg?: CFG): Promise<number> {
   const autoTable = (await import("jspdf-autotable")).default;
+  const r = cfg?.responsible_section;
   const rows: [string, string][] = [
-    ["NOMBRE / RESPONSABLE", up(d.responsable_checklist)],
-    ["CARGO", up(d.cargo_responsable)],
-    ["HORA DE REALIZACIÓN", up(d.fecha_entrega)],
+    [r?.label_nombre ?? "NOMBRE / RESPONSABLE", up(d.responsable_checklist)],
+    [r?.label_cargo ?? "CARGO", up(d.cargo_responsable)],
+    [r?.label_hora ?? "HORA DE REALIZACIÓN", up(d.fecha_entrega)],
   ];
   autoTable(doc, {
     startY: y,
@@ -407,7 +434,7 @@ async function bloqueResponsable(doc: Doc, d: EntregaDatos, y: number): Promise<
     head: [
       [
         {
-          content: "OBSERVACIONES",
+          content: r?.label_observaciones ?? "OBSERVACIONES",
           styles: { fillColor: LIGHT, textColor: NAVY, halign: "center", fontStyle: "bold" },
         },
       ],
@@ -421,29 +448,36 @@ async function bloqueResponsable(doc: Doc, d: EntregaDatos, y: number): Promise<
 }
 
 /** Encabezado de datos del paciente (bloque superior del Excel oficial). */
-function encabezadoDatos(doc: Doc, d: EntregaDatos, y: number): number {
+function encabezadoDatos(doc: Doc, d: EntregaDatos, y: number, cfg?: CFG): number {
+  const p = cfg?.patient_section;
+  const labFecha = (p?.label_fecha ?? "FECHA") + ":";
+  const labEapb = (p?.label_eapb ?? "EAPB") + ":";
+  const labNombres = p?.label_nombres ?? "NOMBRES Y APELLIDOS";
+  const labCie10 = (p?.label_cie10 ?? "CIE-10 PRINCIPAL") + ":";
+  const labOrigen = (p?.label_origen ?? "ORIGEN") + ":";
+  const showOrigen = p ? p.show_origen : true;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8.5);
-  doc.text("FECHA:", 16, y);
+  doc.text(labFecha, 16, y);
   doc.setFont("helvetica", "normal");
-  doc.text(up(d.fecha_entrega) || "—", 16 + doc.getTextWidth("FECHA: ") + 1, y);
+  doc.text(up(d.fecha_entrega) || "—", 16 + doc.getTextWidth(labFecha + " ") + 1, y);
   doc.setFont("helvetica", "bold");
-  doc.text("EAPB:", 118, y);
+  doc.text(labEapb, 118, y);
   doc.setFont("helvetica", "normal");
-  doc.text(up(d.entidad_pago) || "—", 118 + doc.getTextWidth("EAPB: ") + 1, y);
+  doc.text(up(d.entidad_pago) || "—", 118 + doc.getTextWidth(labEapb + " ") + 1, y);
   y += 6.5;
-  y = filaCampo(doc, y, "NOMBRES Y APELLIDOS", up(d.paciente));
-  y = filaTipoDocumento(doc, y, d);
+  y = filaCampo(doc, y, labNombres, up(d.paciente));
+  y = filaTipoDocumento(doc, y, d, cfg);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8.5);
-  doc.text("CIE-10 PRINCIPAL:", 16, y);
+  doc.text(labCie10, 16, y);
   doc.setFont("helvetica", "normal");
-  doc.text(up(d.cie10) || "—", 16 + doc.getTextWidth("CIE-10 PRINCIPAL: ") + 1, y);
-  if (d.origen) {
+  doc.text(up(d.cie10) || "—", 16 + doc.getTextWidth(labCie10 + " ") + 1, y);
+  if (d.origen && showOrigen) {
     doc.setFont("helvetica", "bold");
-    doc.text("ORIGEN:", 118, y);
+    doc.text(labOrigen, 118, y);
     doc.setFont("helvetica", "normal");
-    doc.text(up(d.origen), 118 + doc.getTextWidth("ORIGEN: ") + 1, y);
+    doc.text(up(d.origen), 118 + doc.getTextWidth(labOrigen + " ") + 1, y);
   }
   return y + 6;
 }
@@ -476,20 +510,37 @@ export async function descargarChecklistPDF(d: EntregaDatos) {
 
 /**
  * PDF FINAL "LISTA DE CHEQUEO CONFIRMADA" firmado por QR — formato GU-FR oficial.
+ * FASE 6: consume la configuración publicada en plantillas_inventario
+ * (código ENTREGA_FIRMA_QR) para presentación autorizada. Fallback: defaults.
  * No persiste. Compactado para caber en UNA sola página tamaño carta: el bloque de
  * firmante, aceptación, firma y código de verificación quedan siempre en la misma hoja.
  */
-export async function descargarFirmadoPDF(d: EntregaDatos, f: FirmaDatos) {
+export async function descargarFirmadoPDF(
+  d: EntregaDatos,
+  f: FirmaDatos,
+  cfgOverride?: ListaChequeoConfirmadaConfig,
+) {
   const { jsPDF } = await import("jspdf");
   const autoTable = (await import("jspdf-autotable")).default;
-  const doc = new jsPDF({ unit: "mm", format: "letter" });
+
+  // 1) Cargar configuración publicada (o usar override para vista previa).
+  const cfg =
+    cfgOverride ?? (await loadListaChequeoConfirmadaConfig()).config;
+
+  const doc = new jsPDF({
+    unit: "mm",
+    format: cfg.page.page_size,
+    orientation: cfg.page.orientation,
+  });
   const pageW = doc.internal.pageSize.getWidth();
 
-  let y = await bannerHeader(doc, 10);
-  y = encabezadoDatos(doc, d, y);
-  y = bandaSeccion(doc, y, "ANTES DEL TRASLADO DEL PACIENTE, VERIFIQUE LA SIGUIENTE DOCUMENTACIÓN:");
-  y = await tablaChecklist(doc, d, y);
-  y = await bloqueResponsable(doc, d, y);
+  let y = await bannerHeader(doc, cfg.page.margin_top, cfg);
+  y = encabezadoDatos(doc, d, y, cfg);
+  y = bandaSeccion(doc, y, cfg.checklist_table.intro_text);
+  y = await tablaChecklist(doc, d, y, cfg);
+  y = await bloqueResponsable(doc, d, y, cfg);
+
+  const s = cfg.signer_section;
 
   // ── DATOS DEL FIRMANTE (grid compacto de 2 columnas) ──────────────────────
   y += 1;
@@ -498,80 +549,85 @@ export async function descargarFirmadoPDF(d: EntregaDatos, f: FirmaDatos) {
     theme: "grid",
     styles: { fontSize: 7.5, cellPadding: 1.2, lineColor: [120, 120, 120], lineWidth: 0.2, valign: "middle" },
     head: [[{
-      content: "DATOS DEL FIRMANTE (PERSONAL DE TRASLADO)",
+      content: s.title,
       colSpan: 4,
       styles: { fillColor: NAVY, textColor: [255, 255, 255], halign: "center", fontStyle: "bold" },
     }]],
     body: [
       [
-        { content: "NOMBRE", styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
+        { content: s.label_nombre, styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
         { content: up(f.nombre) || "—" },
-        { content: "CARGO", styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
+        { content: s.label_cargo, styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
         { content: up(f.cargo) || "—" },
       ],
       [
-        { content: "DOCUMENTO / ID", styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
+        { content: s.label_documento, styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
         { content: up(f.documento) || "—" },
-        { content: "TELÉFONO", styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
+        { content: s.label_telefono, styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
         { content: f.telefono || "—" },
       ],
       [
-        { content: "EMPRESA DE AMBULANCIA", styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
+        { content: s.label_empresa, styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
         { content: up(f.empresa) || "—" },
-        { content: "FECHA/HORA DE FIRMA", styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
+        { content: s.label_fecha_firma, styles: { fillColor: LIGHT, fontStyle: "bold", textColor: NAVY } },
         { content: fmtFecha(f.firmado_at) || "—" },
       ],
     ] as never,
     columnStyles: { 0: { cellWidth: 40 }, 1: { cellWidth: 44 }, 2: { cellWidth: 40 }, 3: { cellWidth: 44 } },
-    margin: { left: 14, right: 14 },
+    margin: { left: cfg.page.margin_left, right: cfg.page.margin_right },
   });
   // @ts-expect-error plugin
   y = (doc.lastAutoTable?.finalY ?? y) + 3;
 
-  // ── ACEPTACIÓN DE RECIBIDO (compacto) ─────────────────────────────────────
+  // ── ACEPTACIÓN DE RECIBIDO ────────────────────────────────────────────────
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
-  doc.text("ACEPTACIÓN DE RECIBIDO", 16, y);
+  doc.text(cfg.acceptance_section.title, cfg.page.margin_left + 2, y);
   y += 4;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
-  const acept = doc.splitTextToSize(`[X] ${TEXTO_ACEPTACION}`, pageW - 32);
-  doc.text(acept, 16, y);
+  const acept = doc.splitTextToSize(
+    `[X] ${cfg.acceptance_section.text}`,
+    pageW - cfg.page.margin_left - cfg.page.margin_right - 4,
+  );
+  doc.text(acept, cfg.page.margin_left + 2, y);
   y += 4 * acept.length + 3;
 
   // ── FIRMA (recuadro pequeño) + CÓDIGO DE VERIFICACIÓN ─────────────────────
+  // NOTA: la firma, el código y el hash son COMPONENTES PROTEGIDOS. Sólo se
+  // configuran sus etiquetas visibles; los valores provienen del backend.
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
-  doc.text("FIRMA", 16, y);
+  doc.text(cfg.verification_section.label_firma, cfg.page.margin_left + 2, y);
   const boxY = y + 1;
   doc.setDrawColor(120);
-  doc.rect(16, boxY, 58, 22);
+  doc.rect(cfg.page.margin_left + 2, boxY, 58, 22);
   if (f.firma_data) {
     try {
-      doc.addImage(f.firma_data, "PNG", 17, boxY + 1, 56, 20);
+      doc.addImage(f.firma_data, "PNG", cfg.page.margin_left + 3, boxY + 1, 56, 20);
     } catch {
       /* firma no renderizable */
     }
   }
-  // Código de verificación a la derecha de la firma.
+  const codeX = cfg.page.margin_left + 68;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
-  doc.text("CÓDIGO DE VERIFICACIÓN", 82, boxY + 5);
+  doc.text(cfg.verification_section.label_codigo, codeX, boxY + 5);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
-  doc.text(f.codigo_verificacion || "—", 82, boxY + 12);
-  if (f.pdf_hash) {
-    // Solo se muestra el código visible; el hash completo se conserva en los datos
-    // estructurados (entrega_firmas.pdf_hash). Aquí se imprime abreviado si cabe.
+  doc.text(f.codigo_verificacion || "—", codeX, boxY + 12);
+  if (f.pdf_hash && cfg.verification_section.show_hash) {
+    // El código y el hash visibles se muestran truncados; el valor real vive
+    // en entrega_firmas.pdf_hash (evidencia inmutable).
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6.5);
     doc.setTextColor(120);
     const hashCorto = f.pdf_hash.length > 40 ? `${f.pdf_hash.slice(0, 40)}…` : f.pdf_hash;
-    doc.text(`Hash de evidencia: ${hashCorto}`, 82, boxY + 18);
+    doc.text(`${cfg.verification_section.label_hash}: ${hashCorto}`, codeX, boxY + 18);
     doc.setTextColor(0);
   }
 
-  pie(doc);
+  pie(doc, cfg);
   const docNum = (d.documento || "remision").replace(/\s+/g, "");
   const fechaArch = new Date().toISOString().slice(0, 10);
   descargar(doc, `Lista_Chequeo_Confirmada_${docNum}_${fechaArch}.pdf`);
