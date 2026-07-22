@@ -1209,12 +1209,16 @@ function VersionesPanel({
     if (!confirm("¿Publicar esta versión? Reemplazará la activa actual.")) return;
     try {
       await publicar({ data: { version_id: id } });
+      // Invalidar sólo la caché del código publicado para que la próxima
+      // generación (buildOficioHTMLPublicado, etc.) lea contenido_editable fresco.
+      invalidatePlantillaConfig(plantilla.codigo);
       toast.success("Versión publicada");
       onChange();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "No se pudo publicar");
     }
   };
+
 
   const restaurarV = async (id: string) => {
     try {
