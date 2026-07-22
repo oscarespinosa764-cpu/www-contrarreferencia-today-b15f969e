@@ -401,6 +401,7 @@ function RemisionesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="MAÑANA">MAÑANA</SelectItem>
+                  <SelectItem value="MAÑANA / TARDE">MAÑANA / TARDE</SelectItem>
                   <SelectItem value="TARDE">TARDE</SelectItem>
                   <SelectItem value="NOCHE">NOCHE</SelectItem>
                 </SelectContent>
