@@ -236,9 +236,9 @@ export const verifyDeviceAndLinkSession = createServerFn({ method: "POST" })
     const { data: dev } = await admin
       .from("authorized_devices")
       .select("id, public_key, estado, expiracion_at")
-      .eq("user_id", context.userId)
       .eq("device_public_id", data.devicePublicId)
       .maybeSingle();
+
 
     if (!dev) return { status: "NOT_FOUND" as const };
     const estado = dev.estado as string;
