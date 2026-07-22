@@ -3720,7 +3720,30 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      profiles_directorio: {
+        Row: {
+          activo: boolean | null
+          cargo: string | null
+          nombre: string | null
+          sede: string | null
+          user_id: string | null
+        }
+        Insert: {
+          activo?: boolean | null
+          cargo?: string | null
+          nombre?: string | null
+          sede?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          activo?: boolean | null
+          cargo?: string | null
+          nombre?: string | null
+          sede?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       calcular_indicadores_mes: {
