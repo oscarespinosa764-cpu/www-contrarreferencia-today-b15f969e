@@ -839,6 +839,18 @@ function EditorCampos({
     );
   }
 
+  // Editor especializado para la Lista de Chequeo Confirmada (FASE 6).
+  if (plantilla.codigo === "ENTREGA_FIRMA_QR") {
+    return (
+      <ListaChequeoConfirmadaEditor
+        plantillaId={plantilla.id}
+        contenidoActual={plantilla.contenido_editable ?? {}}
+        canEdit={canEdit}
+        onSaved={onSaved}
+      />
+    );
+  }
+
   if (entries.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
