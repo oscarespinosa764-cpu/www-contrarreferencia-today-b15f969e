@@ -825,6 +825,18 @@ function EditorCampos({
     );
   }
 
+  // Editor especializado para el Reporte General Operativo de Salientes (FASE 5).
+  if (plantilla.codigo === "REPORTE_GENERAL_SALIENTES") {
+    return (
+      <ReporteGeneralSalientesEditor
+        plantillaId={plantilla.id}
+        contenidoActual={plantilla.contenido_editable ?? {}}
+        canEdit={canEdit}
+        onSaved={onSaved}
+      />
+    );
+  }
+
   if (entries.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
