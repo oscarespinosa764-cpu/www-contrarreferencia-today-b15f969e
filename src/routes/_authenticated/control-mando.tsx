@@ -20,12 +20,19 @@ import { CategoriasView } from "@/components/catalogo/categorias-view";
 
 import { useAuth } from "@/lib/auth";
 
+const searchSchema = z.object({
+  tab: fallback(z.string(), "usuarios").default("usuarios"),
+});
+
 export const Route = createFileRoute("/_authenticated/control-mando")({
+  validateSearch: zodValidator(searchSchema),
   component: ControlMandoPage,
 });
 
 function ControlMandoPage() {
   const { isAdmin } = useAuth();
+  const { tab } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
 
   if (!isAdmin) {
     return (
