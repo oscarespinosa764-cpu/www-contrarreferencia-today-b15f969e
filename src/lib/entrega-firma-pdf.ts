@@ -256,9 +256,16 @@ export async function descargarPortadaPDF(d: EntregaDatos) {
 }
 
 /** Encabezado institucional tipo Excel GU-FR (logo + GESTIÓN DE URGENCIAS + versión). */
-async function bannerHeader(doc: Doc, startY: number): Promise<number> {
+async function bannerHeader(doc: Doc, startY: number, cfg?: CFG): Promise<number> {
   const autoTable = (await import("jspdf-autotable")).default;
   const { logo } = await marcaAgua();
+  const area = cfg?.header.document_area ?? "GESTIÓN DE URGENCIAS";
+  const codeLbl = cfg?.header.format_code_label ?? "GU-FR-";
+  const verLbl = cfg?.header.version_label ?? "Versión:";
+  const verVal = cfg?.header.version_value ?? "1";
+  const aprobLbl = cfg?.header.approval_label ?? "Aprobado:";
+  const title = cfg?.header.document_title ?? "Lista de Chequeo de Documentación Referencia";
+  const showLogo = cfg ? cfg.header.show_logo : true;
 
   autoTable(doc, {
     startY,
@@ -273,21 +280,18 @@ async function bannerHeader(doc: Doc, startY: number): Promise<number> {
     body: [
       [
         { content: "", rowSpan: 3, styles: { halign: "center", fillColor: [255, 255, 255] } },
-        { content: "GESTIÓN DE URGENCIAS", styles: { halign: "center", fontStyle: "bold" } },
-        { content: "GU-FR-", styles: { halign: "center", fontStyle: "bold" } },
+        { content: area, styles: { halign: "center", fontStyle: "bold" } },
+        { content: codeLbl, styles: { halign: "center", fontStyle: "bold" } },
         { content: "" },
       ],
       [
         { content: "Formato", styles: { halign: "center" } },
-        { content: "Versión:", styles: { fontStyle: "bold" } },
-        { content: "1", styles: { halign: "center" } },
+        { content: verLbl, styles: { fontStyle: "bold" } },
+        { content: verVal, styles: { halign: "center" } },
       ],
       [
-        {
-          content: "Lista de Chequeo de Documentación Referencia",
-          styles: { halign: "center", fontStyle: "bold" },
-        },
-        { content: "Aprobado:", styles: { fontStyle: "bold" } },
+        { content: title, styles: { halign: "center", fontStyle: "bold" } },
+        { content: aprobLbl, styles: { fontStyle: "bold" } },
         { content: "" },
       ],
     ],
@@ -301,13 +305,21 @@ async function bannerHeader(doc: Doc, startY: number): Promise<number> {
   });
   // @ts-expect-error lastAutoTable lo agrega el plugin
   const finalY = doc.lastAutoTable?.finalY ?? startY + 20;
-  if (logo) doc.addImage(logo, "PNG", 17, startY + 2, 24, 15);
+  if (logo && showLogo) doc.addImage(logo, "PNG", 17, startY + 2, 24, 15);
   return finalY + 4;
 }
 
 /** Construye la tabla oficial GU-FR con barras de agrupación por categoría. */
-async function tablaChecklist(doc: Doc, d: EntregaDatos, startY: number): Promise<number> {
+async function tablaChecklist(doc: Doc, d: EntregaDatos, startY: number, cfg?: CFG): Promise<number> {
   const autoTable = (await import("jspdf-autotable")).default;
+  const t = cfg?.checklist_table;
+  const colN = t?.col_numero ?? "N°";
+  const colDet = t?.col_detalle ?? "DETALLE";
+  const colRef = t?.col_referencia ?? "REFERENCIA";
+  const colPer = t?.col_personal ?? "PERSONAL DE TRASLADO";
+  const lblC = t?.label_c ?? "C";
+  const lblNC = t?.label_nc ?? "NC";
+  const lblNA = t?.label_na ?? "NA";
 
   const body: unknown[] = [];
   let grupoActual: string | null = null;
@@ -365,18 +377,18 @@ async function tablaChecklist(doc: Doc, d: EntregaDatos, startY: number): Promis
     },
     head: [
       [
-        { content: "N°", rowSpan: 2 },
-        { content: "DETALLE", rowSpan: 2 },
-        { content: "REFERENCIA", colSpan: 3 },
-        { content: "PERSONAL DE TRASLADO", colSpan: 3 },
+        { content: colN, rowSpan: 2 },
+        { content: colDet, rowSpan: 2 },
+        { content: colRef, colSpan: 3 },
+        { content: colPer, colSpan: 3 },
       ],
       [
-        { content: "C" },
-        { content: "NC" },
-        { content: "NA" },
-        { content: "C" },
-        { content: "NC" },
-        { content: "NA" },
+        { content: lblC },
+        { content: lblNC },
+        { content: lblNA },
+        { content: lblC },
+        { content: lblNC },
+        { content: lblNA },
       ],
     ],
     body: body as never,
@@ -388,12 +400,13 @@ async function tablaChecklist(doc: Doc, d: EntregaDatos, startY: number): Promis
 }
 
 /** Bloque responsable + observaciones (formato oficial). */
-async function bloqueResponsable(doc: Doc, d: EntregaDatos, y: number): Promise<number> {
+async function bloqueResponsable(doc: Doc, d: EntregaDatos, y: number, cfg?: CFG): Promise<number> {
   const autoTable = (await import("jspdf-autotable")).default;
+  const r = cfg?.responsible_section;
   const rows: [string, string][] = [
-    ["NOMBRE / RESPONSABLE", up(d.responsable_checklist)],
-    ["CARGO", up(d.cargo_responsable)],
-    ["HORA DE REALIZACIÓN", up(d.fecha_entrega)],
+    [r?.label_nombre ?? "NOMBRE / RESPONSABLE", up(d.responsable_checklist)],
+    [r?.label_cargo ?? "CARGO", up(d.cargo_responsable)],
+    [r?.label_hora ?? "HORA DE REALIZACIÓN", up(d.fecha_entrega)],
   ];
   autoTable(doc, {
     startY: y,
@@ -421,7 +434,7 @@ async function bloqueResponsable(doc: Doc, d: EntregaDatos, y: number): Promise<
     head: [
       [
         {
-          content: "OBSERVACIONES",
+          content: r?.label_observaciones ?? "OBSERVACIONES",
           styles: { fillColor: LIGHT, textColor: NAVY, halign: "center", fontStyle: "bold" },
         },
       ],
@@ -435,29 +448,36 @@ async function bloqueResponsable(doc: Doc, d: EntregaDatos, y: number): Promise<
 }
 
 /** Encabezado de datos del paciente (bloque superior del Excel oficial). */
-function encabezadoDatos(doc: Doc, d: EntregaDatos, y: number): number {
+function encabezadoDatos(doc: Doc, d: EntregaDatos, y: number, cfg?: CFG): number {
+  const p = cfg?.patient_section;
+  const labFecha = (p?.label_fecha ?? "FECHA") + ":";
+  const labEapb = (p?.label_eapb ?? "EAPB") + ":";
+  const labNombres = p?.label_nombres ?? "NOMBRES Y APELLIDOS";
+  const labCie10 = (p?.label_cie10 ?? "CIE-10 PRINCIPAL") + ":";
+  const labOrigen = (p?.label_origen ?? "ORIGEN") + ":";
+  const showOrigen = p ? p.show_origen : true;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8.5);
-  doc.text("FECHA:", 16, y);
+  doc.text(labFecha, 16, y);
   doc.setFont("helvetica", "normal");
-  doc.text(up(d.fecha_entrega) || "—", 16 + doc.getTextWidth("FECHA: ") + 1, y);
+  doc.text(up(d.fecha_entrega) || "—", 16 + doc.getTextWidth(labFecha + " ") + 1, y);
   doc.setFont("helvetica", "bold");
-  doc.text("EAPB:", 118, y);
+  doc.text(labEapb, 118, y);
   doc.setFont("helvetica", "normal");
-  doc.text(up(d.entidad_pago) || "—", 118 + doc.getTextWidth("EAPB: ") + 1, y);
+  doc.text(up(d.entidad_pago) || "—", 118 + doc.getTextWidth(labEapb + " ") + 1, y);
   y += 6.5;
-  y = filaCampo(doc, y, "NOMBRES Y APELLIDOS", up(d.paciente));
-  y = filaTipoDocumento(doc, y, d);
+  y = filaCampo(doc, y, labNombres, up(d.paciente));
+  y = filaTipoDocumento(doc, y, d, cfg);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8.5);
-  doc.text("CIE-10 PRINCIPAL:", 16, y);
+  doc.text(labCie10, 16, y);
   doc.setFont("helvetica", "normal");
-  doc.text(up(d.cie10) || "—", 16 + doc.getTextWidth("CIE-10 PRINCIPAL: ") + 1, y);
-  if (d.origen) {
+  doc.text(up(d.cie10) || "—", 16 + doc.getTextWidth(labCie10 + " ") + 1, y);
+  if (d.origen && showOrigen) {
     doc.setFont("helvetica", "bold");
-    doc.text("ORIGEN:", 118, y);
+    doc.text(labOrigen, 118, y);
     doc.setFont("helvetica", "normal");
-    doc.text(up(d.origen), 118 + doc.getTextWidth("ORIGEN: ") + 1, y);
+    doc.text(up(d.origen), 118 + doc.getTextWidth(labOrigen + " ") + 1, y);
   }
   return y + 6;
 }
