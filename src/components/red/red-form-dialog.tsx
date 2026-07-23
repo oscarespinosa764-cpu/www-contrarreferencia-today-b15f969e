@@ -904,10 +904,13 @@ export function RedFormDialog({
                 <Label>Nombre del CRUE</Label>
                 <Input value={f.entidad} onChange={(e) => set("entidad", e.target.value)} />
               </div>
-              <div className="space-y-1.5">
-                <Label>Indicativo (si aplica)</Label>
-                <Input value={f.indicativo} onChange={(e) => set("indicativo", e.target.value)} />
-              </div>
+              {opt("indicativo").visible && (
+                <div className="space-y-1.5">
+                  <Label>{opt("indicativo").label || "Indicativo (si aplica)"}</Label>
+                  <Input value={f.indicativo} onChange={(e) => set("indicativo", e.target.value)} placeholder={opt("indicativo").placeholder || undefined} />
+                  {opt("indicativo").help && <p className="text-[11px] text-muted-foreground">{opt("indicativo").help}</p>}
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label>Departamento</Label>
                 <Input value={f.departamento} onChange={(e) => set("departamento", e.target.value)} />
