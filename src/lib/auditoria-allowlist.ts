@@ -97,6 +97,8 @@ export const AUDIT_TABLAS = new Set<string>([
   "device_access_requests",
   "authorized_device_sessions",
   "system_settings",
+  "formularios_definiciones",
+  "formularios_versiones",
   "auth",
   "varios",
 ]);
