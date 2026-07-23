@@ -26,6 +26,8 @@ import {
 import { agruparPorEtapa } from "@/lib/salientes-grupos";
 import { GrupoEtapa } from "@/components/remisiones/grupo-etapa";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
+import { getDirectorioActivos } from "@/lib/directorio.functions";
+
 import { toast } from "sonner";
 
 type RemisionesSearch = { tab?: string; f?: string; accion?: string };
