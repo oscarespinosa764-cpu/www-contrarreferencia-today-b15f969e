@@ -949,13 +949,17 @@ export function RedFormDialog({
                 <Label>Correo principal</Label>
                 <Input value={f.correo} onChange={(e) => set("correo", e.target.value)} />
               </div>
-              <div className="space-y-1.5">
-                <Label>Correos alternos</Label>
-                <Input
-                  value={f.correos_alternos}
-                  onChange={(e) => set("correos_alternos", e.target.value)}
-                />
-              </div>
+              {opt("correos_alternos").visible && (
+                <div className="space-y-1.5">
+                  <Label>{opt("correos_alternos").label || "Correos alternos"}</Label>
+                  <Input
+                    value={f.correos_alternos}
+                    onChange={(e) => set("correos_alternos", e.target.value)}
+                    placeholder={opt("correos_alternos").placeholder || undefined}
+                  />
+                  {opt("correos_alternos").help && <p className="text-[11px] text-muted-foreground">{opt("correos_alternos").help}</p>}
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label>Cobertura</Label>
                 <Input value={f.cobertura} onChange={(e) => set("cobertura", e.target.value)} />
