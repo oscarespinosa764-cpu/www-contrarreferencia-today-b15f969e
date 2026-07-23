@@ -112,12 +112,14 @@ function RemisionesPage() {
     queryKey: ["auxiliares-turno"],
     queryFn: async () => {
       // Regla canónica: solo usuarios ACTIVOS son seleccionables para recibir turno.
-      // Se usa una función SECURITY DEFINER para que usuarios no admin también
-      // puedan ver el directorio (sólo nombre/cargo/sede, sin PII).
-      const { data } = await supabase.rpc("get_directorio_activos");
+      // Se usa una server function que verifica sesión + membresía activa y
+      // consulta el directorio con service_role, sin exponer EXECUTE al rol
+      // `authenticated` (evita finding SUPA_authenticated_security_definer_function_executable).
+      const data = await getDirectorioActivos();
       return (data ?? []) as Array<{ user_id: string; nombre: string | null }>;
     },
   });
+
 
   // Jornadas de otras IPS registradas en RED/DISPONIBILIDAD (para el PDF).
   const { data: redJornadas } = useQuery({
