@@ -1472,6 +1472,121 @@ export type Database = {
         }
         Relationships: []
       }
+      formularios_definiciones: {
+        Row: {
+          activo: boolean
+          codigo: string
+          componente: string
+          created_at: string
+          created_by: string | null
+          descripcion: string | null
+          id: string
+          modulo: string
+          nombre: string
+          ruta: string
+          updated_at: string
+          updated_by: string | null
+          version_publicada_id: string | null
+        }
+        Insert: {
+          activo?: boolean
+          codigo: string
+          componente: string
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          id?: string
+          modulo: string
+          nombre: string
+          ruta: string
+          updated_at?: string
+          updated_by?: string | null
+          version_publicada_id?: string | null
+        }
+        Update: {
+          activo?: boolean
+          codigo?: string
+          componente?: string
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          id?: string
+          modulo?: string
+          nombre?: string
+          ruta?: string
+          updated_at?: string
+          updated_by?: string | null
+          version_publicada_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_def_version_publicada"
+            columns: ["version_publicada_id"]
+            isOneToOne: false
+            referencedRelation: "formularios_versiones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      formularios_versiones: {
+        Row: {
+          archived_at: string | null
+          archived_by: string | null
+          created_at: string
+          created_by: string | null
+          estado: string
+          formulario_id: string
+          id: string
+          motivo_cambio: string | null
+          numero_version: number
+          published_at: string | null
+          published_by: string | null
+          schema_config: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          estado: string
+          formulario_id: string
+          id?: string
+          motivo_cambio?: string | null
+          numero_version: number
+          published_at?: string | null
+          published_by?: string | null
+          schema_config: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          archived_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          estado?: string
+          formulario_id?: string
+          id?: string
+          motivo_cambio?: string | null
+          numero_version?: number
+          published_at?: string | null
+          published_by?: string | null
+          schema_config?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formularios_versiones_formulario_id_fkey"
+            columns: ["formulario_id"]
+            isOneToOne: false
+            referencedRelation: "formularios_definiciones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       historial_turnos: {
         Row: {
           created_at: string

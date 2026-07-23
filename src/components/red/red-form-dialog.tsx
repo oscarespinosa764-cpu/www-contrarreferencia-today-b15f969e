@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +37,14 @@ import {
   type TipoRed,
   type RedGrupo,
 } from "@/lib/red-ips-utils";
+import {
+  RED_OPERATIVA_FORM_CODE,
+  buildDefaultConfig,
+  fieldConfigByKey,
+  loadRedOperativaFormConfig,
+  normalizeConfig,
+  type RedOperativaFormConfig,
+} from "@/lib/red-operativa-form-config";
 
 
 interface Props {
@@ -48,6 +57,13 @@ interface Props {
   /** Subtipo preseleccionado (según la pestaña interna activa). */
   presetTipo?: TipoRed;
   onSubmit: (payload: Record<string, unknown>, id?: string) => Promise<boolean>;
+  /** Configuración administrada. Si se pasa, se usa como override
+   *  (vista previa del editor). En runtime normal se consume la publicada. */
+  configOverride?: RedOperativaFormConfig;
+  /** Modo vista previa: deshabilita guardar y muestra indicador visual. */
+  previewMode?: boolean;
+  /** Deshabilita el botón guardar sin cambiar la validación técnica. */
+  disableSubmit?: boolean;
 }
 
 
@@ -181,10 +197,37 @@ export function RedFormDialog({
   ipsOptions,
   presetTipo,
   onSubmit,
+  configOverride,
+  previewMode = false,
+  disableSubmit = false,
 }: Props) {
   const cfg = getGrupo(grupo);
   const [f, setF] = useState<FormState>(EMPTY);
   const [busy, setBusy] = useState(false);
+
+  // Configuración administrable publicada (o override desde vista previa).
+  const { data: formConfig } = useQuery({
+    queryKey: ["formulario-publicado", RED_OPERATIVA_FORM_CODE],
+    queryFn: async () => await loadRedOperativaFormConfig(),
+    enabled: open && !configOverride,
+    staleTime: 60_000,
+  });
+  const activeConfig = useMemo(
+    () => (configOverride ? normalizeConfig(configOverride) : formConfig ?? buildDefaultConfig()),
+    [configOverride, formConfig],
+  );
+  const cfgMap = useMemo(() => fieldConfigByKey(activeConfig), [activeConfig]);
+  const opt = (key: string) => {
+    const c = cfgMap.get(key);
+    // Solo los 5 campos con visibilidad configurable pueden ocultarse.
+    // Los demás siempre visibles (protegidos por normalizeConfig).
+    return {
+      visible: c?.visible ?? true,
+      label: c?.label ?? "",
+      help: c?.help_text ?? "",
+      placeholder: c?.placeholder ?? "",
+    };
+  };
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setF((p) => ({ ...p, [k]: v }));
@@ -822,13 +865,19 @@ export function RedFormDialog({
                 <Label>Teléfono principal</Label>
                 <Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} />
               </div>
-              <div className="space-y-1.5">
-                <Label>Teléfonos alternos</Label>
-                <Input
-                  value={f.telefonos_alternos}
-                  onChange={(e) => set("telefonos_alternos", e.target.value)}
-                />
-              </div>
+              {opt("telefonos_alternos").visible && (
+                <div className="space-y-1.5">
+                  <Label>{opt("telefonos_alternos").label || "Teléfonos alternos"}</Label>
+                  <Input
+                    value={f.telefonos_alternos}
+                    onChange={(e) => set("telefonos_alternos", e.target.value)}
+                    placeholder={opt("telefonos_alternos").placeholder || undefined}
+                  />
+                  {opt("telefonos_alternos").help && (
+                    <p className="text-[11px] text-muted-foreground">{opt("telefonos_alternos").help}</p>
+                  )}
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label>Extensión (si aplica)</Label>
                 <Input value={f.codigo_principal} onChange={(e) => set("codigo_principal", e.target.value)} />
@@ -855,10 +904,13 @@ export function RedFormDialog({
                 <Label>Nombre del CRUE</Label>
                 <Input value={f.entidad} onChange={(e) => set("entidad", e.target.value)} />
               </div>
-              <div className="space-y-1.5">
-                <Label>Indicativo (si aplica)</Label>
-                <Input value={f.indicativo} onChange={(e) => set("indicativo", e.target.value)} />
-              </div>
+              {opt("indicativo").visible && (
+                <div className="space-y-1.5">
+                  <Label>{opt("indicativo").label || "Indicativo (si aplica)"}</Label>
+                  <Input value={f.indicativo} onChange={(e) => set("indicativo", e.target.value)} placeholder={opt("indicativo").placeholder || undefined} />
+                  {opt("indicativo").help && <p className="text-[11px] text-muted-foreground">{opt("indicativo").help}</p>}
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label>Departamento</Label>
                 <Input value={f.departamento} onChange={(e) => set("departamento", e.target.value)} />
@@ -882,25 +934,32 @@ export function RedFormDialog({
                 <Label>Teléfono principal</Label>
                 <Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} />
               </div>
-              <div className="space-y-1.5">
-                <Label>Teléfonos alternos</Label>
-                <Input
-                  value={f.telefonos_alternos}
-                  onChange={(e) => set("telefonos_alternos", e.target.value)}
-                  placeholder="Separa varios con , o salto de línea"
-                />
-              </div>
+              {opt("telefonos_alternos").visible && (
+                <div className="space-y-1.5">
+                  <Label>{opt("telefonos_alternos").label || "Teléfonos alternos"}</Label>
+                  <Input
+                    value={f.telefonos_alternos}
+                    onChange={(e) => set("telefonos_alternos", e.target.value)}
+                    placeholder={opt("telefonos_alternos").placeholder || "Separa varios con , o salto de línea"}
+                  />
+                  {opt("telefonos_alternos").help && <p className="text-[11px] text-muted-foreground">{opt("telefonos_alternos").help}</p>}
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label>Correo principal</Label>
                 <Input value={f.correo} onChange={(e) => set("correo", e.target.value)} />
               </div>
-              <div className="space-y-1.5">
-                <Label>Correos alternos</Label>
-                <Input
-                  value={f.correos_alternos}
-                  onChange={(e) => set("correos_alternos", e.target.value)}
-                />
-              </div>
+              {opt("correos_alternos").visible && (
+                <div className="space-y-1.5">
+                  <Label>{opt("correos_alternos").label || "Correos alternos"}</Label>
+                  <Input
+                    value={f.correos_alternos}
+                    onChange={(e) => set("correos_alternos", e.target.value)}
+                    placeholder={opt("correos_alternos").placeholder || undefined}
+                  />
+                  {opt("correos_alternos").help && <p className="text-[11px] text-muted-foreground">{opt("correos_alternos").help}</p>}
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label>Cobertura</Label>
                 <Input value={f.cobertura} onChange={(e) => set("cobertura", e.target.value)} />
@@ -957,13 +1016,17 @@ export function RedFormDialog({
                 <Label>Teléfono principal</Label>
                 <Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} />
               </div>
-              <div className="space-y-1.5">
-                <Label>Números alternos</Label>
-                <Input
-                  value={f.telefonos_alternos}
-                  onChange={(e) => set("telefonos_alternos", e.target.value)}
-                />
-              </div>
+              {opt("telefonos_alternos").visible && (
+                <div className="space-y-1.5">
+                  <Label>{opt("telefonos_alternos").label || "Números alternos"}</Label>
+                  <Input
+                    value={f.telefonos_alternos}
+                    onChange={(e) => set("telefonos_alternos", e.target.value)}
+                    placeholder={opt("telefonos_alternos").placeholder || undefined}
+                  />
+                  {opt("telefonos_alternos").help && <p className="text-[11px] text-muted-foreground">{opt("telefonos_alternos").help}</p>}
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label>Correo electrónico</Label>
                 <Input value={f.correo} onChange={(e) => set("correo", e.target.value)} />
@@ -1027,10 +1090,13 @@ export function RedFormDialog({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label>Descripción</Label>
-                <Input value={f.descripcion} onChange={(e) => set("descripcion", e.target.value)} />
-              </div>
+              {opt("descripcion").visible && (
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>{opt("descripcion").label || "Descripción"}</Label>
+                  <Input value={f.descripcion} onChange={(e) => set("descripcion", e.target.value)} placeholder={opt("descripcion").placeholder || undefined} />
+                  {opt("descripcion").help && <p className="text-[11px] text-muted-foreground">{opt("descripcion").help}</p>}
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label>URL</Label>
                 <Input value={f.link} onChange={(e) => set("link", e.target.value)} />
@@ -1069,10 +1135,13 @@ export function RedFormDialog({
                     <Label>Nombre de la institución</Label>
                     <Input value={f.entidad} onChange={(e) => set("entidad", e.target.value)} />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>Indicativo</Label>
-                    <Input value={f.indicativo} onChange={(e) => set("indicativo", e.target.value)} />
-                  </div>
+                  {opt("indicativo").visible && (
+                    <div className="space-y-1.5">
+                      <Label>{opt("indicativo").label || "Indicativo"}</Label>
+                      <Input value={f.indicativo} onChange={(e) => set("indicativo", e.target.value)} placeholder={opt("indicativo").placeholder || undefined} />
+                      {opt("indicativo").help && <p className="text-[11px] text-muted-foreground">{opt("indicativo").help}</p>}
+                    </div>
+                  )}
                   <div className="space-y-1.5">
                     <Label>Número general</Label>
                     <Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} />
@@ -1179,10 +1248,13 @@ export function RedFormDialog({
                       onChange={(e) => set("codigo_principal", e.target.value)}
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>Opción del menú telefónico (si aplica)</Label>
-                    <Input value={f.opcion_menu} onChange={(e) => set("opcion_menu", e.target.value)} />
-                  </div>
+                  {opt("opcion_menu").visible && (
+                    <div className="space-y-1.5">
+                      <Label>{opt("opcion_menu").label || "Opción del menú telefónico (si aplica)"}</Label>
+                      <Input value={f.opcion_menu} onChange={(e) => set("opcion_menu", e.target.value)} placeholder={opt("opcion_menu").placeholder || undefined} />
+                      {opt("opcion_menu").help && <p className="text-[11px] text-muted-foreground">{opt("opcion_menu").help}</p>}
+                    </div>
+                  )}
                   <div className="space-y-1.5">
                     <Label>Teléfono directo (si aplica)</Label>
                     <Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} />
@@ -1227,8 +1299,8 @@ export function RedFormDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
             Cancelar
           </Button>
-          <Button onClick={guardar} disabled={busy}>
-            <Save className="mr-1.5 h-4 w-4" /> {busy ? "Guardando…" : "Guardar"}
+          <Button onClick={guardar} disabled={busy || disableSubmit || previewMode}>
+            <Save className="mr-1.5 h-4 w-4" /> {previewMode ? "Vista previa" : busy ? "Guardando…" : "Guardar"}
           </Button>
         </DialogFooter>
       </DialogContent>
