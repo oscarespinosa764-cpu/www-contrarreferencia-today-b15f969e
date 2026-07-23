@@ -934,14 +934,17 @@ export function RedFormDialog({
                 <Label>Teléfono principal</Label>
                 <Input value={f.telefono} onChange={(e) => set("telefono", e.target.value)} />
               </div>
-              <div className="space-y-1.5">
-                <Label>Teléfonos alternos</Label>
-                <Input
-                  value={f.telefonos_alternos}
-                  onChange={(e) => set("telefonos_alternos", e.target.value)}
-                  placeholder="Separa varios con , o salto de línea"
-                />
-              </div>
+              {opt("telefonos_alternos").visible && (
+                <div className="space-y-1.5">
+                  <Label>{opt("telefonos_alternos").label || "Teléfonos alternos"}</Label>
+                  <Input
+                    value={f.telefonos_alternos}
+                    onChange={(e) => set("telefonos_alternos", e.target.value)}
+                    placeholder={opt("telefonos_alternos").placeholder || "Separa varios con , o salto de línea"}
+                  />
+                  {opt("telefonos_alternos").help && <p className="text-[11px] text-muted-foreground">{opt("telefonos_alternos").help}</p>}
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label>Correo principal</Label>
                 <Input value={f.correo} onChange={(e) => set("correo", e.target.value)} />
