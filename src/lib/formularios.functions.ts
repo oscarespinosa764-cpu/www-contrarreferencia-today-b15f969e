@@ -180,7 +180,7 @@ export const crearBorradorFormulario = createServerFn({ method: "POST" })
         formulario_id: def.id,
         numero_version: nextV,
         estado: "BORRADOR",
-        schema_config: seed,
+        schema_config: seed as never,
         created_by: context.userId,
         updated_by: context.userId,
       })
