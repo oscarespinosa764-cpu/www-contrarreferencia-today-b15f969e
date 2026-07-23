@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +37,14 @@ import {
   type TipoRed,
   type RedGrupo,
 } from "@/lib/red-ips-utils";
+import {
+  RED_OPERATIVA_FORM_CODE,
+  buildDefaultConfig,
+  fieldConfigByKey,
+  loadRedOperativaFormConfig,
+  normalizeConfig,
+  type RedOperativaFormConfig,
+} from "@/lib/red-operativa-form-config";
 
 
 interface Props {
@@ -48,6 +57,13 @@ interface Props {
   /** Subtipo preseleccionado (según la pestaña interna activa). */
   presetTipo?: TipoRed;
   onSubmit: (payload: Record<string, unknown>, id?: string) => Promise<boolean>;
+  /** Configuración administrada. Si se pasa, se usa como override
+   *  (vista previa del editor). En runtime normal se consume la publicada. */
+  configOverride?: RedOperativaFormConfig;
+  /** Modo vista previa: deshabilita guardar y muestra indicador visual. */
+  previewMode?: boolean;
+  /** Deshabilita el botón guardar sin cambiar la validación técnica. */
+  disableSubmit?: boolean;
 }
 
 
