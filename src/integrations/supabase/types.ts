@@ -3957,15 +3957,25 @@ export type Database = {
         Returns: number
       }
       get_device_access_mode: { Args: never; Returns: string }
-      get_directorio_activos: {
-        Args: never
-        Returns: {
-          cargo: string
-          nombre: string
-          sede: string
-          user_id: string
-        }[]
-      }
+      get_directorio_activos:
+        | {
+            Args: never
+            Returns: {
+              cargo: string
+              nombre: string
+              sede: string
+              user_id: string
+            }[]
+          }
+        | {
+            Args: { _requester?: string }
+            Returns: {
+              cargo: string
+              nombre: string
+              sede: string
+              user_id: string
+            }[]
+          }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
