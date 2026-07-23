@@ -19,7 +19,9 @@ export const getDirectorioActivos = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import(
       "@/integrations/supabase/client.server"
     );
-    const { data, error } = await supabaseAdmin.rpc("get_directorio_activos");
+    const { data, error } = await supabaseAdmin.rpc("get_directorio_activos", {
+      _requester: context.userId,
+    });
     if (error) throw new Error(error.message);
     return (data ?? []) as Array<{
       user_id: string;
