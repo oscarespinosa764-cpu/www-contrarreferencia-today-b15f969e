@@ -197,10 +197,37 @@ export function RedFormDialog({
   ipsOptions,
   presetTipo,
   onSubmit,
+  configOverride,
+  previewMode = false,
+  disableSubmit = false,
 }: Props) {
   const cfg = getGrupo(grupo);
   const [f, setF] = useState<FormState>(EMPTY);
   const [busy, setBusy] = useState(false);
+
+  // Configuración administrable publicada (o override desde vista previa).
+  const { data: formConfig } = useQuery({
+    queryKey: ["formulario-publicado", RED_OPERATIVA_FORM_CODE],
+    queryFn: async () => await loadRedOperativaFormConfig(),
+    enabled: open && !configOverride,
+    staleTime: 60_000,
+  });
+  const activeConfig = useMemo(
+    () => (configOverride ? normalizeConfig(configOverride) : formConfig ?? buildDefaultConfig()),
+    [configOverride, formConfig],
+  );
+  const cfgMap = useMemo(() => fieldConfigByKey(activeConfig), [activeConfig]);
+  const opt = (key: string) => {
+    const c = cfgMap.get(key);
+    // Solo los 5 campos con visibilidad configurable pueden ocultarse.
+    // Los demás siempre visibles (protegidos por normalizeConfig).
+    return {
+      visible: c?.visible ?? true,
+      label: c?.label ?? "",
+      help: c?.help_text ?? "",
+      placeholder: c?.placeholder ?? "",
+    };
+  };
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setF((p) => ({ ...p, [k]: v }));
