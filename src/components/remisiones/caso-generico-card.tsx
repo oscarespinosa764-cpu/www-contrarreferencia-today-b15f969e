@@ -257,6 +257,35 @@ export function CasoGenericoCard({
         observacion_entrega: String(f.get("observacion_entrega")),
       };
     }
+
+    if (isAdmin) {
+      // Añade campos administrables adicionales cuando el usuario es admin.
+      if (tipo === "phd" || tipo === "interna") {
+        payload.estado = String(f.get("estado") || (payload as any).estado || "");
+        payload.fecha_radicado = fromDatetimeLocal(f.get("fecha_radicado"));
+      }
+      if (tipo === "phd") {
+        payload.fecha_inicio = fromDatetimeLocal(f.get("fecha_inicio"));
+        payload.codigo_radicacion = String(f.get("codigo_radicacion") || "");
+      }
+      if (tipo === "pendiente") {
+        payload.estado = String(f.get("estado") || (payload as any).estado || "");
+      }
+      const tablaKey =
+        tipo === "phd" ? "domiciliarios" : tipo === "interna" ? "referencia_interna" : "pendientes";
+      const res = await editarAdminFn({
+        data: { tabla: tablaKey, casoId: r.id, cambios: payload as Record<string, unknown> },
+      });
+      if (!res.ok) {
+        toast.error(res.error || "No se pudo actualizar.");
+        return;
+      }
+      toast.success("Caso actualizado (edición admin)");
+      setEditar(false);
+      qc.invalidateQueries({ queryKey: [invalidateKey] });
+      return;
+    }
+
     const { error } = await (supabase.from(cfg.tabla as any) as any).update(payload).eq("id", r.id);
     if (error) {
       toast.error(error.message);
