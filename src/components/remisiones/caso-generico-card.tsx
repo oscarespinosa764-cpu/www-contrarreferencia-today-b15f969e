@@ -536,12 +536,20 @@ export function CasoGenericoCard({
                   <SelectField name="servicio" label="Servicio" options={SERVICIO_OPCIONES} required defaultValue={r.servicio ?? ""} />
                   <Field name="cama" label="Cama" defaultValue={r.cama ?? ""} />
                   <SelectField name="prioridad" label="Prioridad" options={PRIORIDAD_OPCIONES} defaultValue={r.prioridad ?? ""} />
-                  <Field name="estado_display" label="Estado (se cambia desde Seguimiento)" defaultValue={r.estado ?? ""} readOnly />
+                  {isAdmin ? (
+                    <Field name="estado" label="Estado" defaultValue={r.estado ?? ""} />
+                  ) : (
+                    <Field name="estado_display" label="Estado (se cambia desde Seguimiento)" defaultValue={r.estado ?? ""} readOnly />
+                  )}
                   <SelectField name="tipo_solicitud" label="Tipo de solicitud" options={PHD_SOLICITUD} required defaultValue={r.tipo_solicitud ?? ""} />
                   <Field name="unidad_especial" label="Unidad especial" defaultValue={(r.unidad_especial || r.tipo_solicitud_detalle) ?? ""} />
                   <SelectField name="requiere_ambulancia" label="Requiere ambulancia" options={SI_NO} defaultValue={r.requiere_ambulancia ?? ""} />
                   <SelectField name="tipo_ambulancia" label="Tipo de ambulancia" options={PHD_AMBULANCIA} defaultValue={r.tipo_ambulancia ?? ""} />
-                  <Field name="radicado_display" label="N° radicado" defaultValue={radicado} readOnly />
+                  {isAdmin ? (
+                    <Field name="codigo_radicacion" label="N° radicado" defaultValue={r.codigo_radicacion ?? ""} />
+                  ) : (
+                    <Field name="radicado_display" label="N° radicado" defaultValue={radicado} readOnly />
+                  )}
                 </div>
                 <SpecialtyList label="Especialidades tratantes" items={tratantes} onChange={setTratantes} suggestions={especialidades} />
                 <div className="grid gap-3 sm:grid-cols-3">
