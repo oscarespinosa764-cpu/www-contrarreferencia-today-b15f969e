@@ -812,15 +812,47 @@ export function NuevoRegistroDialog({
                       Red a la que se comenta <span className="text-status-red">*</span>
                     </Label>
                     <div className="flex flex-wrap gap-4 pt-1">
-                      <label className="flex items-center gap-2 text-sm">
-                        <Checkbox checked={redLocal} onCheckedChange={(v) => setRedLocal(!!v)} />
+                      <label className={`flex items-center gap-2 text-sm ${redNoSeComenta ? "opacity-50" : ""}`}>
+                        <Checkbox
+                          checked={redLocal}
+                          disabled={redNoSeComenta}
+                          onCheckedChange={(v) => setRedLocal(!!v)}
+                        />
                         RED LOCAL
                       </label>
-                      <label className="flex items-center gap-2 text-sm">
-                        <Checkbox checked={redNacional} onCheckedChange={(v) => setRedNacional(!!v)} />
+                      <label className={`flex items-center gap-2 text-sm ${redNoSeComenta ? "opacity-50" : ""}`}>
+                        <Checkbox
+                          checked={redNacional}
+                          disabled={redNoSeComenta}
+                          onCheckedChange={(v) => setRedNacional(!!v)}
+                        />
                         RED NACIONAL
                       </label>
+                      {permiteNoComentar && (
+                        <label className="flex items-center gap-2 text-sm text-status-amber">
+                          <Checkbox
+                            checked={redNoSeComenta}
+                            onCheckedChange={(v) => {
+                              const on = !!v;
+                              setRedNoSeComenta(on);
+                              if (on) {
+                                setRedLocal(false);
+                                setRedNacional(false);
+                                setIpsSel([]);
+                                setDeptosSel([]);
+                                setDeptoOtro("");
+                              }
+                            }}
+                          />
+                          NO SE COMENTA A LA RED
+                        </label>
+                      )}
                     </div>
+                    {permiteNoComentar && (
+                      <p className="text-[11px] italic text-muted-foreground">
+                        Excepción documentada: NUEVA EPS + RED NO CONTRATADA. Se registra en la trazabilidad del caso.
+                      </p>
+                    )}
                   </div>
 
                   {mostrarPreguntaPlataforma && (
