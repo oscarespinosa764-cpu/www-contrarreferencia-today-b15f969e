@@ -14,6 +14,7 @@ import { NotificacionesExternasPanel } from "@/components/coordinacion/notificac
 import { AlertasAvisosAdmin } from "@/components/coordinacion/alertas-avisos-admin";
 import { ChecklistsPanel } from "@/components/coordinacion/checklists-panel";
 import { PlantillasInventarioPanel } from "@/components/coordinacion/plantillas-inventario-panel";
+import { PlantillasBiblioteca } from "@/components/coordinacion/plantillas-biblioteca";
 import { AuditoriaPanel } from "@/components/coordinacion/auditoria-panel";
 import { DispositivosPanel } from "@/components/coordinacion/dispositivos-panel";
 import { CategoriasView } from "@/components/catalogo/categorias-view";
