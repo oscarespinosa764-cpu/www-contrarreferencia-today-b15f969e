@@ -94,6 +94,22 @@ function Dato({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+// Convierte ISO a "YYYY-MM-DDTHH:MM" en hora local para <input type="datetime-local">.
+function toDatetimeLocal(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+// Devuelve ISO (o null si vacío) desde un string "YYYY-MM-DDTHH:MM".
+function fromDatetimeLocal(v: FormDataEntryValue | null): string | null {
+  const s = (v ? String(v) : "").trim();
+  if (!s) return null;
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 /** Reloj que se actualiza cada segundo para el tiempo transcurrido. */
 function useTick(active: boolean) {
   const [, setN] = useState(0);
