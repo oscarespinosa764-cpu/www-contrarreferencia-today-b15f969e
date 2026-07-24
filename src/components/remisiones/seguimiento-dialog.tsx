@@ -2728,6 +2728,40 @@ export function SeguimientoDialog({
                 </div>
               )}
 
+              {/* PENDIENTE COORDINACIÓN FECHA Y HORA EXAMEN (RI) */}
+              {esInterna && tipoSeg === TI.PENDIENTE && (
+                <div className={sectionCls}>
+                  <p className={labelCls}>Coordinación de fecha y hora del examen</p>
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Fecha y hora programada del examen *</Label>
+                    <AppDateTimeInput
+                      name="ri_pendiente_fecha_hora"
+                      value={(() => {
+                        const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(riFecha.trim());
+                        if (!m || !isHoraValida(riHora)) return "";
+                        return `${m[3]}-${m[2]}-${m[1]}T${riHora}`;
+                      })()}
+                      onChange={(iso) => {
+                        if (!iso) {
+                          setRiFecha("");
+                          setRiHora("");
+                          return;
+                        }
+                        const [d, t] = iso.split("T");
+                        if (!d || !t) return;
+                        const [y, mo, da] = d.split("-");
+                        setRiFecha(`${da}/${mo}/${y}`);
+                        setRiHora(t.slice(0, 5));
+                      }}
+                      required
+                    />
+                    <p className="text-[11px] italic text-muted-foreground">
+                      La fecha y hora quedan incluidas en la plantilla para Índigo.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* ACTIVACIÓN DE PROVEEDOR CONTRATADO DE TEP */}
               {esTepActivacion && (
                 <div className={sectionCls}>
