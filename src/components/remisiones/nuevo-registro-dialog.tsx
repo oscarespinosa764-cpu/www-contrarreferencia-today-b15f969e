@@ -46,6 +46,10 @@ export function NuevoRegistroDialog({
   const [remisionPor, setRemisionPor] = useState("");
   const [redLocal, setRedLocal] = useState(false);
   const [redNacional, setRedNacional] = useState(false);
+  // Fase 13 · Bloque D — Excepción "NO SE COMENTA A LA RED"
+  // Aplica exclusivamente cuando la EAPB es NUEVA EPS y la remisión es por
+  // RED NO CONTRATADA. Se persiste en `alcance_red` = 'NO_SE_COMENTA'.
+  const [redNoSeComenta, setRedNoSeComenta] = useState(false);
   const [ipsSel, setIpsSel] = useState<string[]>([]);
   const [deptosSel, setDeptosSel] = useState<string[]>([]);
   const [deptoOtro, setDeptoOtro] = useState("");
@@ -262,6 +266,7 @@ export function NuevoRegistroDialog({
     setRemisionPor("");
     setRedLocal(false);
     setRedNacional(false);
+    setRedNoSeComenta(false);
     setIpsSel([]);
     setDeptosSel([]);
     setDeptoOtro("");
