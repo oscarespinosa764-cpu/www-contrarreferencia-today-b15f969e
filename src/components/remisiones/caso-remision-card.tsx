@@ -114,6 +114,8 @@ export function CasoRemisionCard({
   ultimaGestion?: { fecha: string | null; responsable: string | null } | null;
 }) {
   const qc = useQueryClient();
+  const { isAdmin } = useAuth();
+  const editarAdminFn = useServerFn(editarCasoSalienteAdmin);
   const [ver, setVer] = useState(false);
   const [editar, setEditar] = useState(false);
   const [seg, setSeg] = useState(false);
@@ -153,7 +155,47 @@ export function CasoRemisionCard({
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    // Solo se actualizan los campos autorizados para edición.
+
+    if (isAdmin) {
+      // Edición total ADMIN: allowlist server-side + auditoría automática.
+      const cambios: Record<string, unknown> = {
+        paciente: f.get("paciente"),
+        tipo_documento: f.get("tipo_documento"),
+        documento: f.get("documento"),
+        edad: f.get("edad"),
+        cie10: f.get("cie10"),
+        eapb: f.get("eapb"),
+        regimen: f.get("regimen"),
+        estado: f.get("estado"),
+        codigo_radicacion: f.get("codigo_radicacion"),
+        fecha_inicio: f.get("fecha_inicio") || null,
+        fecha_radicado: f.get("fecha_radicado") || null,
+        servicio: f.get("servicio"),
+        cama: f.get("cama"),
+        prioridad: f.get("prioridad"),
+        remision_por: f.get("remision_por"),
+        alcance_red: f.get("alcance_red") || null,
+        tipo_ambulancia: f.get("tipo_ambulancia"),
+        especialidades_tratantes: tratantes.join(", "),
+        especialidades_receptoras: receptoras.join(", "),
+        especificacion: f.get("especificacion"),
+        contacto_nombre: f.get("contacto_nombre"),
+        contacto_parentesco: f.get("contacto_parentesco"),
+        contacto_telefono: f.get("contacto_telefono"),
+        observaciones: f.get("observaciones"),
+      };
+      const res = await editarAdminFn({ data: { tabla: "remisiones", casoId: r.id, cambios } });
+      if (!res.ok) {
+        toast.error(res.error || "No se pudo actualizar.");
+        return;
+      }
+      toast.success("Remisión actualizada (edición admin)");
+      setEditar(false);
+      qc.invalidateQueries({ queryKey: ["remisiones"] });
+      return;
+    }
+
+    // Operativa / temporal: comportamiento original (campos restringidos).
     const { error } = await supabase
       .from("remisiones")
       .update({
