@@ -275,7 +275,12 @@ function RemisionesPage() {
       toast.error("Selecciona quién recibe el turno");
       return;
     }
-    const miNombre = auxiliares?.find((a) => a.user_id === user?.id)?.nombre || user?.email || null;
+    const miNombre =
+      auxiliares?.find((a) => a.user_id === user?.id)?.nombre ||
+      miPerfil?.nombre ||
+      user?.email ||
+      null;
+
     const esNoche = turnoEntrega === "NOCHE";
 
     const { error } = await supabase.from("entregas_turno").insert({
