@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/lib/backend-client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,8 @@ import { Eye, Pencil, ClipboardCheck, MapPin } from "lucide-react";
 import { Field, SelectField, SpecialtyList } from "./form-bits";
 import { Cie10Field } from "./cie10-field";
 import { SeguimientoDialog } from "./seguimiento-dialog";
+import { useAuth } from "@/lib/auth";
+import { editarCasoSalienteAdmin } from "@/lib/salientes-admin-edit.functions";
 
 const SERVICIO_OPCIONES = ["URGENCIAS", "HOSPITALIZACION", "UCI ADULTOS", "QUIROFANO"];
 const PRIORIDAD_OPCIONES = ["ALTA", "MEDIA", "BAJA"];
