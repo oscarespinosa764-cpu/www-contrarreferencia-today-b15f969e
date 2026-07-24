@@ -158,7 +158,7 @@ function Dashboard() {
     <div>
       <AppHeader
         title="Dashboard General"
-        subtitle={`Centro Ejecutivo de Coordinación · Turno ${turnoActual.nombre} (${`${turnoActual.inicio}:00 - ${turnoActual.fin}:00`})`}
+        subtitle="Centro Ejecutivo de Coordinación"
       />
 
       {/* PANEL INTELIGENTE — Tarjetas resumen clicables */}
@@ -170,7 +170,7 @@ function Dashboard() {
           className="focus:outline-none focus:ring-2 focus:ring-primary rounded-2xl"
         >
           <StatCard
-            title="Remisiones salientes activas"
+            title="REMISIONES SALIENTES ACTIVAS"
             value={data?.rem.activas}
             caption="En trámite hacia otras IPS · clic para ver"
             color="blue"
@@ -236,7 +236,7 @@ function Dashboard() {
           action={
             <Button asChild variant="outline" size="sm" className="rounded-full">
               <Link to="/remisiones" search={{ tab: "remisiones", accion: "entrega" }}>
-                Ir a entrega de turno <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                Ver entrega de turno <ArrowRight className="ml-1 h-3.5 w-3.5" />
               </Link>
             </Button>
           }
@@ -412,7 +412,7 @@ function Dashboard() {
           title="Indicadores rápidos del área"
           action={
             <Button asChild variant="outline" size="sm" className="rounded-full">
-              <Link to="/indicadores">Ver todos los indicadores</Link>
+              <Link to="/indicadores">Ver todos</Link>
             </Button>
           }
         >
@@ -430,7 +430,7 @@ function Dashboard() {
           title="Alertas de coordinación"
           action={
             <Button asChild variant="outline" size="sm" className="rounded-full">
-              <Link to="/reglas">Gestionar</Link>
+              <Link to="/reglas">Ver todos</Link>
             </Button>
           }
         >
