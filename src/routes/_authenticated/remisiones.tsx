@@ -122,6 +122,23 @@ function RemisionesPage() {
     },
   });
 
+  // Nombre propio del usuario actual (el directorio excluye al solicitante,
+  // por lo que se consulta el perfil directamente para mostrar el nombre en
+  // "Entregó" en lugar del correo electrónico).
+  const { data: miPerfil } = useQuery({
+    queryKey: ["mi-perfil-nombre", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("nombre")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+
 
   // Jornadas de otras IPS registradas en RED/DISPONIBILIDAD (para el PDF).
   const { data: redJornadas } = useQuery({
@@ -258,7 +275,12 @@ function RemisionesPage() {
       toast.error("Selecciona quién recibe el turno");
       return;
     }
-    const miNombre = auxiliares?.find((a) => a.user_id === user?.id)?.nombre || user?.email || null;
+    const miNombre =
+      auxiliares?.find((a) => a.user_id === user?.id)?.nombre ||
+      miPerfil?.nombre ||
+      user?.email ||
+      null;
+
     const esNoche = turnoEntrega === "NOCHE";
 
     const { error } = await supabase.from("entregas_turno").insert({
@@ -296,7 +318,11 @@ function RemisionesPage() {
   };
 
   const miNombreExport = () =>
-    auxiliares?.find((a) => a.user_id === user?.id)?.nombre || user?.email || "USUARIO";
+    auxiliares?.find((a) => a.user_id === user?.id)?.nombre ||
+    miPerfil?.nombre ||
+    user?.email ||
+    "USUARIO";
+
 
 
 
