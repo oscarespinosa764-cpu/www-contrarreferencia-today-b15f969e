@@ -515,8 +515,16 @@ export function CasoGenericoCard({
             {tipo === "phd" && (
               <>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  <Field name="fecha_inicio_display" label="Fecha y hora inicio trámite" defaultValue={fmtFechaHora(r.fecha_inicio)} readOnly />
-                  <Field name="fecha_radicado_display" label="Fecha y hora radicación" defaultValue={fmtFechaHora(r.fecha_radicado)} readOnly />
+                  {isAdmin ? (
+                    <Field name="fecha_inicio" label="Fecha y hora inicio trámite" type="datetime-local" defaultValue={toDatetimeLocal(r.fecha_inicio)} />
+                  ) : (
+                    <Field name="fecha_inicio_display" label="Fecha y hora inicio trámite" defaultValue={fmtFechaHora(r.fecha_inicio)} readOnly />
+                  )}
+                  {isAdmin ? (
+                    <Field name="fecha_radicado" label="Fecha y hora radicación" type="datetime-local" defaultValue={toDatetimeLocal(r.fecha_radicado)} />
+                  ) : (
+                    <Field name="fecha_radicado_display" label="Fecha y hora radicación" defaultValue={fmtFechaHora(r.fecha_radicado)} readOnly />
+                  )}
                   <Field name="transcurrido_display" label="Tiempo del trámite" defaultValue={fmtTranscurrido(r.fecha_inicio ?? r.created_at)} readOnly />
                   <Field name="paciente" label="Paciente" required defaultValue={r.paciente ?? ""} />
                   <SelectField name="tipo_documento" label="Tipo de documento" options={TIPO_DOC_OPCIONES} required defaultValue={r.tipo_documento ?? ""} />
