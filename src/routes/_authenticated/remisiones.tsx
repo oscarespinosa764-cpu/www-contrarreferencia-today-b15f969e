@@ -318,7 +318,11 @@ function RemisionesPage() {
   };
 
   const miNombreExport = () =>
-    auxiliares?.find((a) => a.user_id === user?.id)?.nombre || user?.email || "USUARIO";
+    auxiliares?.find((a) => a.user_id === user?.id)?.nombre ||
+    miPerfil?.nombre ||
+    user?.email ||
+    "USUARIO";
+
 
 
 
