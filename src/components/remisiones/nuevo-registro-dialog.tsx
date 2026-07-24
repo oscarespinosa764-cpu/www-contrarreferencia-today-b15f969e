@@ -337,13 +337,15 @@ export function NuevoRegistroDialog({
     if (!String(f.get("regimen") || "").trim())
       return toast.error("Selecciona el régimen");
     if (!eapbSel.trim()) return toast.error("Indica la EAPB / ERP");
-    if (!redLocal && !redNacional)
+    if (!redLocal && !redNacional && !redNoSeComenta)
       return toast.error("Marca la red a la que se comenta (local y/o nacional)");
+    if (redNoSeComenta && !permiteNoComentar)
+      return toast.error("La opción 'NO SE COMENTA A LA RED' solo aplica para NUEVA EPS con RED NO CONTRATADA");
     if (!String(f.get("especificacion") || "").trim())
       return toast.error("Escribe la justificación de la remisión");
     if (mostrarPreguntaPlataforma && !plataformaFunc)
       return toast.error("Indica si la plataforma se encuentra funcionando");
-    if (redLocal && ipsSel.length === 0)
+    if (redLocal && !redNoSeComenta && ipsSel.length === 0)
       return toast.error("Marca al menos una IPS de red local");
     const deptosFinal = [
       ...deptosSel.filter((d) => d !== "Otro"),
