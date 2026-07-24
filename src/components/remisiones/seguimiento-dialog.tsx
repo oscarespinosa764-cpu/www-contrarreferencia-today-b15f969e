@@ -1086,7 +1086,12 @@ export function SeguimientoDialog({
       switch (tipoSeg) {
         case TI.PENDIENTE:
           return appendNota(
-            generarPlantillaRefInternaPendiente({ funcionario: riFuncionario, cargo: riCargo }),
+            generarPlantillaRefInternaPendiente({
+              funcionario: riFuncionario,
+              cargo: riCargo,
+              fecha: riFecha,
+              hora: riHora,
+            }),
             detalle,
           );
         case TI.COORDINADO:
@@ -1506,7 +1511,12 @@ export function SeguimientoDialog({
     if (esInterna) {
       switch (tipoSeg) {
         case TI.PENDIENTE:
-          return { funcionario: riFuncionario.trim() || null, cargo: riCargo.trim() || null };
+          return {
+            funcionario: riFuncionario.trim() || null,
+            cargo: riCargo.trim() || null,
+            fecha: riFecha.trim() || null,
+            hora: riHora.trim() || null,
+          };
         case TI.COORDINADO:
           return {
             fecha: riFecha.trim() || null,
@@ -1831,6 +1841,12 @@ export function SeguimientoDialog({
           return toast.error("Hora de traslado inválida (HH:MM)");
       }
       // Referencia interna.
+      if (esInterna && tipoSeg === TI.PENDIENTE) {
+        if (!riFecha.trim() || !isFechaValida(riFecha))
+          return toast.error("Fecha del examen requerida (DD/MM/AAAA)");
+        if (!riHora.trim() || !isHoraValida(riHora))
+          return toast.error("Hora del examen requerida (HH:MM)");
+      }
       if (esInterna && tipoSeg === TI.COORDINADO) {
         if (riFecha.trim() && !isFechaValida(riFecha))
           return toast.error("Fecha del examen inválida (DD/MM/AAAA)");
@@ -2709,6 +2725,40 @@ export function SeguimientoDialog({
                       NO SE IDENTIFICARON CAMBIOS EN LA UBICACIÓN DEL PACIENTE.
                     </p>
                   )}
+                </div>
+              )}
+
+              {/* PENDIENTE COORDINACIÓN FECHA Y HORA EXAMEN (RI) */}
+              {esInterna && tipoSeg === TI.PENDIENTE && (
+                <div className={sectionCls}>
+                  <p className={labelCls}>Coordinación de fecha y hora del examen</p>
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Fecha y hora programada del examen *</Label>
+                    <AppDateTimeInput
+                      name="ri_pendiente_fecha_hora"
+                      value={(() => {
+                        const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(riFecha.trim());
+                        if (!m || !isHoraValida(riHora)) return "";
+                        return `${m[3]}-${m[2]}-${m[1]}T${riHora}`;
+                      })()}
+                      onChange={(iso) => {
+                        if (!iso) {
+                          setRiFecha("");
+                          setRiHora("");
+                          return;
+                        }
+                        const [d, t] = iso.split("T");
+                        if (!d || !t) return;
+                        const [y, mo, da] = d.split("-");
+                        setRiFecha(`${da}/${mo}/${y}`);
+                        setRiHora(t.slice(0, 5));
+                      }}
+                      required
+                    />
+                    <p className="text-[11px] italic text-muted-foreground">
+                      La fecha y hora quedan incluidas en la plantilla para Índigo.
+                    </p>
+                  </div>
                 </div>
               )}
 

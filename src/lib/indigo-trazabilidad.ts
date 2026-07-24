@@ -1075,6 +1075,8 @@ export function phdGeneraCodigo(
 export function generarPlantillaRefInternaPendiente(i: {
   funcionario?: string;
   cargo?: string;
+  fecha?: string;
+  hora?: string;
 }): string {
   let t =
     "SE DEJA TRAZABILIDAD DE LA GESTIÓN DE REFERENCIA INTERNA, LA CUAL SE ENCUENTRA PENDIENTE DE COORDINACIÓN DE FECHA Y HORA DEL EXAMEN.";
@@ -1084,6 +1086,11 @@ export function generarPlantillaRefInternaPendiente(i: {
     t += ` SE REALIZA ACERCAMIENTO CON ${f ? f.toUpperCase() : "[FUNCIONARIO]"}`;
     if (c) t += ` (${c.toUpperCase()})`;
     t += ", QUIEN QUEDA A CARGO DE LA COORDINACIÓN.";
+  }
+  const fx = (i.fecha || "").trim();
+  const hx = (i.hora || "").trim();
+  if (fx || hx) {
+    t += `\nFECHA/HORA DEL EXAMEN: ${fx || "[FECHA]"} ${hx || "[HORA]"}`.trimEnd();
   }
   return t;
 }
