@@ -1086,7 +1086,12 @@ export function SeguimientoDialog({
       switch (tipoSeg) {
         case TI.PENDIENTE:
           return appendNota(
-            generarPlantillaRefInternaPendiente({ funcionario: riFuncionario, cargo: riCargo }),
+            generarPlantillaRefInternaPendiente({
+              funcionario: riFuncionario,
+              cargo: riCargo,
+              fecha: riFecha,
+              hora: riHora,
+            }),
             detalle,
           );
         case TI.COORDINADO:
