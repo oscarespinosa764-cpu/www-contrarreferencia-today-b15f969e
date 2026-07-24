@@ -119,7 +119,25 @@ function ControlMandoPage() {
           <ChecklistsPanel />
         </TabsContent>
         <TabsContent value="plantillas">
-          <PlantillasInventarioPanel />
+          <Tabs defaultValue="documentos" className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="documentos">Documentos del sistema</TabsTrigger>
+              <TabsTrigger value="operativas">Plantillas operativas (respuestas y seguimientos)</TabsTrigger>
+            </TabsList>
+            <TabsContent value="documentos">
+              <PlantillasInventarioPanel />
+            </TabsContent>
+            <TabsContent value="operativas">
+              <div className="mb-3 rounded-lg border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
+                Textos operativos reutilizables (aceptación, negación, cancelación, seguimientos,
+                textos para Índigo, PHD/PAD, hospitalización domiciliaria, etc.). Los cambios
+                afectan a las plantillas que consumen los modales de Remisiones, Referencias
+                Internas y Dashboards. La edición local dentro de cada caso no modifica la
+                plantilla global.
+              </div>
+              <PlantillasBiblioteca />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
         <TabsContent value="dictado">
           <DictadoPanel />
