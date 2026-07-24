@@ -391,45 +391,41 @@ export function CasoRemisionCard({
             <DialogTitle>Editar remisión · {nombre}</DialogTitle>
           </DialogHeader>
           <form key={editar ? "open" : "closed"} onSubmit={handleUpdate} className="space-y-4">
-            {/* Datos solo lectura */}
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <Field
-                name="fecha_inicio_display"
-                label="Fecha y hora inicio trámite"
-                defaultValue={fmtFechaHora(r.fecha_inicio)}
-                readOnly
-              />
-              <Field
-                name="fecha_radicado_display"
-                label="Fecha y hora radicación"
-                defaultValue={fmtFechaHora(r.fecha_radicado)}
-                readOnly
-              />
-              <Field
-                name="transcurrido_display"
-                label="Tiempo del trámite"
-                defaultValue={fmtTranscurrido(r.fecha_inicio ?? r.created_at)}
-                readOnly
-              />
-              <Field name="paciente_display" label="Paciente" defaultValue={r.paciente ?? ""} readOnly />
-              <Field name="tipo_documento_display" label="Tipo de documento" defaultValue={r.tipo_documento ?? ""} readOnly />
-              <Field name="documento_display" label="Documento" defaultValue={r.documento ?? ""} readOnly />
-              <Field name="edad_display" label="Edad" defaultValue={fmtEdad(r.edad)} readOnly />
-              <Field name="eapb_display" label="EAPB / EPS / Asegurador" defaultValue={aseguradorTxt} readOnly />
-              <Field name="regimen_display" label="Régimen" defaultValue={r.regimen ?? ""} readOnly />
-              <Field
-                name="estado_display"
-                label="Estado (se cambia desde Seguimiento)"
-                defaultValue={r.estado ?? ""}
-                readOnly
-              />
-              <Field
-                name="radicado_display"
-                label="N° radicado (se gestiona desde Seguimiento)"
-                defaultValue={radicado}
-                readOnly
-              />
-            </div>
+            {isAdmin ? (
+              <>
+                <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                  Modo administrador: todos los campos funcionales son editables. Los cambios quedan auditados.
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <Field name="fecha_inicio" label="Fecha y hora inicio trámite" type="datetime-local" defaultValue={toDatetimeLocal(r.fecha_inicio)} />
+                  <Field name="fecha_radicado" label="Fecha y hora radicación" type="datetime-local" defaultValue={toDatetimeLocal(r.fecha_radicado)} />
+                  <Field name="transcurrido_display" label="Tiempo del trámite" defaultValue={fmtTranscurrido(r.fecha_inicio ?? r.created_at)} readOnly />
+                  <Field name="paciente" label="Paciente" defaultValue={r.paciente ?? ""} />
+                  <SelectField name="tipo_documento" label="Tipo de documento" options={["CC","CE","TI","RC","RNV","ASI","MSI"]} defaultValue={r.tipo_documento ?? ""} />
+                  <Field name="documento" label="Documento" defaultValue={r.documento ?? ""} />
+                  <Field name="edad" label="Edad" defaultValue={r.edad ?? ""} />
+                  <Field name="eapb" label="EAPB / EPS / Asegurador" defaultValue={aseguradorTxt} />
+                  <SelectField name="regimen" label="Régimen" options={["SUBSIDIADO","CONTRIBUTIVO","ESPECIAL","NO APLICA"]} defaultValue={r.regimen ?? ""} />
+                  <SelectField name="estado" label="Estado" options={ESTADO_OPCIONES} defaultValue={r.estado ?? ""} />
+                  <Field name="codigo_radicacion" label="N° radicado" defaultValue={r.codigo_radicacion ?? ""} />
+                  <SelectField name="alcance_red" label="Alcance red" options={["LOCAL","NACIONAL","LOCAL_NACIONAL","NO_SE_COMENTA"]} defaultValue={r.alcance_red ?? ""} />
+                </div>
+              </>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <Field name="fecha_inicio_display" label="Fecha y hora inicio trámite" defaultValue={fmtFechaHora(r.fecha_inicio)} readOnly />
+                <Field name="fecha_radicado_display" label="Fecha y hora radicación" defaultValue={fmtFechaHora(r.fecha_radicado)} readOnly />
+                <Field name="transcurrido_display" label="Tiempo del trámite" defaultValue={fmtTranscurrido(r.fecha_inicio ?? r.created_at)} readOnly />
+                <Field name="paciente_display" label="Paciente" defaultValue={r.paciente ?? ""} readOnly />
+                <Field name="tipo_documento_display" label="Tipo de documento" defaultValue={r.tipo_documento ?? ""} readOnly />
+                <Field name="documento_display" label="Documento" defaultValue={r.documento ?? ""} readOnly />
+                <Field name="edad_display" label="Edad" defaultValue={fmtEdad(r.edad)} readOnly />
+                <Field name="eapb_display" label="EAPB / EPS / Asegurador" defaultValue={aseguradorTxt} readOnly />
+                <Field name="regimen_display" label="Régimen" defaultValue={r.regimen ?? ""} readOnly />
+                <Field name="estado_display" label="Estado (se cambia desde Seguimiento)" defaultValue={r.estado ?? ""} readOnly />
+                <Field name="radicado_display" label="N° radicado (se gestiona desde Seguimiento)" defaultValue={radicado} readOnly />
+              </div>
+            )}
 
             {/* Campos editables */}
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
