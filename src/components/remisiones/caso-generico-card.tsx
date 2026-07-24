@@ -146,6 +146,8 @@ export function CasoGenericoCard({
 }) {
   const cfg = CONFIG[tipo];
   const qc = useQueryClient();
+  const { isAdmin } = useAuth();
+  const editarAdminFn = useServerFn(editarCasoSalienteAdmin);
   const [ver, setVer] = useState(false);
   const [editar, setEditar] = useState(false);
   const [seg, setSeg] = useState(false);
