@@ -19,7 +19,6 @@ import {
   ClipboardCheck,
   BarChart3,
   Zap,
-  BookOpen,
   Gauge,
   CalendarDays,
   PanelLeftClose,
