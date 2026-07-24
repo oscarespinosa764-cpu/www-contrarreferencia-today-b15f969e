@@ -507,6 +507,11 @@ export function CasoGenericoCard({
             <DialogTitle>Editar caso · {nombre}</DialogTitle>
           </DialogHeader>
           <form key={editar ? "open" : "closed"} onSubmit={handleUpdate} className="space-y-4">
+            {isAdmin && (
+              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                Modo administrador: todos los campos funcionales son editables. Los cambios quedan auditados.
+              </div>
+            )}
             {tipo === "phd" && (
               <>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
