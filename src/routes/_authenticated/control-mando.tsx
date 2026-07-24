@@ -17,7 +17,9 @@ import { PlantillasInventarioPanel } from "@/components/coordinacion/plantillas-
 import { AuditoriaPanel } from "@/components/coordinacion/auditoria-panel";
 import { DispositivosPanel } from "@/components/coordinacion/dispositivos-panel";
 import { CategoriasView } from "@/components/catalogo/categorias-view";
-import { ReglasAdmin } from "@/components/coordinacion/reglas-admin";
+// La administración de reglas vive únicamente dentro de "Alertas y avisos".
+// Se elimina la pestaña principal "Reglas" (ReglasAdmin) para evitar
+// duplicación de editores y estados activos simultáneos.
 import { FormulariosPanel } from "@/components/coordinacion/formularios-panel";
 
 
