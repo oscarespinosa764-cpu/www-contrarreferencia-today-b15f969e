@@ -90,9 +90,6 @@ function ControlMandoPage() {
         <TabsContent value="catalogos">
           <CategoriasView />
         </TabsContent>
-        <TabsContent value="reglas">
-          <ReglasAdmin />
-        </TabsContent>
         <TabsContent value="formularios">
           <FormulariosPanel />
         </TabsContent>
