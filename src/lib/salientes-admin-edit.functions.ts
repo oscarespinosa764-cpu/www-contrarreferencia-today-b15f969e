@@ -140,13 +140,13 @@ export const editarCasoSalienteAdmin = createServerFn({ method: "POST" })
 
     // 7) Auditoría por auth.uid() (no falla la operación si falla el log).
     try {
-      await supabase.rpc("registrar_auditoria", {
+      await (supabase.rpc as any)("registrar_auditoria", {
         _accion: "salientes.edicion_admin",
         _modulo: "remisiones",
         _tabla: data.tabla,
         _registro_id: data.casoId,
         _resultado: "exito",
-        _detalles: { campos: Object.keys(diff), diff },
+        _detalles: { campos: Object.keys(diff), diff } as any,
       });
     } catch { /* no interrumpe */ }
 
