@@ -19,7 +19,6 @@ import {
   ClipboardCheck,
   BarChart3,
   Zap,
-  BookOpen,
   Gauge,
   CalendarDays,
   PanelLeftClose,
@@ -73,11 +72,11 @@ const groups: NavGroup[] = [
     adminOnly: true,
     items: [
       { to: "/indicadores", label: "Indicadores", icon: BarChart3 },
-      { to: "/control-mando", label: "Catálogos", icon: BookOpen, search: { tab: "catalogos" } },
-      { to: "/control-mando", label: "Reglas", icon: Zap, search: { tab: "reglas" } },
+      // Catálogos y Reglas se administran dentro de Control de Mando
+      // (subventanas). Se retiran del menú lateral para evitar duplicación
+      // y estados activos simultáneos.
       { to: "/control-mando", label: "Control de Mando", icon: Gauge },
       { to: "/reglas", label: "Alertas y Avisos Operativos", icon: Zap },
-
     ],
   },
 ];

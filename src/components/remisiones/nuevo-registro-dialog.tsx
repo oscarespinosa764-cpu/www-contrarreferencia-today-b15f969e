@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
@@ -46,6 +46,10 @@ export function NuevoRegistroDialog({
   const [remisionPor, setRemisionPor] = useState("");
   const [redLocal, setRedLocal] = useState(false);
   const [redNacional, setRedNacional] = useState(false);
+  // Fase 13 · Bloque D — Excepción "NO SE COMENTA A LA RED"
+  // Aplica exclusivamente cuando la EAPB es NUEVA EPS y la remisión es por
+  // RED NO CONTRATADA. Se persiste en `alcance_red` = 'NO_SE_COMENTA'.
+  const [redNoSeComenta, setRedNoSeComenta] = useState(false);
   const [ipsSel, setIpsSel] = useState<string[]>([]);
   const [deptosSel, setDeptosSel] = useState<string[]>([]);
   const [deptoOtro, setDeptoOtro] = useState("");
@@ -208,11 +212,25 @@ export function NuevoRegistroDialog({
   const tienePlataforma = (eapbActual?.extra1 ?? "").toUpperCase() === "SI";
   const generaCodigo = !esSoat && (eapbActual?.extra2 ?? "").toUpperCase() === "SI";
   const mostrarPreguntaPlataforma = tienePlataforma && !esSoat;
-  const incluyeNacional = redNacional;
+  const incluyeNacional = redNacional && !redNoSeComenta;
   // Para la plantilla Índigo se mantiene la lógica original (LOCAL / LOCAL_NACIONAL).
   const alcance: AlcanceRed = redNacional ? "LOCAL_NACIONAL" : "LOCAL";
-  // Para almacenamiento/visualización se distingue también "NACIONAL".
-  const alcanceStore = redLocal && redNacional ? "LOCAL_NACIONAL" : redNacional ? "NACIONAL" : "LOCAL";
+  // Para almacenamiento/visualización se distingue también "NACIONAL" y la excepción "NO_SE_COMENTA".
+  const alcanceStore = redNoSeComenta
+    ? "NO_SE_COMENTA"
+    : redLocal && redNacional
+      ? "LOCAL_NACIONAL"
+      : redNacional
+        ? "NACIONAL"
+        : "LOCAL";
+  // Bloque D — Condición para habilitar el checkbox de excepción.
+  const esNuevaEps = /nueva\s*eps/i.test(eapbSel || "");
+  const esRedNoContratada = remisionPor === "RED NO CONTRATADA";
+  const permiteNoComentar = esNuevaEps && esRedNoContratada;
+  // Si cambian las condiciones y ya no aplica, desmarcar automáticamente.
+  useEffect(() => {
+    if (!permiteNoComentar && redNoSeComenta) setRedNoSeComenta(false);
+  }, [permiteNoComentar, redNoSeComenta]);
   // El tipo de trámite se deriva (ya no se selecciona manualmente).
   const tipoTramiteDerivado = derivarTipoTramite(remisionPor, tipoEntidad);
 
@@ -262,6 +280,7 @@ export function NuevoRegistroDialog({
     setRemisionPor("");
     setRedLocal(false);
     setRedNacional(false);
+    setRedNoSeComenta(false);
     setIpsSel([]);
     setDeptosSel([]);
     setDeptoOtro("");
@@ -318,13 +337,15 @@ export function NuevoRegistroDialog({
     if (!String(f.get("regimen") || "").trim())
       return toast.error("Selecciona el régimen");
     if (!eapbSel.trim()) return toast.error("Indica la EAPB / ERP");
-    if (!redLocal && !redNacional)
+    if (!redLocal && !redNacional && !redNoSeComenta)
       return toast.error("Marca la red a la que se comenta (local y/o nacional)");
+    if (redNoSeComenta && !permiteNoComentar)
+      return toast.error("La opción 'NO SE COMENTA A LA RED' solo aplica para NUEVA EPS con RED NO CONTRATADA");
     if (!String(f.get("especificacion") || "").trim())
       return toast.error("Escribe la justificación de la remisión");
     if (mostrarPreguntaPlataforma && !plataformaFunc)
       return toast.error("Indica si la plataforma se encuentra funcionando");
-    if (redLocal && ipsSel.length === 0)
+    if (redLocal && !redNoSeComenta && ipsSel.length === 0)
       return toast.error("Marca al menos una IPS de red local");
     const deptosFinal = [
       ...deptosSel.filter((d) => d !== "Otro"),
@@ -791,15 +812,47 @@ export function NuevoRegistroDialog({
                       Red a la que se comenta <span className="text-status-red">*</span>
                     </Label>
                     <div className="flex flex-wrap gap-4 pt-1">
-                      <label className="flex items-center gap-2 text-sm">
-                        <Checkbox checked={redLocal} onCheckedChange={(v) => setRedLocal(!!v)} />
+                      <label className={`flex items-center gap-2 text-sm ${redNoSeComenta ? "opacity-50" : ""}`}>
+                        <Checkbox
+                          checked={redLocal}
+                          disabled={redNoSeComenta}
+                          onCheckedChange={(v) => setRedLocal(!!v)}
+                        />
                         RED LOCAL
                       </label>
-                      <label className="flex items-center gap-2 text-sm">
-                        <Checkbox checked={redNacional} onCheckedChange={(v) => setRedNacional(!!v)} />
+                      <label className={`flex items-center gap-2 text-sm ${redNoSeComenta ? "opacity-50" : ""}`}>
+                        <Checkbox
+                          checked={redNacional}
+                          disabled={redNoSeComenta}
+                          onCheckedChange={(v) => setRedNacional(!!v)}
+                        />
                         RED NACIONAL
                       </label>
+                      {permiteNoComentar && (
+                        <label className="flex items-center gap-2 text-sm text-status-amber">
+                          <Checkbox
+                            checked={redNoSeComenta}
+                            onCheckedChange={(v) => {
+                              const on = !!v;
+                              setRedNoSeComenta(on);
+                              if (on) {
+                                setRedLocal(false);
+                                setRedNacional(false);
+                                setIpsSel([]);
+                                setDeptosSel([]);
+                                setDeptoOtro("");
+                              }
+                            }}
+                          />
+                          NO SE COMENTA A LA RED
+                        </label>
+                      )}
                     </div>
+                    {permiteNoComentar && (
+                      <p className="text-[11px] italic text-muted-foreground">
+                        Excepción documentada: NUEVA EPS + RED NO CONTRATADA. Se registra en la trazabilidad del caso.
+                      </p>
+                    )}
                   </div>
 
                   {mostrarPreguntaPlataforma && (

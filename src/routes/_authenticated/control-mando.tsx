@@ -17,7 +17,9 @@ import { PlantillasInventarioPanel } from "@/components/coordinacion/plantillas-
 import { AuditoriaPanel } from "@/components/coordinacion/auditoria-panel";
 import { DispositivosPanel } from "@/components/coordinacion/dispositivos-panel";
 import { CategoriasView } from "@/components/catalogo/categorias-view";
-import { ReglasAdmin } from "@/components/coordinacion/reglas-admin";
+// La administración de reglas vive únicamente dentro de "Alertas y avisos".
+// Se elimina la pestaña principal "Reglas" (ReglasAdmin) para evitar
+// duplicación de editores y estados activos simultáneos.
 import { FormulariosPanel } from "@/components/coordinacion/formularios-panel";
 
 
@@ -61,11 +63,10 @@ function ControlMandoPage() {
         onValueChange={(v) => navigate({ search: { tab: v } })}
         className="w-full"
       >
-        <TabsList className="mb-4 grid h-auto w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-12">
+        <TabsList className="mb-4 grid h-auto w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-11">
           <TabsTrigger className="whitespace-normal" value="usuarios">Usuarios</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="dispositivos">Dispositivos</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="catalogos">Catálogos</TabsTrigger>
-          <TabsTrigger className="whitespace-normal" value="reglas">Reglas</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="formularios">Formularios</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="historicos">Datos, importaciones y respaldo</TabsTrigger>
           <TabsTrigger className="whitespace-normal" value="alertas">Alertas y avisos</TabsTrigger>
@@ -88,9 +89,6 @@ function ControlMandoPage() {
         </TabsContent>
         <TabsContent value="catalogos">
           <CategoriasView />
-        </TabsContent>
-        <TabsContent value="reglas">
-          <ReglasAdmin />
         </TabsContent>
         <TabsContent value="formularios">
           <FormulariosPanel />
