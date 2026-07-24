@@ -122,6 +122,23 @@ function RemisionesPage() {
     },
   });
 
+  // Nombre propio del usuario actual (el directorio excluye al solicitante,
+  // por lo que se consulta el perfil directamente para mostrar el nombre en
+  // "Entregó" en lugar del correo electrónico).
+  const { data: miPerfil } = useQuery({
+    queryKey: ["mi-perfil-nombre", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("nombre")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+
 
   // Jornadas de otras IPS registradas en RED/DISPONIBILIDAD (para el PDF).
   const { data: redJornadas } = useQuery({
