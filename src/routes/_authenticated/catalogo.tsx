@@ -214,16 +214,26 @@ function CatalogoPage() {
           <TabsTrigger value="catalogo" className="gap-1.5">
             <BookOpen className="h-4 w-4" /> Catálogo
           </TabsTrigger>
-          <TabsTrigger value="plantillas" className="gap-1.5">
-            <Mail className="h-4 w-4" /> Plantillas Generales
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="catalogo" className="mt-0 flex-1">
           <CategoriasView />
         </TabsContent>
         <TabsContent value="plantillas" className="mt-0 flex-1">
-          <PlantillasBiblioteca />
+          <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
+            <p className="mb-2 font-semibold text-foreground">Plantillas operativas movidas</p>
+            <p>
+              La administración de plantillas operativas (aceptación, negación, cancelación,
+              seguimientos, textos para Índigo, PHD/PAD, etc.) ahora vive exclusivamente en{" "}
+              <a
+                className="font-semibold text-primary underline-offset-2 hover:underline"
+                href="/control-mando?tab=plantillas"
+              >
+                Control de Mando → Plantillas del sistema → Plantillas operativas
+              </a>
+              .
+            </p>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
