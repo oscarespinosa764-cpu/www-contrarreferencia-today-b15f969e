@@ -1511,7 +1511,12 @@ export function SeguimientoDialog({
     if (esInterna) {
       switch (tipoSeg) {
         case TI.PENDIENTE:
-          return { funcionario: riFuncionario.trim() || null, cargo: riCargo.trim() || null };
+          return {
+            funcionario: riFuncionario.trim() || null,
+            cargo: riCargo.trim() || null,
+            fecha: riFecha.trim() || null,
+            hora: riHora.trim() || null,
+          };
         case TI.COORDINADO:
           return {
             fecha: riFecha.trim() || null,
