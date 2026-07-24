@@ -212,11 +212,25 @@ export function NuevoRegistroDialog({
   const tienePlataforma = (eapbActual?.extra1 ?? "").toUpperCase() === "SI";
   const generaCodigo = !esSoat && (eapbActual?.extra2 ?? "").toUpperCase() === "SI";
   const mostrarPreguntaPlataforma = tienePlataforma && !esSoat;
-  const incluyeNacional = redNacional;
+  const incluyeNacional = redNacional && !redNoSeComenta;
   // Para la plantilla Índigo se mantiene la lógica original (LOCAL / LOCAL_NACIONAL).
   const alcance: AlcanceRed = redNacional ? "LOCAL_NACIONAL" : "LOCAL";
-  // Para almacenamiento/visualización se distingue también "NACIONAL".
-  const alcanceStore = redLocal && redNacional ? "LOCAL_NACIONAL" : redNacional ? "NACIONAL" : "LOCAL";
+  // Para almacenamiento/visualización se distingue también "NACIONAL" y la excepción "NO_SE_COMENTA".
+  const alcanceStore = redNoSeComenta
+    ? "NO_SE_COMENTA"
+    : redLocal && redNacional
+      ? "LOCAL_NACIONAL"
+      : redNacional
+        ? "NACIONAL"
+        : "LOCAL";
+  // Bloque D — Condición para habilitar el checkbox de excepción.
+  const esNuevaEps = /nueva\s*eps/i.test(eapbSel || "");
+  const esRedNoContratada = remisionPor === "RED NO CONTRATADA";
+  const permiteNoComentar = esNuevaEps && esRedNoContratada;
+  // Si cambian las condiciones y ya no aplica, desmarcar automáticamente.
+  useEffect(() => {
+    if (!permiteNoComentar && redNoSeComenta) setRedNoSeComenta(false);
+  }, [permiteNoComentar, redNoSeComenta]);
   // El tipo de trámite se deriva (ya no se selecciona manualmente).
   const tipoTramiteDerivado = derivarTipoTramite(remisionPor, tipoEntidad);
 
