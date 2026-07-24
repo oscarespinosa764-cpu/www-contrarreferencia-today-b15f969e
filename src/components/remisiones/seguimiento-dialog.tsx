@@ -1841,6 +1841,12 @@ export function SeguimientoDialog({
           return toast.error("Hora de traslado inválida (HH:MM)");
       }
       // Referencia interna.
+      if (esInterna && tipoSeg === TI.PENDIENTE) {
+        if (!riFecha.trim() || !isFechaValida(riFecha))
+          return toast.error("Fecha del examen requerida (DD/MM/AAAA)");
+        if (!riHora.trim() || !isHoraValida(riHora))
+          return toast.error("Hora del examen requerida (HH:MM)");
+      }
       if (esInterna && tipoSeg === TI.COORDINADO) {
         if (riFecha.trim() && !isFechaValida(riFecha))
           return toast.error("Fecha del examen inválida (DD/MM/AAAA)");
