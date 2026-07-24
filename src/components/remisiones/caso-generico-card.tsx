@@ -561,7 +561,11 @@ export function CasoGenericoCard({
             )}
             {tipo === "interna" && (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <Field name="fecha_radicado_display" label="Fecha y hora radicación" defaultValue={fmtFechaHora(r.fecha_radicado)} readOnly />
+                {isAdmin ? (
+                  <Field name="fecha_radicado" label="Fecha y hora radicación" type="datetime-local" defaultValue={toDatetimeLocal(r.fecha_radicado)} />
+                ) : (
+                  <Field name="fecha_radicado_display" label="Fecha y hora radicación" defaultValue={fmtFechaHora(r.fecha_radicado)} readOnly />
+                )}
                 <Field name="transcurrido_display" label="Tiempo del trámite" defaultValue={fmtTranscurrido(r.created_at)} readOnly />
                 <Field name="paciente" label="Paciente" required defaultValue={r.paciente ?? ""} />
                 <SelectField name="tipo_documento" label="Tipo de documento" options={TIPO_DOC_OPCIONES} required defaultValue={r.tipo_documento ?? ""} />
@@ -571,7 +575,11 @@ export function CasoGenericoCard({
                 <SelectField name="tipo_ambulancia" label="Tipo de ambulancia" options={AMBULANCIA_OPCIONES} defaultValue={r.tipo_ambulancia ?? ""} />
                 <Field name="eapb" label="EAPB / ERP" defaultValue={r.eapb ?? ""} />
                 <SelectField name="prioridad" label="Prioridad" options={PRIORIDAD_OPCIONES} defaultValue={r.prioridad ?? ""} />
-                <Field name="estado_display" label="Estado" defaultValue={r.estado ?? ""} readOnly />
+                {isAdmin ? (
+                  <Field name="estado" label="Estado" defaultValue={r.estado ?? ""} />
+                ) : (
+                  <Field name="estado_display" label="Estado" defaultValue={r.estado ?? ""} readOnly />
+                )}
               </div>
             )}
             {tipo === "pendiente" && (
