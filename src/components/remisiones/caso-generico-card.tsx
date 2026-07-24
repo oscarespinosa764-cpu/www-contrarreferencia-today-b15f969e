@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/lib/backend-client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +13,8 @@ import { Cie10Field } from "./cie10-field";
 import { SeguimientoDialog } from "./seguimiento-dialog";
 import { PhdSeguimientoDialog } from "./phd-seguimiento-dialog";
 import { PhdCicloPanel } from "./phd-ciclo-panel";
+import { useAuth } from "@/lib/auth";
+import { editarCasoSalienteAdmin } from "@/lib/salientes-admin-edit.functions";
 import {
   evolucionMeta,
   fmtEdad,
@@ -94,6 +97,20 @@ function Dato({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+function toDatetimeLocal(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function fromDatetimeLocal(v: FormDataEntryValue | null): string | null {
+  const s = (v ? String(v) : "").trim();
+  if (!s) return null;
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 function EstadoBadge({ estado }: { estado?: string | null }) {
   const txt = (estado || "").trim();
   const activo = txt.toUpperCase() === "ACTIVO";
@@ -143,6 +160,8 @@ export function CasoGenericoCard({
 }) {
   const cfg = CONFIG[tipo];
   const qc = useQueryClient();
+  const { isAdmin } = useAuth();
+  const editarAdminFn = useServerFn(editarCasoSalienteAdmin);
   const [ver, setVer] = useState(false);
   const [editar, setEditar] = useState(false);
   const [seg, setSeg] = useState(false);
@@ -238,6 +257,35 @@ export function CasoGenericoCard({
         observacion_entrega: String(f.get("observacion_entrega")),
       };
     }
+
+    if (isAdmin) {
+      // Añade campos administrables adicionales cuando el usuario es admin.
+      if (tipo === "phd" || tipo === "interna") {
+        payload.estado = String(f.get("estado") || (payload as any).estado || "");
+        payload.fecha_radicado = fromDatetimeLocal(f.get("fecha_radicado"));
+      }
+      if (tipo === "phd") {
+        payload.fecha_inicio = fromDatetimeLocal(f.get("fecha_inicio"));
+        payload.codigo_radicacion = String(f.get("codigo_radicacion") || "");
+      }
+      if (tipo === "pendiente") {
+        payload.estado = String(f.get("estado") || (payload as any).estado || "");
+      }
+      const tablaKey =
+        tipo === "phd" ? "domiciliarios" : tipo === "interna" ? "referencia_interna" : "pendientes";
+      const res = await editarAdminFn({
+        data: { tabla: tablaKey, casoId: r.id, cambios: payload as Record<string, unknown> },
+      });
+      if (!res.ok) {
+        toast.error(res.error || "No se pudo actualizar.");
+        return;
+      }
+      toast.success("Caso actualizado (edición admin)");
+      setEditar(false);
+      qc.invalidateQueries({ queryKey: [invalidateKey] });
+      return;
+    }
+
     const { error } = await (supabase.from(cfg.tabla as any) as any).update(payload).eq("id", r.id);
     if (error) {
       toast.error(error.message);
@@ -459,11 +507,24 @@ export function CasoGenericoCard({
             <DialogTitle>Editar caso · {nombre}</DialogTitle>
           </DialogHeader>
           <form key={editar ? "open" : "closed"} onSubmit={handleUpdate} className="space-y-4">
+            {isAdmin && (
+              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                Modo administrador: todos los campos funcionales son editables. Los cambios quedan auditados.
+              </div>
+            )}
             {tipo === "phd" && (
               <>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  <Field name="fecha_inicio_display" label="Fecha y hora inicio trámite" defaultValue={fmtFechaHora(r.fecha_inicio)} readOnly />
-                  <Field name="fecha_radicado_display" label="Fecha y hora radicación" defaultValue={fmtFechaHora(r.fecha_radicado)} readOnly />
+                  {isAdmin ? (
+                    <Field name="fecha_inicio" label="Fecha y hora inicio trámite" type="datetime-local" defaultValue={toDatetimeLocal(r.fecha_inicio)} />
+                  ) : (
+                    <Field name="fecha_inicio_display" label="Fecha y hora inicio trámite" defaultValue={fmtFechaHora(r.fecha_inicio)} readOnly />
+                  )}
+                  {isAdmin ? (
+                    <Field name="fecha_radicado" label="Fecha y hora radicación" type="datetime-local" defaultValue={toDatetimeLocal(r.fecha_radicado)} />
+                  ) : (
+                    <Field name="fecha_radicado_display" label="Fecha y hora radicación" defaultValue={fmtFechaHora(r.fecha_radicado)} readOnly />
+                  )}
                   <Field name="transcurrido_display" label="Tiempo del trámite" defaultValue={fmtTranscurrido(r.fecha_inicio ?? r.created_at)} readOnly />
                   <Field name="paciente" label="Paciente" required defaultValue={r.paciente ?? ""} />
                   <SelectField name="tipo_documento" label="Tipo de documento" options={TIPO_DOC_OPCIONES} required defaultValue={r.tipo_documento ?? ""} />
@@ -475,12 +536,20 @@ export function CasoGenericoCard({
                   <SelectField name="servicio" label="Servicio" options={SERVICIO_OPCIONES} required defaultValue={r.servicio ?? ""} />
                   <Field name="cama" label="Cama" defaultValue={r.cama ?? ""} />
                   <SelectField name="prioridad" label="Prioridad" options={PRIORIDAD_OPCIONES} defaultValue={r.prioridad ?? ""} />
-                  <Field name="estado_display" label="Estado (se cambia desde Seguimiento)" defaultValue={r.estado ?? ""} readOnly />
+                  {isAdmin ? (
+                    <Field name="estado" label="Estado" defaultValue={r.estado ?? ""} />
+                  ) : (
+                    <Field name="estado_display" label="Estado (se cambia desde Seguimiento)" defaultValue={r.estado ?? ""} readOnly />
+                  )}
                   <SelectField name="tipo_solicitud" label="Tipo de solicitud" options={PHD_SOLICITUD} required defaultValue={r.tipo_solicitud ?? ""} />
                   <Field name="unidad_especial" label="Unidad especial" defaultValue={(r.unidad_especial || r.tipo_solicitud_detalle) ?? ""} />
                   <SelectField name="requiere_ambulancia" label="Requiere ambulancia" options={SI_NO} defaultValue={r.requiere_ambulancia ?? ""} />
                   <SelectField name="tipo_ambulancia" label="Tipo de ambulancia" options={PHD_AMBULANCIA} defaultValue={r.tipo_ambulancia ?? ""} />
-                  <Field name="radicado_display" label="N° radicado" defaultValue={radicado} readOnly />
+                  {isAdmin ? (
+                    <Field name="codigo_radicacion" label="N° radicado" defaultValue={r.codigo_radicacion ?? ""} />
+                  ) : (
+                    <Field name="radicado_display" label="N° radicado" defaultValue={radicado} readOnly />
+                  )}
                 </div>
                 <SpecialtyList label="Especialidades tratantes" items={tratantes} onChange={setTratantes} suggestions={especialidades} />
                 <div className="grid gap-3 sm:grid-cols-3">
@@ -492,7 +561,11 @@ export function CasoGenericoCard({
             )}
             {tipo === "interna" && (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <Field name="fecha_radicado_display" label="Fecha y hora radicación" defaultValue={fmtFechaHora(r.fecha_radicado)} readOnly />
+                {isAdmin ? (
+                  <Field name="fecha_radicado" label="Fecha y hora radicación" type="datetime-local" defaultValue={toDatetimeLocal(r.fecha_radicado)} />
+                ) : (
+                  <Field name="fecha_radicado_display" label="Fecha y hora radicación" defaultValue={fmtFechaHora(r.fecha_radicado)} readOnly />
+                )}
                 <Field name="transcurrido_display" label="Tiempo del trámite" defaultValue={fmtTranscurrido(r.created_at)} readOnly />
                 <Field name="paciente" label="Paciente" required defaultValue={r.paciente ?? ""} />
                 <SelectField name="tipo_documento" label="Tipo de documento" options={TIPO_DOC_OPCIONES} required defaultValue={r.tipo_documento ?? ""} />
@@ -502,7 +575,11 @@ export function CasoGenericoCard({
                 <SelectField name="tipo_ambulancia" label="Tipo de ambulancia" options={AMBULANCIA_OPCIONES} defaultValue={r.tipo_ambulancia ?? ""} />
                 <Field name="eapb" label="EAPB / ERP" defaultValue={r.eapb ?? ""} />
                 <SelectField name="prioridad" label="Prioridad" options={PRIORIDAD_OPCIONES} defaultValue={r.prioridad ?? ""} />
-                <Field name="estado_display" label="Estado" defaultValue={r.estado ?? ""} readOnly />
+                {isAdmin ? (
+                  <Field name="estado" label="Estado" defaultValue={r.estado ?? ""} />
+                ) : (
+                  <Field name="estado_display" label="Estado" defaultValue={r.estado ?? ""} readOnly />
+                )}
               </div>
             )}
             {tipo === "pendiente" && (
@@ -512,7 +589,11 @@ export function CasoGenericoCard({
                 <Field name="paciente_asunto" label="Paciente / asunto" required defaultValue={r.paciente_asunto ?? ""} />
                 <Field name="ips_area" label="IPS / área" required defaultValue={r.ips_area ?? ""} />
                 <SelectField name="prioridad" label="Prioridad" options={PRIORIDAD_OPCIONES} required defaultValue={r.prioridad ?? ""} />
-                <Field name="estado_display" label="Estado" defaultValue={r.estado ?? ""} readOnly />
+                {isAdmin ? (
+                  <Field name="estado" label="Estado" defaultValue={r.estado ?? ""} />
+                ) : (
+                  <Field name="estado_display" label="Estado" defaultValue={r.estado ?? ""} readOnly />
+                )}
               </div>
             )}
             <div className="space-y-1.5">

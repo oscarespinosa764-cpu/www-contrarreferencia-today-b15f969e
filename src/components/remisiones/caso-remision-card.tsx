@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/lib/backend-client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,8 @@ import { Eye, Pencil, ClipboardCheck, MapPin } from "lucide-react";
 import { Field, SelectField, SpecialtyList } from "./form-bits";
 import { Cie10Field } from "./cie10-field";
 import { SeguimientoDialog } from "./seguimiento-dialog";
+import { useAuth } from "@/lib/auth";
+import { editarCasoSalienteAdmin } from "@/lib/salientes-admin-edit.functions";
 
 const SERVICIO_OPCIONES = ["URGENCIAS", "HOSPITALIZACION", "UCI ADULTOS", "QUIROFANO"];
 const PRIORIDAD_OPCIONES = ["ALTA", "MEDIA", "BAJA"];
@@ -91,6 +94,22 @@ function Dato({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+// Convierte ISO a "YYYY-MM-DDTHH:MM" en hora local para <input type="datetime-local">.
+function toDatetimeLocal(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+// Devuelve ISO (o null si vacío) desde un string "YYYY-MM-DDTHH:MM".
+function fromDatetimeLocal(v: FormDataEntryValue | null): string | null {
+  const s = (v ? String(v) : "").trim();
+  if (!s) return null;
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 /** Reloj que se actualiza cada segundo para el tiempo transcurrido. */
 function useTick(active: boolean) {
   const [, setN] = useState(0);
@@ -111,6 +130,8 @@ export function CasoRemisionCard({
   ultimaGestion?: { fecha: string | null; responsable: string | null } | null;
 }) {
   const qc = useQueryClient();
+  const { isAdmin } = useAuth();
+  const editarAdminFn = useServerFn(editarCasoSalienteAdmin);
   const [ver, setVer] = useState(false);
   const [editar, setEditar] = useState(false);
   const [seg, setSeg] = useState(false);
@@ -150,7 +171,47 @@ export function CasoRemisionCard({
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    // Solo se actualizan los campos autorizados para edición.
+
+    if (isAdmin) {
+      // Edición total ADMIN: allowlist server-side + auditoría automática.
+      const cambios: Record<string, unknown> = {
+        paciente: f.get("paciente"),
+        tipo_documento: f.get("tipo_documento"),
+        documento: f.get("documento"),
+        edad: f.get("edad"),
+        cie10: f.get("cie10"),
+        eapb: f.get("eapb"),
+        regimen: f.get("regimen"),
+        estado: f.get("estado"),
+        codigo_radicacion: f.get("codigo_radicacion"),
+        fecha_inicio: fromDatetimeLocal(f.get("fecha_inicio")),
+        fecha_radicado: fromDatetimeLocal(f.get("fecha_radicado")),
+        servicio: f.get("servicio"),
+        cama: f.get("cama"),
+        prioridad: f.get("prioridad"),
+        remision_por: f.get("remision_por"),
+        alcance_red: f.get("alcance_red") || null,
+        tipo_ambulancia: f.get("tipo_ambulancia"),
+        especialidades_tratantes: tratantes.join(", "),
+        especialidades_receptoras: receptoras.join(", "),
+        especificacion: f.get("especificacion"),
+        contacto_nombre: f.get("contacto_nombre"),
+        contacto_parentesco: f.get("contacto_parentesco"),
+        contacto_telefono: f.get("contacto_telefono"),
+        observaciones: f.get("observaciones"),
+      };
+      const res = await editarAdminFn({ data: { tabla: "remisiones", casoId: r.id, cambios } });
+      if (!res.ok) {
+        toast.error(res.error || "No se pudo actualizar.");
+        return;
+      }
+      toast.success("Remisión actualizada (edición admin)");
+      setEditar(false);
+      qc.invalidateQueries({ queryKey: ["remisiones"] });
+      return;
+    }
+
+    // Operativa / temporal: comportamiento original (campos restringidos).
     const { error } = await supabase
       .from("remisiones")
       .update({
@@ -346,45 +407,41 @@ export function CasoRemisionCard({
             <DialogTitle>Editar remisión · {nombre}</DialogTitle>
           </DialogHeader>
           <form key={editar ? "open" : "closed"} onSubmit={handleUpdate} className="space-y-4">
-            {/* Datos solo lectura */}
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <Field
-                name="fecha_inicio_display"
-                label="Fecha y hora inicio trámite"
-                defaultValue={fmtFechaHora(r.fecha_inicio)}
-                readOnly
-              />
-              <Field
-                name="fecha_radicado_display"
-                label="Fecha y hora radicación"
-                defaultValue={fmtFechaHora(r.fecha_radicado)}
-                readOnly
-              />
-              <Field
-                name="transcurrido_display"
-                label="Tiempo del trámite"
-                defaultValue={fmtTranscurrido(r.fecha_inicio ?? r.created_at)}
-                readOnly
-              />
-              <Field name="paciente_display" label="Paciente" defaultValue={r.paciente ?? ""} readOnly />
-              <Field name="tipo_documento_display" label="Tipo de documento" defaultValue={r.tipo_documento ?? ""} readOnly />
-              <Field name="documento_display" label="Documento" defaultValue={r.documento ?? ""} readOnly />
-              <Field name="edad_display" label="Edad" defaultValue={fmtEdad(r.edad)} readOnly />
-              <Field name="eapb_display" label="EAPB / EPS / Asegurador" defaultValue={aseguradorTxt} readOnly />
-              <Field name="regimen_display" label="Régimen" defaultValue={r.regimen ?? ""} readOnly />
-              <Field
-                name="estado_display"
-                label="Estado (se cambia desde Seguimiento)"
-                defaultValue={r.estado ?? ""}
-                readOnly
-              />
-              <Field
-                name="radicado_display"
-                label="N° radicado (se gestiona desde Seguimiento)"
-                defaultValue={radicado}
-                readOnly
-              />
-            </div>
+            {isAdmin ? (
+              <>
+                <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                  Modo administrador: todos los campos funcionales son editables. Los cambios quedan auditados.
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <Field name="fecha_inicio" label="Fecha y hora inicio trámite" type="datetime-local" defaultValue={toDatetimeLocal(r.fecha_inicio)} />
+                  <Field name="fecha_radicado" label="Fecha y hora radicación" type="datetime-local" defaultValue={toDatetimeLocal(r.fecha_radicado)} />
+                  <Field name="transcurrido_display" label="Tiempo del trámite" defaultValue={fmtTranscurrido(r.fecha_inicio ?? r.created_at)} readOnly />
+                  <Field name="paciente" label="Paciente" defaultValue={r.paciente ?? ""} />
+                  <SelectField name="tipo_documento" label="Tipo de documento" options={["CC","CE","TI","RC","RNV","ASI","MSI"]} defaultValue={r.tipo_documento ?? ""} />
+                  <Field name="documento" label="Documento" defaultValue={r.documento ?? ""} />
+                  <Field name="edad" label="Edad" defaultValue={r.edad ?? ""} />
+                  <Field name="eapb" label="EAPB / EPS / Asegurador" defaultValue={aseguradorTxt} />
+                  <SelectField name="regimen" label="Régimen" options={["SUBSIDIADO","CONTRIBUTIVO","ESPECIAL","NO APLICA"]} defaultValue={r.regimen ?? ""} />
+                  <SelectField name="estado" label="Estado" options={ESTADO_OPCIONES} defaultValue={r.estado ?? ""} />
+                  <Field name="codigo_radicacion" label="N° radicado" defaultValue={r.codigo_radicacion ?? ""} />
+                  <SelectField name="alcance_red" label="Alcance red" options={["LOCAL","NACIONAL","LOCAL_NACIONAL","NO_SE_COMENTA"]} defaultValue={r.alcance_red ?? ""} />
+                </div>
+              </>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <Field name="fecha_inicio_display" label="Fecha y hora inicio trámite" defaultValue={fmtFechaHora(r.fecha_inicio)} readOnly />
+                <Field name="fecha_radicado_display" label="Fecha y hora radicación" defaultValue={fmtFechaHora(r.fecha_radicado)} readOnly />
+                <Field name="transcurrido_display" label="Tiempo del trámite" defaultValue={fmtTranscurrido(r.fecha_inicio ?? r.created_at)} readOnly />
+                <Field name="paciente_display" label="Paciente" defaultValue={r.paciente ?? ""} readOnly />
+                <Field name="tipo_documento_display" label="Tipo de documento" defaultValue={r.tipo_documento ?? ""} readOnly />
+                <Field name="documento_display" label="Documento" defaultValue={r.documento ?? ""} readOnly />
+                <Field name="edad_display" label="Edad" defaultValue={fmtEdad(r.edad)} readOnly />
+                <Field name="eapb_display" label="EAPB / EPS / Asegurador" defaultValue={aseguradorTxt} readOnly />
+                <Field name="regimen_display" label="Régimen" defaultValue={r.regimen ?? ""} readOnly />
+                <Field name="estado_display" label="Estado (se cambia desde Seguimiento)" defaultValue={r.estado ?? ""} readOnly />
+                <Field name="radicado_display" label="N° radicado (se gestiona desde Seguimiento)" defaultValue={radicado} readOnly />
+              </div>
+            )}
 
             {/* Campos editables */}
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
