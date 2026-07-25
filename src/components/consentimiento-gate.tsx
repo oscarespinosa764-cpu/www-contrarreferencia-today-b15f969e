@@ -23,33 +23,45 @@ export function ConsentimientoGate() {
     queryKey: ["consentimiento", user?.id, POLITICA_VERSION],
     enabled: !!user,
     queryFn: async () => {
-      const { data } = await supabase
+      // Tolerar registros duplicados heredados: tomar el primero.
+      // `.maybeSingle()` lanzaba error con >1 fila y dejaba el modal atascado.
+      const { data, error } = await supabase
         .from("consentimientos")
         .select("id")
         .eq("user_id", user!.id)
         .eq("version", POLITICA_VERSION)
-        .maybeSingle();
-      return data;
+        .limit(1);
+      if (error) throw error;
+      return data?.[0] ?? null;
     },
   });
 
   if (isLoading || consentimiento || !user) return null;
 
   const aceptar = async () => {
-    if (!aceptado) return;
+    if (!aceptado || guardando) return;
     setGuardando(true);
-    const { error } = await supabase.from("consentimientos").insert({
-      user_id: user.id,
-      version: POLITICA_VERSION,
-      aceptado: true,
-      user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
-    });
+    // Upsert idempotente: si el usuario ya aceptó (o hace doble clic), no falla.
+    const { error } = await supabase
+      .from("consentimientos")
+      .upsert(
+        {
+          user_id: user.id,
+          version: POLITICA_VERSION,
+          aceptado: true,
+          user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
+        },
+        { onConflict: "user_id,version", ignoreDuplicates: false },
+      );
     setGuardando(false);
     if (error) {
-      toast.error("No se pudo registrar la aceptación. Intenta de nuevo.");
+      console.error("[consentimiento] insert error", error);
+      toast.error(
+        `No fue posible registrar la aceptación: ${error.message}. Revisa tu conexión e inténtalo nuevamente.`,
+      );
       return;
     }
-    qc.invalidateQueries({ queryKey: ["consentimiento", user.id, POLITICA_VERSION] });
+    await qc.invalidateQueries({ queryKey: ["consentimiento", user.id, POLITICA_VERSION] });
   };
 
   return (
