@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, RefreshCw, ShieldCheck, ShieldOff, Ban, Check, X, Unlock } from "lucide-react";
+import { Loader2, RefreshCw, ShieldCheck, ShieldOff, Ban, Check, X, Unlock, Pencil } from "lucide-react";
 import {
   adminListDevices,
   adminListDeviceRequests,
@@ -16,6 +16,7 @@ import {
   adminRevokeDevice,
   adminBlockDevice,
   adminUnblockDevice,
+  adminRenameDevice,
   getSystemMode,
   adminSetGlobalMode,
   requestDeviceChallenge,
@@ -64,6 +65,7 @@ export function DispositivosPanel() {
   const revoke = useServerFn(adminRevokeDevice);
   const block = useServerFn(adminBlockDevice);
   const unblock = useServerFn(adminUnblockDevice);
+  const rename = useServerFn(adminRenameDevice);
   const getMode = useServerFn(getSystemMode);
   const setMode = useServerFn(adminSetGlobalMode);
 
@@ -161,6 +163,22 @@ export function DispositivosPanel() {
       toast.error(e instanceof Error ? e.message : `No se pudo ${label.toLowerCase()}.`);
     }
   };
+
+  const renameDevice = async (deviceId: string, actual: string | null) => {
+    const nuevo = window.prompt(
+      "Nombre descriptivo del dispositivo (vacío = usar nombre técnico):",
+      actual ?? "",
+    );
+    if (nuevo === null) return;
+    try {
+      await rename({ data: { deviceId, nombre: nuevo } });
+      toast.success("Nombre actualizado.");
+      refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo renombrar.");
+    }
+  };
+
 
   const devices = devicesQ.data ?? [];
   const currentDevice = currentLocalId ? devices.find((d) => d.device_public_id === currentLocalId) : null;
@@ -323,6 +341,9 @@ export function DispositivosPanel() {
                     </td>
                     <td className="py-2 pr-2">
                       <div className="flex flex-wrap gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => renameDevice(d.id, d.nombre_dispositivo)} title="Renombrar">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
                         {d.estado === "PENDIENTE" ? (
                           <>
                             <Button size="sm" variant="outline" onClick={() => act(approve as never, d.id, "Aprobado")}>

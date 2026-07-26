@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 
 type AppRole = "admin" | "operativa" | "temporal";
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const TAB_KEY = "ref_tab_alive";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
@@ -58,7 +60,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .catch(() => {});
         }
       }
-      if (event === "SIGNED_OUT") sessionStorage.removeItem(TAB_KEY);
+      if (event === "SIGNED_OUT") {
+        sessionStorage.removeItem(TAB_KEY);
+        // Limpiar caché de queries del usuario anterior para evitar que
+        // datos privados persistan al cambiar de turno. La identidad del
+        // dispositivo autorizado vive en IndexedDB y NO se toca aquí.
+        queryClient.clear();
+      }
 
       setSession(sess);
       setUser(sess?.user ?? null);
@@ -92,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [queryClient]);
 
   const isAdmin = roles.includes("admin");
   const canEdit = roles.includes("admin") || roles.includes("operativa");

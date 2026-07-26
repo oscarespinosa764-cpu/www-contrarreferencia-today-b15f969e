@@ -153,9 +153,14 @@ function AuthInvalidator() {
   const router = useRouter();
   const queryClient = useQueryClient();
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      // Solo transiciones de identidad reales. Ignora TOKEN_REFRESHED (cada
+      // hora) e INITIAL_SESSION (cada montaje) para no invalidar caché ni
+      // rebrincar validaciones de dispositivo silenciosas.
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       router.invalidate();
-      queryClient.invalidateQueries();
+      // La limpieza en SIGNED_OUT ya la hace AuthProvider (queryClient.clear).
+      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
     });
     return () => subscription.unsubscribe();
   }, [router, queryClient]);
