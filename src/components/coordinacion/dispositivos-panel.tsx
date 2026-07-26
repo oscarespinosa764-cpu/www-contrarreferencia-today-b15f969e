@@ -65,6 +65,7 @@ export function DispositivosPanel() {
   const revoke = useServerFn(adminRevokeDevice);
   const block = useServerFn(adminBlockDevice);
   const unblock = useServerFn(adminUnblockDevice);
+  const rename = useServerFn(adminRenameDevice);
   const getMode = useServerFn(getSystemMode);
   const setMode = useServerFn(adminSetGlobalMode);
 
