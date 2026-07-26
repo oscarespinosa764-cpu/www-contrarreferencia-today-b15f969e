@@ -160,19 +160,15 @@ export function DeviceGate({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  // Dispositivo autorizado pero sesión no vinculada → verificar y vincular
+  // Dispositivo autorizado pero sesión no vinculada (p. ej. cambio de turno,
+  // otro usuario en el mismo equipo autorizado): vincular silenciosamente
+  // sin mostrar UI ni requerir acción del operativo.
   if (device?.estado === "AUTORIZADO" && localId) {
     return (
-      <BlockCard
-        title="Verificando este dispositivo"
-        icon="ok"
-        message="Este navegador está autorizado. Vincula la sesión actual para continuar."
-      >
-        <Button onClick={linkExisting} disabled={busy}>
-          {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-          Vincular sesión
-        </Button>
-      </BlockCard>
+      <SilentLinker
+        busy={busy}
+        onLink={linkExisting}
+      />
     );
   }
 
