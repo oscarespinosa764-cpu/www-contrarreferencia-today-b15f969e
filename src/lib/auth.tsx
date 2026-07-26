@@ -60,7 +60,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .catch(() => {});
         }
       }
-      if (event === "SIGNED_OUT") sessionStorage.removeItem(TAB_KEY);
+      if (event === "SIGNED_OUT") {
+        sessionStorage.removeItem(TAB_KEY);
+        // Limpiar caché de queries del usuario anterior para evitar que
+        // datos privados persistan al cambiar de turno. La identidad del
+        // dispositivo autorizado vive en IndexedDB y NO se toca aquí.
+        queryClient.clear();
+      }
 
       setSession(sess);
       setUser(sess?.user ?? null);
