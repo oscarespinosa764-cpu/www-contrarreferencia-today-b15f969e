@@ -224,6 +224,25 @@ export function DeviceGate({ children }: { children: React.ReactNode }) {
   );
 }
 
+function SilentLinker({ busy, onLink }: { busy: boolean; onLink: () => void }) {
+  // Ejecuta la vinculación una sola vez de forma silenciosa. Solo aparece
+  // un loader breve mientras se completa; sin interacción del usuario.
+  const triggered = useState(false);
+  useEffect(() => {
+    if (!triggered[0]) {
+      triggered[1](true);
+      onLink();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      {busy ? null : null}
+    </div>
+  );
+}
+
 function BlockCard({
   title,
   message,
