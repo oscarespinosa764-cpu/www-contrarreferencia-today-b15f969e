@@ -164,6 +164,22 @@ export function DispositivosPanel() {
     }
   };
 
+  const renameDevice = async (deviceId: string, actual: string | null) => {
+    const nuevo = window.prompt(
+      "Nombre descriptivo del dispositivo (vacío = usar nombre técnico):",
+      actual ?? "",
+    );
+    if (nuevo === null) return;
+    try {
+      await rename({ data: { deviceId, nombre: nuevo } });
+      toast.success("Nombre actualizado.");
+      refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo renombrar.");
+    }
+  };
+
+
   const devices = devicesQ.data ?? [];
   const currentDevice = currentLocalId ? devices.find((d) => d.device_public_id === currentLocalId) : null;
   const requests = (reqQ.data as { id: string; device_id: string; navegador: string | null; sistema_operativo: string | null; solicitado_at: string }[]) ?? [];
