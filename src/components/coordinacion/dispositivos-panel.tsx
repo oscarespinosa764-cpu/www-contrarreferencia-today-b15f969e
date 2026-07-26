@@ -341,6 +341,9 @@ export function DispositivosPanel() {
                     </td>
                     <td className="py-2 pr-2">
                       <div className="flex flex-wrap gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => renameDevice(d.id, d.nombre_dispositivo)} title="Renombrar">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
                         {d.estado === "PENDIENTE" ? (
                           <>
                             <Button size="sm" variant="outline" onClick={() => act(approve as never, d.id, "Aprobado")}>
