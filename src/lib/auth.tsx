@@ -24,6 +24,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const TAB_KEY = "ref_tab_alive";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
