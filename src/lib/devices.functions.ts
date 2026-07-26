@@ -572,6 +572,62 @@ export const adminUnblockDevice = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---------- Renombrado administrativo (alias) ----------
+
+export const adminRenameDevice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { deviceId: string; nombre: string }) => d)
+  .handler(async ({ data, context }) => {
+    if (!(await isCallerAdminAuthorized(context.userId))) {
+      throw new Error("Solo administrador.");
+    }
+    if (typeof data.deviceId !== "string" || data.deviceId.length < 8) {
+      throw new Error("Dispositivo inválido.");
+    }
+    // Sanea: recorta espacios, limita longitud, rechaza HTML/JS.
+    const raw = (data.nombre ?? "").trim().slice(0, 120);
+    const nombre = raw.replace(/[<>]/g, "");
+    if (nombre !== raw) throw new Error("El nombre contiene caracteres no permitidos.");
+    const nuevoNombre = nombre.length > 0 ? nombre : null;
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const admin = supabaseAdmin as unknown as {
+      from: (t: string) => {
+        select: (c: string) => {
+          eq: (k: string, v: unknown) => {
+            maybeSingle: () => Promise<{ data: { id: string; nombre_dispositivo: string | null } | null }>;
+          };
+        };
+        update: (r: Record<string, unknown>) => {
+          eq: (k: string, v: unknown) => Promise<{ error: unknown }>;
+        };
+      };
+    };
+    const { data: dev } = await admin
+      .from("authorized_devices")
+      .select("id, nombre_dispositivo")
+      .eq("id", data.deviceId)
+      .maybeSingle();
+    if (!dev) throw new Error("Dispositivo inexistente.");
+
+    const anterior = dev.nombre_dispositivo;
+    await admin
+      .from("authorized_devices")
+      .update({ nombre_dispositivo: nuevoNombre })
+      .eq("id", data.deviceId);
+
+    await registrarAuditoriaServer(context.userId, {
+      accion: "DEVICE_RENAMED",
+      modulo: "dispositivos",
+      tabla: "authorized_devices",
+      registroId: data.deviceId,
+      resultado: "exito",
+      detalles: { alias_anterior: anterior, alias_nuevo: nuevoNombre },
+    });
+    return { ok: true };
+  });
+
+
 // ---------- Modo global ----------
 
 export const getSystemMode = createServerFn({ method: "POST" })
