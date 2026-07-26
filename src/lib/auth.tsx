@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [queryClient]);
 
   const isAdmin = roles.includes("admin");
   const canEdit = roles.includes("admin") || roles.includes("operativa");
