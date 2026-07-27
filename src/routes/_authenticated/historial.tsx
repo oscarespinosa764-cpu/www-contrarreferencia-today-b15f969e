@@ -1982,6 +1982,18 @@ function HistorialPage() {
 
       <InfoCasoDialog caso={infoCaso} onClose={() => setInfoCaso(null)} />
       <AuditoriaCasoDialog caso={audCaso} onClose={() => setAudCaso(null)} habilitado={isAdmin} />
+      {reactivarCaso && tipoCasoReactivableDesdeTabla(reactivarCaso.tabla) ? (
+        <DeshacerCancelacionDialog
+          open={!!reactivarCaso}
+          onOpenChange={(v) => { if (!v) setReactivarCaso(null); }}
+          tipoCaso={tipoCasoReactivableDesdeTabla(reactivarCaso.tabla) as TipoCasoReactivable}
+          casoId={reactivarCaso.casoId}
+          paciente={reactivarCaso.paciente || ""}
+          documento={reactivarCaso.documento || ""}
+          codigo={reactivarCaso.codigo || undefined}
+          estadoCancelado={reactivarCaso.estado || ""}
+        />
+      ) : null}
 
     </div>
   );
