@@ -3287,7 +3287,13 @@ export function SeguimientoDialog({
                     documento={documento}
                     tipoDocumento={caso?.tipo_documento}
                     cie10={caso?.cie10}
-                    ipsReceptora={caso?.ips_receptora ?? ipsReceptora}
+                    ipsReceptora={
+                      aceptacionVigente?.estado === "vigente"
+                        ? (aceptacionVigente.aceptacion.ips_receptora ??
+                            caso?.ips_receptora ??
+                            ipsReceptora)
+                        : (caso?.ips_receptora ?? ipsReceptora)
+                    }
                     empresaTraslado={empresaAmb || (() => {
                       const h = (historial ?? []).find(
                         (s) => String(s.tipo_seguimiento ?? "").toUpperCase().includes("AMBULANCIA COORDINADA"),
@@ -3298,7 +3304,35 @@ export function SeguimientoDialog({
                     especialidad={especialidadesList.join(", ")}
                     entidadPago={caso?.eapb}
                     tipoAmbulancia={caso?.tipo_ambulancia}
+                    quienAcepta={
+                      aceptacionVigente?.estado === "vigente"
+                        ? aceptacionVigente.aceptacion.nombre_acepta
+                        : null
+                    }
+                    cargoAcepta={
+                      aceptacionVigente?.estado === "vigente"
+                        ? aceptacionVigente.aceptacion.cargo_acepta
+                        : null
+                    }
+                    aceptacionOrigenId={
+                      aceptacionVigente?.estado === "vigente"
+                        ? aceptacionVigente.aceptacion.aceptacion_id
+                        : null
+                    }
                   />
+                  {aceptacionCargando && entregaOpen && (
+                    <p className="text-[10.5px] text-muted-foreground">
+                      Resolviendo aceptación vigente…
+                    </p>
+                  )}
+                  {!aceptacionCargando &&
+                    entregaOpen &&
+                    aceptacionVigente?.estado === "sin_aceptacion" && (
+                      <p className="text-[10.5px] text-amber-600">
+                        No se encontró una aceptación de IPS receptora vigente. Registre la
+                        aceptación antes de finalizar la entrega documental.
+                      </p>
+                    )}
                 </div>
               )}
 
