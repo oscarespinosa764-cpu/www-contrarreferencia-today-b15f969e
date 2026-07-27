@@ -2749,6 +2749,27 @@ export function SeguimientoDialog({
                 </div>
               )}
 
+              {/* CANCELACIÓN DEL TRÁMITE (RI) — motivo obligatorio en Detalle */}
+              {esInterna && tipoSeg === TI.CANCELACION_RI && (
+                <div className={sectionCls}>
+                  <p className={labelCls}>Cancelación del trámite</p>
+                  <p className="text-[12px] text-status-amber">
+                    Esta acción cierra el caso en estado <b>{RI_ESTADO_CANCELADO}</b> y lo archiva.
+                    Escribe el motivo en el campo <b>Detalle</b> (obligatorio, mínimo 5 caracteres).
+                  </p>
+                </div>
+              )}
+
+              {/* CIERRE POR CULMINACIÓN DE SOLICITUD (RI) */}
+              {esInterna && tipoSeg === TI.CIERRE_CONCLUSION && (
+                <div className={sectionCls}>
+                  <p className={labelCls}>Cierre por culminación de solicitud</p>
+                  <p className="text-[12px] text-muted-foreground">
+                    Esta acción cierra el caso en estado <b>{RI_ESTADO_CIERRE}</b> y lo archiva.
+                  </p>
+                </div>
+              )}
+
               {/* PENDIENTE COORDINACIÓN FECHA Y HORA EXAMEN (RI) */}
               {esInterna && tipoSeg === TI.PENDIENTE && (
                 <div className={sectionCls}>
