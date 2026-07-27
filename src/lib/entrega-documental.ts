@@ -123,10 +123,15 @@ export async function fetchDocumentosPorOrigen(origen?: OrigenDoc | null): Promi
 
     const norm = (v?: string | null) => (v ?? "").trim().toUpperCase();
     const org = norm(origen);
-    const seleccion = rows.filter((r) => {
-      const e = norm(r.extra1);
-      return e === "" || e === "COMUN" || e === "COMÚN" || e === org;
-    });
+    // SOAT_ADRES consume filas marcadas para SOAT o ADRES (compatibilidad con
+    // catálogos existentes que aún separan ambos códigos).
+    const aplica = (e: string): boolean => {
+      if (e === "" || e === "COMUN" || e === "COMÚN") return true;
+      if (org === "SOAT_ADRES") return e === "SOAT_ADRES" || e === "SOAT" || e === "ADRES";
+      return e === org;
+    };
+    const seleccion = rows.filter((r) => aplica(norm(r.extra1)));
+
 
     if (seleccion.length === 0) return documentosPorOrigen(origen);
     // Deduplica respetando orden.
