@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/app-header";
+import { FiltersBar } from "@/components/filters/filters-bar";
 import { Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
