@@ -227,39 +227,40 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
         </div>
       </Card>
 
-      <Card className="flex flex-wrap items-end gap-3 p-3">
-        <div>
-          <Label className="text-xs">Colaborador</Label>
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Buscar colaborador…"
-              value={busq}
-              onChange={(e) => setSearch({ q: e.target.value })}
-              className="h-9 w-64 pl-8 text-xs"
-            />
-          </div>
-        </div>
-        <div>
-          <Label className="text-xs">Cargo</Label>
-          <Select value={cargoF || "__all"} onValueChange={(v) => setSearch({ cargo: v === "__all" ? "" : v })}>
-            <SelectTrigger className="h-9 w-52 text-xs"><SelectValue placeholder="Cargo" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all">Todos los cargos</SelectItem>
-              {cargos.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        {(busq || cargoF) && (
-          <Button size="sm" variant="ghost" onClick={() => setSearch({ q: "", cargo: "" })}>
-            Limpiar filtros
-          </Button>
-        )}
-        {isAdmin && schedule && (
-          <Button size="sm" className="ml-auto" onClick={() => abrirAsignacion(null)} disabled={members.length === 0}>
-            <Plus className="mr-1.5 h-4 w-4" /> Agregar
-          </Button>
-        )}
+      <Card className="p-3">
+        <FiltersBar
+          activeCount={countActiveFilters({ busq, cargoF }, { busq: "", cargoF: "" })}
+          onClear={() => setSearch({ q: "", cargo: "" })}
+          primary={
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Buscar colaborador…"
+                value={busq}
+                onChange={(e) => setSearch({ q: e.target.value })}
+                className="h-9 w-full min-w-[220px] pl-8 text-xs sm:w-64"
+                aria-label="Buscar colaborador"
+              />
+            </div>
+          }
+          secondary={
+            <Select value={cargoF || "__all"} onValueChange={(v) => setSearch({ cargo: v === "__all" ? "" : v })}>
+              <SelectTrigger className="h-9 w-full text-xs sm:w-52" aria-label="Filtrar por cargo"><SelectValue placeholder="Cargo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">Todos los cargos</SelectItem>
+                {cargos.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          }
+          extraActions={
+            isAdmin && schedule ? (
+              <Button size="sm" className="ml-auto" onClick={() => abrirAsignacion(null)} disabled={members.length === 0}>
+                <Plus className="mr-1.5 h-4 w-4" /> Agregar
+              </Button>
+            ) : null
+          }
+        />
+
       </Card>
 
       {schedule && (
