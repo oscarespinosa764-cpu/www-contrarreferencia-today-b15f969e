@@ -2486,6 +2486,8 @@ function CasoConMenu({
   onExportarExcel,
   onVerAuditoria,
   puedeAuditar,
+  onReactivar,
+  puedeReactivar,
   codigo,
   sequenceItems,
   documento,
@@ -2499,6 +2501,8 @@ function CasoConMenu({
   onExportarExcel: () => void;
   onVerAuditoria: () => void;
   puedeAuditar: boolean;
+  onReactivar: () => void;
+  puedeReactivar: boolean;
   codigo: string;
   sequenceItems: Construido[];
   documento: string;
