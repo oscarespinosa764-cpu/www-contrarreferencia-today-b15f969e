@@ -20,10 +20,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  reactivarCasoCanceladoAdmin,
-  type TipoCasoReactivable,
-} from "@/lib/reactivar-caso.functions";
+import { reactivarCasoCanceladoAdmin } from "@/lib/reactivar-caso.functions";
+import type { TipoCasoReactivable } from "@/lib/reactivar-caso";
+
 
 type Props = {
   open: boolean;
