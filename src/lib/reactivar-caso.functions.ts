@@ -8,27 +8,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import {
+  TIPOS_CASO_REACTIVABLES,
+  type TipoCasoReactivable,
+} from "@/lib/reactivar-caso";
 
-export const TIPOS_CASO_REACTIVABLES = [
-  "entrante",
-  "remision",
-  "domiciliario",
-] as const;
-export type TipoCasoReactivable = (typeof TIPOS_CASO_REACTIVABLES)[number];
-
-export const ESTADOS_CANCEL_POR_TIPO: Record<TipoCasoReactivable, readonly string[]> = {
-  entrante: ["CANCELADO", "CANCELADO_VENCIMIENTO"],
-  remision: [
-    "CERRADO POR CANCELACION - AVAL PARA MANEJO INTEGRAL",
-    "CERRADO POR CANCELACION - CONTINUIDAD DE MANEJO INTEGRAL",
-    "CERRADO POR CANCELACION - DESISTIMIENTO DE TRASLADO GENERAL",
-    "CERRADO POR CANCELACION - MEJORIA CLINICA / ALTA MEDICA",
-  ],
-  domiciliario: [
-    "CERRADO POR CANCELACION DEL PROVEEDOR",
-    "CERRADO POR CANCELACION DE LA ESPECIALIDAD SOLICITANTE",
-  ],
-};
+export { TIPOS_CASO_REACTIVABLES, ESTADOS_CANCEL_POR_TIPO } from "@/lib/reactivar-caso";
+export type { TipoCasoReactivable } from "@/lib/reactivar-caso";
 
 const schema = z.object({
   tipoCaso: z.enum(TIPOS_CASO_REACTIVABLES),
@@ -36,6 +22,7 @@ const schema = z.object({
   motivoReactivacion: z.string().trim().min(10).max(500),
   updatedAtEsperado: z.string().min(1),
 });
+
 
 type ResultadoRPC = {
   ok: boolean;
