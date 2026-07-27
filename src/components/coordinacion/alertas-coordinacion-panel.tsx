@@ -149,12 +149,17 @@ export function AlertasCoordinacionPanel() {
     };
   }, [alertas]);
 
-  const filtrosActivos =
-    q.trim() !== "" ||
-    fEstado !== "todas" ||
-    fPrioridad !== "todas" ||
-    fModulo !== "todos" ||
-    fOrigen !== "todos";
+  const filterDefaults = {
+    q: "",
+    fEstado: "todas",
+    fPrioridad: "todas",
+    fModulo: "todos",
+    fOrigen: "todos",
+  };
+  const activeFilters = countActiveFilters(
+    { q, fEstado, fPrioridad, fModulo, fOrigen },
+    filterDefaults,
+  );
 
   const manejar = (a: Alerta, estado: EstadoAlerta) => {
     let nota: string | undefined;
