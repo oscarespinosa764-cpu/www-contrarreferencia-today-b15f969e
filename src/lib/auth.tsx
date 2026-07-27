@@ -1,7 +1,13 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
+import {
+  construirTurnoSesion,
+  parseTurnoSesion,
+  type TurnoCodigo,
+  type TurnoSesion,
+} from "@/lib/turno";
 
 type AppRole = "admin" | "operativa" | "temporal";
 
@@ -15,6 +21,9 @@ interface AuthContextValue {
   canEdit: boolean;
   activo: boolean;
   isActiveMember: boolean;
+  turnoSesion: TurnoSesion | null;
+  setTurnoSesion: (codigo: TurnoCodigo) => void;
+  clearTurnoSesion: () => void;
   signOut: () => Promise<void>;
 }
 
@@ -22,6 +31,27 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 /** Marca de pestaña viva: se borra al cerrar la pestaña/navegador (sessionStorage). */
 const TAB_KEY = "ref_tab_alive";
+
+/** Clave canónica del turno de sesión por usuario. */
+const turnoKey = (uid: string) => `cedim-turno-sesion:${uid}`;
+
+function readTurnoDeSesion(uid: string): TurnoSesion | null {
+  try {
+    const raw = sessionStorage.getItem(turnoKey(uid));
+    if (!raw) return null;
+    return parseTurnoSesion(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+function writeTurnoDeSesion(uid: string, sesion: TurnoSesion) {
+  sessionStorage.setItem(turnoKey(uid), JSON.stringify(sesion));
+}
+
+function clearTurnoDeSesion(uid: string) {
+  sessionStorage.removeItem(turnoKey(uid));
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -31,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [activo, setActivo] = useState(false);
   const [rolesLoaded, setRolesLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [turnoSesion, setTurnoSesionState] = useState<TurnoSesion | null>(null);
 
   useEffect(() => {
     const loadRoles = async (uid: string) => {
@@ -43,11 +74,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRolesLoaded(true);
     };
 
+    const applySessionUser = (sess: Session | null) => {
+      setSession(sess);
+      setUser(sess?.user ?? null);
+      if (sess?.user) {
+        // Al cambiar de usuario descartamos cualquier turno anterior en memoria
+        // y leemos únicamente la clave asociada al nuevo user.id.
+        setTurnoSesionState(readTurnoDeSesion(sess.user.id));
+        setTimeout(() => loadRoles(sess.user.id), 0);
+      } else {
+        setRoles([]);
+        setActivo(false);
+        setRolesLoaded(false);
+        setTurnoSesionState(null);
+      }
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, sess) => {
-      // Al iniciar sesión activamente en esta pestaña, marcarla como viva.
       if (event === "SIGNED_IN") {
-        // Solo registrar como inicio de sesión real cuando la pestaña aún no
-        // estaba marcada (login activo), no en refrescos de token.
         const eraNuevo = !sessionStorage.getItem(TAB_KEY);
         sessionStorage.setItem(TAB_KEY, "1");
         if (eraNuevo) {
@@ -62,21 +106,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (event === "SIGNED_OUT") {
         sessionStorage.removeItem(TAB_KEY);
-        // Limpiar caché de queries del usuario anterior para evitar que
-        // datos privados persistan al cambiar de turno. La identidad del
+        // Limpia el turno del usuario que cerraba sesión (si lo conocemos).
+        if (user?.id) clearTurnoDeSesion(user.id);
+        setTurnoSesionState(null);
+        // Limpia caché de queries del usuario anterior. La identidad del
         // dispositivo autorizado vive en IndexedDB y NO se toca aquí.
         queryClient.clear();
       }
 
-      setSession(sess);
-      setUser(sess?.user ?? null);
-      if (sess?.user) {
-        setTimeout(() => loadRoles(sess.user.id), 0);
-      } else {
-        setRoles([]);
-        setActivo(false);
-        setRolesLoaded(false);
-      }
+      applySessionUser(sess);
       setLoading(false);
     });
 
@@ -89,22 +127,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         setRoles([]);
         setActivo(false);
+        setTurnoSesionState(null);
         setLoading(false);
         return;
       }
       if (data.session) sessionStorage.setItem(TAB_KEY, "1");
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
+      applySessionUser(data.session);
       if (data.session?.user) loadRoles(data.session.user.id);
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
+    // Intencional: no incluir `user` en deps para evitar re-suscripciones.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryClient]);
 
   const isAdmin = roles.includes("admin");
   const canEdit = roles.includes("admin") || roles.includes("operativa");
   const isActiveMember = activo && roles.length > 0;
+
+  const setTurnoSesion = useCallback(
+    (codigo: TurnoCodigo) => {
+      if (!user?.id) return;
+      const sesion = construirTurnoSesion(codigo);
+      writeTurnoDeSesion(user.id, sesion);
+      setTurnoSesionState(sesion);
+    },
+    [user?.id],
+  );
+
+  const clearTurnoSesion = useCallback(() => {
+    if (user?.id) clearTurnoDeSesion(user.id);
+    setTurnoSesionState(null);
+  }, [user?.id]);
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -112,7 +167,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, session, roles, loading, rolesLoaded, isAdmin, canEdit, activo, isActiveMember, signOut }}
+      value={{
+        user,
+        session,
+        roles,
+        loading,
+        rolesLoaded,
+        isAdmin,
+        canEdit,
+        activo,
+        isActiveMember,
+        turnoSesion,
+        setTurnoSesion,
+        clearTurnoSesion,
+        signOut,
+      }}
     >
       {children}
     </AuthContext.Provider>
