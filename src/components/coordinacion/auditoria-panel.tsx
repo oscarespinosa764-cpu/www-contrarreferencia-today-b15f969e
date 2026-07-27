@@ -87,50 +87,48 @@ export function AuditoriaPanel() {
         </Button>
       }
     >
-      <div className="mb-3 grid gap-2 sm:grid-cols-4">
-        <div className="relative sm:col-span-2">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="pl-8"
-            placeholder="Buscar por acción, usuario o tabla…"
-            value={texto}
-            onChange={(e) => {
-              setTexto(e.target.value);
-              setPage(0);
-            }}
-          />
-        </div>
-        <Select
-          value={modulo}
-          onValueChange={(v) => {
-            setModulo(v);
-            setPage(0);
-          }}
-        >
-          <SelectTrigger><SelectValue placeholder="Módulo" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">Todos los módulos</SelectItem>
-            {modulosDisponibles.map((m) => (
-              <SelectItem key={m} value={m}>{m}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={resultado}
-          onValueChange={(v) => {
-            setResultado(v);
-            setPage(0);
-          }}
-        >
-          <SelectTrigger><SelectValue placeholder="Resultado" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">Todos</SelectItem>
-            <SelectItem value="exito">Éxito</SelectItem>
-            <SelectItem value="error">Error</SelectItem>
-            <SelectItem value="denegado">Denegado</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <FiltersBar
+        className="mb-3"
+        activeCount={countActiveFilters(
+          { texto, modulo, resultado },
+          { texto: "", modulo: "__all__", resultado: "__all__" },
+        )}
+        onClear={() => { setTexto(""); setModulo("__all__"); setResultado("__all__"); setPage(0); }}
+        primary={
+          <div className="relative min-w-[240px] flex-1">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="pl-8"
+              placeholder="Buscar por acción, usuario o tabla…"
+              value={texto}
+              onChange={(e) => { setTexto(e.target.value); setPage(0); }}
+            />
+          </div>
+        }
+        secondary={
+          <>
+            <Select value={modulo} onValueChange={(v) => { setModulo(v); setPage(0); }}>
+              <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="Módulo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Todos los módulos</SelectItem>
+                {modulosDisponibles.map((m) => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={resultado} onValueChange={(v) => { setResultado(v); setPage(0); }}>
+              <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder="Resultado" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Todos</SelectItem>
+                <SelectItem value="exito">Éxito</SelectItem>
+                <SelectItem value="error">Error</SelectItem>
+                <SelectItem value="denegado">Denegado</SelectItem>
+              </SelectContent>
+            </Select>
+          </>
+        }
+      />
+
 
       <div className="overflow-auto rounded-lg border border-border">
         <table className="w-full min-w-[900px] text-xs">
