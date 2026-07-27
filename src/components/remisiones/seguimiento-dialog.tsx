@@ -2166,8 +2166,12 @@ export function SeguimientoDialog({
         else if (tipoSeg === TI.LLEGADA_AMB) update.estado = "AMBULANCIA EN SITIO";
         else if (tipoSeg === TI.TEP_ACTIVACION) update.estado = "TEP ACTIVADO";
         else if (tipoSeg === TI.AMB_COORDINADA_ESP) update.estado = "AMBULANCIA COORDINADA";
-        else if (tipoSeg === TI.CULMINACION) {
-          update.estado = "CULMINADO";
+        else if (tipoSeg === TI.CIERRE_CONCLUSION) {
+          update.estado = RI_ESTADO_CIERRE;
+          update.archivado = true;
+        }
+        else if (tipoSeg === TI.CANCELACION_RI) {
+          update.estado = RI_ESTADO_CANCELADO;
           update.archivado = true;
         }
       }
