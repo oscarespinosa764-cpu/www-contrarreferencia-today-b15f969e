@@ -1751,6 +1751,8 @@ export function SeguimientoDialog({
     setFisCargo("");
     setFisConQuien("");
     setIpsReceptoraSede("");
+    setNombreAcepta("");
+    setCargoAcepta("");
     setNegMotivo("");
     setNegCual("");
     setNegIpsInput("");
