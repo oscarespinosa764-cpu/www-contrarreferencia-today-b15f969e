@@ -2,10 +2,11 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
-import { getTurno, useClientTime } from "@/lib/turno";
+import { getTurno, useClientTime, TURNOS_CANONICOS, TURNOS_CODIGOS, isTurnoCodigo, type TurnoCodigo } from "@/lib/turno";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import cedimLogo from "@/assets/cedim-logo.png";
 import {
@@ -17,6 +18,7 @@ import {
   Lock,
   ArrowRight,
   ShieldCheck,
+  Clock,
 } from "lucide-react";
 
 export const Route = createFileRoute("/login")({
@@ -44,9 +46,10 @@ const features = [
 const pad = (n: number) => String(n).padStart(2, "0");
 
 function LoginPage() {
-  const { user, loading } = useAuth();
+  const { user, loading, setTurnoSesion } = useAuth();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
+  const [turnoCodigo, setTurnoCodigo] = useState<TurnoCodigo | "">("");
 
   const turnoLabel = useClientTime((d) => {
     const t = getTurno(d);
@@ -63,13 +66,20 @@ function LoginPage() {
     const email = String(form.get("email")).trim();
     const password = String(form.get("password"));
     if (!email) return toast.error("Ingresa tu correo institucional");
+    if (!isTurnoCodigo(turnoCodigo)) return toast.error("Selecciona el turno operativo");
     setBusy(true);
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
     // Mensaje genérico: no revela si el correo existe o no.
-    if (error) toast.error("Credenciales incorrectas. Verifica tus datos.");
-    else navigate({ to: "/dashboard", replace: true });
+    if (error || !data.user) {
+      toast.error("Credenciales incorrectas. Verifica tus datos.");
+      return;
+    }
+    // Persistir el turno únicamente después de una autenticación válida,
+    // asociado al user.id real devuelto por Supabase (no al cliente).
+    setTurnoSesion(turnoCodigo);
+    navigate({ to: "/dashboard", replace: true });
   };
 
   return (
