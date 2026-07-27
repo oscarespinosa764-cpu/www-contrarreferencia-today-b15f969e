@@ -560,102 +560,106 @@ function RemisionesPage() {
       {/* Pestañas + filtros + lista */}
       <div className="mt-5">
         <Tabs value={tab} onValueChange={setTab}>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <TabsList className="flex h-auto flex-wrap">
-              <TabsTrigger value="remisiones">📋 Remisiones</TabsTrigger>
-              <TabsTrigger value="especiales">🚑 PHD/PAD/O2/Especiales</TabsTrigger>
-              <TabsTrigger value="internas">🏥 Ref. Internas</TabsTrigger>
-              <TabsTrigger value="pendientes">⏳ Pendientes</TabsTrigger>
-            </TabsList>
+          <TabsList className="flex h-auto flex-wrap">
+            <TabsTrigger value="remisiones">📋 Remisiones</TabsTrigger>
+            <TabsTrigger value="especiales">🚑 PHD/PAD/O2/Especiales</TabsTrigger>
+            <TabsTrigger value="internas">🏥 Ref. Internas</TabsTrigger>
+            <TabsTrigger value="pendientes">⏳ Pendientes</TabsTrigger>
+          </TabsList>
 
-            <FiltersBar
-              activeCount={countActiveFilters(
-                { q, prioridad, eps, estadoFiltro },
-                { q: "", prioridad: "todas", eps: "todas", estadoFiltro: "todos" },
+          {/* Fila de filtros + acciones — FiltersBar mide su propio ancho útil vía @container */}
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <FiltersBar
+                activeCount={countActiveFilters(
+                  { q, prioridad, eps, estadoFiltro },
+                  { q: "", prioridad: "todas", eps: "todas", estadoFiltro: "todos" },
+                )}
+                onClear={() => {
+                  setQ("");
+                  setPrioridad("todas");
+                  setEps("todas");
+                  setEstadoFiltro("todos");
+                }}
+                panelTitle="Filtros de salientes"
+                mode="inmediato"
+                primary={
+                  <div className="relative min-w-[220px] flex-1 max-w-md">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      className="w-full rounded-full pl-9"
+                      placeholder="Buscar paciente, documento, IPS…"
+                      value={q}
+                      onChange={(e) => setQ(e.target.value)}
+                      aria-label="Buscar paciente, documento o IPS"
+                    />
+                  </div>
+                }
+                secondary={
+                  <>
+                    <Select value={prioridad} onValueChange={setPrioridad}>
+                      <SelectTrigger className="w-full sm:w-36 rounded-full" aria-label="Prioridad">
+                        <SelectValue placeholder="Prioridad" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todas">Prioridad</SelectItem>
+                        <SelectItem value="alta">Alta</SelectItem>
+                        <SelectItem value="media">Media</SelectItem>
+                        <SelectItem value="baja">Baja</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={eps} onValueChange={setEps}>
+                      <SelectTrigger className="w-full sm:w-48 rounded-full" aria-label="EPS / Asegurador">
+                        <SelectValue placeholder="EPS / Asegurador" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todas">EPS / Asegurador</SelectItem>
+                        {aseguradores.map((a) => (
+                          <SelectItem key={a} value={a}>
+                            {a}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={estadoFiltro} onValueChange={setEstadoFiltro}>
+                      <SelectTrigger className="w-full sm:w-36 rounded-full" aria-label="Estado">
+                        <SelectValue placeholder="Todos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Estado: Todos</SelectItem>
+                        <SelectItem value="pendiente">Pendientes</SelectItem>
+                        <SelectItem value="aceptad">Aceptadas</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </>
+                }
+              />
+            </div>
+
+            {/* Zona de acciones — separada de los filtros */}
+            <div className="flex shrink-0 items-center gap-2">
+              {canEdit && (
+                <Button className="rounded-full" onClick={() => setOpen(true)}>
+                  <Plus className="mr-1.5 h-4 w-4" /> Nuevo
+                </Button>
               )}
-              onClear={() => {
-                setQ("");
-                setPrioridad("todas");
-                setEps("todas");
-                setEstadoFiltro("todos");
-              }}
-              panelTitle="Filtros de salientes"
-              mode="inmediato"
-              primary={
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    className="w-56 rounded-full pl-9"
-                    placeholder="Buscar paciente, documento, IPS…"
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                    aria-label="Buscar paciente, documento o IPS"
-                  />
-                </div>
-              }
-              secondary={
-                <>
-                  <Select value={prioridad} onValueChange={setPrioridad}>
-                    <SelectTrigger className="w-full @2xl:w-32 rounded-full" aria-label="Prioridad">
-                      <SelectValue placeholder="Prioridad" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todas">Prioridad</SelectItem>
-                      <SelectItem value="alta">Alta</SelectItem>
-                      <SelectItem value="media">Media</SelectItem>
-                      <SelectItem value="baja">Baja</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={eps} onValueChange={setEps}>
-                    <SelectTrigger className="w-full @2xl:w-36 rounded-full" aria-label="EPS / Asegurador">
-                      <SelectValue placeholder="EPS / Asegurador" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todas">EPS / Asegurador</SelectItem>
-                      {aseguradores.map((a) => (
-                        <SelectItem key={a} value={a}>
-                          {a}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select value={estadoFiltro} onValueChange={setEstadoFiltro}>
-                    <SelectTrigger className="w-full @2xl:w-28 rounded-full" aria-label="Estado">
-                      <SelectValue placeholder="Todos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todos</SelectItem>
-                      <SelectItem value="pendiente">Pendientes</SelectItem>
-                      <SelectItem value="aceptad">Aceptadas</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </>
-              }
-              extraActions={
-                <>
-                  {canEdit && (
-                    <Button className="rounded-full" onClick={() => setOpen(true)}>
-                      <Plus className="mr-1.5 h-4 w-4" /> Nuevo
-                    </Button>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full"
-                    aria-label="Actualizar"
-                    onClick={() => {
-                      qc.invalidateQueries({ queryKey: ["remisiones"] });
-                      qc.invalidateQueries({ queryKey: ["domiciliarios"] });
-                      qc.invalidateQueries({ queryKey: ["referencia-interna"] });
-                      qc.invalidateQueries({ queryKey: ["pendientes-rem"] });
-                    }}
-                  >
-                    <RotateCw className="h-4 w-4" />
-                  </Button>
-                </>
-              }
-            />
+              <Button
+                variant="outline"
+                size="icon"
+                className="rounded-full"
+                aria-label="Actualizar"
+                onClick={() => {
+                  qc.invalidateQueries({ queryKey: ["remisiones"] });
+                  qc.invalidateQueries({ queryKey: ["domiciliarios"] });
+                  qc.invalidateQueries({ queryKey: ["referencia-interna"] });
+                  qc.invalidateQueries({ queryKey: ["pendientes-rem"] });
+                }}
+              >
+                <RotateCw className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
+
 
           <TabsContent value="remisiones" className="pt-4">
             {isLoading ? (
