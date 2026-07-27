@@ -854,6 +854,8 @@ export function SeguimientoDialog({
     const arr: string[] = [];
     if (proximo) arr.push(proximo);
     if (activo) arr.push(T.CAMBIO_UNIDAD);
+    // Acción terminal de cancelación siempre disponible mientras esté activo.
+    if (activo && proximo !== TI.CANCELACION_RI) arr.push(TI.CANCELACION_RI);
     return arr;
   }, [historial, casoInterna]);
 
