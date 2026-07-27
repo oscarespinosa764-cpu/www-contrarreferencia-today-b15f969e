@@ -300,6 +300,9 @@ export function SeguimientoDialog({
   // Aceptación IPS
   const [ipsReceptora, setIpsReceptora] = useState("");
   const [ipsReceptoraSede, setIpsReceptoraSede] = useState("");
+  // Fase 5B — Bloque 2A: nombre/cargo de quien acepta (estructurados).
+  const [nombreAcepta, setNombreAcepta] = useState("");
+  const [cargoAcepta, setCargoAcepta] = useState("");
 
   // Negaciones
   const [negMotivo, setNegMotivo] = useState("");
