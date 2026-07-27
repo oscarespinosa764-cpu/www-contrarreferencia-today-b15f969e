@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
 import { Panel } from "@/components/stat-card";
+import { FiltersBar, countActiveFilters } from "@/components/filters/filters-bar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
