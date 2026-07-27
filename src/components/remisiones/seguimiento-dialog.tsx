@@ -785,9 +785,15 @@ export function SeguimientoDialog({
 
   const mostrarAceptacion = faseAntesAceptacion;
   const mostrarAmbulancia = faseAceptadoSin;
+  // ENTREGA DOCUMENTAL: solo mientras el caso esté aceptado con ambulancia y NO haya
+  // pasado a PENDIENTE EGRESO (una vez registrada la entrega, el estado transiciona
+  // canonicamente a PENDIENTE EGRESO y esta opción debe ocultarse).
   const mostrarEntregaDocOpt = faseAceptadoCon;
-  // Cierre por egreso: disponible una vez el caso está aceptado (con ambulancia) o pendiente de egreso.
-  const mostrarCierreOpt = faseAceptadoCon || facePendienteEgreso;
+  // CIERRE POR EGRESO: disponible ÚNICAMENTE cuando exista entrega documental
+  // persistida (el estado canónico PENDIENTE EGRESO es la evidencia de esa
+  // transición). Antes de la entrega no debe aparecer, aunque el caso ya tenga
+  // ambulancia coordinada. Fase 5B — Parte 1 (secuencia entrega ↔ cierre).
+  const mostrarCierreOpt = facePendienteEgreso;
   // CIERRE POR TRASLADO EFECTIVO: solo tras completar la entrega documental
   // (estado PENDIENTE EGRESO). Antes de esa etapa NO debe aparecer (ni en gris).
   const mostrarTrasladoOpt = facePendienteEgreso;
