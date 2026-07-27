@@ -81,6 +81,8 @@ import {
 } from "@/lib/indigo-trazabilidad";
 import { EntregaDocumentalDialog } from "@/components/remisiones/entrega-documental-dialog";
 import { RiLlegadaQRPanel } from "@/components/remisiones/ri-llegada-qr-panel";
+import { resolverAceptacionVigente } from "@/lib/salientes-aceptacion.functions";
+import { limpiarNombreAcepta, limpiarCargoAcepta, NOMBRE_ACEPTA_MAX, CARGO_ACEPTA_MAX } from "@/lib/salientes-aceptacion";
 
 type Props = {
   open: boolean;
