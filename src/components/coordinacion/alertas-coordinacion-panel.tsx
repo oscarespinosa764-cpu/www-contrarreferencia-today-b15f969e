@@ -16,7 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, ShieldAlert, SlidersHorizontal, X, Zap, User } from "lucide-react";
+import { FiltersBar, countActiveFilters } from "@/components/filters/filters-bar";
+import { Search, ShieldAlert, Zap, User } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { NIVEL_BADGE } from "@/lib/avisos-reglas";
@@ -84,7 +85,6 @@ export function AlertasCoordinacionPanel() {
   const [fPrioridad, setFPrioridad] = useState("todas");
   const [fModulo, setFModulo] = useState("todos");
   const [fOrigen, setFOrigen] = useState("todos");
-  const [filtrosOpen, setFiltrosOpen] = useState(false);
 
   const { data: alertas, isLoading } = useQuery({
     queryKey: ["alertas-coordinacion"],
@@ -149,12 +149,17 @@ export function AlertasCoordinacionPanel() {
     };
   }, [alertas]);
 
-  const filtrosActivos =
-    q.trim() !== "" ||
-    fEstado !== "todas" ||
-    fPrioridad !== "todas" ||
-    fModulo !== "todos" ||
-    fOrigen !== "todos";
+  const filterDefaults = {
+    q: "",
+    fEstado: "todas",
+    fPrioridad: "todas",
+    fModulo: "todos",
+    fOrigen: "todos",
+  };
+  const activeFilters = countActiveFilters(
+    { q, fEstado, fPrioridad, fModulo, fOrigen },
+    filterDefaults,
+  );
 
   const manejar = (a: Alerta, estado: EstadoAlerta) => {
     let nota: string | undefined;
@@ -175,104 +180,101 @@ export function AlertasCoordinacionPanel() {
         administran en Control de Mando → Alertas y avisos → Reglas de coordinación.
       </p>
 
-      {/* Resumen de estados + botón compacto de filtros (no ocupan espacio permanente) */}
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-1.5 text-[11px] font-semibold">
-          <span className="rounded-full bg-status-red/15 px-2.5 py-0.5 text-status-red">
-            {resumen.abiertas} abiertas
-          </span>
-          <span className="rounded-full bg-status-amber/15 px-2.5 py-0.5 text-status-amber">
-            {resumen.revision} en revisión
-          </span>
-          <span className="rounded-full bg-status-sky/15 px-2.5 py-0.5 text-status-sky">
-            {resumen.gestionadas} gestionadas
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-vitalis-blue/15 px-2.5 py-0.5 text-vitalis-blue">
-            <Zap className="h-3 w-3" />
-            {resumen.automaticas} automáticas
-          </span>
-        </div>
-        <Button
-          type="button"
-          variant={filtrosActivos ? "default" : "outline"}
-          size="sm"
-          className="rounded-full"
-          onClick={() => setFiltrosOpen((o) => !o)}
-        >
-          <SlidersHorizontal className="mr-1.5 h-3.5 w-3.5" />
-          Filtrar{filtrosActivos ? " ·" : ""}
-        </Button>
+      {/* Resumen de estados (siempre visible) */}
+      <div className="mb-3 flex flex-wrap gap-1.5 text-[11px] font-semibold">
+        <span className="rounded-full bg-status-red/15 px-2.5 py-0.5 text-status-red">
+          {resumen.abiertas} abiertas
+        </span>
+        <span className="rounded-full bg-status-amber/15 px-2.5 py-0.5 text-status-amber">
+          {resumen.revision} en revisión
+        </span>
+        <span className="rounded-full bg-status-sky/15 px-2.5 py-0.5 text-status-sky">
+          {resumen.gestionadas} gestionadas
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full bg-vitalis-blue/15 px-2.5 py-0.5 text-vitalis-blue">
+          <Zap className="h-3 w-3" />
+          {resumen.automaticas} automáticas
+        </span>
       </div>
 
-      {filtrosOpen && (
-        <div className="mb-4 rounded-xl border border-border bg-muted/30 p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-muted-foreground">Filtros</span>
-            <button
-              type="button"
-              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
-              onClick={() => {
-                setQ("");
-                setFEstado("todas");
-                setFPrioridad("todas");
-                setFModulo("todos");
-                setFOrigen("todos");
-              }}
-            >
-              <X className="h-3 w-3" /> Limpiar
-            </button>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            <div className="relative min-w-0">
+      {/* Filtros — infraestructura compartida (modo inmediato). */}
+      <div className="mb-4">
+        <FiltersBar
+          activeCount={activeFilters}
+          onClear={() => {
+            setQ("");
+            setFEstado("todas");
+            setFPrioridad("todas");
+            setFModulo("todos");
+            setFOrigen("todos");
+          }}
+          panelTitle="Filtros de alertas"
+          mode="inmediato"
+          primary={
+            <div className="relative min-w-[220px] flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                className="rounded-full pl-9"
+                className="w-full rounded-full pl-9"
                 placeholder="Buscar alerta o cupo…"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
+                aria-label="Buscar alerta o cupo"
               />
             </div>
-            <Select value={fEstado} onValueChange={setFEstado}>
-              <SelectTrigger className="rounded-full"><SelectValue placeholder="Estado" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todas">Todos los estados</SelectItem>
-                <SelectItem value="ABIERTA">Abiertas</SelectItem>
-                <SelectItem value="EN REVISIÓN">En revisión</SelectItem>
-                <SelectItem value="GESTIONADA">Gestionadas</SelectItem>
-                <SelectItem value="CERRADA SIN IRREGULARIDAD">Cerradas sin irregularidad</SelectItem>
-                <SelectItem value="CERRADA CON HALLAZGO">Cerradas con hallazgo</SelectItem>
-                <SelectItem value="DESCARTADA CON JUSTIFICACIÓN">Descartadas</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={fPrioridad} onValueChange={setFPrioridad}>
-              <SelectTrigger className="rounded-full"><SelectValue placeholder="Prioridad" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todas">Toda prioridad</SelectItem>
-                <SelectItem value="CRITICO">Crítica</SelectItem>
-                <SelectItem value="ALTO">Alta</SelectItem>
-                <SelectItem value="MEDIO">Media</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={fModulo} onValueChange={setFModulo}>
-              <SelectTrigger className="rounded-full"><SelectValue placeholder="Módulo" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos los módulos</SelectItem>
-                {modulos.map((m) => (
-                  <SelectItem key={m} value={m}>{m}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={fOrigen} onValueChange={setFOrigen}>
-              <SelectTrigger className="rounded-full"><SelectValue placeholder="Origen" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todo origen</SelectItem>
-                <SelectItem value="auto">Automáticas (motor)</SelectItem>
-                <SelectItem value="manual">Manuales (evento)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      )}
+          }
+          secondary={
+            <>
+              <Select value={fEstado} onValueChange={setFEstado}>
+                <SelectTrigger className="w-full sm:w-44 rounded-full" aria-label="Estado">
+                  <SelectValue placeholder="Estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todos los estados</SelectItem>
+                  <SelectItem value="ABIERTA">Abiertas</SelectItem>
+                  <SelectItem value="EN REVISIÓN">En revisión</SelectItem>
+                  <SelectItem value="GESTIONADA">Gestionadas</SelectItem>
+                  <SelectItem value="CERRADA SIN IRREGULARIDAD">Cerradas sin irregularidad</SelectItem>
+                  <SelectItem value="CERRADA CON HALLAZGO">Cerradas con hallazgo</SelectItem>
+                  <SelectItem value="DESCARTADA CON JUSTIFICACIÓN">Descartadas</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={fPrioridad} onValueChange={setFPrioridad}>
+                <SelectTrigger className="w-full sm:w-36 rounded-full" aria-label="Prioridad">
+                  <SelectValue placeholder="Prioridad" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Toda prioridad</SelectItem>
+                  <SelectItem value="CRITICO">Crítica</SelectItem>
+                  <SelectItem value="ALTO">Alta</SelectItem>
+                  <SelectItem value="MEDIO">Media</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={fModulo} onValueChange={setFModulo}>
+                <SelectTrigger className="w-full sm:w-40 rounded-full" aria-label="Módulo">
+                  <SelectValue placeholder="Módulo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos los módulos</SelectItem>
+                  {modulos.map((m) => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={fOrigen} onValueChange={setFOrigen}>
+                <SelectTrigger className="w-full sm:w-44 rounded-full" aria-label="Origen">
+                  <SelectValue placeholder="Origen" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todo origen</SelectItem>
+                  <SelectItem value="auto">Automáticas (motor)</SelectItem>
+                  <SelectItem value="manual">Manuales (evento)</SelectItem>
+                </SelectContent>
+              </Select>
+            </>
+          }
+        />
+      </div>
+
 
       <div
         className="scrollbar-invisible overflow-y-auto overflow-x-hidden pr-0.5"

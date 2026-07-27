@@ -6,6 +6,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FiltersBar, countActiveFilters } from "@/components/filters/filters-bar";
+import { Search } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -89,14 +91,27 @@ export function SeguimientoControl({ casos, catalogos, plantillas, tick }: Props
 
   return (
     <>
-      <div className="relative mb-4 mx-auto max-w-md">
-        <Input
-          className="rounded-full pl-4"
-          placeholder="Buscar por documento, código, paciente…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
+      <div className="mb-4">
+        <FiltersBar
+          activeCount={countActiveFilters({ q }, { q: "" })}
+          onClear={() => setQ("")}
+          panelTitle="Filtros de seguimiento"
+          mode="inmediato"
+          primary={
+            <div className="relative min-w-[220px] flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                className="w-full rounded-full pl-9"
+                placeholder="Buscar por documento, código, paciente…"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                aria-label="Buscar caso"
+              />
+            </div>
+          }
         />
       </div>
+
 
       {filtrados.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">No hay cupos activos en seguimiento.</p>

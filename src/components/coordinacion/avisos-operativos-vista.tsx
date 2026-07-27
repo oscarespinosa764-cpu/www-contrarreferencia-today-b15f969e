@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FiltersBar, countActiveFilters } from "@/components/filters/filters-bar";
 import { Search } from "lucide-react";
 import { useAvisosOperativos } from "@/lib/use-avisos-operativos";
 import { NIVEL_BADGE } from "@/lib/avisos-reglas";
@@ -56,30 +57,48 @@ export function AvisosOperativosVista() {
         La configuración se realiza en Control de Mando → Alertas y avisos.
       </p>
 
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
-        <div className="relative w-full min-w-0 sm:max-w-md sm:flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="rounded-full pl-9"
-            placeholder="Buscar aviso, paciente, módulo…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-        </div>
-        <Select value={filtro} onValueChange={setFiltro}>
-          <SelectTrigger className="w-full rounded-full sm:w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos</SelectItem>
-            <SelectItem value="automaticos">Automáticos</SelectItem>
-            <SelectItem value="manuales">Manuales</SelectItem>
-            <SelectItem value="criticas">Críticas</SelectItem>
-            <SelectItem value="altas">Altas</SelectItem>
-            <SelectItem value="medias">Medias</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="mb-4">
+        <FiltersBar
+          activeCount={countActiveFilters(
+            { q, filtro },
+            { q: "", filtro: "todos" },
+          )}
+          onClear={() => {
+            setQ("");
+            setFiltro("todos");
+          }}
+          panelTitle="Filtros de avisos"
+          mode="inmediato"
+          primary={
+            <div className="relative min-w-[220px] flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                className="w-full rounded-full pl-9"
+                placeholder="Buscar aviso, paciente, módulo…"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                aria-label="Buscar aviso"
+              />
+            </div>
+          }
+          secondary={
+            <Select value={filtro} onValueChange={setFiltro}>
+              <SelectTrigger className="w-full sm:w-44 rounded-full" aria-label="Filtro">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="automaticos">Automáticos</SelectItem>
+                <SelectItem value="manuales">Manuales</SelectItem>
+                <SelectItem value="criticas">Críticas</SelectItem>
+                <SelectItem value="altas">Altas</SelectItem>
+                <SelectItem value="medias">Medias</SelectItem>
+              </SelectContent>
+            </Select>
+          }
+        />
       </div>
+
 
       <div
         className="scrollbar-invisible overflow-y-auto overflow-x-hidden pr-0.5"
