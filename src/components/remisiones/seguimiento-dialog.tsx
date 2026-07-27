@@ -80,6 +80,7 @@ import {
   type NegacionGrupo,
 } from "@/lib/indigo-trazabilidad";
 import { EntregaDocumentalDialog } from "@/components/remisiones/entrega-documental-dialog";
+import { RiLlegadaQRPanel } from "@/components/remisiones/ri-llegada-qr-panel";
 
 type Props = {
   open: boolean;
