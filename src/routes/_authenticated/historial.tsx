@@ -2719,30 +2719,39 @@ function PacienteResultado({
           </p>
         </div>
       ) : (
-        rows.map((row, idx) => (
-          <CasoConMenu
-            key={row.key}
-            expanded={casoExpandido === row.key}
-            onVerSecuencia={() => onToggleCaso(row.key)}
-            onBitacora={() => onBitacoraCaso(row.construido)}
-            onInfo={() => onInfoCaso(row.construido)}
-            onCopiarCodigo={() => onCopiarCodigo(row.construido)}
-            onExportarExcel={() => onExportarExcelCaso(row.construido)}
-            onVerAuditoria={() => onVerAuditoriaCaso(row.construido)}
-            puedeAuditar={puedeAuditar}
-            codigo={row.construido.codigo}
-            sequenceItems={[row.construido]}
-            documento={documento}
-          >
-            <CasoResumenRow
-              c={row.construido}
-              indice={idx + 1}
-              confirmable={!!row.grupo?.confirmable}
-              canEdit={canEdit}
-              onConfirmar={row.grupo ? () => onConfirmar(row.grupo as Grupo) : undefined}
-            />
-          </CasoConMenu>
-        ))
+        rows.map((row, idx) => {
+          const tipoReact = tipoCasoReactivableDesdeTabla(row.construido.tabla);
+          const puedeReactivarEste =
+            puedeReactivar &&
+            !!tipoReact &&
+            esEstadoCancelatorio(tipoReact, row.construido.estado);
+          return (
+            <CasoConMenu
+              key={row.key}
+              expanded={casoExpandido === row.key}
+              onVerSecuencia={() => onToggleCaso(row.key)}
+              onBitacora={() => onBitacoraCaso(row.construido)}
+              onInfo={() => onInfoCaso(row.construido)}
+              onCopiarCodigo={() => onCopiarCodigo(row.construido)}
+              onExportarExcel={() => onExportarExcelCaso(row.construido)}
+              onVerAuditoria={() => onVerAuditoriaCaso(row.construido)}
+              puedeAuditar={puedeAuditar}
+              onReactivar={() => onReactivarCaso(row.construido)}
+              puedeReactivar={puedeReactivarEste}
+              codigo={row.construido.codigo}
+              sequenceItems={[row.construido]}
+              documento={documento}
+            >
+              <CasoResumenRow
+                c={row.construido}
+                indice={idx + 1}
+                confirmable={!!row.grupo?.confirmable}
+                canEdit={canEdit}
+                onConfirmar={row.grupo ? () => onConfirmar(row.grupo as Grupo) : undefined}
+              />
+            </CasoConMenu>
+          );
+        })
       )}
     </div>
   );
