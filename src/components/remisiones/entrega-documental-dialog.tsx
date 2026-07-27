@@ -285,6 +285,10 @@ export function EntregaDocumentalDialog({
 
   const estado = sesion.data?.estado;
   const firmada = estado === "FIRMADA";
+  const vencida = estado === "VENCIDA";
+  const anulada = estado === "ANULADA";
+  const errorSync = sesion.isError;
+
 
   // Al confirmarse la firma, migrar datos del tripulante al modal y armar Índigo (Parte 7/14).
   useEffect(() => {
