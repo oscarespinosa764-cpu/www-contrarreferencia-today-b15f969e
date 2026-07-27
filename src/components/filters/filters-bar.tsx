@@ -53,6 +53,7 @@ export function FiltersBar({
   mode = "inmediato",
   onApply,
   className,
+  alwaysCompact = false,
 }: {
   /** Controles siempre visibles (búsqueda, filtro primario). */
   primary?: ReactNode;
@@ -74,6 +75,12 @@ export function FiltersBar({
   /** Solo se invoca en modo "explicito" al pulsar Aplicar. */
   onApply?: () => void;
   className?: string;
+  /**
+   * Cuando true, los filtros secundarios NUNCA se muestran inline: siempre
+   * viven dentro del Sheet compacto (consumidores tipo Historial que ya
+   * usaban popovers y prefieren un único botón "Filtrar (n)").
+   */
+  alwaysCompact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const hasSecondary = Boolean(secondary);
