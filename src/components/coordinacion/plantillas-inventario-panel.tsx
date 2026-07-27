@@ -12,6 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { FiltersBar, countActiveFilters } from "@/components/filters/filters-bar";
 import { invalidatePlantillaConfig } from "@/lib/plantillas-inventario-config";
 import {
   AlertTriangle,
@@ -335,39 +336,48 @@ function PanelListaDetalle(props: PanelProps) {
           )}
         </div>
 
-        <div className="space-y-2 rounded-md border border-border/70 bg-background p-2">
-          <Input
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar plantilla"
-            className="h-8 text-xs"
-          />
-          <div className="grid grid-cols-2 gap-2">
-            <Select value={moduloFiltro} onValueChange={setModuloFiltro}>
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Módulo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos los módulos</SelectItem>
-                {modulos.map((m) => (
-                  <SelectItem key={m} value={m}>
-                    {m}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={estadoFiltro} onValueChange={setEstadoFiltro}>
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue placeholder="Estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="activas">Activas</SelectItem>
-                <SelectItem value="todas">Todas</SelectItem>
-                <SelectItem value="inactivas">Inactivas</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        <FiltersBar
+          alwaysCompact
+          activeCount={countActiveFilters(
+            { busqueda, moduloFiltro, estadoFiltro },
+            { busqueda: "", moduloFiltro: "todos", estadoFiltro: "activas" },
+          )}
+          onClear={() => { setBusqueda(""); setModuloFiltro("todos"); setEstadoFiltro("activas"); }}
+          primary={
+            <Input
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Buscar plantilla"
+              className="h-8 flex-1 text-xs"
+            />
+          }
+          secondary={
+            <>
+              <Select value={moduloFiltro} onValueChange={setModuloFiltro}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Módulo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos los módulos</SelectItem>
+                  {modulos.map((m) => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={estadoFiltro} onValueChange={setEstadoFiltro}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="activas">Activas</SelectItem>
+                  <SelectItem value="todas">Todas</SelectItem>
+                  <SelectItem value="inactivas">Inactivas</SelectItem>
+                </SelectContent>
+              </Select>
+            </>
+          }
+        />
+
 
         {isLoading && (
           <div className="space-y-2">

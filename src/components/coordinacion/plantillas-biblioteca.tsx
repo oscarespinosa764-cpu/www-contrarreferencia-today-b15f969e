@@ -32,6 +32,7 @@ import { Search, Plus, Copy, Pencil, Trash2, Sparkles, Tag, ChevronDown, FolderO
 import { toast } from "sonner";
 import { PASOS, PASO_LABEL, VARIABLES, pasosLabels } from "@/lib/plantillas-variables";
 import { generarPlantillaTexto } from "@/lib/ai.functions";
+import { FiltersBar, countActiveFilters } from "@/components/filters/filters-bar";
 
 type Plantilla = {
   id: string;
@@ -356,42 +357,50 @@ export function PlantillasBiblioteca() {
   return (
     <div className="space-y-4">
       {/* Barra de búsqueda y filtros */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="rounded-full pl-9"
-            placeholder="Buscar por nombre, agrupador o contenido…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-        </div>
+      <FiltersBar
+        activeCount={countActiveFilters(
+          { q, catFilter, indFilter },
+          { q: "", catFilter: ALL, indFilter: ALL },
+        )}
+        onClear={() => { setQ(""); setCatFilter(ALL); setIndFilter(ALL); }}
+        primary={
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="rounded-full pl-9"
+              placeholder="Buscar por nombre, agrupador o contenido…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </div>
+        }
+        secondary={
+          <Select value={catFilter} onValueChange={setCatFilter}>
+            <SelectTrigger className="w-full rounded-full sm:w-56">
+              <SelectValue placeholder="Todas las categorías" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Todas las categorías</SelectItem>
+              {categorias.map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+        extraActions={
+          <div className="ml-auto flex items-center gap-2">
+            <Badge variant="secondary" className="whitespace-nowrap rounded-full px-3 py-1">
+              {filtradas.length} plantilla{filtradas.length === 1 ? "" : "s"}
+            </Badge>
+            {canEdit && (
+              <Button size="sm" className="rounded-full" onClick={openNueva}>
+                <Plus className="mr-1.5 h-4 w-4" /> Nueva plantilla
+              </Button>
+            )}
+          </div>
+        }
+      />
 
-        <Select value={catFilter} onValueChange={setCatFilter}>
-          <SelectTrigger className="w-full rounded-full lg:w-56">
-            <SelectValue placeholder="Todas las categorías" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>Todas las categorías</SelectItem>
-            {categorias.map((c) => (
-              <SelectItem key={c} value={c}>
-                {c}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="whitespace-nowrap rounded-full px-3 py-1">
-            {filtradas.length} plantilla{filtradas.length === 1 ? "" : "s"}
-          </Badge>
-          {canEdit && (
-            <Button size="sm" className="rounded-full" onClick={openNueva}>
-              <Plus className="mr-1.5 h-4 w-4" /> Nueva plantilla
-            </Button>
-          )}
-        </div>
-      </div>
 
       {/* Chips de agrupadores */}
       <div className="flex flex-wrap items-center gap-1.5">

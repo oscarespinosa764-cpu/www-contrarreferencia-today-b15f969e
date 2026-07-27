@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/app-header";
+import { FiltersBar } from "@/components/filters/filters-bar";
 import { Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -434,45 +435,41 @@ function IndicadoresPage() {
       </div>
 
       {/* Barra de acciones (buscador + filtros + nuevo) */}
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="rounded-full pl-9"
-            placeholder="Buscar por nombre, código, área o responsable…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-        </div>
-        <Popover open={filtrosOpen} onOpenChange={setFiltrosOpen}>
-          <PopoverTrigger asChild>
-            <Button variant="outline" className="rounded-full">
-              <Filter className="mr-1.5 h-4 w-4" />
-              Filtrar
-              {activeFiltros > 0 && (
-                <span className="ml-1.5 rounded-full bg-primary/15 px-1.5 text-[10px] font-bold text-primary">
-                  {activeFiltros}
-                </span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-[22rem] p-4">
-            <FiltrosPanel
-              filtros={filtros}
-              setFiltros={setFiltros}
-              areas={opcionesArea}
-              frecuencias={opcionesFrecuencia}
-              onClear={() => setFiltros(FILTROS_INICIAL)}
-              onClose={() => setFiltrosOpen(false)}
+      <FiltersBar
+        className="mt-4"
+        alwaysCompact
+        activeCount={activeFiltros}
+        onClear={() => { setQ(""); setFiltros(FILTROS_INICIAL); }}
+        primary={
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="rounded-full pl-9"
+              placeholder="Buscar por nombre, código, área o responsable…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
             />
-          </PopoverContent>
-        </Popover>
-        {canEdit && (
-          <Button className="rounded-full" onClick={() => { setEditing(null); setFormOpen(true); }}>
-            <Plus className="mr-1.5 h-4 w-4" /> Nuevo indicador
-          </Button>
-        )}
-      </div>
+          </div>
+        }
+        secondary={
+          <FiltrosPanel
+            filtros={filtros}
+            setFiltros={setFiltros}
+            areas={opcionesArea}
+            frecuencias={opcionesFrecuencia}
+            onClear={() => setFiltros(FILTROS_INICIAL)}
+            onClose={() => {}}
+          />
+        }
+        extraActions={
+          canEdit ? (
+            <Button className="ml-auto rounded-full" onClick={() => { setEditing(null); setFormOpen(true); }}>
+              <Plus className="mr-1.5 h-4 w-4" /> Nuevo indicador
+            </Button>
+          ) : null
+        }
+      />
+
 
       {/* Sección 1 · Resumen */}
       <section aria-label="Resumen de indicadores" className="mt-5">
