@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { normalizeForSearch } from "@/lib/text-normalize";
 
 type Cie = { c: string; d: string };
 
