@@ -2889,6 +2889,44 @@ export function SeguimientoDialog({
                 </div>
               )}
 
+              {/* CONFIRMACIÓN DE LLEGADA DE AMBULANCIA (RI) — firma por QR */}
+              {esInterna && tipoSeg === TI.LLEGADA_AMB && (
+                <div className={sectionCls}>
+                  <p className={labelCls}>Confirmación de llegada de ambulancia</p>
+                  <p className="text-[12px] text-muted-foreground">
+                    Genere el QR para que el personal receptor firme la llegada desde su dispositivo.
+                    La fecha y hora oficiales se tomarán del momento de la firma.
+                  </p>
+
+                  <RiLlegadaQRPanel
+                    casoId={casoId}
+                    paciente={paciente}
+                    documento={documento}
+                    radicadoCaso={radicadoCaso}
+                    onFirmada={({ firmadoAtISO }) => {
+                      const d = new Date(firmadoAtISO);
+                      const dd = String(d.getDate()).padStart(2, "0");
+                      const mm = String(d.getMonth() + 1).padStart(2, "0");
+                      const yyyy = d.getFullYear();
+                      const hh = String(d.getHours()).padStart(2, "0");
+                      const mi = String(d.getMinutes()).padStart(2, "0");
+                      setRiLlegFecha(`${dd}/${mm}/${yyyy}`);
+                      setRiLlegHora(`${hh}:${mi}`);
+                      toast.success("Fecha y hora oficiales asignadas desde la firma");
+                    }}
+                  />
+
+                  {(riLlegFecha || riLlegHora) && (
+                    <div className="rounded-md border bg-muted/30 p-2 text-[12px]">
+                      <span className="text-muted-foreground">Fecha/hora registrada:</span>{" "}
+                      <b>{riLlegFecha} {riLlegHora}</b>
+                    </div>
+                  )}
+                </div>
+              )}
+
+
+
 
 
 
