@@ -3063,9 +3063,32 @@ export function SeguimientoDialog({
                   {ipsReceptoraSede && (
                     <p className="text-[11px] text-muted-foreground">Sede: {ipsReceptoraSede}</p>
                   )}
+                  {/* Fase 5B — Bloque 2A: nombre y cargo de quien acepta. */}
+                  <div className="grid grid-cols-1 gap-3 pt-1 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Nombre de quien acepta</Label>
+                      <Input
+                        value={nombreAcepta}
+                        onChange={(e) => setNombreAcepta(e.target.value)}
+                        maxLength={NOMBRE_ACEPTA_MAX}
+                        placeholder="Nombre completo"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Cargo de quien acepta</Label>
+                      <Input
+                        value={cargoAcepta}
+                        onChange={(e) => setCargoAcepta(e.target.value)}
+                        maxLength={CARGO_ACEPTA_MAX}
+                        placeholder="Cargo del funcionario"
+                      />
+                    </div>
+                  </div>
                   <p className="text-[10px] text-muted-foreground">
-                    Estado de solicitud → SÍ ACEPTA.
+                    Estado de solicitud → SÍ ACEPTA. Nombre y cargo se usarán para precargar la
+                    entrega documental.
                   </p>
+
                 </div>
               )}
 
