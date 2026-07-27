@@ -472,30 +472,38 @@ export function UsuariosPanel() {
         </Button>
       }
     >
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[240px] flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="rounded-full pl-9"
-            placeholder="Buscar nombre, documento, cargo…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-        </div>
-        <Select value={filtroRol} onValueChange={(v) => setFiltroRol(v as typeof filtroRol)}>
-          <SelectTrigger className="w-44 rounded-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos los roles</SelectItem>
-            {(Object.keys(rolLabels) as Rol[]).map((r) => (
-              <SelectItem key={r} value={r}>
-                {rolLabels[r]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <FiltersBar
+        className="mb-4"
+        activeCount={countActiveFilters({ q, filtroRol }, { q: "", filtroRol: "todos" })}
+        onClear={() => { setQ(""); setFiltroRol("todos"); }}
+        primary={
+          <div className="relative min-w-[240px] flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="rounded-full pl-9"
+              placeholder="Buscar nombre, documento, cargo…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </div>
+        }
+        secondary={
+          <Select value={filtroRol} onValueChange={(v) => setFiltroRol(v as typeof filtroRol)}>
+            <SelectTrigger className="w-full rounded-full sm:w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos los roles</SelectItem>
+              {(Object.keys(rolLabels) as Rol[]).map((r) => (
+                <SelectItem key={r} value={r}>
+                  {rolLabels[r]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
+
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[760px] text-sm">
