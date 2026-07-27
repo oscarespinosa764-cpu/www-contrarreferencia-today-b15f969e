@@ -90,9 +90,9 @@ export function FiltersBar({
       <div className="flex flex-wrap items-center gap-2">
         {primary}
 
-        {/* Secundarios inline sólo en contenedor amplio (oculto si alwaysCompact) */}
+        {/* Secundarios inline sólo cuando el contenedor tiene espacio real (oculto si alwaysCompact) */}
         {hasSecondary && !alwaysCompact && (
-          <div className="hidden @2xl:flex flex-wrap items-center gap-2">
+          <div className="hidden @min-[820px]:flex flex-wrap items-center gap-2">
             {secondary}
           </div>
         )}
@@ -103,7 +103,7 @@ export function FiltersBar({
             variant="ghost"
             size="sm"
             onClick={onClear}
-            className="hidden @2xl:inline-flex rounded-full text-xs"
+            className="hidden @min-[820px]:inline-flex rounded-full text-xs"
             aria-label="Limpiar filtros"
           >
             <Eraser className="mr-1 h-3.5 w-3.5" /> Limpiar
@@ -118,7 +118,7 @@ export function FiltersBar({
                 type="button"
                 variant="outline"
                 size="sm"
-                className={alwaysCompact ? "rounded-full" : "@2xl:hidden rounded-full"}
+                className={alwaysCompact ? "rounded-full" : "@min-[820px]:hidden rounded-full"}
                 aria-expanded={open}
                 aria-label={
                   activeCount > 0
