@@ -90,15 +90,15 @@ export function FiltersBar({
       <div className="flex flex-wrap items-center gap-2">
         {primary}
 
-        {/* Secundarios inline sólo en contenedor amplio */}
-        {hasSecondary && (
+        {/* Secundarios inline sólo en contenedor amplio (oculto si alwaysCompact) */}
+        {hasSecondary && !alwaysCompact && (
           <div className="hidden @2xl:flex flex-wrap items-center gap-2">
             {secondary}
           </div>
         )}
 
-        {/* Limpiar inline (amplio) — sólo si hay filtros activos */}
-        {onClear && activeCount > 0 && (
+        {/* Limpiar inline (amplio) — sólo si hay filtros activos y no es compact */}
+        {onClear && activeCount > 0 && !alwaysCompact && (
           <Button
             variant="ghost"
             size="sm"
@@ -110,7 +110,7 @@ export function FiltersBar({
           </Button>
         )}
 
-        {/* Botón compacto — visible en contenedor reducido, o siempre si no hay secundarios inline */}
+        {/* Botón compacto — visible en contenedor reducido, o siempre si alwaysCompact */}
         {hasSecondary && (
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
@@ -118,7 +118,7 @@ export function FiltersBar({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="@2xl:hidden rounded-full"
+                className={alwaysCompact ? "rounded-full" : "@2xl:hidden rounded-full"}
                 aria-expanded={open}
                 aria-label={
                   activeCount > 0
