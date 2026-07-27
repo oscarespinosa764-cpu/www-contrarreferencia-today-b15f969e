@@ -1976,7 +1976,12 @@ export function SeguimientoDialog({
           return toast.error("Indica el motivo de la cancelación de la IPS");
         if (novIps && novIpsTipo === "POSTERGA" && (!novIpsFecha.trim() || !novIpsHora.trim()))
           return toast.error("Indica la fecha y hora de postergación");
-        if (!detalle.trim()) return toast.error("Registra la observación de la novedad");
+        // Observaciones opcionales cuando la IPS receptora cancela la aceptación
+        // (el motivo ya es obligatorio arriba). En el resto de novedades siguen
+        // siendo obligatorias.
+        const cancelaAceptacion = novIps && novIpsTipo === "CANCELA";
+        if (!cancelaAceptacion && !detalle.trim())
+          return toast.error("Registra la observación de la novedad");
       }
       if (requiereMotivoLegacy && mostrarEvolucionLegacy && !motivoEvo.trim())
         return toast.error("Indica el motivo de la evolución pendiente");
