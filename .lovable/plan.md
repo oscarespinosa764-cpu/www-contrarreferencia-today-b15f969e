@@ -1,139 +1,107 @@
-# FASE 13 — Plan de implementación
+# FASE 5A — Referencias Internas: Firma QR de llegada, Cierre por conclusión y Cancelación
 
-Alcance: exclusivamente los 6 bloques descritos. Se modificará el mínimo de archivos posibles, reutilizando fuentes canónicas, sin ampliar permisos, sin tocar RLS/grants ya cerrados, sin alterar Modo Práctica, evidencias, firmas, QR ni históricos.
+Ejecuta únicamente el flujo de seguimiento de Referencias Internas. No toca Salientes, PHD/PAD/O2, Alertas, Cuadro de Turno, Indicadores, Control de Mando, filtros, turno, login ni Modo Práctica.
 
----
+## Reutilización (inspección hecha)
 
-## BLOQUE A — Menú lateral y Control de Mando
+| Elemento | Existente | Reutilizar |
+|---|---|---|
+| Infraestructura QR | `entrega_firmas` (token_hash SHA-256, expira, estado PENDIENTE/FIRMADA/VENCIDA/ANULADA, RLS fail-closed, guard trigger) + ruta pública `/firma-entrega` | Sí, con nuevo `tipo_caso='referencia_interna'` y `snapshot.flujo='RI_LLEGADA'` |
+| Server fns firma | `obtenerSesionFirma`, `firmarEntrega` en `src/lib/entrega-firma.functions.ts` | Sí — `firmarEntrega` ya soporta responsable + firmante distinto + teléfono + firma dataURL |
+| Modal seguimiento | `src/components/remisiones/seguimiento-dialog.tsx` bloque `esInterna && tipoSeg===TI.LLEGADA_AMB` (hoy pide fecha/hora manual) | Reemplazar por bloque QR |
+| Cadena `siguientePasoRI` | Devuelve `CULMINACION` después de `LLEGADA_AMB` | Renombrar destino a nueva constante `CIERRE_CONCLUSION`; conservar `CULMINACION` sin retirarlo para casos ya existentes |
+| Ruta pública | `/firma-entrega` | Adaptar: campos condicionales según `snapshot.flujo` (oculta checklist/docs para RI, muestra `NOMBRE RESPONSABLE / CARGO / casilla firmante distinto / TELÉFONO / FIRMA`) |
+| Cancelación RI | No existe actualmente en la lista de tipos para `esInterna` | Añadir `CANCELACION_TRAMITE` con razón obligatoria |
 
-**Diagnóstico previo (rápido):**
-- Localizar el componente del menú lateral (probablemente `src/routes/_authenticated.tsx` o un `AppSidebar`).
-- Confirmar rutas actuales `/catalogo` y `/reglas` (existen en `src/routes/_authenticated/`).
+## Cambios
 
-**Cambios:**
-1. Ocultar del menú lateral los enlaces **Catálogos** y **Reglas** (solo el enlace, no la ruta).
-2. Retirar la pestaña principal **Reglas** de `src/routes/_authenticated/control-mando.tsx` (eliminar `<TabsTrigger value="reglas">` y `<TabsContent value="reglas">`), eliminando también el import de `ReglasAdmin`. El archivo `src/components/coordinacion/reglas-admin.tsx` deja de usarse (no se elimina para evitar riesgo — o se elimina si no hay otros consumidores; se auditará con `rg`).
-3. Ruta `/catalogo`: se conserva (contiene funcionalidad operativa: `catalogo-maestras.tsx`). Solo se retira del menú lateral.
-4. Ruta `/reglas`: es una vista OPERATIVA (Alertas de coordinación + Avisos operativos, según memory). Se conserva la ruta pero se retira del menú lateral principal para administradores. Se evaluará si operativa/temporal aún necesitan acceso — según memory sí lo usan como vista consolidada; se mantiene ruta accesible pero se decidirá si dejar un enlace secundario o solo acceso desde otro punto. **Propuesta:** conservar la ruta accesible por URL directa y mantener el enlace en menú solo si operativa/temporal lo requieren. Confirmar en implementación con `rg` de referencias al link.
+### 1. Constantes canónicas (`seguimiento-dialog.tsx`)
+Añadir a `TI`:
+- `LLEGADA_AMB_QR: "CONFIRMACIÓN DE LLEGADA DE AMBULANCIA"` (reemplaza flujo manual; label idéntico, código canónico persistido en columna `tipo_seguimiento`).
+- `CIERRE_CONCLUSION: "CIERRE DE CASO POR CONCLUSIÓN DE SOLICITUD"`.
+- `CANCELACION_RI: "CANCELACIÓN DE TRÁMITE"`.
 
----
+### 2. Selector de tipos RI
+Regla:
+- Siempre visibles mientras el caso esté activo y el usuario tenga permiso: `CANCELACION_RI`.
+- Cadena secuencial actual conservada; después de `LLEGADA_AMB` (confirmada en BD) → habilitar `CIERRE_CONCLUSION` (en lugar de `CULMINACION`).
+- Se detecta consultando `historial` ya cargado por el modal (query `ri-historial`); no depende de estado local.
 
-## BLOQUE B — Alertas y Avisos + Estado técnico
+### 3. Bloque QR para `LLEGADA_AMB` (RI)
+Reemplaza el input manual de fecha/hora por:
+- Explicación breve.
+- Botón **ABRIR FIRMA QR** que abre un modal específico RI.
+- Modal RI muestra: Empresa de traslado (readonly desde caso), Sede (readonly desde caso), Fecha/hora de entrega (readonly, timestamp del servidor asignado al crear la sesión), botón **GENERAR QR DE FIRMA**.
+- Deshabilita generación si falta empresa/sede/permiso; mensaje específico.
+- Reutiliza componente/hook de generación QR de Salientes (extraerá el diálogo mínimo a un componente compartido `SignatureQrPanel` o llamará la server fn directamente y renderizará QR en un nuevo pequeño componente `firma-qr-ri-panel.tsx`).
 
-**Cambios en `src/components/coordinacion/alertas-avisos-admin.tsx`:**
-- Retirar la pestaña **Estado técnico** (el `ControlMandoPanel` sigue montado dentro de Control de Mando → Usuarios, ya existe allí).
-- Dejar 3 pestañas: Reglas de coordinación, Reglas operativas, Avisos manuales.
+### 4. Nueva server fn atómica
+`crearSesionFirmaLlegadaRI` (en `src/lib/entrega-firma.functions.ts`, protegida con `requireSupabaseAuth`):
+- Valida rol activo + permiso sobre el caso RI.
+- Lee empresa/sede/fecha desde `referencia_interna` (fuente canónica) — nunca acepta del cliente.
+- Revoca sesiones PENDIENTE previas del mismo caso+flujo (marca `ANULADA`).
+- Inserta fila `entrega_firmas` con `tipo_caso='referencia_interna'`, `snapshot={flujo:'RI_LLEGADA', empresa, sede, fecha_solicitud_iso, paciente_iniciales, documento_enmascarado}`, `expira_at = now()+2h`.
+- Devuelve `{token, expira_at}`.
 
-No se toca el componente `ControlMandoPanel` (ya reutilizado en Usuarios).
+### 5. Ruta pública `/firma-entrega`
+Ajuste condicional por `snapshot.flujo`:
+- Si `RI_LLEGADA`: oculta documentos/checklist/IPS receptora/tipo ambulancia; muestra sección "Responsable del traslado", casilla "¿El firmante no es el mismo responsable del traslado?", teléfono, firma. `firmarEntrega` ya persiste todos esos campos; no requiere cambios de esquema.
+- Salientes intacto (mismo componente, ramas condicionales mínimas).
 
----
+### 6. Registro del seguimiento LLEGADA (server-side)
+Nueva server fn `registrarLlegadaAmbulanciaRI`:
+- Recibe `{caso_id, signatureRequestId}` — servidor resuelve caso desde la fila `entrega_firmas` (no confía en el cliente).
+- Verifica: fila FIRMADA, `seguimiento_id IS NULL`, `tipo_caso='referencia_interna'`, caso activo.
+- En transacción (RPC SECURITY DEFINER): inserta `seguimientos(tipo_seguimiento='CONFIRMACIÓN DE LLEGADA DE AMBULANCIA', metadata={firma_id, empresa, sede, fecha_llegada, responsable, firmante, telefono})`; actualiza `entrega_firmas.seguimiento_id`; actualiza `referencia_interna.estado='AMBULANCIA EN SITIO'` (estado existente); registra auditoría.
+- Idempotencia: unique parcial `(caso_id, tipo_seguimiento)` no aplicable a la tabla actual, pero la validación `seguimiento_id IS NULL` en `entrega_firmas` impide doble asociación.
 
-## BLOQUE C — Plantillas operativas (aceptación, negación, respuestas, seguimientos, Índigo)
+### 7. Cierre por conclusión (nueva server fn `cerrarRIConclusion`)
+- Input: `{caso_id, paciente_retorno: 'SI'|'NO', observaciones}`.
+- Valida existencia de seguimiento previo `CONFIRMACIÓN DE LLEGADA DE AMBULANCIA` para el caso.
+- Transacción: inserta `seguimientos(tipo='CIERRE DE CASO POR CONCLUSIÓN DE SOLICITUD', metadata={paciente_retorno})`; actualiza `referencia_interna.estado='CERRADO POR CONCLUSION'` + `archivado=true` para retirarlo de vistas activas; auditoría.
 
-**Auditoría (obligatoria antes de implementar):** localizar dónde viven realmente los textos de aceptación/negación/respuestas/seguimientos/Índigo (probablemente en `src/lib/oficio.ts`, `src/lib/oficio-config.ts`, `src/lib/plantillas-inventario-config.ts`, `src/lib/plantillas-preview-fixtures.ts`, hardcoded en `seguimiento-dialog.tsx`, `phd-seguimiento-dialog.tsx`).
+### 8. Cancelación RI (nueva server fn `cancelarRI`)
+- Input: `{caso_id, razon: string(min 5)}`.
+- Disponible en cualquier momento mientras el caso esté activo.
+- Transacción: inserta `seguimientos(tipo='CANCELACIÓN DE TRÁMITE', metadata={razon})`; actualiza `referencia_interna.estado='CANCELADO'` + `archivado=true`; auditoría. NO habilita reactivación automática.
 
-**Entregable:** tabla inventario (Plantilla · Consumidor · Fuente actual · Editable · Estado).
+### 9. Estados terminales
+Inspección: `referencia_interna` acepta texto libre en `estado` (sin CHECK). No requiere migración de enum. Se documentan códigos canónicos `CERRADO POR CONCLUSION` y `CANCELADO`. Se ajusta `historial.tsx` y consultas activas para que estos estados aparezcan como terminales y sean incluidos en Historial (ya se filtran por `archivado=true`).
 
-**Acción mínima:**
-- Si ya están en `plantillas_inventario`/`plantillas_versiones` (Fase 9 lo hizo para 8 oficios), verificar visibilidad en Control de Mando → Plantillas del sistema y **solo** completar puntos de uso / categorizar para que aparezcan agrupadas como "Plantillas operativas".
-- Para plantillas hardcoded de "Texto para Índigo" en seguimientos: documentar en el inventario. **No** migrar en esta fase salvo que sea trivial y solicitado; el prompt permite mantener fallback. Se propondrá registro en inventario sin migrar el texto (solo hacerlo visible como referencia administrable en fases futuras) — a menos que el usuario quiera migración completa ahora, lo cual excede "menor cantidad de archivos".
+### 10. Migración mínima
+- Ninguna sobre `entrega_firmas`.
+- Solo si el filtro actual de Historial no considera `CERRADO POR CONCLUSION` / `CANCELADO`: verificar y (si aplica) sumar a allowlist en `fetchHistoricosCasos`. Sin DDL.
 
-**Decisión:** limitarse a **hacer visibles y correctamente categorizadas** las plantillas ya versionadas y **registrar en inventario** (sin migración de texto) las que hoy estén hardcoded, para exponerlas en la UI administrativa. Sin duplicar fuentes.
+## Archivos previstos
 
----
+| Archivo | Cambio |
+|---|---|
+| `src/lib/entrega-firma.functions.ts` | +3 fns: `crearSesionFirmaLlegadaRI`, `registrarLlegadaAmbulanciaRI`, y reutiliza `obtenerSesionFirma/firmarEntrega`. |
+| `src/lib/ri-cierre.functions.ts` (nuevo) | `cerrarRIConclusion`, `cancelarRI`. |
+| `src/components/remisiones/firma-qr-ri-panel.tsx` (nuevo) | Modal específico RI (empresa/sede/fecha readonly + QR + polling de estado firmado). |
+| `src/components/remisiones/seguimiento-dialog.tsx` | Añadir constantes, integrar bloque QR RI, cierre por conclusión con `SÍ/NO`, cancelación RI con razón; sustituir input manual fecha/hora. |
+| `src/routes/firma-entrega.tsx` | Ramas condicionales por `snapshot.flujo` (oculta checklist/tipo ambulancia para RI). |
+| `src/lib/historial-export.ts` / consulta históricos si aplica | Incluir estados terminales `CERRADO POR CONCLUSION` y `CANCELADO`. |
 
-## BLOQUE D — "NO SE COMENTA A LA RED" en Nuevo de Remisiones
+## Fuera de alcance
+- Reactivación de Referencias Internas canceladas.
+- Cambios en Salientes, PHD, entrantes, otros módulos.
+- Nuevos PDF/checklist/portada para este flujo.
 
-**Archivos:**
-- `src/components/remisiones/nuevo-registro-dialog.tsx` (formulario Nuevo)
-- Schema/validación asociada
-- Server function de creación (validar combinación server-side)
-
-**Cambios:**
-1. Identificar identificadores canónicos de EAPB=Nueva EPS y Remisión por=Red no contratada (por catálogo/slug, no por texto visible).
-2. Añadir tercera opción condicional `NO_SE_COMENTA_A_LA_RED` cuando ambas condiciones se cumplan.
-3. Al cambiar EAPB o "Remisión por" de forma que ya no aplique, limpiar selección incompatible.
-4. Persistir el valor en el mismo campo `red_a_la_que_se_comenta` (o el canónico existente).
-5. Validación server-side: rechazar el valor si no cumple combinación.
-6. Migración solo si hay CHECK constraint / enum que rechace el valor.
-
----
-
-## BLOQUE E — Fecha y hora en "PENDIENTE COORDINACIÓN FECHA Y HORA EXAMEN" (RI)
-
-**Archivo:** `src/components/remisiones/seguimiento-dialog.tsx` (u homólogo RI).
-
-**Cambios:**
-1. Añadir bloque condicional con campo `AppDateTimeInput` (reutilizar componente existente) obligatorio cuando `tipo_seguimiento === "PENDIENTE COORDINACIÓN FECHA Y HORA EXAMEN"`.
-2. Persistir en `seguimientos.metadata` (JSONB existente) — no crear columna.
-3. Actualizar plantilla para Índigo con el formato solicitado.
-4. Regenerar/Copiar deben incluir la fecha/hora.
-5. Validar en server function `registrarSeguimiento` (si existe) que fecha/hora esté presente para este tipo.
-
----
-
-## BLOQUE F — Edición total ADMIN en "Ver caso" de Dashboard Operativo Salientes
-
-**Auditoría:** localizar los modales "Ver caso"/"Editar" en Salientes:
-- `src/components/remisiones/caso-remision-card.tsx`
-- `src/components/remisiones/caso-generico-card.tsx`
-- Diálogos de edición asociados (`seguimiento-dialog.tsx`, `nuevo-registro-dialog.tsx` en modo edit, PHD dialog).
-
-**Cambios:**
-1. Reutilizar el modal/formulario ya existente. Aplicar flag `isAdmin` para desbloquear los campos que hoy están read-only cuando el usuario es admin.
-2. Crear (o extender) server function `editarCasoSaliente` con:
-   - `requireSupabaseAuth`
-   - Verificar `has_role(userId, 'admin')`
-   - Zod schema con **allowlist explícita** de columnas editables (excluye id, created_at, created_by, hashes, firmas, QR, campos derivados).
-   - Registrar en `audit_logs` (campos modificados: antes/después).
-3. Frontend: usar la nueva mutation server para admin; conservar mutations existentes para operativa/temporal (sin cambios de permiso).
-4. Recálculo de derivados (tiempo del trámite) se mantiene en la lectura, no editable.
-
----
-
-## Base de datos / migraciones
-
-- Bloque D: probablemente ninguna migración (columna `red_a_la_que_se_comenta` suele ser text libre). Si hay CHECK/enum, migración mínima para permitir `NO_SE_COMENTA_A_LA_RED`.
-- Bloque E: sin migración (usa `metadata` jsonb existente).
-- Bloque F: sin migración de tablas; solo función/RPC de edición admin (o server function TS).
-- Bloque C: sin migración si limitamos a "hacer visibles"; posiblemente inserts para registrar puntos de uso faltantes (usar `supabase--insert`).
-
----
-
-## Roles y matriz
+## Matriz por rol
 
 | Funcionalidad | Admin | Operativa | Temporal | Inactivo | Anon |
 |---|---|---|---|---|---|
-| Menú lateral sin Catálogos/Reglas | Aplica | Aplica | Aplica | N/A | N/A |
-| Control de Mando (sin pestaña Reglas) | VISIBLE Y EDITABLE | OCULTO | OCULTO | BLOQUEADO | BLOQUEADO |
-| Alertas y avisos (3 pestañas) | VISIBLE Y EDITABLE | OCULTO | OCULTO | BLOQUEADO | BLOQUEADO |
-| Estado técnico en Usuarios | VISIBLE Y UTILIZABLE | OCULTO | OCULTO | BLOQUEADO | BLOQUEADO |
-| Tercera opción "NO SE COMENTA A LA RED" | VISIBLE Y EDITABLE (si combinación) | VISIBLE Y EDITABLE (si combinación) | según permisos actuales | BLOQUEADO | BLOQUEADO |
-| Fecha/hora examen RI | VISIBLE Y EDITABLE | VISIBLE Y EDITABLE | según permisos actuales | BLOQUEADO | BLOQUEADO |
-| Edición total Ver caso Salientes | VISIBLE Y EDITABLE | restricciones actuales (sin cambio) | restricciones actuales (sin cambio) | BLOQUEADO | BLOQUEADO |
+| Ver seguimiento RI | VISIBLE Y UTILIZABLE | VISIBLE Y UTILIZABLE | VISIBLE Y UTILIZABLE | BLOQUEADO | BLOQUEADO |
+| Abrir/Generar QR llegada | VISIBLE Y EDITABLE | VISIBLE Y EDITABLE | según permiso actual RI | BLOQUEADO | BLOQUEADO |
+| Registrar llegada / cierre / cancelación | VISIBLE Y EDITABLE | VISIBLE Y EDITABLE | según permiso actual RI | BLOQUEADO | BLOQUEADO |
+| Formulario público con token válido | NO APLICA | NO APLICA | NO APLICA | NO APLICA | VISIBLE Y UTILIZABLE |
+| Formulario público sin token / caso interno | NO APLICA | NO APLICA | NO APLICA | NO APLICA | BLOQUEADO |
 
----
+## Preguntas para el usuario
 
-## Archivos previstos (mínimos)
+1. **Estado terminal por conclusión:** propongo el código `CERRADO POR CONCLUSION`. ¿OK o prefieres otro literal? (`CERRADO POR CULMINACION`, `CONCLUIDO`…)
+2. **Cambio del label visible del cierre:** El flujo actual usa `CULMINACIÓN DE SOLICITUD`. La FASE 5A pide `CIERRE DE CASO POR CONCLUSIÓN DE SOLICITUD`. ¿Reemplazo por completo (deja de existir `CULMINACIÓN DE SOLICITUD` en el selector) o conservo compatibilidad para históricos ya registrados con el texto anterior?
+3. **Modal RI QR:** ¿confirmas que la fecha/hora visible en el modal debe ser la del **momento de crear la sesión de firma** (server-side) y NO del momento en que el tripulante confirma? El prompt sugiere lo primero (“se completa al abrir el modal”); lo dejo así explícitamente para evitar ambigüedad.
 
-1. Menú lateral (a identificar): retirar 2 links.
-2. `src/routes/_authenticated/control-mando.tsx`: retirar pestaña Reglas.
-3. `src/components/coordinacion/alertas-avisos-admin.tsx`: retirar pestaña Estado técnico.
-4. `src/components/remisiones/nuevo-registro-dialog.tsx`: opción condicional.
-5. Server function de creación/edición de remisión (a identificar): validación combinación.
-6. `src/components/remisiones/seguimiento-dialog.tsx`: bloque datetime condicional + plantilla Índigo.
-7. Nueva server function `src/lib/salientes-admin-edit.functions.ts` (edición total admin con allowlist + auditoría).
-8. Modales "Ver caso" en Salientes: flag admin para desbloquear campos + wire a la nueva mutation.
-9. Posible migración mínima (bloque D) y/o inserts en `plantillas_inventario`/`puntos_de_uso` (bloque C).
-
----
-
-## Preguntas para el usuario antes de codificar
-
-1. **Bloque A - `/reglas` en menú:** ¿el enlace "Alertas y avisos operativos" del menú lateral (que apunta a `/reglas`) debe también retirarse, o solo los ítems literalmente llamados "Catálogos" y "Reglas"? El prompt dice retirar "Catálogos" y "Reglas" del menú, pero `/reglas` es la vista operativa que operativa/temporal consumen.
-2. **Bloque C - alcance:** ¿migro ahora los textos hardcoded de "Plantilla para Índigo" al inventario documental (más créditos, más archivos), o me limito a **listarlos en la auditoría** y dejar migración para fase futura?
-3. **Bloque F - alcance de "todos los campos funcionales":** ¿confirmas que admin debe poder editar TODO (paciente, documento, EAPB, fechas de radicación, etc.) incluso en casos con estado avanzado / firmados? Solo se protegen los técnicos (id, hashes, QR, firmas, created_by).
-
-Sin las respuestas puedo asumir defaults conservadores: (1) solo retirar los dos enlaces literales, dejando `/reglas` como está; (2) solo auditar+categorizar sin migrar textos hardcoded; (3) admin edita todos los campos funcionales salvo protegidos técnicos, sin distinción por estado del caso.
-
-Confirma o ajusta y procedo.
+Con esas respuestas procedo directamente.
