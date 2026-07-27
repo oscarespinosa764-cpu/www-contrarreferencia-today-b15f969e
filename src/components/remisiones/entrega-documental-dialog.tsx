@@ -123,6 +123,8 @@ export function EntregaDocumentalDialog({
   const [indigoCorta, setIndigoCorta] = useState("");
 
   // Autollenado con datos previos del caso (Parte 1.3/1.4).
+  // Se reinicia también al cambiar de caso para no arrastrar la firma de un
+  // caso previo, cortando polling y suscripciones anteriores.
   useEffect(() => {
     if (!open) return;
     setOrigen("");
@@ -138,7 +140,19 @@ export function EntregaDocumentalDialog({
     setToken(null);
     setQrUrl(null);
     setIndigoCorta("");
-  }, [open, empresaTraslado, ipsReceptora, quienAcepta, cargoAcepta]);
+  }, [open, casoId, empresaTraslado, ipsReceptora, quienAcepta, cargoAcepta]);
+
+  // Detener sincronización al cerrar el diálogo: al desactivar `sesionId` la
+  // query queda `enabled: false` y su `refetchInterval` se cancela. Evita
+  // timers huérfanos y suscripciones activas cuando el modal no es visible.
+  useEffect(() => {
+    if (!open && sesionId) {
+      setSesionId(null);
+      setToken(null);
+      setQrUrl(null);
+    }
+  }, [open, sesionId]);
+
 
   // Al elegir origen, cargar checklist desde el catálogo administrable (Parte 12.3).
   // El catálogo es editable sin código en: Catálogo → Documentos de entrega.
@@ -271,6 +285,10 @@ export function EntregaDocumentalDialog({
 
   const estado = sesion.data?.estado;
   const firmada = estado === "FIRMADA";
+  const vencida = estado === "VENCIDA";
+  const anulada = estado === "ANULADA";
+  const errorSync = sesion.isError;
+
 
   // Al confirmarse la firma, migrar datos del tripulante al modal y armar Índigo (Parte 7/14).
   useEffect(() => {
@@ -619,12 +637,43 @@ export function EntregaDocumentalDialog({
                 Cerrar
               </Button>
             </div>
+          ) : vencida || anulada ? (
+            /* Estados terminales no exitosos: vencida o anulada */
+            <div className="space-y-3 rounded-lg border border-amber-300 bg-amber-50/60 p-4 text-center dark:border-amber-900 dark:bg-amber-950/30">
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                {vencida ? "Sesión de firma vencida" : "Sesión de firma anulada"}
+              </p>
+              <p className="text-xs text-amber-800/80 dark:text-amber-200/80">
+                {vencida
+                  ? "El enlace superó el tiempo permitido (2 horas). Genere un nuevo QR."
+                  : "Este enlace fue anulado. Genere un nuevo QR si aún debe recibirse la firma."}
+              </p>
+              <div className="flex justify-center gap-2">
+                <Button type="button" size="sm" onClick={regenerar}>
+                  <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Generar nuevo QR
+                </Button>
+              </div>
+            </div>
+          ) : errorSync ? (
+            /* Error de sincronización (red o backend) */
+            <div className="space-y-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-center">
+              <p className="text-sm font-semibold text-destructive">No se pudo verificar el estado de la firma</p>
+              <p className="text-xs text-muted-foreground">
+                Revise su conexión. La verificación se reintenta automáticamente.
+              </p>
+              <Button type="button" size="sm" variant="outline" onClick={() => sesion.refetch()}>
+                <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Reintentar ahora
+              </Button>
+            </div>
           ) : (
             /* PASO 2 — QR activo, esperando firma */
             <div className="space-y-3 rounded-lg border p-4 text-center">
               {qrUrl && <img src={qrUrl} alt="QR de firma" className="mx-auto h-48 w-48" />}
               <p className="text-xs text-muted-foreground">
                 Escanee el QR con el celular del tripulante. Vence en 2 horas · uso único.
+              </p>
+              <p className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" /> Esperando firma… se actualiza automáticamente.
               </p>
               <div className="flex justify-center gap-2">
                 <Button
