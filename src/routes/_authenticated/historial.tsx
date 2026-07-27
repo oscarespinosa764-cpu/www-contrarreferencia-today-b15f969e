@@ -1908,6 +1908,8 @@ function HistorialPage() {
               onExportarExcelCaso={exportarCasoExcel}
               onVerAuditoriaCaso={(c) => setAudCaso(c)}
               puedeAuditar={isAdmin}
+              onReactivarCaso={(c) => setReactivarCaso(c)}
+              puedeReactivar={isAdmin}
             />
           )
         ) : cargando ? (
