@@ -123,6 +123,8 @@ export function EntregaDocumentalDialog({
   const [indigoCorta, setIndigoCorta] = useState("");
 
   // Autollenado con datos previos del caso (Parte 1.3/1.4).
+  // Se reinicia también al cambiar de caso para no arrastrar la firma de un
+  // caso previo, cortando polling y suscripciones anteriores.
   useEffect(() => {
     if (!open) return;
     setOrigen("");
@@ -138,7 +140,19 @@ export function EntregaDocumentalDialog({
     setToken(null);
     setQrUrl(null);
     setIndigoCorta("");
-  }, [open, empresaTraslado, ipsReceptora, quienAcepta, cargoAcepta]);
+  }, [open, casoId, empresaTraslado, ipsReceptora, quienAcepta, cargoAcepta]);
+
+  // Detener sincronización al cerrar el diálogo: al desactivar `sesionId` la
+  // query queda `enabled: false` y su `refetchInterval` se cancela. Evita
+  // timers huérfanos y suscripciones activas cuando el modal no es visible.
+  useEffect(() => {
+    if (!open && sesionId) {
+      setSesionId(null);
+      setToken(null);
+      setQrUrl(null);
+    }
+  }, [open, sesionId]);
+
 
   // Al elegir origen, cargar checklist desde el catálogo administrable (Parte 12.3).
   // El catálogo es editable sin código en: Catálogo → Documentos de entrega.
