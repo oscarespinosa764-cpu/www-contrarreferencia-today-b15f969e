@@ -143,8 +143,13 @@ const TI = {
   LLEGADA_AMB: "CONFIRMACIÓN DE LLEGADA DE AMBULANCIA",
   TEP_ACTIVACION: "ACTIVACIÓN DE PROVEEDOR CONTRATADO DE TEP",
   AMB_COORDINADA_ESP: "AMBULANCIA COORDINADA",
-  CULMINACION: "CULMINACIÓN DE SOLICITUD",
+  CIERRE_CONCLUSION: "CIERRE POR CULMINACIÓN DE SOLICITUD",
+  CANCELACION_RI: "CANCELACIÓN DEL TRÁMITE",
 } as const;
+
+// Estados terminales de referencia_interna que resultan de estas acciones.
+const RI_ESTADO_CIERRE = "CERRADO POR CULMINACION DE SOLICITUD";
+const RI_ESTADO_CANCELADO = "CANCELADO";
 
 const RI_ESPECIALES = new Set([
   "URGENCIAS VITALES",
@@ -168,14 +173,14 @@ function siguientePasoRI(
   if (especial) {
     if (!ultimo) return TI.TEP_ACTIVACION;
     if (ultimo === TI.TEP_ACTIVACION.toUpperCase()) return TI.AMB_COORDINADA_ESP;
-    if (ultimo === TI.AMB_COORDINADA_ESP.toUpperCase()) return TI.CULMINACION;
+    if (ultimo === TI.AMB_COORDINADA_ESP.toUpperCase()) return TI.CIERRE_CONCLUSION;
     return null;
   }
   if (!ultimo) return TI.PENDIENTE;
   if (ultimo.startsWith("PENDIENTE COORDINAC")) return TI.COORDINADO;
   if (ultimo === TI.COORDINADO.toUpperCase()) return TI.PROG_AMB;
   if (ultimo === TI.PROG_AMB.toUpperCase()) return TI.LLEGADA_AMB;
-  if (ultimo === TI.LLEGADA_AMB.toUpperCase()) return TI.CULMINACION;
+  if (ultimo === TI.LLEGADA_AMB.toUpperCase()) return TI.CIERRE_CONCLUSION;
   return null;
 }
 
@@ -849,6 +854,8 @@ export function SeguimientoDialog({
     const arr: string[] = [];
     if (proximo) arr.push(proximo);
     if (activo) arr.push(T.CAMBIO_UNIDAD);
+    // Acción terminal de cancelación siempre disponible mientras esté activo.
+    if (activo && proximo !== TI.CANCELACION_RI) arr.push(TI.CANCELACION_RI);
     return arr;
   }, [historial, casoInterna]);
 
@@ -1104,8 +1111,13 @@ export function SeguimientoDialog({
             }),
             detalle,
           );
-        case TI.CULMINACION:
+        case TI.CIERRE_CONCLUSION:
           return appendNota(generarPlantillaRefInternaCulminacion(), detalle);
+        case TI.CANCELACION_RI:
+          return appendNota(
+            `SE CANCELA EL TRÁMITE DE REFERENCIA INTERNA.\nMOTIVO: ${(detalle || "—").toUpperCase()}`,
+            "",
+          );
         case TI.PROG_AMB:
           return appendNota(
             `SE CONFIRMA PROGRAMACIÓN DE AMBULANCIA.\nFECHA/HORA RECOGIDA: ${(riRecFecha && riRecHora) ? `${riRecFecha}, ${riRecHora}` : "—"}\nTIPO AMBULANCIA: ${riRecTipoAmb || "—"}`,
@@ -1870,6 +1882,11 @@ export function SeguimientoDialog({
         if (!riTepProveedor.trim()) return toast.error("Selecciona el proveedor de TEP");
         if (!riTepFecha.trim()) return toast.error("Indica la fecha y hora de activación del TEP");
       }
+      // Acción terminal de cancelación: motivo obligatorio.
+      if (esInterna && tipoSeg === TI.CANCELACION_RI) {
+        if (detalle.trim().length < 5)
+          return toast.error("Describe el motivo de la cancelación (mínimo 5 caracteres).");
+      }
 
       // Cambio en especialidad: exige cambio real, conservar una activa y motivo.
       if (esCambioEsp) {
@@ -2156,8 +2173,12 @@ export function SeguimientoDialog({
         else if (tipoSeg === TI.LLEGADA_AMB) update.estado = "AMBULANCIA EN SITIO";
         else if (tipoSeg === TI.TEP_ACTIVACION) update.estado = "TEP ACTIVADO";
         else if (tipoSeg === TI.AMB_COORDINADA_ESP) update.estado = "AMBULANCIA COORDINADA";
-        else if (tipoSeg === TI.CULMINACION) {
-          update.estado = "CULMINADO";
+        else if (tipoSeg === TI.CIERRE_CONCLUSION) {
+          update.estado = RI_ESTADO_CIERRE;
+          update.archivado = true;
+        }
+        else if (tipoSeg === TI.CANCELACION_RI) {
+          update.estado = RI_ESTADO_CANCELADO;
           update.archivado = true;
         }
       }
@@ -2725,6 +2746,27 @@ export function SeguimientoDialog({
                       NO SE IDENTIFICARON CAMBIOS EN LA UBICACIÓN DEL PACIENTE.
                     </p>
                   )}
+                </div>
+              )}
+
+              {/* CANCELACIÓN DEL TRÁMITE (RI) — motivo obligatorio en Detalle */}
+              {esInterna && tipoSeg === TI.CANCELACION_RI && (
+                <div className={sectionCls}>
+                  <p className={labelCls}>Cancelación del trámite</p>
+                  <p className="text-[12px] text-status-amber">
+                    Esta acción cierra el caso en estado <b>{RI_ESTADO_CANCELADO}</b> y lo archiva.
+                    Escribe el motivo en el campo <b>Detalle</b> (obligatorio, mínimo 5 caracteres).
+                  </p>
+                </div>
+              )}
+
+              {/* CIERRE POR CULMINACIÓN DE SOLICITUD (RI) */}
+              {esInterna && tipoSeg === TI.CIERRE_CONCLUSION && (
+                <div className={sectionCls}>
+                  <p className={labelCls}>Cierre por culminación de solicitud</p>
+                  <p className="text-[12px] text-muted-foreground">
+                    Esta acción cierra el caso en estado <b>{RI_ESTADO_CIERRE}</b> y lo archiva.
+                  </p>
                 </div>
               )}
 
