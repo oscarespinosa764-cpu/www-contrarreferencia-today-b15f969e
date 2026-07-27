@@ -1109,8 +1109,13 @@ export function SeguimientoDialog({
             }),
             detalle,
           );
-        case TI.CULMINACION:
+        case TI.CIERRE_CONCLUSION:
           return appendNota(generarPlantillaRefInternaCulminacion(), detalle);
+        case TI.CANCELACION_RI:
+          return appendNota(
+            `SE CANCELA EL TRÁMITE DE REFERENCIA INTERNA.\nMOTIVO: ${(detalle || "—").toUpperCase()}`,
+            "",
+          );
         case TI.PROG_AMB:
           return appendNota(
             `SE CONFIRMA PROGRAMACIÓN DE AMBULANCIA.\nFECHA/HORA RECOGIDA: ${(riRecFecha && riRecHora) ? `${riRecFecha}, ${riRecHora}` : "—"}\nTIPO AMBULANCIA: ${riRecTipoAmb || "—"}`,
