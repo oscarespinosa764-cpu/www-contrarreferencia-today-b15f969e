@@ -474,37 +474,50 @@ function RedIpsPage() {
         )}
 
         {/* Búsqueda + filtro estado + botón nuevo */}
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <div className="relative min-w-[220px] flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              className="rounded-full pl-9"
-              placeholder={grupoCfg.buscarPlaceholder}
-              value={qInput}
-              onChange={(e) => setQInput(e.target.value)}
-              aria-label="Buscar en la sección actual"
-            />
-          </div>
-          <Select
-            value={search.estado}
-            onValueChange={(v) => setSearch({ estado: v, page: 1 })}
-          >
-            <SelectTrigger className="w-40 rounded-full" aria-label="Filtro de estado">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos los estados</SelectItem>
-              <SelectItem value="activos">Activos / Disponibles</SelectItem>
-              <SelectItem value="inactivos">Inactivos</SelectItem>
-            </SelectContent>
-          </Select>
-          {canEdit && (
-            <Button onClick={abrirNuevo} className="rounded-full">
-              <Plus className="mr-1.5 h-4 w-4" /> Nuevo registro ·{" "}
-              {subActiva ? subActiva.label : grupoCfg.label}
-            </Button>
+        <FiltersBar
+          className="mb-4"
+          activeCount={countActiveFilters(
+            { q: qInput, estado: search.estado },
+            { q: "", estado: "todos" },
           )}
-        </div>
+          onClear={() => {
+            setQInput("");
+            navigate({ search: (p: RedSearch) => ({ ...p, q: "", estado: "todos", page: 1 }), replace: true });
+          }}
+          primary={
+            <div className="relative min-w-[220px] flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                className="rounded-full pl-9"
+                placeholder={grupoCfg.buscarPlaceholder}
+                value={qInput}
+                onChange={(e) => setQInput(e.target.value)}
+                aria-label="Buscar en la sección actual"
+              />
+            </div>
+          }
+          secondary={
+            <Select value={search.estado} onValueChange={(v) => setSearch({ estado: v, page: 1 })}>
+              <SelectTrigger className="w-full rounded-full sm:w-40" aria-label="Filtro de estado">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos los estados</SelectItem>
+                <SelectItem value="activos">Activos / Disponibles</SelectItem>
+                <SelectItem value="inactivos">Inactivos</SelectItem>
+              </SelectContent>
+            </Select>
+          }
+          extraActions={
+            canEdit ? (
+              <Button onClick={abrirNuevo} className="ml-auto rounded-full">
+                <Plus className="mr-1.5 h-4 w-4" /> Nuevo registro ·{" "}
+                {subActiva ? subActiva.label : grupoCfg.label}
+              </Button>
+            ) : null
+          }
+        />
+
 
         {/* Listado */}
         {isLoading ? (
