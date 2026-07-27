@@ -171,6 +171,7 @@ export function EntregaDocumentalDialog({
       tipo_ambulancia: tipoAmbulancia ?? undefined,
       quien_acepta: quienAceptaS || undefined,
       cargo_acepta: cargoAceptaS || undefined,
+      aceptacion_origen_id: aceptacionOrigenId ?? null,
     }),
     [
       paciente,
@@ -186,6 +187,7 @@ export function EntregaDocumentalDialog({
       tipoAmbulancia,
       quienAceptaS,
       cargoAceptaS,
+      aceptacionOrigenId,
     ],
   );
 
