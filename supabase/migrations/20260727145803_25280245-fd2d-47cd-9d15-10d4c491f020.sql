@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.capture_cancellation_previous_state() FROM PUBLIC, anon, authenticated;
