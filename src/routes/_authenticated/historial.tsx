@@ -1782,7 +1782,7 @@ function HistorialPage() {
               const casoActivo =
                 (vista === "entrantes" && tipo !== "TODOS") ||
                 (vista === "salientes" && salTipo !== "TODOS") ||
-                (vista === "genericos" && genTipo !== "TODOS");
+                (vista !== "entrantes" && vista !== "salientes" && genTipo !== "TODOS");
               const periodoActivo = Boolean(fechaEspecifica) || periodo !== "Todos";
               const activeCount = (casoActivo ? 1 : 0) + (periodoActivo ? 1 : 0);
               return (
