@@ -508,6 +508,19 @@ export function SeguimientoDialog({
     },
   });
 
+  // Fuente canónica de aceptación vigente (server-side) para la precarga de la
+  // entrega documental. Solo se consulta al abrir la entrega; se invalida cuando
+  // se registra un seguimiento nuevo. Fase 5B — Bloque 2A.
+  const {
+    data: aceptacionVigente,
+    isFetching: aceptacionCargando,
+  } = useQuery({
+    queryKey: ["saliente-aceptacion-vigente", casoId],
+    enabled: open && esSaliente && entregaOpen,
+    queryFn: () => resolverAceptacionVigente({ data: { casoId } }),
+    staleTime: 30_000,
+  });
+
   // Caso de Referencia Interna: se necesita `tipo_solicitud` para calcular la secuencia.
   const { data: casoInterna } = useQuery({
     queryKey: ["ri-caso", casoId],
