@@ -1,107 +1,109 @@
-# FASE 5A — Referencias Internas: Firma QR de llegada, Cierre por conclusión y Cancelación
+# FASE 5B — Corrección del flujo de Remisiones Salientes
 
-Ejecuta únicamente el flujo de seguimiento de Referencias Internas. No toca Salientes, PHD/PAD/O2, Alertas, Cuadro de Turno, Indicadores, Control de Mando, filtros, turno, login ni Modo Práctica.
+Alcance acotado: solo Salientes. No tocar RI, Fase 5A, Entrantes, PHD, filtros, turno, login, dispositivos, consentimiento, Modo Práctica.
 
-## Reutilización (inspección hecha)
+## Orden de ejecución
 
-| Elemento | Existente | Reutilizar |
-|---|---|---|
-| Infraestructura QR | `entrega_firmas` (token_hash SHA-256, expira, estado PENDIENTE/FIRMADA/VENCIDA/ANULADA, RLS fail-closed, guard trigger) + ruta pública `/firma-entrega` | Sí, con nuevo `tipo_caso='referencia_interna'` y `snapshot.flujo='RI_LLEGADA'` |
-| Server fns firma | `obtenerSesionFirma`, `firmarEntrega` en `src/lib/entrega-firma.functions.ts` | Sí — `firmarEntrega` ya soporta responsable + firmante distinto + teléfono + firma dataURL |
-| Modal seguimiento | `src/components/remisiones/seguimiento-dialog.tsx` bloque `esInterna && tipoSeg===TI.LLEGADA_AMB` (hoy pide fecha/hora manual) | Reemplazar por bloque QR |
-| Cadena `siguientePasoRI` | Devuelve `CULMINACION` después de `LLEGADA_AMB` | Renombrar destino a nueva constante `CIERRE_CONCLUSION`; conservar `CULMINACION` sin retirarlo para casos ya existentes |
-| Ruta pública | `/firma-entrega` | Adaptar: campos condicionales según `snapshot.flujo` (oculta checklist/docs para RI, muestra `NOMBRE RESPONSABLE / CARGO / casilla firmante distinto / TELÉFONO / FIRMA`) |
-| Cancelación RI | No existe actualmente en la lista de tipos para `esInterna` | Añadir `CANCELACION_TRAMITE` con razón obligatoria |
+### 1. Inspección canónica (sin escribir)
+Leer, en paralelo:
+- `src/components/remisiones/seguimiento-dialog.tsx` (tipos TI, gating, aceptación, cancelación, ambulancia, cierre).
+- `src/components/remisiones/entrega-documental-dialog.tsx` (snapshot, precarga, firma QR, checklist, portada).
+- `src/lib/entrega-documental.ts` y `src/lib/entrega-firma.functions.ts` (sesión firma, polling, idempotencia).
+- `src/routes/firma-entrega.tsx` (ruta pública).
+- `src/lib/salientes-admin-edit.functions.ts`, `src/lib/salientes-grupos.ts`, `src/routes/_authenticated/remisiones.tsx` (agrupación/estados).
+- `src/lib/soportes-utils.ts`, `src/lib/entrega-documental.ts` (checklists DOC_ENTREGA, SOAT/ADRES).
+- `src/lib/rc-utils.ts` (posible helper de normalización existente).
+- Tabla `entrega_firmas`, `seguimientos`, `remisiones` (columnas ya disponibles vía types.ts).
 
-## Cambios
+Meta: identificar reutilización y evitar segundos sistemas.
 
-### 1. Constantes canónicas (`seguimiento-dialog.tsx`)
-Añadir a `TI`:
-- `LLEGADA_AMB_QR: "CONFIRMACIÓN DE LLEGADA DE AMBULANCIA"` (reemplaza flujo manual; label idéntico, código canónico persistido en columna `tipo_seguimiento`).
-- `CIERRE_CONCLUSION: "CIERRE DE CASO POR CONCLUSIÓN DE SOLICITUD"`.
-- `CANCELACION_RI: "CANCELACIÓN DE TRÁMITE"`.
+### 2. Secuencia entrega ↔ cierre
+- Gating en el modal de seguimiento:
+  - `ENTREGA DOCUMENTAL AMBULANCIA`: visible solo si hay aceptación vigente + ambulancia coordinada + sin entrega registrada.
+  - `CIERRE DE CASO POR EGRESO`: visible solo si hay entrega documental persistida.
+- Detección canónica: consultar `seguimientos` por códigos `ENTREGA_DOC` (o el código real detectado) del mismo caso; no depender de texto de plantilla ni caché.
+- Validación server-side en la función que inserta seguimientos salientes: rechazar cierre por egreso sin entrega y rechazar entrega duplicada, re-consultando dentro de la operación.
 
-### 2. Selector de tipos RI
-Regla:
-- Siempre visibles mientras el caso esté activo y el usuario tenga permiso: `CANCELACION_RI`.
-- Cadena secuencial actual conservada; después de `LLEGADA_AMB` (confirmada en BD) → habilitar `CIERRE_CONCLUSION` (en lugar de `CULMINACION`).
-- Se detecta consultando `historial` ya cargado por el modal (query `ri-historial`); no depende de estado local.
+### 3. Aceptación con nombre y cargo
+- Añadir dos inputs estructurados en el paso `ACEPTACION_IPS`: `nombre_acepta`, `cargo_acepta` (trim, maxLength 160/120).
+- Persistir dentro del JSONB `detalles` del seguimiento (sin migración de schema; ya es `jsonb`).
+- Mostrar en detalle e Historial cuando existan (render defensivo).
+- No obligatorios al registrar aceptación; obligatorios al finalizar entrega documental.
 
-### 3. Bloque QR para `LLEGADA_AMB` (RI)
-Reemplaza el input manual de fecha/hora por:
-- Explicación breve.
-- Botón **ABRIR FIRMA QR** que abre un modal específico RI.
-- Modal RI muestra: Empresa de traslado (readonly desde caso), Sede (readonly desde caso), Fecha/hora de entrega (readonly, timestamp del servidor asignado al crear la sesión), botón **GENERAR QR DE FIRMA**.
-- Deshabilita generación si falta empresa/sede/permiso; mensaje específico.
-- Reutiliza componente/hook de generación QR de Salientes (extraerá el diálogo mínimo a un componente compartido `SignatureQrPanel` o llamará la server fn directamente y renderizará QR en un nuevo pequeño componente `firma-qr-ri-panel.tsx`).
+### 4. Resolver canónico de aceptación vigente
+Nuevo helper `src/lib/salientes-aceptacion.ts`:
+- Input: `casoId`, lista de seguimientos del caso.
+- Recorre seguimientos por código `ACEPTACION_IPS` y `CANCELACION_ACEPTACION`, excluye las canceladas, devuelve la última vigente: `{ ips, nombre, cargo, seguimientoId }` o `null`.
+- Consumido por: entrega documental (precarga snapshot), función server de entrega (validación), portada.
+- Sin coincidencias parciales ni parsing de plantilla.
 
-### 4. Nueva server fn atómica
-`crearSesionFirmaLlegadaRI` (en `src/lib/entrega-firma.functions.ts`, protegida con `requireSupabaseAuth`):
-- Valida rol activo + permiso sobre el caso RI.
-- Lee empresa/sede/fecha desde `referencia_interna` (fuente canónica) — nunca acepta del cliente.
-- Revoca sesiones PENDIENTE previas del mismo caso+flujo (marca `ANULADA`).
-- Inserta fila `entrega_firmas` con `tipo_caso='referencia_interna'`, `snapshot={flujo:'RI_LLEGADA', empresa, sede, fecha_solicitud_iso, paciente_iniciales, documento_enmascarado}`, `expira_at = now()+2h`.
-- Devuelve `{token, expira_at}`.
+### 5. Migración a entrega documental
+- Al abrir `EntregaDocumentalDialog`, precargar del resolver: IPS, nombre, cargo (mismo origen). Empresa de traslado: dejar la fuente actual.
+- Snapshot propio de la entrega: guardar `{ ips, nombre, cargo, empresa, ... }` en la sesión de firma; correcciones se persisten en el snapshot de entrega, no en la aceptación histórica.
+- Guardar `aceptacion_origen_id` en el snapshot para trazabilidad.
+- Bloquear finalización si falta IPS/nombre/cargo/empresa/firma.
 
-### 5. Ruta pública `/firma-entrega`
-Ajuste condicional por `snapshot.flujo`:
-- Si `RI_LLEGADA`: oculta documentos/checklist/IPS receptora/tipo ambulancia; muestra sección "Responsable del traslado", casilla "¿El firmante no es el mismo responsable del traslado?", teléfono, firma. `firmarEntrega` ya persiste todos esos campos; no requiere cambios de esquema.
-- Salientes intacto (mismo componente, ramas condicionales mínimas).
+### 6. `SOAT / ADRES`
+- En el selector documental (nuevos registros): unificar a `SOAT_ADRES` con label `SOAT / ADRES`.
+- Resolver checklist: mapear `SOAT_ADRES` a la lista canónica existente (usar la de SOAT o ADRES ya presente, sin duplicar).
+- Históricos con valor `SOAT` o `ADRES` siguen renderizándose tal cual (fallback de label).
+- Ajuste solo en catálogo/allowlist de código, sin migración de datos.
 
-### 6. Registro del seguimiento LLEGADA (server-side)
-Nueva server fn `registrarLlegadaAmbulanciaRI`:
-- Recibe `{caso_id, signatureRequestId}` — servidor resuelve caso desde la fila `entrega_firmas` (no confía en el cliente).
-- Verifica: fila FIRMADA, `seguimiento_id IS NULL`, `tipo_caso='referencia_interna'`, caso activo.
-- En transacción (RPC SECURITY DEFINER): inserta `seguimientos(tipo_seguimiento='CONFIRMACIÓN DE LLEGADA DE AMBULANCIA', metadata={firma_id, empresa, sede, fecha_llegada, responsable, firmante, telefono})`; actualiza `entrega_firmas.seguimiento_id`; actualiza `referencia_interna.estado='AMBULANCIA EN SITIO'` (estado existente); registra auditoría.
-- Idempotencia: unique parcial `(caso_id, tipo_seguimiento)` no aplicable a la tabla actual, pero la validación `seguimiento_id IS NULL` en `entrega_firmas` impide doble asociación.
+### 7. Cancelación de aceptación sin observaciones
+- En el paso `CANCELACION_ACEPTACION`: `motivo` obligatorio (≥5), `observaciones` opcional.
+- Ajustar validación en modal + función server + generación de plantilla (omitir sección vacía).
+- No tocar transición de estado.
 
-### 7. Cierre por conclusión (nueva server fn `cerrarRIConclusion`)
-- Input: `{caso_id, paciente_retorno: 'SI'|'NO', observaciones}`.
-- Valida existencia de seguimiento previo `CONFIRMACIÓN DE LLEGADA DE AMBULANCIA` para el caso.
-- Transacción: inserta `seguimientos(tipo='CIERRE DE CASO POR CONCLUSIÓN DE SOLICITUD', metadata={paciente_retorno})`; actualiza `referencia_interna.estado='CERRADO POR CONCLUSION'` + `archivado=true` para retirarlo de vistas activas; auditoría.
+### 8. Fecha por defecto en Ambulancia Coordinada
+- Al abrir seguimiento nuevo de tipo `AMBULANCIA_COORDINADA`, inicializar `fecha_traslado` con la fecha actual (helper existente); mantener hora manual; no sobrescribir al editar.
 
-### 8. Cancelación RI (nueva server fn `cancelarRI`)
-- Input: `{caso_id, razon: string(min 5)}`.
-- Disponible en cualquier momento mientras el caso esté activo.
-- Transacción: inserta `seguimientos(tipo='CANCELACIÓN DE TRÁMITE', metadata={razon})`; actualiza `referencia_interna.estado='CANCELADO'` + `archivado=true`; auditoría. NO habilita reactivación automática.
+### 9. Búsqueda sin tildes (helper global)
+- Crear `src/lib/text-normalize.ts` con `normalizeForSearch(s)` (NFD + strip diacríticos + lowercase + trim).
+- Reemplazar en consumidores reales de Salientes: autocompletes IPS/servicio/especialidad/empresa/documentos.
+- No modificar textareas ni valores persistidos. No aplicar a filtros de otros módulos fuera de alcance.
 
-### 9. Estados terminales
-Inspección: `referencia_interna` acepta texto libre en `estado` (sin CHECK). No requiere migración de enum. Se documentan códigos canónicos `CERRADO POR CONCLUSION` y `CANCELADO`. Se ajusta `historial.tsx` y consultas activas para que estos estados aparezcan como terminales y sean incluidos en Historial (ya se filtran por `archivado=true`).
+### 10. Sincronización de firma QR (prioridad alta)
+Revisar el mecanismo actual en `RiLlegadaQRPanel` / `EntregaDocumentalDialog`:
+- Confirmar polling con `refetchInterval` sobre `entrega_firmas` por `id` (ya presente).
+- En escritorio: ejecutar polling también en el diálogo de entrega documental (no solo RI). Al detectar `FIRMADA`, cerrar el estado "esperando", mostrar datos sincronizados (nombre/cargo firmante, fecha, estado), habilitar Portada y checklist final.
+- Detener polling al `FIRMADA | VENCIDA | ANULADA` o al cerrar diálogo.
+- Idempotencia: la función server ya usa `.eq('estado','PENDIENTE')`; verificar que no se dupliquen evidencias por caso (índice/lookup por `caso_id` activo).
+- Estados UI: `ESPERANDO FIRMA | FIRMA COMPLETADA | SESIÓN VENCIDA | SESIÓN ANULADA | ERROR`.
 
-### 10. Migración mínima
-- Ninguna sobre `entrega_firmas`.
-- Solo si el filtro actual de Historial no considera `CERRADO POR CONCLUSION` / `CANCELADO`: verificar y (si aplica) sumar a allowlist en `fetchHistoricosCasos`. Sin DDL.
+### 11. Portada — evaluación
+Buscar `portada` / `oficio` / template histórico:
+- Si existe la última versión histórica aprobada de la Portada → reutilizarla, alimentada con datos canónicos (snapshot de entrega + aceptación vigente + firmante).
+- **Si NO existe fuente canónica recuperable**: marcar `BLOQUEADO — REQUIERE PLANTILLA HISTÓRICA DE PORTADA` y detener SOLO esta parte. Continuar con el resto.
 
-## Archivos previstos
+### 12. Lista de chequeo final y descargas
+- Habilitar descarga final SOLO tras firma sincronizada + snapshot completo.
+- Antes: mostrar "pendiente de firma".
+- No regenerar históricos.
 
-| Archivo | Cambio |
-|---|---|
-| `src/lib/entrega-firma.functions.ts` | +3 fns: `crearSesionFirmaLlegadaRI`, `registrarLlegadaAmbulanciaRI`, y reutiliza `obtenerSesionFirma/firmarEntrega`. |
-| `src/lib/ri-cierre.functions.ts` (nuevo) | `cerrarRIConclusion`, `cancelarRI`. |
-| `src/components/remisiones/firma-qr-ri-panel.tsx` (nuevo) | Modal específico RI (empresa/sede/fecha readonly + QR + polling de estado firmado). |
-| `src/components/remisiones/seguimiento-dialog.tsx` | Añadir constantes, integrar bloque QR RI, cierre por conclusión con `SÍ/NO`, cancelación RI con razón; sustituir input manual fecha/hora. |
-| `src/routes/firma-entrega.tsx` | Ramas condicionales por `snapshot.flujo` (oculta checklist/tipo ambulancia para RI). |
-| `src/lib/historial-export.ts` / consulta históricos si aplica | Incluir estados terminales `CERRADO POR CONCLUSION` y `CANCELADO`. |
+### 13. Validación de registro de entrega
+Server-side, verificar antes de insertar la entrega:
+- Caso activo, estado compatible.
+- Aceptación vigente resuelta (mismo resolver, ejecutado en server).
+- Firma `FIRMADA` cuyo `caso_id` coincide.
+- Snapshot completo.
+- Sin entrega previa registrada.
 
-## Fuera de alcance
-- Reactivación de Referencias Internas canceladas.
-- Cambios en Salientes, PHD, entrantes, otros módulos.
-- Nuevos PDF/checklist/portada para este flujo.
+### 14. Cierre por egreso atómico
+- Función server: valida entrega persistida, inserta seguimiento de cierre, aplica estado terminal canónico, transición, auditoría, retira de activos — todo en una operación.
 
-## Matriz por rol
+### 15. Auditoría e invalidación
+- Registrar eventos ya listados vía `registrarAuditoria` existente (sin nueva bitácora).
+- Invalidar `["remisiones"]`, `["seguimientos", casoId]`, `["historial"]`, `["ri-firma-estado", sesionId]` — únicamente lo relacionado.
 
-| Funcionalidad | Admin | Operativa | Temporal | Inactivo | Anon |
-|---|---|---|---|---|---|
-| Ver seguimiento RI | VISIBLE Y UTILIZABLE | VISIBLE Y UTILIZABLE | VISIBLE Y UTILIZABLE | BLOQUEADO | BLOQUEADO |
-| Abrir/Generar QR llegada | VISIBLE Y EDITABLE | VISIBLE Y EDITABLE | según permiso actual RI | BLOQUEADO | BLOQUEADO |
-| Registrar llegada / cierre / cancelación | VISIBLE Y EDITABLE | VISIBLE Y EDITABLE | según permiso actual RI | BLOQUEADO | BLOQUEADO |
-| Formulario público con token válido | NO APLICA | NO APLICA | NO APLICA | NO APLICA | VISIBLE Y UTILIZABLE |
-| Formulario público sin token / caso interno | NO APLICA | NO APLICA | NO APLICA | NO APLICA | BLOQUEADO |
+### 16. Typecheck
+Al final: build automático valida. Sin comandos manuales.
 
-## Preguntas para el usuario
+## Aspectos técnicos
 
-1. **Estado terminal por conclusión:** propongo el código `CERRADO POR CONCLUSION`. ¿OK o prefieres otro literal? (`CERRADO POR CULMINACION`, `CONCLUIDO`…)
-2. **Cambio del label visible del cierre:** El flujo actual usa `CULMINACIÓN DE SOLICITUD`. La FASE 5A pide `CIERRE DE CASO POR CONCLUSIÓN DE SOLICITUD`. ¿Reemplazo por completo (deja de existir `CULMINACIÓN DE SOLICITUD` en el selector) o conservo compatibilidad para históricos ya registrados con el texto anterior?
-3. **Modal RI QR:** ¿confirmas que la fecha/hora visible en el modal debe ser la del **momento de crear la sesión de firma** (server-side) y NO del momento en que el tripulante confirma? El prompt sugiere lo primero (“se completa al abrir el modal”); lo dejo así explícitamente para evitar ambigüedad.
+- **Sin migraciones nuevas salvo indispensables.** Los campos nombre/cargo van en `seguimientos.detalles` (jsonb). Snapshot va en `entrega_firmas.snapshot` (jsonb). `SOAT_ADRES` es solo un código de allowlist en cliente.
+- **Roles**: no ampliar permisos. RLS existente cubre `seguimientos`, `entrega_firmas`, `remisiones`. Validación server dentro de funciones ya autenticadas.
+- **Portada**: si bloqueada, se documenta en el entregable; no se inventa.
+- **Fuera del scope estricto**: no se toca RI (`RiLlegadaQRPanel` puede compartir helpers si aplica sin alterar comportamiento).
 
-Con esas respuestas procedo directamente.
+## Entregable
+Al terminar, se produce el reporte con las 19 secciones solicitadas (inspección, causa raíz, secuencia, resolver, migración, tipos documentales, búsqueda sin tildes, firma QR, documentos, estados, funciones server, invalidación, archivos modificados, migraciones, pruebas, matriz por rol, matriz por capa, bloqueadores, estado final).
