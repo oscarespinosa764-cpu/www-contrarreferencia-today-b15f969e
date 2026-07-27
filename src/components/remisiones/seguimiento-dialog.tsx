@@ -173,14 +173,14 @@ function siguientePasoRI(
   if (especial) {
     if (!ultimo) return TI.TEP_ACTIVACION;
     if (ultimo === TI.TEP_ACTIVACION.toUpperCase()) return TI.AMB_COORDINADA_ESP;
-    if (ultimo === TI.AMB_COORDINADA_ESP.toUpperCase()) return TI.CULMINACION;
+    if (ultimo === TI.AMB_COORDINADA_ESP.toUpperCase()) return TI.CIERRE_CONCLUSION;
     return null;
   }
   if (!ultimo) return TI.PENDIENTE;
   if (ultimo.startsWith("PENDIENTE COORDINAC")) return TI.COORDINADO;
   if (ultimo === TI.COORDINADO.toUpperCase()) return TI.PROG_AMB;
   if (ultimo === TI.PROG_AMB.toUpperCase()) return TI.LLEGADA_AMB;
-  if (ultimo === TI.LLEGADA_AMB.toUpperCase()) return TI.CULMINACION;
+  if (ultimo === TI.LLEGADA_AMB.toUpperCase()) return TI.CIERRE_CONCLUSION;
   return null;
 }
 
