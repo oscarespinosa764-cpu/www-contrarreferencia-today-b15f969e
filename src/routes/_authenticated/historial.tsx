@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { FiltersBar } from "@/components/filters/filters-bar";
 import {
   Dialog,
   DialogContent,
@@ -1776,75 +1777,100 @@ function HistorialPage() {
             HISTORIAL · {tituloVista}
           </h2>
           <div className="flex flex-wrap items-center gap-1.5">
-            {/* Filtro por caso/estado */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 rounded-full text-[11px] font-semibold">
-                  <Filter className="mr-1.5 h-3.5 w-3.5" />
-                  {filtroCasoLabel}
-                  <ChevronDown className="ml-1 h-3.5 w-3.5 opacity-70" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-52 p-1.5">
-                <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                  Filtrar por {vista === "entrantes" ? "caso" : "estado"}
-                </p>
-                {vista === "entrantes"
-                  ? TIPO_FILTERS.map((t) => (
-                      <FilterButton key={t} active={tipo === t} label={TIPO_LABEL[t]} onClick={() => setTipo(t)} />
-                    ))
-                  : vista === "salientes"
-                    ? SAL_FILTERS.map((t) => (
-                        <FilterButton key={t} active={salTipo === t} label={SAL_LABEL[t]} onClick={() => setSalTipo(t)} />
-                      ))
-                    : GEN_FILTERS.map((t) => (
-                        <FilterButton key={t} active={genTipo === t} label={GEN_LABEL[t]} onClick={() => setGenTipo(t)} />
-                      ))}
-              </PopoverContent>
-            </Popover>
-
-            {/* Período + calendario */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 rounded-full text-[11px] font-semibold">
-                  <CalendarDays className="mr-1.5 h-3.5 w-3.5" />
-                  {periodoLabel}
-                  <ChevronDown className="ml-1 h-3.5 w-3.5 opacity-70" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-auto p-2">
-                <p className="px-1 pb-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Período</p>
-                <div className="flex flex-wrap gap-1">
-                  {PERIODOS.map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => setQuickPeriodo(p)}
-                      className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
-                        !fechaEspecifica && periodo === p
-                          ? "border-primary bg-primary/15 text-primary"
-                          : "border-border bg-card text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
-                <div className="mt-2 border-t pt-1">
-                  <p className="px-1 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                    O elige una fecha
-                  </p>
-                  <Calendar
-                    mode="single"
-                    selected={fechaEspecifica}
-                    onSelect={(d) => {
-                      setFechaEspecifica(d ?? undefined);
-                      if (d) setPeriodo("Todos");
-                    }}
-                    captionLayout="dropdown"
-                  />
-                </div>
-              </PopoverContent>
-            </Popover>
+            {/* Filtro unificado (caso/estado + período) — botón compacto Filtrar (n) */}
+            {(() => {
+              const casoActivo =
+                (vista === "entrantes" && tipo !== "TODOS") ||
+                (vista === "salientes" && salTipo !== "TODOS") ||
+                (vista !== "entrantes" && vista !== "salientes" && genTipo !== "TODOS");
+              const periodoActivo = Boolean(fechaEspecifica) || periodo !== "Todos";
+              const activeCount = (casoActivo ? 1 : 0) + (periodoActivo ? 1 : 0);
+              return (
+                <FiltersBar
+                  alwaysCompact
+                  activeCount={activeCount}
+                  panelTitle="Filtros del historial"
+                  onClear={() => {
+                    setTipo("TODOS");
+                    setSalTipo("TODOS");
+                    setGenTipo("TODOS");
+                    setPeriodo("Todos");
+                    setFechaEspecifica(undefined);
+                  }}
+                  secondary={
+                    <div className="space-y-4">
+                      <div>
+                        <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                          Filtrar por {vista === "entrantes" ? "caso" : "estado"}
+                        </p>
+                        <div className="flex flex-col gap-1">
+                          {vista === "entrantes"
+                            ? TIPO_FILTERS.map((t) => (
+                                <FilterButton
+                                  key={t}
+                                  active={tipo === t}
+                                  label={TIPO_LABEL[t]}
+                                  onClick={() => setTipo(t)}
+                                />
+                              ))
+                            : vista === "salientes"
+                              ? SAL_FILTERS.map((t) => (
+                                  <FilterButton
+                                    key={t}
+                                    active={salTipo === t}
+                                    label={SAL_LABEL[t]}
+                                    onClick={() => setSalTipo(t)}
+                                  />
+                                ))
+                              : GEN_FILTERS.map((t) => (
+                                  <FilterButton
+                                    key={t}
+                                    active={genTipo === t}
+                                    label={GEN_LABEL[t]}
+                                    onClick={() => setGenTipo(t)}
+                                  />
+                                ))}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                          Período
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {PERIODOS.map((p) => (
+                            <button
+                              key={p}
+                              onClick={() => setQuickPeriodo(p)}
+                              className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${
+                                !fechaEspecifica && periodo === p
+                                  ? "border-primary bg-primary/15 text-primary"
+                                  : "border-border bg-card text-muted-foreground hover:text-foreground"
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="mt-2 border-t pt-1">
+                          <p className="px-1 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                            O elige una fecha
+                          </p>
+                          <Calendar
+                            mode="single"
+                            selected={fechaEspecifica}
+                            onSelect={(d) => {
+                              setFechaEspecifica(d ?? undefined);
+                              if (d) setPeriodo("Todos");
+                            }}
+                            captionLayout="dropdown"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  }
+                />
+              );
+            })()}
 
             {/* Exportación */}
             <Popover>
