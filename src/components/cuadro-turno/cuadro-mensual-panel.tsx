@@ -21,6 +21,7 @@ import {
   type ShiftType, type ShiftSchedule, type ShiftMember, type ShiftDay,
 } from "@/lib/cuadro-turno-utils";
 import { exportarCuadroMensual } from "@/lib/cuadro-excel";
+import { FiltersBar, countActiveFilters } from "@/components/filters/filters-bar";
 
 const CUADRO_ROUTE = "/_authenticated/cuadro-turno" as const;
 const VISTAS = ["calendario", "matriz", "lista"] as const;
