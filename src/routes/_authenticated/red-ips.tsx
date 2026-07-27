@@ -6,6 +6,7 @@ import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { AppHeader } from "@/components/app-header";
+import { FiltersBar, countActiveFilters } from "@/components/filters/filters-bar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
