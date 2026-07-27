@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FiltersBar, countActiveFilters } from "@/components/filters/filters-bar";
 import { Plus, Trash2, CheckCircle2, Archive, AlertTriangle, RefreshCw, Pencil } from "lucide-react";
 import { ChecklistFormDialog } from "./checklist-form-dialog";
 
