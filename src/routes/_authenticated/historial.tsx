@@ -2571,6 +2571,16 @@ function CasoConMenu({
               }}
             />
           )}
+          {puedeReactivar && (
+            <MenuBtn
+              icon={RotateCcw}
+              label="Deshacer cancelación / Reactivar caso"
+              onClick={() => {
+                onReactivar();
+                setOpen(false);
+              }}
+            />
+          )}
           <MenuBtn icon={X} label="Cancelar" onClick={() => setOpen(false)} danger />
         </PopoverContent>
       </Popover>
