@@ -58,6 +58,9 @@ type Props = {
   tipoAmbulancia?: string | null;
   quienAcepta?: string | null;
   cargoAcepta?: string | null;
+  // Id de la ACEPTACIÓN DE IPS RECEPTORA vigente resuelta server-side
+  // (fuente canónica). Se persiste dentro del snapshot para trazabilidad.
+  aceptacionOrigenId?: string | null;
 };
 
 type SesionRow = {
@@ -96,6 +99,7 @@ export function EntregaDocumentalDialog({
   tipoAmbulancia,
   quienAcepta,
   cargoAcepta,
+  aceptacionOrigenId,
 }: Props) {
   const qc = useQueryClient();
   const [origen, setOrigen] = useState<OrigenDoc | "">("");
@@ -167,6 +171,7 @@ export function EntregaDocumentalDialog({
       tipo_ambulancia: tipoAmbulancia ?? undefined,
       quien_acepta: quienAceptaS || undefined,
       cargo_acepta: cargoAceptaS || undefined,
+      aceptacion_origen_id: aceptacionOrigenId ?? null,
     }),
     [
       paciente,
@@ -182,6 +187,7 @@ export function EntregaDocumentalDialog({
       tipoAmbulancia,
       quienAceptaS,
       cargoAceptaS,
+      aceptacionOrigenId,
     ],
   );
 

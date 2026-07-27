@@ -81,6 +81,8 @@ import {
 } from "@/lib/indigo-trazabilidad";
 import { EntregaDocumentalDialog } from "@/components/remisiones/entrega-documental-dialog";
 import { RiLlegadaQRPanel } from "@/components/remisiones/ri-llegada-qr-panel";
+import { resolverAceptacionVigente } from "@/lib/salientes-aceptacion.functions";
+import { limpiarNombreAcepta, limpiarCargoAcepta, NOMBRE_ACEPTA_MAX, CARGO_ACEPTA_MAX } from "@/lib/salientes-aceptacion";
 
 type Props = {
   open: boolean;
@@ -298,6 +300,9 @@ export function SeguimientoDialog({
   // Aceptación IPS
   const [ipsReceptora, setIpsReceptora] = useState("");
   const [ipsReceptoraSede, setIpsReceptoraSede] = useState("");
+  // Fase 5B — Bloque 2A: nombre/cargo de quien acepta (estructurados).
+  const [nombreAcepta, setNombreAcepta] = useState("");
+  const [cargoAcepta, setCargoAcepta] = useState("");
 
   // Negaciones
   const [negMotivo, setNegMotivo] = useState("");
@@ -501,6 +506,19 @@ export function SeguimientoDialog({
         .order("created_at", { ascending: false });
       return data ?? [];
     },
+  });
+
+  // Fuente canónica de aceptación vigente (server-side) para la precarga de la
+  // entrega documental. Solo se consulta al abrir la entrega; se invalida cuando
+  // se registra un seguimiento nuevo. Fase 5B — Bloque 2A.
+  const {
+    data: aceptacionVigente,
+    isFetching: aceptacionCargando,
+  } = useQuery({
+    queryKey: ["saliente-aceptacion-vigente", casoId],
+    enabled: open && esSaliente && entregaOpen,
+    queryFn: () => resolverAceptacionVigente({ data: { casoId } }),
+    staleTime: 30_000,
   });
 
   // Caso de Referencia Interna: se necesita `tipo_solicitud` para calcular la secuencia.
@@ -1482,6 +1500,7 @@ export function SeguimientoDialog({
 
   const refrescar = () => {
     qc.invalidateQueries({ queryKey: ["seguimientos-caso", casoId] });
+    qc.invalidateQueries({ queryKey: ["saliente-aceptacion-vigente", casoId] });
     qc.invalidateQueries({ queryKey: ["remisiones"] });
     qc.invalidateQueries({ queryKey: ["domiciliarios"] });
     qc.invalidateQueries({ queryKey: ["referencia-interna"] });
@@ -1627,7 +1646,12 @@ export function SeguimientoDialog({
           telefono: telefono.trim() || null,
         };
       case T.ACEPTACION:
-        return { ips_receptora: ipsReceptora.trim(), sede: ipsReceptoraSede.trim() || null };
+        return {
+          ips_receptora: ipsReceptora.trim(),
+          sede: ipsReceptoraSede.trim() || null,
+          nombre_acepta: limpiarNombreAcepta(nombreAcepta),
+          cargo_acepta: limpiarCargoAcepta(cargoAcepta),
+        };
       case T.NEGACIONES:
         return { grupos: negGruposPreview };
       case T.AMBULANCIA:
@@ -1746,6 +1770,8 @@ export function SeguimientoDialog({
     setFisCargo("");
     setFisConQuien("");
     setIpsReceptoraSede("");
+    setNombreAcepta("");
+    setCargoAcepta("");
     setNegMotivo("");
     setNegCual("");
     setNegIpsInput("");
@@ -3051,9 +3077,32 @@ export function SeguimientoDialog({
                   {ipsReceptoraSede && (
                     <p className="text-[11px] text-muted-foreground">Sede: {ipsReceptoraSede}</p>
                   )}
+                  {/* Fase 5B — Bloque 2A: nombre y cargo de quien acepta. */}
+                  <div className="grid grid-cols-1 gap-3 pt-1 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Nombre de quien acepta</Label>
+                      <Input
+                        value={nombreAcepta}
+                        onChange={(e) => setNombreAcepta(e.target.value)}
+                        maxLength={NOMBRE_ACEPTA_MAX}
+                        placeholder="Nombre completo"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Cargo de quien acepta</Label>
+                      <Input
+                        value={cargoAcepta}
+                        onChange={(e) => setCargoAcepta(e.target.value)}
+                        maxLength={CARGO_ACEPTA_MAX}
+                        placeholder="Cargo del funcionario"
+                      />
+                    </div>
+                  </div>
                   <p className="text-[10px] text-muted-foreground">
-                    Estado de solicitud → SÍ ACEPTA.
+                    Estado de solicitud → SÍ ACEPTA. Nombre y cargo se usarán para precargar la
+                    entrega documental.
                   </p>
+
                 </div>
               )}
 
@@ -3239,7 +3288,13 @@ export function SeguimientoDialog({
                     documento={documento}
                     tipoDocumento={caso?.tipo_documento}
                     cie10={caso?.cie10}
-                    ipsReceptora={caso?.ips_receptora ?? ipsReceptora}
+                    ipsReceptora={
+                      aceptacionVigente?.estado === "vigente"
+                        ? (aceptacionVigente.aceptacion.ips_receptora ??
+                            caso?.ips_receptora ??
+                            ipsReceptora)
+                        : (caso?.ips_receptora ?? ipsReceptora)
+                    }
                     empresaTraslado={empresaAmb || (() => {
                       const h = (historial ?? []).find(
                         (s) => String(s.tipo_seguimiento ?? "").toUpperCase().includes("AMBULANCIA COORDINADA"),
@@ -3250,7 +3305,35 @@ export function SeguimientoDialog({
                     especialidad={especialidadesList.join(", ")}
                     entidadPago={caso?.eapb}
                     tipoAmbulancia={caso?.tipo_ambulancia}
+                    quienAcepta={
+                      aceptacionVigente?.estado === "vigente"
+                        ? aceptacionVigente.aceptacion.nombre_acepta
+                        : null
+                    }
+                    cargoAcepta={
+                      aceptacionVigente?.estado === "vigente"
+                        ? aceptacionVigente.aceptacion.cargo_acepta
+                        : null
+                    }
+                    aceptacionOrigenId={
+                      aceptacionVigente?.estado === "vigente"
+                        ? aceptacionVigente.aceptacion.aceptacion_id
+                        : null
+                    }
                   />
+                  {aceptacionCargando && entregaOpen && (
+                    <p className="text-[10.5px] text-muted-foreground">
+                      Resolviendo aceptación vigente…
+                    </p>
+                  )}
+                  {!aceptacionCargando &&
+                    entregaOpen &&
+                    aceptacionVigente?.estado === "sin_aceptacion" && (
+                      <p className="text-[10.5px] text-amber-600">
+                        No se encontró una aceptación de IPS receptora vigente. Registre la
+                        aceptación antes de finalizar la entrega documental.
+                      </p>
+                    )}
                 </div>
               )}
 
