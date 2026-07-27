@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 import { AppDateTimeInput } from "@/components/ui/app-time-picker";
+import { includesNormalized } from "@/lib/text-normalize";
 
 
 export function Field({
