@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { usePractice } from "@/lib/practice-mode";
 import { Button } from "@/components/ui/button";
 import { Moon, Sun, X, FlaskConical } from "lucide-react";
-import { getSaludo, getSaludoEmoji, getTurnoLabel, getPrimerNombre, useClientTime } from "@/lib/turno";
+import { getSaludo, getSaludoEmoji, getPrimerNombre, getTurnoSesionLabel, useClientTime } from "@/lib/turno";
 
 function useThemeToggle() {
   const [dark, setDark] = useState(false);
@@ -24,7 +24,7 @@ function useThemeToggle() {
 }
 
 export function AppHeader({ title, subtitle }: { title: string; subtitle?: string }) {
-  const { user, signOut, isAdmin } = useAuth();
+  const { user, signOut, isAdmin, turnoSesion } = useAuth();
   const { dark, toggle } = useThemeToggle();
   const { active: practica, toggle: togglePractica } = usePractice();
 
@@ -40,7 +40,7 @@ export function AppHeader({ title, subtitle }: { title: string; subtitle?: strin
   const nombre = getPrimerNombre(profile?.nombre || user?.email || "");
   const saludo = useClientTime((d) => `${getSaludo(d)}, `);
   const saludoEmoji = useClientTime((d) => getSaludoEmoji(d));
-  const turnoLabel = useClientTime((d) => getTurnoLabel(d));
+  const turnoLabel = turnoSesion ? getTurnoSesionLabel(turnoSesion) : null;
 
   return (
     <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
