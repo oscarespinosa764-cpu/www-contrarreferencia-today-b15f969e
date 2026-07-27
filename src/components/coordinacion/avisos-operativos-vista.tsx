@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FiltersBar, countActiveFilters } from "@/components/filters/filters-bar";
 import { Search } from "lucide-react";
 import { useAvisosOperativos } from "@/lib/use-avisos-operativos";
 import { NIVEL_BADGE } from "@/lib/avisos-reglas";
