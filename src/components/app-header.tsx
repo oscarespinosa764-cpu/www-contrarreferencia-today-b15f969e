@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { usePractice } from "@/lib/practice-mode";
 import { Button } from "@/components/ui/button";
 import { Moon, Sun, X, FlaskConical } from "lucide-react";
-import { getSaludo, getSaludoEmoji, getTurnoLabel, getPrimerNombre, useClientTime } from "@/lib/turno";
+import { getSaludo, getSaludoEmoji, getPrimerNombre, getTurnoSesionLabel, useClientTime } from "@/lib/turno";
 
 function useThemeToggle() {
   const [dark, setDark] = useState(false);
