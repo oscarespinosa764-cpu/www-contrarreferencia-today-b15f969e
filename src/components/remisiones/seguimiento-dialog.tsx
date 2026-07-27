@@ -1632,7 +1632,12 @@ export function SeguimientoDialog({
           telefono: telefono.trim() || null,
         };
       case T.ACEPTACION:
-        return { ips_receptora: ipsReceptora.trim(), sede: ipsReceptoraSede.trim() || null };
+        return {
+          ips_receptora: ipsReceptora.trim(),
+          sede: ipsReceptoraSede.trim() || null,
+          nombre_acepta: limpiarNombreAcepta(nombreAcepta),
+          cargo_acepta: limpiarCargoAcepta(cargoAcepta),
+        };
       case T.NEGACIONES:
         return { grupos: negGruposPreview };
       case T.AMBULANCIA:
