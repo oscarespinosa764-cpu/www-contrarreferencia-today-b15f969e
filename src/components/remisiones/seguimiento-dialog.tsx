@@ -1096,6 +1096,23 @@ export function SeguimientoDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [esEvolucionSal]);
 
+  // Precarga la fecha actual (zona horaria funcional del aplicativo) al
+  // iniciar un seguimiento nuevo de AMBULANCIA COORDINADA. Solo aplica cuando
+  // el campo está vacío: nunca sobrescribe una fecha ya elegida por el usuario
+  // ni afecta históricos.
+  useEffect(() => {
+    if (tipoSeg !== T.AMBULANCIA) return;
+    if (fechaTraslado.trim()) return;
+    const hoyBogota = new Date().toLocaleDateString("es-CO", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      timeZone: "America/Bogota",
+    });
+    setFechaTraslado(hoyBogota);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipoSeg]);
+
   // Motivo de negación resuelto (texto personalizado cuando se elige "OTRO").
   const negMotivoResuelto =
     negMotivo === "OTRO"
