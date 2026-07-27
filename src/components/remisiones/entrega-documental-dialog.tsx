@@ -58,6 +58,9 @@ type Props = {
   tipoAmbulancia?: string | null;
   quienAcepta?: string | null;
   cargoAcepta?: string | null;
+  // Id de la ACEPTACIÓN DE IPS RECEPTORA vigente resuelta server-side
+  // (fuente canónica). Se persiste dentro del snapshot para trazabilidad.
+  aceptacionOrigenId?: string | null;
 };
 
 type SesionRow = {
