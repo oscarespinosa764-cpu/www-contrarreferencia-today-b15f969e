@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Search, RotateCw, FileText, FileDown, Loader2 } from "lucide-react";
+import { FiltersBar, countActiveFilters } from "@/components/filters/filters-bar";
 import { TURNOS_CANONICOS, TURNOS_CODIGOS } from "@/lib/turno";
 import { CasoRemisionCard, type Remision } from "@/components/remisiones/caso-remision-card";
 import { CasoGenericoCard, type GenericoTipo } from "@/components/remisiones/caso-generico-card";
