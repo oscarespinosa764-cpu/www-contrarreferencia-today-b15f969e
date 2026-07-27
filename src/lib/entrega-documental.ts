@@ -167,6 +167,9 @@ export type SnapshotEntrega = {
   tipo_ambulancia?: string;
   quien_acepta?: string;
   cargo_acepta?: string;
+  // Referencia técnica a la ACEPTACIÓN DE IPS RECEPTORA vigente resuelta
+  // server-side por `resolverAceptacionVigente`. Fase 5B — Bloque 2A.
+  aceptacion_origen_id?: string | null;
 };
 
 
