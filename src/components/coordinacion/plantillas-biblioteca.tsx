@@ -32,6 +32,7 @@ import { Search, Plus, Copy, Pencil, Trash2, Sparkles, Tag, ChevronDown, FolderO
 import { toast } from "sonner";
 import { PASOS, PASO_LABEL, VARIABLES, pasosLabels } from "@/lib/plantillas-variables";
 import { generarPlantillaTexto } from "@/lib/ai.functions";
+import { FiltersBar, countActiveFilters } from "@/components/filters/filters-bar";
 
 type Plantilla = {
   id: string;
