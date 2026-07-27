@@ -1580,6 +1580,7 @@ function HistorialPage() {
   // ---- Etapa 3 · Menú contextual enriquecido -----------------------------
   const [infoCaso, setInfoCaso] = useState<Construido | null>(null);
   const [audCaso, setAudCaso] = useState<Construido | null>(null);
+  const [reactivarCaso, setReactivarCaso] = useState<Construido | null>(null);
 
   const copiarCodigo = (c: Construido) => {
     const cod = (c.codigo || "").trim();
