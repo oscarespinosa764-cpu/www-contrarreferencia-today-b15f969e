@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { normalizeForSearch } from "@/lib/text-normalize";
 
 interface Props {
   label?: string;
