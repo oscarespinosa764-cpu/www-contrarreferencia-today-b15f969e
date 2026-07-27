@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 import { AppDateTimeInput } from "@/components/ui/app-time-picker";
+import { includesNormalized } from "@/lib/text-normalize";
 
 
 export function Field({
@@ -140,12 +141,12 @@ export function SpecialtyList({
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  const term = val.trim().toLowerCase();
+  const term = val.trim();
   const matches =
     term.length === 0
       ? []
       : suggestions
-          .filter((s) => s.toLowerCase().includes(term) && !items.includes(s))
+          .filter((s) => includesNormalized(s, term) && !items.includes(s))
           .slice(0, 30);
 
   const add = (forced?: string) => {

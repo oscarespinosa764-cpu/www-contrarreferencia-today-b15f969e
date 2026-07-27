@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { normalizeForSearch } from "@/lib/text-normalize";
 
 interface Props {
   label?: string;
@@ -18,12 +19,9 @@ interface Props {
   minChars?: number;
 }
 
-// Normaliza para búsqueda: sin tildes, en minúsculas.
-const norm = (s: string) =>
-  s
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
+// Reutiliza el helper canónico compartido (sin tildes, minúsculas, trim).
+// No se persiste la versión normalizada: es solo para comparar.
+const norm = normalizeForSearch;
 
 export function AutoComplete({
   label,

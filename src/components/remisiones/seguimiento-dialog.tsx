@@ -1096,6 +1096,23 @@ export function SeguimientoDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [esEvolucionSal]);
 
+  // Precarga la fecha actual (zona horaria funcional del aplicativo) al
+  // iniciar un seguimiento nuevo de AMBULANCIA COORDINADA. Solo aplica cuando
+  // el campo está vacío: nunca sobrescribe una fecha ya elegida por el usuario
+  // ni afecta históricos.
+  useEffect(() => {
+    if (tipoSeg !== T.AMBULANCIA) return;
+    if (fechaTraslado.trim()) return;
+    const hoyBogota = new Date().toLocaleDateString("es-CO", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      timeZone: "America/Bogota",
+    });
+    setFechaTraslado(hoyBogota);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipoSeg]);
+
   // Motivo de negación resuelto (texto personalizado cuando se elige "OTRO").
   const negMotivoResuelto =
     negMotivo === "OTRO"
@@ -1976,7 +1993,12 @@ export function SeguimientoDialog({
           return toast.error("Indica el motivo de la cancelación de la IPS");
         if (novIps && novIpsTipo === "POSTERGA" && (!novIpsFecha.trim() || !novIpsHora.trim()))
           return toast.error("Indica la fecha y hora de postergación");
-        if (!detalle.trim()) return toast.error("Registra la observación de la novedad");
+        // Observaciones opcionales cuando la IPS receptora cancela la aceptación
+        // (el motivo ya es obligatorio arriba). En el resto de novedades siguen
+        // siendo obligatorias.
+        const cancelaAceptacion = novIps && novIpsTipo === "CANCELA";
+        if (!cancelaAceptacion && !detalle.trim())
+          return toast.error("Registra la observación de la novedad");
       }
       if (requiereMotivoLegacy && mostrarEvolucionLegacy && !motivoEvo.trim())
         return toast.error("Indica el motivo de la evolución pendiente");
