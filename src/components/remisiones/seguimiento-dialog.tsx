@@ -1882,6 +1882,11 @@ export function SeguimientoDialog({
         if (!riTepProveedor.trim()) return toast.error("Selecciona el proveedor de TEP");
         if (!riTepFecha.trim()) return toast.error("Indica la fecha y hora de activación del TEP");
       }
+      // Acción terminal de cancelación: motivo obligatorio.
+      if (esInterna && tipoSeg === TI.CANCELACION_RI) {
+        if (detalle.trim().length < 5)
+          return toast.error("Describe el motivo de la cancelación (mínimo 5 caracteres).");
+      }
 
       // Cambio en especialidad: exige cambio real, conservar una activa y motivo.
       if (esCambioEsp) {
