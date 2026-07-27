@@ -2652,6 +2652,8 @@ function PacienteResultado({
   onExportarExcelCaso,
   onVerAuditoriaCaso,
   puedeAuditar,
+  onReactivarCaso,
+  puedeReactivar,
 }: {
   vista: Vista;
   nombre: string;
@@ -2675,6 +2677,8 @@ function PacienteResultado({
   onExportarExcelCaso: (c: Construido) => void;
   onVerAuditoriaCaso: (c: Construido) => void;
   puedeAuditar: boolean;
+  onReactivarCaso: (c: Construido) => void;
+  puedeReactivar: boolean;
 }) {
   const rows = useMemo(() => {
     if (vista === "entrantes")
