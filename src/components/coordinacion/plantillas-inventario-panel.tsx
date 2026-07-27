@@ -12,6 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { FiltersBar, countActiveFilters } from "@/components/filters/filters-bar";
 import { invalidatePlantillaConfig } from "@/lib/plantillas-inventario-config";
 import {
   AlertTriangle,
