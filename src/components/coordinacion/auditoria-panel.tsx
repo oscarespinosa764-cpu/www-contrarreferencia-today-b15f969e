@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Panel } from "@/components/stat-card";
 import { Input } from "@/components/ui/input";
+import { FiltersBar, countActiveFilters } from "@/components/filters/filters-bar";
 import { Button } from "@/components/ui/button";
 import {
   Select,
