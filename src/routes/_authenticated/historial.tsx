@@ -75,6 +75,27 @@ import {
   type CampoPDF,
   type BloqueCaso,
 } from "@/lib/bitacora-pdf";
+import { DeshacerCancelacionDialog } from "@/components/historial/deshacer-cancelacion-dialog";
+import {
+  ESTADOS_CANCEL_POR_TIPO,
+  type TipoCasoReactivable,
+} from "@/lib/reactivar-caso.functions";
+
+function tipoCasoReactivableDesdeTabla(
+  tabla: "casos_entrantes" | "remisiones" | "domiciliarios" | "referencia_interna",
+): TipoCasoReactivable | null {
+  if (tabla === "casos_entrantes") return "entrante";
+  if (tabla === "remisiones") return "remision";
+  if (tabla === "domiciliarios") return "domiciliario";
+  return null; // referencia_interna: NO APLICA ACTUALMENTE
+}
+
+function esEstadoCancelatorio(
+  tipo: TipoCasoReactivable,
+  estado: string,
+): boolean {
+  return ESTADOS_CANCEL_POR_TIPO[tipo].includes(estado);
+}
 
 export const Route = createFileRoute("/_authenticated/historial")({
   component: HistorialPage,
