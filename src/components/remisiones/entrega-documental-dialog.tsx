@@ -99,6 +99,7 @@ export function EntregaDocumentalDialog({
   tipoAmbulancia,
   quienAcepta,
   cargoAcepta,
+  aceptacionOrigenId,
 }: Props) {
   const qc = useQueryClient();
   const [origen, setOrigen] = useState<OrigenDoc | "">("");
