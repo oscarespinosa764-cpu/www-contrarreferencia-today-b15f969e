@@ -48,7 +48,7 @@ export function Cie10Field({
   const onChange = async (q: string) => {
     setVal(q);
     onValueChange?.(q);
-    const term = q.trim().toLowerCase();
+    const term = normalizeForSearch(q);
     if (term.length < 2) {
       setResults([]);
       setOpen(false);
@@ -56,7 +56,7 @@ export function Cie10Field({
     }
     const list = await loadCie();
     const matches = list
-      .filter((x) => x.c.toLowerCase().startsWith(term) || x.d.toLowerCase().includes(term))
+      .filter((x) => normalizeForSearch(x.c).startsWith(term) || normalizeForSearch(x.d).includes(term))
       .slice(0, 30);
     setResults(matches);
     setOpen(matches.length > 0);
