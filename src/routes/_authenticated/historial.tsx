@@ -78,7 +78,8 @@ import { DeshacerCancelacionDialog } from "@/components/historial/deshacer-cance
 import {
   ESTADOS_CANCEL_POR_TIPO,
   type TipoCasoReactivable,
-} from "@/lib/reactivar-caso.functions";
+} from "@/lib/reactivar-caso";
+
 
 function tipoCasoReactivableDesdeTabla(
   tabla: "casos_entrantes" | "remisiones" | "domiciliarios" | "referencia_interna",
