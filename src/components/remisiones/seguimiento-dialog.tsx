@@ -1500,6 +1500,7 @@ export function SeguimientoDialog({
 
   const refrescar = () => {
     qc.invalidateQueries({ queryKey: ["seguimientos-caso", casoId] });
+    qc.invalidateQueries({ queryKey: ["saliente-aceptacion-vigente", casoId] });
     qc.invalidateQueries({ queryKey: ["remisiones"] });
     qc.invalidateQueries({ queryKey: ["domiciliarios"] });
     qc.invalidateQueries({ queryKey: ["referencia-interna"] });
