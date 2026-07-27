@@ -49,8 +49,7 @@ import {
   Eraser,
   MapPin,
   Plus,
-
-
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { fmtFechaHora, fmtEdad, fmtRadicado } from "@/lib/remisiones-utils";
@@ -75,6 +74,27 @@ import {
   type CampoPDF,
   type BloqueCaso,
 } from "@/lib/bitacora-pdf";
+import { DeshacerCancelacionDialog } from "@/components/historial/deshacer-cancelacion-dialog";
+import {
+  ESTADOS_CANCEL_POR_TIPO,
+  type TipoCasoReactivable,
+} from "@/lib/reactivar-caso.functions";
+
+function tipoCasoReactivableDesdeTabla(
+  tabla: "casos_entrantes" | "remisiones" | "domiciliarios" | "referencia_interna",
+): TipoCasoReactivable | null {
+  if (tabla === "casos_entrantes") return "entrante";
+  if (tabla === "remisiones") return "remision";
+  if (tabla === "domiciliarios") return "domiciliario";
+  return null; // referencia_interna: NO APLICA ACTUALMENTE
+}
+
+function esEstadoCancelatorio(
+  tipo: TipoCasoReactivable,
+  estado: string,
+): boolean {
+  return ESTADOS_CANCEL_POR_TIPO[tipo].includes(estado);
+}
 
 export const Route = createFileRoute("/_authenticated/historial")({
   component: HistorialPage,
@@ -1559,6 +1579,7 @@ function HistorialPage() {
   // ---- Etapa 3 · Menú contextual enriquecido -----------------------------
   const [infoCaso, setInfoCaso] = useState<Construido | null>(null);
   const [audCaso, setAudCaso] = useState<Construido | null>(null);
+  const [reactivarCaso, setReactivarCaso] = useState<Construido | null>(null);
 
   const copiarCodigo = (c: Construido) => {
     const cod = (c.codigo || "").trim();
@@ -1886,6 +1907,8 @@ function HistorialPage() {
               onExportarExcelCaso={exportarCasoExcel}
               onVerAuditoriaCaso={(c) => setAudCaso(c)}
               puedeAuditar={isAdmin}
+              onReactivarCaso={(c) => setReactivarCaso(c)}
+              puedeReactivar={isAdmin}
             />
           )
         ) : cargando ? (
@@ -1959,6 +1982,18 @@ function HistorialPage() {
 
       <InfoCasoDialog caso={infoCaso} onClose={() => setInfoCaso(null)} />
       <AuditoriaCasoDialog caso={audCaso} onClose={() => setAudCaso(null)} habilitado={isAdmin} />
+      {reactivarCaso && tipoCasoReactivableDesdeTabla(reactivarCaso.tabla) ? (
+        <DeshacerCancelacionDialog
+          open={!!reactivarCaso}
+          onOpenChange={(v) => { if (!v) setReactivarCaso(null); }}
+          tipoCaso={tipoCasoReactivableDesdeTabla(reactivarCaso.tabla) as TipoCasoReactivable}
+          casoId={reactivarCaso.casoId}
+          paciente={reactivarCaso.paciente || ""}
+          documento={reactivarCaso.documento || ""}
+          codigo={reactivarCaso.codigo || undefined}
+          estadoCancelado={reactivarCaso.estado || ""}
+        />
+      ) : null}
 
     </div>
   );
@@ -2463,6 +2498,8 @@ function CasoConMenu({
   onExportarExcel,
   onVerAuditoria,
   puedeAuditar,
+  onReactivar,
+  puedeReactivar,
   codigo,
   sequenceItems,
   documento,
@@ -2476,6 +2513,8 @@ function CasoConMenu({
   onExportarExcel: () => void;
   onVerAuditoria: () => void;
   puedeAuditar: boolean;
+  onReactivar: () => void;
+  puedeReactivar: boolean;
   codigo: string;
   sequenceItems: Construido[];
   documento: string;
@@ -2540,6 +2579,16 @@ function CasoConMenu({
               label="Ver auditoría del caso"
               onClick={() => {
                 onVerAuditoria();
+                setOpen(false);
+              }}
+            />
+          )}
+          {puedeReactivar && (
+            <MenuBtn
+              icon={RotateCcw}
+              label="Deshacer cancelación / Reactivar caso"
+              onClick={() => {
+                onReactivar();
                 setOpen(false);
               }}
             />
@@ -2628,6 +2677,8 @@ function PacienteResultado({
   onExportarExcelCaso,
   onVerAuditoriaCaso,
   puedeAuditar,
+  onReactivarCaso,
+  puedeReactivar,
 }: {
   vista: Vista;
   nombre: string;
@@ -2651,6 +2702,8 @@ function PacienteResultado({
   onExportarExcelCaso: (c: Construido) => void;
   onVerAuditoriaCaso: (c: Construido) => void;
   puedeAuditar: boolean;
+  onReactivarCaso: (c: Construido) => void;
+  puedeReactivar: boolean;
 }) {
   const rows = useMemo(() => {
     if (vista === "entrantes")
@@ -2691,30 +2744,39 @@ function PacienteResultado({
           </p>
         </div>
       ) : (
-        rows.map((row, idx) => (
-          <CasoConMenu
-            key={row.key}
-            expanded={casoExpandido === row.key}
-            onVerSecuencia={() => onToggleCaso(row.key)}
-            onBitacora={() => onBitacoraCaso(row.construido)}
-            onInfo={() => onInfoCaso(row.construido)}
-            onCopiarCodigo={() => onCopiarCodigo(row.construido)}
-            onExportarExcel={() => onExportarExcelCaso(row.construido)}
-            onVerAuditoria={() => onVerAuditoriaCaso(row.construido)}
-            puedeAuditar={puedeAuditar}
-            codigo={row.construido.codigo}
-            sequenceItems={[row.construido]}
-            documento={documento}
-          >
-            <CasoResumenRow
-              c={row.construido}
-              indice={idx + 1}
-              confirmable={!!row.grupo?.confirmable}
-              canEdit={canEdit}
-              onConfirmar={row.grupo ? () => onConfirmar(row.grupo as Grupo) : undefined}
-            />
-          </CasoConMenu>
-        ))
+        rows.map((row, idx) => {
+          const tipoReact = tipoCasoReactivableDesdeTabla(row.construido.tabla);
+          const puedeReactivarEste =
+            puedeReactivar &&
+            !!tipoReact &&
+            esEstadoCancelatorio(tipoReact, row.construido.estado);
+          return (
+            <CasoConMenu
+              key={row.key}
+              expanded={casoExpandido === row.key}
+              onVerSecuencia={() => onToggleCaso(row.key)}
+              onBitacora={() => onBitacoraCaso(row.construido)}
+              onInfo={() => onInfoCaso(row.construido)}
+              onCopiarCodigo={() => onCopiarCodigo(row.construido)}
+              onExportarExcel={() => onExportarExcelCaso(row.construido)}
+              onVerAuditoria={() => onVerAuditoriaCaso(row.construido)}
+              puedeAuditar={puedeAuditar}
+              onReactivar={() => onReactivarCaso(row.construido)}
+              puedeReactivar={puedeReactivarEste}
+              codigo={row.construido.codigo}
+              sequenceItems={[row.construido]}
+              documento={documento}
+            >
+              <CasoResumenRow
+                c={row.construido}
+                indice={idx + 1}
+                confirmable={!!row.grupo?.confirmable}
+                canEdit={canEdit}
+                onConfirmar={row.grupo ? () => onConfirmar(row.grupo as Grupo) : undefined}
+              />
+            </CasoConMenu>
+          );
+        })
       )}
     </div>
   );

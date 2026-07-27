@@ -3994,6 +3994,16 @@ export type Database = {
         }
         Returns: number
       }
+      reactivar_caso_cancelado_admin: {
+        Args: {
+          _caso_id: string
+          _motivo_reactivacion: string
+          _requester: string
+          _tipo_caso: string
+          _updated_at_esperado: string
+        }
+        Returns: Json
+      }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
