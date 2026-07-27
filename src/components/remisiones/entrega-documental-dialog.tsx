@@ -465,7 +465,7 @@ export function EntregaDocumentalDialog({
                 disabled={!!sesionId}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecciona: EPS / SOAT / ADRES / ARL / Particular" />
+                  <SelectValue placeholder="Selecciona: EPS / SOAT-ADRES / ARL / Particular" />
                 </SelectTrigger>
                 <SelectContent>
                   {ORIGENES_DOC.map((o) => (

@@ -23,16 +23,35 @@ export const DOCUMENTOS_DEFAULT: string[] = [
   "Hoja de administración de medicamentos",
 ];
 
-/** Origen / responsable documental (define qué documentos aparecen). */
-export type OrigenDoc = "EPS" | "ARL" | "SOAT" | "ADRES" | "PARTICULAR";
+/**
+ * Origen / responsable documental.
+ *
+ * `SOAT_ADRES` es el código canónico para registros nuevos (unifica SOAT y ADRES
+ * en una sola opción visible: "SOAT / ADRES"). Los códigos `SOAT` y `ADRES`
+ * quedan reservados para retrocompatibilidad con registros históricos y NO se
+ * ofrecen como opciones en el selector. Fase 5B — Parte 4.
+ */
+export type OrigenDoc = "EPS" | "ARL" | "SOAT_ADRES" | "SOAT" | "ADRES" | "PARTICULAR";
 
+/** Opciones VISIBLES en el selector para registros nuevos. */
 export const ORIGENES_DOC: { value: OrigenDoc; label: string }[] = [
   { value: "EPS", label: "EPS" },
-  { value: "SOAT", label: "SOAT" },
-  { value: "ADRES", label: "ADRES" },
+  { value: "SOAT_ADRES", label: "SOAT / ADRES" },
   { value: "ARL", label: "ARL / Póliza estudiantil" },
   { value: "PARTICULAR", label: "Particular" },
 ];
+
+/** Etiqueta legible para cualquier código (incluidos históricos). */
+export function labelOrigenDoc(o?: OrigenDoc | string | null): string {
+  const v = (o ?? "").toString().toUpperCase();
+  if (v === "SOAT_ADRES") return "SOAT / ADRES";
+  if (v === "SOAT") return "SOAT";
+  if (v === "ADRES") return "ADRES";
+  if (v === "EPS") return "EPS";
+  if (v === "ARL") return "ARL / Póliza estudiantil";
+  if (v === "PARTICULAR") return "Particular";
+  return v || "—";
+}
 
 /** Documentos comunes a todos los orígenes. */
 const DOCS_COMUNES = [
@@ -57,10 +76,13 @@ const DOCS_SOAT_ADRES = [
  * Lista de chequeo por defecto según el origen documental.
  * NOTA: mientras no exista un catálogo administrable en BD, estos valores actúan
  * como plantilla base; el usuario puede agregar/quitar documentos en el modal.
+ * Los códigos históricos SOAT y ADRES consumen la MISMA lista canónica que
+ * SOAT_ADRES para no duplicar ítems.
  */
 export const DOCUMENTOS_POR_ORIGEN: Record<OrigenDoc, string[]> = {
   EPS: [...DOCS_COMUNES, "Autorización de la EAPB", "Carné / certificado de afiliación EPS"],
   ARL: [...DOCS_COMUNES, "Reporte de accidente laboral (FURAT)", "Autorización de la ARL / Póliza"],
+  SOAT_ADRES: DOCS_SOAT_ADRES,
   SOAT: DOCS_SOAT_ADRES,
   ADRES: DOCS_SOAT_ADRES,
   PARTICULAR: [...DOCS_COMUNES, "Soporte / compromiso de pago"],
@@ -101,10 +123,15 @@ export async function fetchDocumentosPorOrigen(origen?: OrigenDoc | null): Promi
 
     const norm = (v?: string | null) => (v ?? "").trim().toUpperCase();
     const org = norm(origen);
-    const seleccion = rows.filter((r) => {
-      const e = norm(r.extra1);
-      return e === "" || e === "COMUN" || e === "COMÚN" || e === org;
-    });
+    // SOAT_ADRES consume filas marcadas para SOAT o ADRES (compatibilidad con
+    // catálogos existentes que aún separan ambos códigos).
+    const aplica = (e: string): boolean => {
+      if (e === "" || e === "COMUN" || e === "COMÚN") return true;
+      if (org === "SOAT_ADRES") return e === "SOAT_ADRES" || e === "SOAT" || e === "ADRES";
+      return e === org;
+    };
+    const seleccion = rows.filter((r) => aplica(norm(r.extra1)));
+
 
     if (seleccion.length === 0) return documentosPorOrigen(origen);
     // Deduplica respetando orden.
