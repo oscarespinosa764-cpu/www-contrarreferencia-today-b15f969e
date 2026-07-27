@@ -186,6 +186,27 @@ function LoginPage() {
                 />
               </div>
             </div>
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="l-turno"
+                className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground"
+              >
+                Turno operativo
+              </Label>
+              <div className="relative">
+                <Clock className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Select value={turnoCodigo} onValueChange={(v) => setTurnoCodigo(v as TurnoCodigo)}>
+                  <SelectTrigger id="l-turno" className="h-12 pl-11">
+                    <SelectValue placeholder="Selecciona tu turno" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TURNOS_CODIGOS.map((c) => (
+                      <SelectItem key={c} value={c}>{TURNOS_CANONICOS[c].etiqueta}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <Button
               type="submit"
               className="h-12 w-full text-sm font-bold uppercase tracking-wide shadow-elegant"

@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Search, RotateCw, FileText, FileDown, Loader2 } from "lucide-react";
-import { getTurno } from "@/lib/turno";
+import { TURNOS_CANONICOS, TURNOS_CODIGOS } from "@/lib/turno";
 import { CasoRemisionCard, type Remision } from "@/components/remisiones/caso-remision-card";
 import { CasoGenericoCard, type GenericoTipo } from "@/components/remisiones/caso-generico-card";
 import { NuevoRegistroDialog } from "@/components/remisiones/nuevo-registro-dialog";
@@ -42,7 +42,7 @@ export const Route = createFileRoute("/_authenticated/remisiones")({
 });
 
 function RemisionesPage() {
-  const { canEdit, user } = useAuth();
+  const { canEdit, user, turnoSesion } = useAuth();
   const qc = useQueryClient();
   const search = Route.useSearch();
   const initialTab = search.tab && ["remisiones", "especiales", "internas", "pendientes"].includes(search.tab) ? search.tab : "remisiones";
@@ -54,7 +54,10 @@ function RemisionesPage() {
   const [estadoFiltro, setEstadoFiltro] = useState(initialEstado);
   const [eps, setEps] = useState("todas");
   const [tab, setTab] = useState(initialTab);
-  const [turnoEntrega, setTurnoEntrega] = useState<string>(getTurno().nombre);
+  // El turno inicial del formulario proviene del TURNO DE SESIÓN canónico
+  // (etiqueta compatible con el modelo persistido histórico).
+  const turnoInicial = turnoSesion ? TURNOS_CANONICOS[turnoSesion.codigo].etiqueta : "MAÑANA";
+  const [turnoEntrega, setTurnoEntrega] = useState<string>(turnoInicial);
   const [recibe, setRecibe] = useState("");
   const [confirmEntrega, setConfirmEntrega] = useState(false);
   
@@ -441,10 +444,11 @@ function RemisionesPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="MAÑANA">MAÑANA</SelectItem>
-                  <SelectItem value="MAÑANA / TARDE">MAÑANA / TARDE</SelectItem>
-                  <SelectItem value="TARDE">TARDE</SelectItem>
-                  <SelectItem value="NOCHE">NOCHE</SelectItem>
+                  {TURNOS_CODIGOS.map((c) => (
+                    <SelectItem key={c} value={TURNOS_CANONICOS[c].etiqueta}>
+                      {TURNOS_CANONICOS[c].etiqueta}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
