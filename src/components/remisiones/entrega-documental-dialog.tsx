@@ -42,6 +42,22 @@ import {
 } from "@/lib/entrega-firma-pdf";
 
 
+/**
+ * Resultado que el diálogo transfiere al formulario padre cuando la firma
+ * quedó `FIRMADA` y el usuario decide continuar con el seguimiento (Fase 5C
+ * · Bloque A). NO incluye token, URL privada ni evidencia binaria: solo
+ * referencias técnicas (firmaId/sesionId) que permiten al padre vincular
+ * el seguimiento con la firma persistida sin duplicar la fuente de verdad.
+ */
+export type EntregaDocumentalResult = {
+  firmaId: string;
+  sesionId: string;
+  estadoFirma: "FIRMADA";
+  plantillaIndigo: string;
+  snapshot: SnapshotEntrega;
+  entidadPagoResuelta: string;
+};
+
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -61,6 +77,13 @@ type Props = {
   // Id de la ACEPTACIÓN DE IPS RECEPTORA vigente resuelta server-side
   // (fuente canónica). Se persiste dentro del snapshot para trazabilidad.
   aceptacionOrigenId?: string | null;
+  /**
+   * Callback invocado únicamente cuando la firma está FIRMADA y el usuario
+   * cierra el diálogo con "Continuar con el seguimiento". El padre debe
+   * usarlo para copiar la plantilla al textarea principal y conservar la
+   * referencia técnica de la firma. Cerrar antes de firmar NUNCA lo invoca.
+   */
+  onEntregaCompletada?: (resultado: EntregaDocumentalResult) => void;
 };
 
 type SesionRow = {
