@@ -686,9 +686,34 @@ export function EntregaDocumentalDialog({
                 </Button>
               </div>
 
-              {/* Bloque 4 · Cerrar */}
-              <Button type="button" size="sm" variant="ghost" className="w-full" onClick={() => onOpenChange(false)}>
-                Cerrar
+              {/* Bloque 4 · Continuar con el seguimiento (Fase 5C · A.9/A.10) */}
+              <Button
+                type="button"
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  // Transferencia postfirma: solo cuando FIRMADA. No registra
+                  // el seguimiento; solo entrega plantilla y referencias al padre.
+                  if (firmada && sesion.data && sesionId) {
+                    const plantilla =
+                      indigoCorta ||
+                      generarPlantillaIndigoCorta(snapshot, {
+                        nombre: sesion.data.firmante_nombre ?? "",
+                        cargo: sesion.data.firmante_cargo ?? "",
+                      });
+                    onEntregaCompletada?.({
+                      firmaId: sesion.data.id,
+                      sesionId,
+                      estadoFirma: "FIRMADA",
+                      plantillaIndigo: plantilla,
+                      snapshot,
+                      entidadPagoResuelta,
+                    });
+                  }
+                  onOpenChange(false);
+                }}
+              >
+                Continuar con el seguimiento
               </Button>
             </div>
           ) : vencida || anulada ? (
