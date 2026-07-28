@@ -123,6 +123,7 @@ export function EntregaDocumentalDialog({
   quienAcepta,
   cargoAcepta,
   aceptacionOrigenId,
+  onEntregaCompletada,
 }: Props) {
   const qc = useQueryClient();
   const [origen, setOrigen] = useState<OrigenDoc | "">("");
