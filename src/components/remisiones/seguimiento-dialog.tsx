@@ -3342,6 +3342,13 @@ export function SeguimientoDialog({
                         ? aceptacionVigente.aceptacion.aceptacion_id
                         : null
                     }
+                    onEntregaCompletada={(res) => {
+                      // Fase 5C · A.9: transferir la plantilla Índigo canónica
+                      // al textarea principal sin registrar el seguimiento.
+                      // El usuario decide cuándo pulsar "Registrar seguimiento".
+                      setIndigoTexto(res.plantillaIndigo);
+                      setIndigoEditada(true);
+                    }}
                   />
                   {aceptacionCargando && entregaOpen && (
                     <p className="text-[10.5px] text-muted-foreground">
