@@ -1,0 +1,1 @@
+GRANT SELECT ON public.entrega_firmas TO authenticated;
