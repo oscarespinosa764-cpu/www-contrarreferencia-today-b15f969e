@@ -194,6 +194,26 @@ export function EntregaDocumentalDialog({
   };
 
 
+  /**
+   * Resolución canónica de la ENTIDAD RESPONSABLE DEL PAGO (Fase 5C · A.3).
+   *
+   * - EPS / SOAT / ADRES / SOAT_ADRES / ARL → usa la entidad institucional
+   *   registrada en el caso (`entidadPago`, resuelta aguas arriba desde EAPB
+   *   / aseguradora SOAT / ADRES / ARL, según corresponda).
+   * - PARTICULAR → cuando no exista una entidad institucional, se persiste
+   *   el valor canónico `PARTICULAR`. Esto NO reescribe la remisión: el
+   *   valor viaja únicamente dentro del snapshot / Portada.
+   *
+   * Bajo ninguna circunstancia se usan como fallback la empresa de
+   *   ambulancia, la IPS receptora, el firmante ni datos del usuario.
+   */
+  const entidadPagoResuelta = useMemo(() => {
+    const inst = (entidadPago ?? "").trim();
+    if (inst) return inst.toUpperCase();
+    if (origen === "PARTICULAR") return "PARTICULAR";
+    return "";
+  }, [entidadPago, origen]);
+
   const snapshot = useMemo<SnapshotEntrega>(
     () => ({
       paciente,
@@ -205,7 +225,7 @@ export function EntregaDocumentalDialog({
       caso_ref: documento ?? casoId,
       origen: origen || null,
       especialidad: especialidad ?? undefined,
-      entidad_pago: entidadPago ?? undefined,
+      entidad_pago: entidadPagoResuelta || undefined,
       tipo_ambulancia: tipoAmbulancia ?? undefined,
       quien_acepta: quienAceptaS || undefined,
       cargo_acepta: cargoAceptaS || undefined,
@@ -221,7 +241,7 @@ export function EntregaDocumentalDialog({
       casoId,
       origen,
       especialidad,
-      entidadPago,
+      entidadPagoResuelta,
       tipoAmbulancia,
       quienAceptaS,
       cargoAceptaS,
@@ -242,7 +262,7 @@ export function EntregaDocumentalDialog({
       caso_ref: documento ?? casoId,
       origen: origen || undefined,
       especialidad: especialidad ?? undefined,
-      entidad_pago: entidadPago ?? undefined,
+      entidad_pago: entidadPagoResuelta || undefined,
       entidad_receptora: ips,
       tipo_ambulancia: tipoAmbulancia ?? undefined,
       quien_acepta: quienAceptaS || undefined,
@@ -263,7 +283,7 @@ export function EntregaDocumentalDialog({
       casoId,
       origen,
       especialidad,
-      entidadPago,
+      entidadPagoResuelta,
       tipoAmbulancia,
       quienAceptaS,
       cargoAceptaS,
@@ -273,19 +293,29 @@ export function EntregaDocumentalDialog({
   );
 
   // Validación previa: no generar la portada si faltan datos obligatorios (Parte 1.3).
+  // La entidad responsable del pago se valida contra el valor CANÓNICO ya resuelto
+  // (Fase 5C · A.3): en Particular queda `PARTICULAR` y no bloquea la Portada.
   const generarPortada = () => {
     const faltantes: string[] = [];
     if (!empresa.trim()) faltantes.push("Empresa que traslada");
     if (!ips.trim()) faltantes.push("IPS receptora / Entidad receptora");
     if (!paciente?.trim()) faltantes.push("Nombre del paciente");
     if (!(documento ?? "").trim()) faltantes.push("Documento");
-    if (!(entidadPago ?? "").trim()) faltantes.push("Entidad responsable del pago");
+    if (!entidadPagoResuelta) faltantes.push("Entidad responsable del pago");
     if (faltantes.length > 0) {
       toast.error(`Faltan datos para generar la portada: ${faltantes.join(", ")}.`);
       return;
     }
-    descargarPortadaPDF(datosPDF);
+    // La generación de la Portada es independiente de la plantilla Índigo:
+    // un error de descarga no borra ni la firma, ni el snapshot, ni el
+    // textarea del padre (Fase 5C · A.7).
+    try {
+      descargarPortadaPDF(datosPDF);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No fue posible generar la Portada.");
+    }
   };
+
 
   // Estado de la sesión en vivo (polling ligero solo mientras hay QR activo).
   const sesion = useQuery({
