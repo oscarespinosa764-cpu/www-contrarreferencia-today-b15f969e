@@ -2431,7 +2431,18 @@ export function SeguimientoDialog({
         nombre_contacto: mostrarContacto ? nombreContacto.trim() || null : null,
         telefono: mostrarContacto ? telefono.trim() || null : null,
         plantilla_indigo: indigoTexto.trim() || null,
-        detalles: construirDetalles() as never,
+        detalles: {
+          ...(construirDetalles() ?? {}),
+          canal_gestion: canalFinalDe(canal, canalOtro) || null,
+          ...(!esPendiente && tipoSeg === T.INFO_TRAMITE
+            ? {
+                solicitante: infoTramite.solicitante.trim() || null,
+                parentesco: infoTramite.parentesco || null,
+                telefono_contacto: infoTramite.telefono.trim() || null,
+                informacion: infoTramite.observacion.trim() || null,
+              }
+            : {}),
+        } as never,
         nombre_usuario: perfil?.nombre || u.user?.email || null,
         created_by: u.user?.id,
       })
