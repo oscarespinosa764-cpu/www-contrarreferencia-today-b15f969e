@@ -444,7 +444,7 @@ export function CasoGenericoCard({
                 {r.requiere_ambulancia === "SI" && (
                   <Dato label="Tipo ambulancia" value={r.tipo_ambulancia} />
                 )}
-                <Dato label="Estado" value={r.estado} />
+                <Dato label="Estado" value={r.estado_ciclo || r.estado} />
                 <Dato label="Fecha y hora inicio trámite" value={fmtFechaHora(r.fecha_inicio)} />
                 <Dato label="Fecha y hora radicación" value={fmtFechaHora(r.fecha_radicado)} />
                 <Dato label="Tiempo del trámite" value={fmtTranscurrido(r.fecha_inicio ?? r.created_at)} />
