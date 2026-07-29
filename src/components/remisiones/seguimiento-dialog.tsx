@@ -943,6 +943,9 @@ export function SeguimientoDialog({
     setEspNuevas([""]);
     setNuevaUnidad("");
     setNuevaCama("");
+    setRiFirmaLlegada(null);
+    setRiLlegFecha("");
+    setRiLlegHora("");
   }, [open, evolucionDetalle, especialidadesList, estadoActual]);
 
   // Prefill desde el caso.
