@@ -691,7 +691,7 @@ function RemisionesPage() {
           </TabsContent>
 
           <TabsContent value="internas" className="pt-4">
-            <ListaGenerica tipo="interna" items={internas ?? []} canEdit={canEdit} ultGestiones={ultGestiones} />
+            <ListaInternas items={internas ?? []} canEdit={canEdit} ultGestiones={ultGestiones} />
           </TabsContent>
 
           <TabsContent value="pendientes" className="pt-4">
