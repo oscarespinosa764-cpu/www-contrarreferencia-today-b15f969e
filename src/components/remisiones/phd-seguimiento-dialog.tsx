@@ -1,14 +1,13 @@
 // ---------------------------------------------------------------------------
-// FASE 5D · Bloque B — Modal de seguimiento PHD / PAD / PAD CRÓNICO / O2 /
+// FASE 5D · Bloque C — Modal de seguimiento PHD / PAD / PAD CRÓNICO / O2 /
 // UNIDADES ESPECIALES / AMBULANCIA PARA EGRESO.
 //
 // Principios:
-// - El ESTADO es server-authoritative: se muestra en solo lectura y lo recalcula
-//   el trigger tras cada evento (private.resolver_estado_phd).
-// - Los EVENTOS disponibles se derivan de los REQUISITOS PENDIENTES del ciclo
-//   vigente (no del estado plano). El servidor revalida la misma matriz en
-//   public.registrar_evento_phd.
-// - Cada servicio solicitado tiene aceptación independiente.
+// - El ESTADO es server-authoritative (private.resolver_estado_phd).
+// - Catálogo de tipos normalizado (Bloque C): Aceptación de trámite, Radicado
+//   del caso (solo si la EAPB lo exige), Evolución diaria, Novedades, Otro,
+//   entrega de oxígeno, coordinación/llegada de ambulancia, confirmación de
+//   egreso y una única Cancelación de trámite (terminal).
 // - La CONFIRMACIÓN DE LLEGADA DE AMBULANCIA exige firma QR verificada.
 // ---------------------------------------------------------------------------
 import { useEffect, useMemo, useState } from "react";
@@ -21,7 +20,6 @@ import {
   eventosDisponibles as calcularEventos,
   EVENTO_LABEL,
   SERVICIO_LABEL,
-  SERVICIOS_CON_ACEPTACION,
   TIPO_AMBULANCIA_LABEL,
   TIPOS_AMBULANCIA_CODIGOS,
   normalizarEstadoPhd,
@@ -33,6 +31,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { AppDateTimeInput } from "@/components/ui/app-time-picker";
 import {
   Select,
   SelectContent,
@@ -49,7 +48,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { fmtFechaHora } from "@/lib/remisiones-utils";
-import { CheckCircle2, Circle, FileSignature, Info, Lock } from "lucide-react";
+import { FileSignature, Info, Lock } from "lucide-react";
 import { EntregaDocumentalDialog } from "./entrega-documental-dialog";
 import { RiLlegadaQRPanel, type FirmaLlegadaInfo } from "./ri-llegada-qr-panel";
 
@@ -60,6 +59,8 @@ const CANALES = [
   "FÍSICO / PRESENCIAL",
   "OTRO",
 ] as const;
+
+const CON_DESCRIPCION = ["EVOLUCION_DIARIA", "NOVEDADES", "OTRO"];
 
 type Props = {
   open: boolean;
@@ -147,9 +148,45 @@ export function PhdSeguimientoDialog({
     () => derivarRequisitos(tiposSolicitud, eventosCiclo),
     [tiposSolicitud, eventosCiclo],
   );
+
+  // --- ¿La EAPB del caso exige radicación? (catálogo de EAPB) -----------------
+  const { data: exigeRadicacion = false } = useQuery({
+    queryKey: ["phd-eapb-radica", casoId],
+    enabled: open && !!casoId,
+    queryFn: async () => {
+      const { data: caso } = await supabase
+        .from("domiciliarios")
+        .select("eapb")
+        .eq("id", casoId)
+        .maybeSingle();
+      const eapb = String((caso as { eapb?: string } | null)?.eapb ?? "").trim();
+      if (!eapb) return false;
+      const { data: cat } = await supabase
+        .from("catalogos")
+        .select("valor, radica_phd, radica_pad, radica_oxigeno, radica_unidad_especial")
+        .eq("tipo", "EAPB")
+        .eq("activo", true)
+        .ilike("valor", eapb)
+        .maybeSingle();
+      if (!cat) return false;
+      const c = cat as Record<string, boolean | string | null>;
+      const t = req.tipos;
+      if (t.includes("PHD") && c.radica_phd) return true;
+      if ((t.includes("PAD") || t.includes("PAD_CRONICO")) && c.radica_pad) return true;
+      if (t.includes("OXIGENO_DOMICILIARIO") && c.radica_oxigeno) return true;
+      if (t.includes("UNIDADES_ESPECIALES") && c.radica_unidad_especial) return true;
+      return false;
+    },
+  });
+
+  const radicacionRegistrada = eventosCiclo.some(
+    (e) => (e.evento ?? "").toUpperCase() === "RADICACION",
+  );
+
   const eventosDisponibles = useMemo(
-    () => (terminal ? [] : calcularEventos(req)),
-    [req, terminal],
+    () =>
+      terminal ? [] : calcularEventos(req, { exigeRadicacion, radicacionRegistrada }),
+    [req, terminal, exigeRadicacion, radicacionRegistrada],
   );
 
   // --- Formulario -------------------------------------------------------------
@@ -157,6 +194,7 @@ export function PhdSeguimientoDialog({
   const [canal, setCanal] = useState("");
   const [canalOtro, setCanalOtro] = useState("");
   const [observaciones, setObservaciones] = useState("");
+  const [descripcion, setDescripcion] = useState("");
   const [fecha, setFecha] = useState("");
   const [proveedor, setProveedor] = useState("");
   const [servicio, setServicio] = useState<ServicioCodigo | "">("");
@@ -165,10 +203,8 @@ export function PhdSeguimientoDialog({
   const [motivoSinRadicado, setMotivoSinRadicado] = useState("");
   const [motivo, setMotivo] = useState("");
   const [responsable, setResponsable] = useState("");
-  const [especialidad, setEspecialidad] = useState("");
   const [empresaAmb, setEmpresaAmb] = useState("");
   const [tipoAmb, setTipoAmb] = useState("");
-  const [horaCoord, setHoraCoord] = useState("");
   const [firma, setFirma] = useState<FirmaLlegadaInfo | null>(null);
   const [entregaOpen, setEntregaOpen] = useState(false);
 
@@ -178,6 +214,7 @@ export function PhdSeguimientoDialog({
     setCanal("");
     setCanalOtro("");
     setObservaciones("");
+    setDescripcion("");
     setFecha("");
     setProveedor("");
     setServicio("");
@@ -186,19 +223,15 @@ export function PhdSeguimientoDialog({
     setMotivoSinRadicado("");
     setMotivo("");
     setResponsable("");
-    setEspecialidad("");
     setEmpresaAmb((empresaTraslado ?? "").toUpperCase());
     setTipoAmb((tipoAmbulanciaCodigo ?? "").toUpperCase());
-    setHoraCoord("");
     setFirma(null);
   }, [open, empresaTraslado, tipoAmbulanciaCodigo]);
 
   // Preselecciona el único servicio pendiente de aceptación.
   useEffect(() => {
-    if (evento === "ACEPTACION_PROVEEDOR" || evento === "NO_ACEPTACION_PROVEEDOR") {
-      if (!servicio && req.aceptacionesPendientes.length === 1) {
-        setServicio(req.aceptacionesPendientes[0]);
-      }
+    if (evento === "ACEPTACION_PROVEEDOR" && !servicio && req.aceptacionesPendientes.length === 1) {
+      setServicio(req.aceptacionesPendientes[0]);
     }
   }, [evento, servicio, req.aceptacionesPendientes]);
 
@@ -217,33 +250,31 @@ export function PhdSeguimientoDialog({
   });
 
   const canalFinal = canal === "OTRO" ? canalOtro.trim().toUpperCase() : canal;
-  const requiereServicio =
-    evento === "ACEPTACION_PROVEEDOR" || evento === "NO_ACEPTACION_PROVEEDOR";
+  const requiereServicio = evento === "ACEPTACION_PROVEEDOR";
+  const requiereDescripcion = CON_DESCRIPCION.includes(evento);
 
   const errores: string[] = [];
   if (!evento) errores.push("Seleccione el tipo de seguimiento.");
   if (evento && !canalFinal) errores.push("Seleccione un canal de gestión.");
   if (requiereServicio && !servicio) errores.push("Seleccione el servicio al que aplica.");
+  if (requiereDescripcion && descripcion.trim().length < 3)
+    errores.push("Escriba la descripción del seguimiento.");
   if (evento === "RADICACION" && !sinRadicado && !numRadicado.trim())
     errores.push("Ingrese el número de radicado o marque 'Sin número'.");
   if (evento === "RADICACION" && sinRadicado && !motivoSinRadicado.trim())
     errores.push("Indique el motivo de no tener radicado.");
   if (evento === "ACEPTACION_PROVEEDOR" && !proveedor.trim())
     errores.push("Indique el proveedor que acepta.");
-  if (evento === "NO_ACEPTACION_PROVEEDOR" && (!proveedor.trim() || !motivo.trim()))
-    errores.push("Proveedor y motivo son obligatorios.");
   if (evento === "CONFIRMACION_ENTREGA_OXIGENO" && (!proveedor.trim() || !fecha.trim()))
     errores.push("Proveedor y fecha/hora de entrega son obligatorios.");
   if (evento === "AMBULANCIA_COORDINADA" && (!empresaAmb.trim() || !tipoAmb.trim() || !fecha.trim()))
     errores.push("Empresa, tipo de ambulancia y fecha/hora son obligatorios.");
   if (evento === "CONFIRMACION_LLEGADA_AMBULANCIA" && !firma)
     errores.push("Se requiere la firma QR de llegada de la ambulancia.");
-  if (evento === "CIERRE_POR_EGRESO" && (!responsable.trim() || !fecha.trim()))
-    errores.push("Fecha/hora real de egreso y responsable son obligatorios.");
-  if (evento === "CANCELACION_PROVEEDOR" && (!proveedor.trim() || !motivo.trim()))
-    errores.push("Proveedor y motivo de cancelación son obligatorios.");
-  if (evento === "CANCELACION_ESPECIALIDAD" && (!especialidad.trim() || !motivo.trim()))
-    errores.push("Especialidad y motivo de cancelación son obligatorios.");
+  if (evento === "CIERRE_POR_EGRESO" && !fecha.trim())
+    errores.push("Indique la fecha y hora real del egreso.");
+  if (evento === "CANCELACION_TRAMITE" && !motivo.trim())
+    errores.push("Indique el motivo de la cancelación del trámite.");
 
   const invalid = errores.length > 0 || terminal;
 
@@ -256,11 +287,12 @@ export function PhdSeguimientoDialog({
       p.push(sinRadicado ? "N° RADICADO: SIN NÚMERO" : `N° RADICADO: ${numRadicado.trim()}`);
     if (evento === "AMBULANCIA_COORDINADA") {
       p.push(`EMPRESA: ${empresaAmb.trim().toUpperCase()}`);
-      p.push(`TIPO AMB: ${TIPO_AMBULANCIA_LABEL[tipoAmb as keyof typeof TIPO_AMBULANCIA_LABEL] ?? tipoAmb}`);
+      p.push(
+        `TIPO AMB: ${TIPO_AMBULANCIA_LABEL[tipoAmb as keyof typeof TIPO_AMBULANCIA_LABEL] ?? tipoAmb}`,
+      );
     }
     if (fecha) p.push(`FECHA/HORA: ${fecha}`);
-    if (responsable.trim()) p.push(`RESPONSABLE: ${responsable.trim().toUpperCase()}`);
-    if (especialidad.trim()) p.push(`ESPECIALIDAD: ${especialidad.trim().toUpperCase()}`);
+    if (descripcion.trim()) p.push(`DESCRIPCIÓN: ${descripcion.trim()}`);
     if (motivo.trim()) p.push(`MOTIVO: ${motivo.trim().toUpperCase()}`);
     if (observaciones.trim()) p.push(`OBSERVACIONES: ${observaciones.trim()}`);
     return p.join(" · ");
@@ -274,19 +306,17 @@ export function PhdSeguimientoDialog({
           evento: evento as never,
           tipoSeguimiento: EVENTO_LABEL[evento] ?? evento,
           detalle: detalleLegible(),
+          descripcion: descripcion.trim() || undefined,
           servicioCodigo: (servicio || undefined) as never,
           proveedor: proveedor.trim().toUpperCase() || undefined,
           canal: canalFinal || undefined,
           motivo: motivo.trim().toUpperCase() || undefined,
-          especialidad: especialidad.trim().toUpperCase() || undefined,
-          responsable: responsable.trim().toUpperCase() || undefined,
           numeroRadicado: sinRadicado
             ? `SIN NÚMERO — ${motivoSinRadicado.trim().toUpperCase()}`
             : numRadicado.trim() || undefined,
           empresaAmbulanciaLabel: empresaAmb.trim().toUpperCase() || undefined,
           tipoAmbulanciaCodigo: (tipoAmb || undefined) as never,
           fechaCoordinacion: evento === "AMBULANCIA_COORDINADA" ? fecha : undefined,
-          horaCoordinacion: horaCoord || undefined,
           fechaEvento: fecha || undefined,
           firmaId: firma?.id,
           observaciones: observaciones.trim() || undefined,
@@ -312,22 +342,22 @@ export function PhdSeguimientoDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Seguimiento · {paciente}</DialogTitle>
+          <DialogTitle className="text-base uppercase tracking-wide">
+            Seguimientos PHD / PAD / O2 / Especiales
+          </DialogTitle>
         </DialogHeader>
 
-        {/* Contexto y estado automático */}
+        {/* Tarjeta de contexto del caso */}
         <div className="rounded-lg border border-border bg-muted/30 p-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="text-xs text-muted-foreground">
-              <span className="font-semibold">Documento:</span>{" "}
-              {tipoDocumento ? `${tipoDocumento} ` : ""}
-              {documento || "—"}
-              {ipsReceptora ? (
-                <>
-                  {" · "}
-                  <span className="font-semibold">IPS:</span> {ipsReceptora}
-                </>
-              ) : null}
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold uppercase text-foreground">{paciente}</p>
+              <p className="text-xs text-muted-foreground">
+                {tipoDocumento ? `${tipoDocumento} ` : ""}
+                {documento || "—"}
+                {ipsReceptora ? ` · IPS: ${ipsReceptora}` : ""}
+                {unidadEspecialSolicitada ? ` · ${unidadEspecialSolicitada}` : ""}
+              </p>
             </div>
             <Badge variant={terminal ? "secondary" : "default"} className="font-semibold">
               <Lock className="mr-1 h-3 w-3" /> {estado}
@@ -336,47 +366,6 @@ export function PhdSeguimientoDialog({
           <p className="mt-1 text-[10.5px] uppercase tracking-wide text-muted-foreground">
             Estado del caso — automático, calculado por los requisitos pendientes.
           </p>
-        </div>
-
-        {/* Tablero de requisitos */}
-        <div className="rounded-lg border border-border p-3">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Requisitos del ciclo
-          </p>
-          {req.tipos.length === 0 ? (
-            <p className="text-xs italic text-muted-foreground">
-              Este caso no tiene tipos de solicitud registrados.
-            </p>
-          ) : (
-            <ul className="space-y-1 text-xs">
-              {req.tipos
-                .filter((t) => SERVICIOS_CON_ACEPTACION.includes(t))
-                .map((t) => (
-                  <Requisito
-                    key={t}
-                    ok={req.aceptacionesCompletas.includes(t)}
-                    label={`Aceptación · ${SERVICIO_LABEL[t]}${
-                      t === "UNIDADES_ESPECIALES" && unidadEspecialSolicitada
-                        ? ` (${unidadEspecialSolicitada})`
-                        : ""
-                    }`}
-                  />
-                ))}
-              {req.oxigenoAplica && (
-                <Requisito ok={req.oxigenoEntregado} label="Entrega de oxígeno confirmada" />
-              )}
-              {req.ambulanciaAplica && (
-                <>
-                  <Requisito ok={req.ambulanciaCoordinada} label="Ambulancia coordinada" />
-                  <Requisito
-                    ok={req.ambulanciaEnSitio}
-                    label="Llegada de ambulancia confirmada (firma QR)"
-                  />
-                </>
-              )}
-              <Requisito ok={terminal} label="Egreso registrado" />
-            </ul>
-          )}
         </div>
 
         {terminal ? (
@@ -398,7 +387,7 @@ export function PhdSeguimientoDialog({
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar evento…" />
+                    <SelectValue placeholder="Seleccionar tipo…" />
                   </SelectTrigger>
                   <SelectContent>
                     {eventosDisponibles.map((code) => (
@@ -452,14 +441,30 @@ export function PhdSeguimientoDialog({
               </div>
             )}
 
-            {evento === "RADICACION" && (
+            {evento === "ACEPTACION_PROVEEDOR" && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label className="text-xs">Proveedor / EAPB</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Proveedor que acepta *</Label>
                   <Input
                     value={proveedor}
                     onChange={(e) => setProveedor(e.target.value.toUpperCase())}
-                    placeholder={entidadPago || "EAPB / PROVEEDOR"}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Fecha y hora del evento</Label>
+                  <AppDateTimeInput name="phd_fecha_evento" value={fecha} onChange={setFecha} />
+                </div>
+              </div>
+            )}
+
+            {evento === "RADICACION" && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label className="text-xs">EAPB / Entidad ante la que se radica</Label>
+                  <Input
+                    value={proveedor}
+                    onChange={(e) => setProveedor(e.target.value.toUpperCase())}
+                    placeholder={entidadPago || "EAPB"}
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -471,12 +476,8 @@ export function PhdSeguimientoDialog({
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Fecha/hora de radicación</Label>
-                  <Input
-                    type="datetime-local"
-                    value={fecha}
-                    onChange={(e) => setFecha(e.target.value)}
-                  />
+                  <Label className="text-xs">Fecha y hora de radicación</Label>
+                  <AppDateTimeInput name="phd_fecha_evento" value={fecha} onChange={setFecha} />
                 </div>
                 <label className="col-span-full flex items-center gap-2 text-xs">
                   <input
@@ -498,33 +499,26 @@ export function PhdSeguimientoDialog({
               </div>
             )}
 
-            {(evento === "ACEPTACION_PROVEEDOR" ||
-              evento === "NO_ACEPTACION_PROVEEDOR" ||
-              evento === "RESPUESTA_PROVEEDOR" ||
-              evento === "CANCELACION_PROVEEDOR") && (
+            {requiereDescripcion && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">
-                    Proveedor {evento === "RESPUESTA_PROVEEDOR" ? "" : "*"}
-                  </Label>
-                  <Input
-                    value={proveedor}
-                    onChange={(e) => setProveedor(e.target.value.toUpperCase())}
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label className="text-xs">Descripción *</Label>
+                  <Textarea
+                    rows={3}
+                    value={descripcion}
+                    onChange={(e) => setDescripcion(e.target.value)}
+                    placeholder={
+                      evento === "EVOLUCION_DIARIA"
+                        ? "Evolución del trámite en el día…"
+                        : evento === "NOVEDADES"
+                          ? "Novedad presentada…"
+                          : "Describa el seguimiento…"
+                    }
                   />
                 </div>
-                {evento !== "RESPUESTA_PROVEEDOR" && evento !== "ACEPTACION_PROVEEDOR" && (
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Motivo *</Label>
-                    <Input value={motivo} onChange={(e) => setMotivo(e.target.value.toUpperCase())} />
-                  </div>
-                )}
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Fecha/hora del evento</Label>
-                  <Input
-                    type="datetime-local"
-                    value={fecha}
-                    onChange={(e) => setFecha(e.target.value)}
-                  />
+                  <Label className="text-xs">Fecha y hora del evento</Label>
+                  <AppDateTimeInput name="phd_fecha_evento" value={fecha} onChange={setFecha} />
                 </div>
               </div>
             )}
@@ -539,12 +533,8 @@ export function PhdSeguimientoDialog({
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Fecha/hora de entrega *</Label>
-                  <Input
-                    type="datetime-local"
-                    value={fecha}
-                    onChange={(e) => setFecha(e.target.value)}
-                  />
+                  <Label className="text-xs">Fecha y hora de entrega *</Label>
+                  <AppDateTimeInput name="phd_fecha_evento" value={fecha} onChange={setFecha} />
                 </div>
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label className="text-xs">Recibe / responsable</Label>
@@ -588,17 +578,9 @@ export function PhdSeguimientoDialog({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Fecha/hora coordinada *</Label>
-                  <Input
-                    type="datetime-local"
-                    value={fecha}
-                    onChange={(e) => setFecha(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Hora pactada (texto libre)</Label>
-                  <Input value={horaCoord} onChange={(e) => setHoraCoord(e.target.value)} />
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label className="text-xs">Fecha y hora coordinada *</Label>
+                  <AppDateTimeInput name="phd_fecha_evento" value={fecha} onChange={setFecha} />
                 </div>
               </div>
             )}
@@ -628,45 +610,27 @@ export function PhdSeguimientoDialog({
             )}
 
             {evento === "CIERRE_POR_EGRESO" && (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Fecha/hora real de egreso *</Label>
-                  <Input
-                    type="datetime-local"
-                    value={fecha}
-                    onChange={(e) => setFecha(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Responsable que confirma *</Label>
-                  <Input
-                    value={responsable}
-                    onChange={(e) => setResponsable(e.target.value.toUpperCase())}
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Fecha y hora real del egreso *</Label>
+                <AppDateTimeInput name="phd_fecha_evento" value={fecha} onChange={setFecha} />
+                <p className="text-[11px] text-muted-foreground">
+                  El responsable queda registrado automáticamente con el usuario de la sesión.
+                </p>
               </div>
             )}
 
-            {evento === "CANCELACION_ESPECIALIDAD" && (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Especialidad solicitante *</Label>
-                  <Input
-                    value={especialidad}
-                    onChange={(e) => setEspecialidad(e.target.value.toUpperCase())}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Motivo *</Label>
-                  <Input value={motivo} onChange={(e) => setMotivo(e.target.value.toUpperCase())} />
-                </div>
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label className="text-xs">Responsable</Label>
-                  <Input
-                    value={responsable}
-                    onChange={(e) => setResponsable(e.target.value.toUpperCase())}
-                  />
-                </div>
+            {evento === "CANCELACION_TRAMITE" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Motivo de la cancelación *</Label>
+                <Textarea
+                  rows={3}
+                  value={motivo}
+                  onChange={(e) => setMotivo(e.target.value)}
+                  placeholder="Motivo obligatorio…"
+                />
+                <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                  Esta acción cierra el caso de forma definitiva.
+                </p>
               </div>
             )}
 
@@ -768,18 +732,5 @@ export function PhdSeguimientoDialog({
         )}
       </DialogContent>
     </Dialog>
-  );
-}
-
-function Requisito({ ok, label }: { ok: boolean; label: string }) {
-  return (
-    <li className="flex items-center gap-2">
-      {ok ? (
-        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-status-green" />
-      ) : (
-        <Circle className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-      )}
-      <span className={ok ? "text-foreground" : "text-muted-foreground"}>{label}</span>
-    </li>
   );
 }
