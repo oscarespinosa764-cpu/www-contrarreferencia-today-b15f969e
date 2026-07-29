@@ -85,6 +85,16 @@ import { RiLlegadaQRPanel } from "@/components/remisiones/ri-llegada-qr-panel";
 import { resolverAceptacionVigente } from "@/lib/salientes-aceptacion.functions";
 import { limpiarNombreAcepta, limpiarCargoAcepta, NOMBRE_ACEPTA_MAX, CARGO_ACEPTA_MAX } from "@/lib/salientes-aceptacion";
 import { registrarCambioUnidadRI } from "@/lib/ri-cambio-unidad.functions";
+import {
+  CanalGestionField,
+  InformacionTramiteFields,
+  INFORMACION_TRAMITE_INICIAL,
+  SeguimientoHeaderCard,
+  canalFinalDe,
+  erroresInformacionTramite,
+  plantillaInformacionTramite,
+  type InformacionTramiteValue,
+} from "@/components/remisiones/seguimiento-shell";
 
 type Props = {
   open: boolean;
