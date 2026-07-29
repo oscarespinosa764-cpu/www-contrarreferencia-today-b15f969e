@@ -2112,6 +2112,29 @@ export function SeguimientoDialog({
         if (detalle.trim().length < 5)
           return toast.error("Describe el motivo de la cancelación (mínimo 5 caracteres).");
       }
+      // B3 · OTRO (RI): descripción obligatoria.
+      if (esInterna && tipoSeg === TI.OTRO) {
+        const c = riOtroCual.trim();
+        if (c.length < 3 || c.length > 200)
+          return toast.error("¿CUÁL? debe tener entre 3 y 200 caracteres.");
+      }
+      // B3 · NOVEDADES (RI): validación estructurada.
+      if (esInterna && tipoSeg === TI.NOVEDADES) {
+        if (!riNovInterna && !riNovExterna)
+          return toast.error("Selecciona INTERNA, EXTERNA o ambas.");
+        if (riNovInterna && !riNovInternaCod)
+          return toast.error("Selecciona el código de la novedad interna.");
+        if (riNovInterna && riNovInternaCod === "REPROGRAMACION" && riNovReprogMotivos.length === 0)
+          return toast.error("Selecciona al menos un motivo de reprogramación.");
+        if (riNovExterna && !riNovExternaCod)
+          return toast.error("Selecciona el código de la novedad externa.");
+        if (
+          riNovExterna &&
+          riNovExternaCod === "NO_ACEPTACION_PACIENTE_FAMILIAR" &&
+          !riNovPacFam
+        )
+          return toast.error("Selecciona el motivo de no aceptación paciente/familiar.");
+      }
 
       // Cambio en especialidad: exige cambio real, conservar una activa y motivo.
       if (esCambioEsp) {
