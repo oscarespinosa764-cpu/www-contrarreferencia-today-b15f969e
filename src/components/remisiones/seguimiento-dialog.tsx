@@ -3271,7 +3271,6 @@ export function SeguimientoDialog({
                         <option value="">Seleccione…</option>
                         <option value="EQUIPO_FALLA">Falla del equipo</option>
                         <option value="REPROGRAMACION">Reprogramación</option>
-                        <option value="DESCOMPENSACION_HEMODINAMICA">Descompensación hemodinámica</option>
                         <option value="NO_DISPONIBILIDAD_TECNICO">No disponibilidad de personal técnico</option>
                       </select>
 
