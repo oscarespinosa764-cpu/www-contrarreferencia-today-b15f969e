@@ -461,13 +461,12 @@ export function CasoGenericoCard({
                 <Dato label="Cama" value={r.cama} />
                 <Dato label="Prioridad" value={r.prioridad} />
                 <Dato label="N° radicado" value={radicado} />
-                <Dato label="Tipo solicitud" value={r.tipo_solicitud} />
-                {(r.unidad_especial || r.tipo_solicitud_detalle) && (
-                  <Dato label="Unidad especial" value={r.unidad_especial || r.tipo_solicitud_detalle} />
+                <Dato label="Servicios solicitados" value={serviciosLabel(r)} />
+                {unidadEspecialLabel(r) && (
+                  <Dato label="Unidad especial" value={unidadEspecialLabel(r)} />
                 )}
-                <Dato label="Requiere ambulancia" value={r.requiere_ambulancia} />
-                {r.requiere_ambulancia === "SI" && (
-                  <Dato label="Tipo ambulancia" value={r.tipo_ambulancia} />
+                {ambulanciaLabel(r) && (
+                  <Dato label="Tipo ambulancia" value={ambulanciaLabel(r)} />
                 )}
                 <Dato label="Estado" value={r.estado_ciclo || r.estado} />
                 <Dato label="Fecha y hora inicio trámite" value={fmtFechaHora(r.fecha_inicio)} />
