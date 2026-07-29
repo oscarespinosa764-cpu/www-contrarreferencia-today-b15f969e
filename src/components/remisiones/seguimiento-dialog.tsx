@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
@@ -262,6 +262,11 @@ export function SeguimientoDialog({
   const [busy, setBusy] = useState(false);
   const [busyEvo, setBusyEvo] = useState(false);
   const [entregaOpen, setEntregaOpen] = useState(false);
+  // Fase 5C · A.1 — flag para congelar la plantilla Índigo tras transferirla
+  // desde el diálogo de entrega documental. Evita que efectos posteriores
+  // (invalidaciones, re-init) la vacíen. Solo se limpia al cerrar el modal
+  // principal o al cambiar de caso real.
+  const [entregaPreparada, setEntregaPreparada] = useState(false);
   const [cierreEgreso, setCierreEgreso] = useState<"si" | "no" | "">("");
 
   // Radicado
@@ -895,15 +900,27 @@ export function SeguimientoDialog({
           : [];
 
 
-  // Inicializar al abrir.
+  // Inicializar al abrir. Solo debe correr cuando el diálogo TRANSICIONA
+  // a abierto: si depende de props reactivos (evolucionDetalle, listas,
+  // estadoActual), las invalidaciones que dispara el diálogo hijo de
+  // entrega documental (["remisiones"], ["phd-seguimientos"]) vuelven a
+  // disparar este efecto y borran tipoSeg / indigoEditada / entregaPreparada,
+  // lo que a su vez vacía la plantilla Índigo recién transferida.
+  const initRef = useRef(false);
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      initRef.current = false;
+      return;
+    }
+    if (initRef.current) return;
+    initRef.current = true;
     const parsed = parseEvolucionDetalle(evolucionDetalle, especialidadesList);
     setEvoDetalle(parsed);
     setInicial(parseEvolucionDetalle(evolucionDetalle, especialidadesList));
     setMotivoEvo("");
     setEstadoCaso(estadoActual ?? "");
     setIndigoEditada(false);
+    setEntregaPreparada(false);
     setTipoSeg("");
     setEvoEsp({});
     setEspCierres({});
@@ -929,6 +946,8 @@ export function SeguimientoDialog({
   // Al cambiar el tipo de seguimiento: defaults de estado de la solicitud y reactivar auto-generación.
   useEffect(() => {
     setIndigoEditada(false);
+    // Cambio real de tipo → deja de considerarse "entrega ya preparada".
+    setEntregaPreparada(false);
     // Reset de novedades al cambiar de tipo.
     if (tipoSeg !== T.NOVEDADES) {
       setNovPaciente(false);
@@ -1439,8 +1458,12 @@ export function SeguimientoDialog({
   ]);
 
   useEffect(() => {
+    // Nunca sobrescribir cuando la plantilla proviene de la entrega documental
+    // ya transferida (Fase 5C · A.1): protege contra invalidaciones y
+    // reinicializaciones que dispararían `plantillaGenerada = ""`.
+    if (entregaPreparada) return;
     if (!indigoEditada) setIndigoTexto(plantillaGenerada);
-  }, [plantillaGenerada, indigoEditada]);
+  }, [plantillaGenerada, indigoEditada, entregaPreparada]);
 
   const regenerar = () => {
     setIndigoEditada(false);
@@ -3343,11 +3366,20 @@ export function SeguimientoDialog({
                         : null
                     }
                     onEntregaCompletada={(res) => {
-                      // Fase 5C · A.9: transferir la plantilla Índigo canónica
+                      // Fase 5C · A.1: transferir la plantilla Índigo canónica
                       // al textarea principal sin registrar el seguimiento.
-                      // El usuario decide cuándo pulsar "Registrar seguimiento".
+                      // Se marca `entregaPreparada` para que ningún efecto
+                      // posterior (invalidaciones, reinit, cambios de deps)
+                      // pueda vaciar la plantilla recién recibida.
+                      if (!res?.plantillaIndigo || !res.plantillaIndigo.trim()) {
+                        toast.error(
+                          "La firma está registrada, pero no fue posible preparar la plantilla para Índigo.",
+                        );
+                        return;
+                      }
                       setIndigoTexto(res.plantillaIndigo);
                       setIndigoEditada(true);
+                      setEntregaPreparada(true);
                     }}
                   />
                   {aceptacionCargando && entregaOpen && (
