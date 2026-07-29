@@ -3446,9 +3446,7 @@ export function SeguimientoDialog({
                         value={riNovExternaCod}
                         onChange={(e) => {
                           setRiNovExternaCod(e.target.value);
-                          if (e.target.value !== "NO_ACEPTACION_PACIENTE_FAMILIAR") {
-                            setRiNovPacFam("");
-                          }
+                          setRiNovPacFam("");
                         }}
                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                       >
