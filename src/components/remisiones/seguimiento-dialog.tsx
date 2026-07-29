@@ -1202,8 +1202,8 @@ export function SeguimientoDialog({
           );
         case TI.LLEGADA_AMB: {
           const f = riFirmaLlegada;
-          const empresa = (f?.empresa || caso?.empresa_traslado || "").toString().trim() || "—";
-          const sede = (casoInterna?.unidad || casoInterna?.servicio || "—").toString();
+          const empresa = (f?.empresa || caso?.prestador_traslado || "").toString().trim() || "—";
+          const sede = (casoInterna?.servicio || "—").toString();
           const fechaHora = riLlegFecha && riLlegHora ? `${riLlegFecha} ${riLlegHora}` : "—";
           const resp = f?.responsable_nombre?.trim() || "—";
           const cargoResp = f?.responsable_cargo?.trim() || "—";
