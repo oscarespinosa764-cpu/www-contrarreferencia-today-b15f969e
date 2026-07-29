@@ -1016,6 +1016,9 @@ export function SeguimientoDialog({
     setIndigoEditada(false);
     setEntregaPreparada(false);
     setTipoSeg("");
+    setCanal("");
+    setCanalOtro("");
+    setInfoTramite(INFORMACION_TRAMITE_INICIAL);
     setEvoEsp({});
     setEspCierres({});
     setEspNuevas([""]);
