@@ -59,13 +59,12 @@ import {
 } from "./evolucion-diaria-fields";
 
 
-const CANALES = [
-  "TELEFÓNICO",
-  "CORREO ELECTRÓNICO",
-  "PLATAFORMA WEB",
-  "FÍSICO / PRESENCIAL",
-  "OTRO",
-] as const;
+import {
+  CanalGestionField,
+  SeguimientoHeaderCard,
+  canalFinalDe,
+} from "./seguimiento-shell";
+
 
 const CON_DESCRIPCION = ["NOVEDADES", "OTRO"];
 
@@ -260,7 +259,7 @@ export function PhdSeguimientoDialog({
     },
   });
 
-  const canalFinal = canal === "OTRO" ? canalOtro.trim().toUpperCase() : canal;
+  const canalFinal = canalFinalDe(canal, canalOtro);
   const requiereServicio = evento === "ACEPTACION_PROVEEDOR";
   const requiereDescripcion = CON_DESCRIPCION.includes(evento);
   const esEvolucionDiaria = evento === "EVOLUCION_DIARIA";
@@ -409,26 +408,21 @@ export function PhdSeguimientoDialog({
           </DialogTitle>
         </DialogHeader>
 
-        {/* Tarjeta de contexto del caso */}
-        <div className="rounded-lg border border-border bg-muted/30 p-3">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold uppercase text-foreground">{paciente}</p>
-              <p className="text-xs text-muted-foreground">
-                {tipoDocumento ? `${tipoDocumento} ` : ""}
-                {documento || "—"}
-                {ipsReceptora ? ` · IPS: ${ipsReceptora}` : ""}
-                {unidadEspecialSolicitada ? ` · ${unidadEspecialSolicitada}` : ""}
-              </p>
-            </div>
-            <Badge variant={terminal ? "secondary" : "default"} className="font-semibold">
-              <Lock className="mr-1 h-3 w-3" /> {estado}
-            </Badge>
-          </div>
-          <p className="mt-1 text-[10.5px] uppercase tracking-wide text-muted-foreground">
-            Estado del caso — automático, calculado por los requisitos pendientes.
-          </p>
-        </div>
+        {/* Tarjeta de contexto del caso (unificada FASE 5E · Bloque A) */}
+        <SeguimientoHeaderCard
+          paciente={paciente}
+          documento={documento}
+          tipoDocumento={tipoDocumento}
+          estado={estado}
+          contexto={[
+            ipsReceptora ? `IPS: ${ipsReceptora}` : "",
+            unidadEspecialSolicitada || "",
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+          nota="Estado del caso — automático, calculado por los requisitos pendientes."
+        />
+
 
         {terminal ? (
           <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
@@ -461,28 +455,13 @@ export function PhdSeguimientoDialog({
                 </Select>
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold uppercase">Canal de gestión *</Label>
-                <Select value={canal} onValueChange={setCanal}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar canal…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CANALES.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {canal === "OTRO" && (
-                  <Input
-                    placeholder="ESPECIFIQUE EL CANAL"
-                    value={canalOtro}
-                    onChange={(e) => setCanalOtro(e.target.value.toUpperCase())}
-                  />
-                )}
-              </div>
+              <CanalGestionField
+                value={canal}
+                onChange={setCanal}
+                otro={canalOtro}
+                onOtroChange={setCanalOtro}
+              />
+
             </div>
 
             {requiereServicio && (

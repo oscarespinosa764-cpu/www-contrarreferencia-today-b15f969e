@@ -85,6 +85,16 @@ import { RiLlegadaQRPanel } from "@/components/remisiones/ri-llegada-qr-panel";
 import { resolverAceptacionVigente } from "@/lib/salientes-aceptacion.functions";
 import { limpiarNombreAcepta, limpiarCargoAcepta, NOMBRE_ACEPTA_MAX, CARGO_ACEPTA_MAX } from "@/lib/salientes-aceptacion";
 import { registrarCambioUnidadRI } from "@/lib/ri-cambio-unidad.functions";
+import {
+  CanalGestionField,
+  InformacionTramiteFields,
+  INFORMACION_TRAMITE_INICIAL,
+  SeguimientoHeaderCard,
+  canalFinalDe,
+  erroresInformacionTramite,
+  plantillaInformacionTramite,
+  type InformacionTramiteValue,
+} from "@/components/remisiones/seguimiento-shell";
 
 type Props = {
   open: boolean;
@@ -122,6 +132,7 @@ const T = {
   CANCELACION: "CANCELACIÓN DE TRÁMITE DE REMISIÓN",
   PERTINENCIA: "REVISIÓN AUTORIZACIÓN ESTANCIA (CANCELACIÓN)",
   NOVEDADES: "NOVEDADES",
+  INFO_TRAMITE: "INFORMACIÓN DEL TRÁMITE",
   OTRO: "OTRO",
 } as const;
 
@@ -307,6 +318,12 @@ export function SeguimientoDialog({
 
   // --- Estados base ---
   const [tipoSeg, setTipoSeg] = useState("");
+  // FASE 5E · Bloque A — canal de gestión global (todos los módulos).
+  const [canal, setCanal] = useState("");
+  const [canalOtro, setCanalOtro] = useState("");
+  const [infoTramite, setInfoTramite] = useState<InformacionTramiteValue>(
+    INFORMACION_TRAMITE_INICIAL,
+  );
   const [detalle, setDetalle] = useState(""); // observaciones
   const [estadoSolicitud, setEstadoSolicitud] = useState("");
   const [estadoCaso, setEstadoCaso] = useState("");
@@ -929,6 +946,7 @@ export function SeguimientoDialog({
       T.CANCELACION,
       T.PERTINENCIA,
       T.NOVEDADES,
+      T.INFO_TRAMITE,
       T.OTRO,
     ];
     return arr;
@@ -961,7 +979,7 @@ export function SeguimientoDialog({
     // Acción terminal de cancelación siempre disponible mientras esté activo.
     if (activo && proximo !== TI.CANCELACION_RI) arr.push(TI.CANCELACION_RI);
     // B3: OTRO y NOVEDADES son trazabilidad permanente mientras el caso esté activo.
-    if (activo) arr.push(TI.OTRO, TI.NOVEDADES);
+    if (activo) arr.push(TI.OTRO, TI.NOVEDADES, T.INFO_TRAMITE);
     return arr;
   }, [historial, casoInterna]);
 
@@ -998,6 +1016,9 @@ export function SeguimientoDialog({
     setIndigoEditada(false);
     setEntregaPreparada(false);
     setTipoSeg("");
+    setCanal("");
+    setCanalOtro("");
+    setInfoTramite(INFORMACION_TRAMITE_INICIAL);
     setEvoEsp({});
     setEspCierres({});
     setEspNuevas([""]);
@@ -1241,6 +1262,13 @@ export function SeguimientoDialog({
 
   // --- Plantilla Índigo generada según el tipo ---
   const plantillaGenerada = useMemo(() => {
+    // FASE 5E · Bloque A — Información del trámite (transversal, no cambia estado).
+    if (!esPendiente && tipoSeg === T.INFO_TRAMITE) {
+      return appendNota(
+        plantillaInformacionTramite(infoTramite, canalFinalDe(canal, canalOtro)),
+        detalle,
+      );
+    }
     if (esInterna) {
       switch (tipoSeg) {
         case TI.PENDIENTE:
@@ -1642,6 +1670,10 @@ export function SeguimientoDialog({
     camaActual,
     nuevaUnidadNorm,
     nuevaCamaNorm,
+    infoTramite,
+    canal,
+    canalOtro,
+    esPendiente,
   ]);
 
   useEffect(() => {
@@ -2025,6 +2057,9 @@ export function SeguimientoDialog({
   const resetCampos = () => {
     setDetalle("");
     setTipoSeg("");
+    setCanal("");
+    setCanalOtro("");
+    setInfoTramite(INFORMACION_TRAMITE_INICIAL);
     setEstadoSolicitud("");
     setNombreContacto("");
     setTelefono("");
@@ -2122,6 +2157,11 @@ export function SeguimientoDialog({
         return toast.error("Indica las observaciones que justifican el nuevo radicado");
     } else {
       if (!tipoSeg) return toast.error("Selecciona el tipo de seguimiento");
+      if (!canalFinalDe(canal, canalOtro)) return toast.error("Selecciona el canal de gestión");
+      if (!esPendiente && tipoSeg === T.INFO_TRAMITE) {
+        const errs = erroresInformacionTramite(infoTramite);
+        if (errs.length) return toast.error(errs[0]);
+      }
 
       // Validaciones por tipo (salientes / PHD).
       if (esRadicado && generaCodigo && !radicado.trim())
@@ -2391,7 +2431,18 @@ export function SeguimientoDialog({
         nombre_contacto: mostrarContacto ? nombreContacto.trim() || null : null,
         telefono: mostrarContacto ? telefono.trim() || null : null,
         plantilla_indigo: indigoTexto.trim() || null,
-        detalles: construirDetalles() as never,
+        detalles: {
+          ...(construirDetalles() ?? {}),
+          canal_gestion: canalFinalDe(canal, canalOtro) || null,
+          ...(!esPendiente && tipoSeg === T.INFO_TRAMITE
+            ? {
+                solicitante: infoTramite.solicitante.trim() || null,
+                parentesco: infoTramite.parentesco || null,
+                telefono_contacto: infoTramite.telefono.trim() || null,
+                informacion: infoTramite.observacion.trim() || null,
+              }
+            : {}),
+        } as never,
         nombre_usuario: perfil?.nombre || u.user?.email || null,
         created_by: u.user?.id,
       })
@@ -2665,15 +2716,27 @@ export function SeguimientoDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] min-w-0 flex-col gap-0 overflow-hidden p-0 sm:max-w-[56rem]">
-        {/* Encabezado fijo */}
+        {/* Encabezado fijo unificado (FASE 5E · Bloque A) */}
         <DialogHeader className="shrink-0 border-b border-border/60 px-4 py-3 pr-10 text-left sm:px-6">
-          <DialogTitle className="break-words text-base leading-snug">
-            Seguimiento · {paciente}
+          <DialogTitle className="break-words text-base uppercase leading-snug tracking-wide">
+            {esSaliente
+              ? "Seguimientos de remisión"
+              : esInterna
+                ? "Seguimientos de referencia interna"
+                : esPendiente
+                  ? "Seguimientos de pendiente"
+                  : "Seguimientos PHD / PAD / O2 / Especiales"}
           </DialogTitle>
         </DialogHeader>
 
         {/* Cuerpo desplazable (único con scroll vertical, barra invisible) */}
         <div className="min-w-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-4 py-4 scrollbar-invisible sm:px-6">
+          <SeguimientoHeaderCard
+            paciente={paciente}
+            documento={documento}
+            estado={estadoActual}
+            nota="Estado del caso — trazabilidad institucional."
+          />
           {/* Aviso de caso cerrado: modo consulta, sin nuevos seguimientos */}
           {casoCerrado && (
             <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm font-semibold text-destructive">
@@ -2822,29 +2885,45 @@ export function SeguimientoDialog({
                 </div>
               )}
 
-              {/* Tipo de seguimiento */}
-              <div className="space-y-1.5">
-                <Label className={labelCls}>Tipo de seguimiento</Label>
-                <Select value={tipoSeg} onValueChange={setTipoSeg}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Seleccionar…" />
-                  </SelectTrigger>
-                  <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
-                    {TIPOS_SEG.map((t) => (
-                      <SelectItem
-                        key={t}
-                        value={t}
-                        className="whitespace-normal [overflow-wrap:anywhere]"
-                        title={t === T.PERTINENCIA ? REVISION_AUT_LABEL_COMPLETO : labelTipoSeg(t)}
-                      >
-                        {labelTipoSeg(t)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* Tipo de seguimiento + Canal de gestión (unificado FASE 5E) */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className={labelCls}>Tipo de seguimiento</Label>
+                  <Select value={tipoSeg} onValueChange={setTipoSeg}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Seleccionar…" />
+                    </SelectTrigger>
+                    <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
+                      {TIPOS_SEG.map((t) => (
+                        <SelectItem
+                          key={t}
+                          value={t}
+                          className="whitespace-normal [overflow-wrap:anywhere]"
+                          title={
+                            t === T.PERTINENCIA ? REVISION_AUT_LABEL_COMPLETO : labelTipoSeg(t)
+                          }
+                        >
+                          {labelTipoSeg(t)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <CanalGestionField
+                  value={canal}
+                  onChange={setCanal}
+                  otro={canalOtro}
+                  onOtroChange={setCanalOtro}
+                />
               </div>
 
+              {/* INFORMACIÓN DEL TRÁMITE (no aplica a PENDIENTES) */}
+              {!esPendiente && tipoSeg === T.INFO_TRAMITE && (
+                <InformacionTramiteFields value={infoTramite} onChange={setInfoTramite} />
+              )}
+
               {/* ======= Campos por tipo (salientes) ======= */}
+
 
               {/* RADICADO DE CASO */}
               {esRadicado && (
