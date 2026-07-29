@@ -3021,8 +3021,9 @@ export function SeguimientoDialog({
                     paciente={paciente}
                     documento={documento}
                     radicadoCaso={radicadoCaso}
-                    onFirmada={({ firmadoAtISO }) => {
-                      const d = new Date(firmadoAtISO);
+                    onFirmada={(info) => {
+                      setRiFirmaLlegada(info);
+                      const d = new Date(info.firmadoAtISO);
                       const dd = String(d.getDate()).padStart(2, "0");
                       const mm = String(d.getMonth() + 1).padStart(2, "0");
                       const yyyy = d.getFullYear();
