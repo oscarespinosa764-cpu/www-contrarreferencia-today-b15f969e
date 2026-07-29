@@ -91,9 +91,14 @@ export function clasificarEtapa(estado: string | null | undefined): EtapaSalient
 }
 
 
-/** Agrupa una lista de casos por etapa, respetando el orden canónico. */
+/**
+ * Agrupa una lista de casos por etapa, respetando el orden canónico.
+ * `getEstado` permite usar otro campo de estado (p. ej. `estado_ciclo` en
+ * PHD / PAD / O2 / Especiales, donde el ciclo es la fuente de verdad).
+ */
 export function agruparPorEtapa<T extends { estado?: string | null }>(
   items: T[],
+  getEstado?: (item: T) => string | null | undefined,
 ): { etapa: EtapaMeta; items: T[] }[] {
   const buckets: Record<EtapaSaliente, T[]> = {
     PENDIENTE_ACEPTACION: [],
@@ -103,8 +108,9 @@ export function agruparPorEtapa<T extends { estado?: string | null }>(
     OTROS: [],
   };
   for (const it of items) {
-    buckets[clasificarEtapa(it.estado)].push(it);
+    buckets[clasificarEtapa(getEstado ? getEstado(it) : it.estado)].push(it);
   }
+
   return ETAPA_ORDEN
     .map((k) => ({ etapa: ETAPAS_META[k], items: buckets[k] }))
     .filter((g) => g.items.length > 0);
