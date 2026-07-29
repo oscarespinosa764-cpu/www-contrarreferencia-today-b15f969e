@@ -946,6 +946,8 @@ export function SeguimientoDialog({
   // Al cambiar el tipo de seguimiento: defaults de estado de la solicitud y reactivar auto-generación.
   useEffect(() => {
     setIndigoEditada(false);
+    // Cambio real de tipo → deja de considerarse "entrega ya preparada".
+    setEntregaPreparada(false);
     // Reset de novedades al cambiar de tipo.
     if (tipoSeg !== T.NOVEDADES) {
       setNovPaciente(false);
