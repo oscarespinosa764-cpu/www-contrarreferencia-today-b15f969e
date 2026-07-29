@@ -139,6 +139,8 @@ const EST = {
 const TIPOS_PHD_BASE = [T.EVOLUCION, T.CORREO, T.PLATAFORMA, T.FISICO, T.OTRO] as const;
 
 // --- Referencia interna ---
+// Nota: los VALORES son códigos técnicos persistidos (compatibilidad histórica).
+// TI_LABEL solo cambia la etiqueta visible en el selector y en textos nuevos.
 const TI = {
   PENDIENTE: "PENDIENTE COORDINACIÓN FECHA Y HORA EXAMEN",
   COORDINADO: "EXAMEN COORDINADO",
@@ -149,6 +151,15 @@ const TI = {
   CIERRE_CONCLUSION: "CIERRE POR CULMINACIÓN DE SOLICITUD",
   CANCELACION_RI: "CANCELACIÓN DEL TRÁMITE",
 } as const;
+
+// Labels visibles (Fase 5C · B1). No modifican el código persistido.
+const TI_LABEL: Record<string, string> = {
+  [TI.PENDIENTE]: "TRÁMITE COORDINADO",
+  [TI.LLEGADA_AMB]: "CONFIRMACIÓN LLEGADA DE AMBULANCIA",
+};
+function labelTipoSeg(t: string): string {
+  return TI_LABEL[t] ?? t;
+}
 
 // Estados terminales de referencia_interna que resultan de estas acciones.
 const RI_ESTADO_CIERRE = "CERRADO POR CULMINACION DE SOLICITUD";
@@ -180,7 +191,10 @@ function siguientePasoRI(
     return null;
   }
   if (!ultimo) return TI.PENDIENTE;
-  if (ultimo.startsWith("PENDIENTE COORDINAC")) return TI.COORDINADO;
+  // B1: tras TRÁMITE COORDINADO se salta directamente a PROGRAMACIÓN
+  // (se retira EXAMEN COORDINADO de la creación nueva).
+  if (ultimo.startsWith("PENDIENTE COORDINAC")) return TI.PROG_AMB;
+  // Ruta histórica: casos que ya tienen EXAMEN COORDINADO registrado continúan.
   if (ultimo === TI.COORDINADO.toUpperCase()) return TI.PROG_AMB;
   if (ultimo === TI.PROG_AMB.toUpperCase()) return TI.LLEGADA_AMB;
   if (ultimo === TI.LLEGADA_AMB.toUpperCase()) return TI.CIERRE_CONCLUSION;
