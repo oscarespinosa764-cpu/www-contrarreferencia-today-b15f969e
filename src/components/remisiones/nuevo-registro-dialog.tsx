@@ -1037,43 +1037,46 @@ export function NuevoRegistroDialog({
                 onChange={setPhdTratantes}
                 suggestions={especialidades}
               />
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="space-y-1.5">
-                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Tipo de solicitud *
-                  </Label>
-                  <select
-                    value={phdTipoSolicitud}
-                    onChange={(e) => setPhdTipoSolicitud(e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="">Seleccione…</option>
-                    {[
-                      "PHD",
-                      "PAD CRONICO",
-                      "OXIGENO DOMICILIARIO",
-                      "PHD + OXIGENO DOMICILIARIO",
-                      "PAD CRONICO + OXIGENO DOMICILIARIO",
-                      "UNIDADES ESPECIALES",
-                    ].map((o) => (
-                      <option key={o} value={o}>
-                        {o}
-                      </option>
-                    ))}
-                  </select>
+              <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+                <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Tipos de solicitud * (selecciona de 1 a {MAX_TIPOS_SOLICITUD})
+                </Label>
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {SERVICIOS_CODIGOS.map((code) => {
+                    const checked = phdTipos.includes(code);
+                    return (
+                      <label
+                        key={code}
+                        className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-xs font-medium transition ${
+                          checked ? "border-primary bg-primary/10 text-foreground" : "border-input bg-background text-muted-foreground"
+                        }`}
+                      >
+                        <Checkbox checked={checked} onCheckedChange={() => togglePhdTipo(code)} />
+                        {SERVICIO_LABEL[code]}
+                      </label>
+                    );
+                  })}
                 </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Cada servicio genera requisitos independientes (aceptación, entrega de oxígeno,
+                  coordinación y llegada de ambulancia).
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {phdEsUnidadEspecial && (
                   <div className="space-y-1.5">
                     <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Unidad especial *
+                      Unidad especial solicitada *
                     </Label>
                     <Input
                       value={phdUnidadEspecial}
-                      onChange={(e) => setPhdUnidadEspecial(e.target.value)}
+                      onChange={(e) => setPhdUnidadEspecial(e.target.value.toUpperCase())}
                       placeholder="Escribe la unidad especial"
+                      className="uppercase"
                     />
                   </div>
                 )}
+
                 <div className="space-y-1.5">
                   <AutoComplete
                     label="EAPB / ERP *"
