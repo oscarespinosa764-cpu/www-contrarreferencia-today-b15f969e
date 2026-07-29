@@ -51,6 +51,13 @@ import { fmtFechaHora } from "@/lib/remisiones-utils";
 import { FileSignature, Info, Lock } from "lucide-react";
 import { EntregaDocumentalDialog } from "./entrega-documental-dialog";
 import { RiLlegadaQRPanel, type FirmaLlegadaInfo } from "./ri-llegada-qr-panel";
+import {
+  EvolucionDiariaFields,
+  EVOLUCION_DIARIA_INICIAL,
+  derivarEvolucionDiaria,
+  type EvolucionDiariaValue,
+} from "./evolucion-diaria-fields";
+
 
 const CANALES = [
   "TELEFÓNICO",
@@ -60,7 +67,7 @@ const CANALES = [
   "OTRO",
 ] as const;
 
-const CON_DESCRIPCION = ["EVOLUCION_DIARIA", "NOVEDADES", "OTRO"];
+const CON_DESCRIPCION = ["NOVEDADES", "OTRO"];
 
 type Props = {
   open: boolean;
@@ -207,6 +214,8 @@ export function PhdSeguimientoDialog({
   const [tipoAmb, setTipoAmb] = useState("");
   const [firma, setFirma] = useState<FirmaLlegadaInfo | null>(null);
   const [entregaOpen, setEntregaOpen] = useState(false);
+  const [evo, setEvo] = useState<EvolucionDiariaValue>(EVOLUCION_DIARIA_INICIAL);
+
 
   useEffect(() => {
     if (!open) return;
@@ -226,6 +235,8 @@ export function PhdSeguimientoDialog({
     setEmpresaAmb((empresaTraslado ?? "").toUpperCase());
     setTipoAmb((tipoAmbulanciaCodigo ?? "").toUpperCase());
     setFirma(null);
+    setEvo(EVOLUCION_DIARIA_INICIAL);
+
   }, [open, empresaTraslado, tipoAmbulanciaCodigo]);
 
   // Preselecciona el único servicio pendiente de aceptación.
@@ -252,6 +263,42 @@ export function PhdSeguimientoDialog({
   const canalFinal = canal === "OTRO" ? canalOtro.trim().toUpperCase() : canal;
   const requiereServicio = evento === "ACEPTACION_PROVEEDOR";
   const requiereDescripcion = CON_DESCRIPCION.includes(evento);
+  const esEvolucionDiaria = evento === "EVOLUCION_DIARIA";
+
+  // ¿La EAPB del caso hace seguimientos en plataforma? (catálogo EAPB)
+  const { data: segEnPlataforma = false } = useQuery({
+    queryKey: ["phd-eapb-plataforma", casoId],
+    enabled: open && !!casoId,
+    queryFn: async () => {
+      const { data: caso } = await supabase
+        .from("domiciliarios")
+        .select("eapb")
+        .eq("id", casoId)
+        .maybeSingle();
+      const eapb = String((caso as { eapb?: string } | null)?.eapb ?? "").trim();
+      if (!eapb) return false;
+      const { data: cat } = await supabase
+        .from("catalogos")
+        .select("valor, seguimientos_en_plataforma")
+        .eq("tipo", "EAPB")
+        .eq("activo", true)
+        .ilike("valor", eapb)
+        .maybeSingle();
+      return (cat as { seguimientos_en_plataforma?: boolean } | null)?.seguimientos_en_plataforma === true;
+    },
+  });
+
+  const evoCtx = useMemo(
+    () => ({
+      segEnPlataforma,
+      especialidades: [] as string[],
+      estadoCaso: estado,
+      esTramiteAdministrativo: false,
+      observacion: observaciones,
+    }),
+    [segEnPlataforma, estado, observaciones],
+  );
+  const evoDeriv = useMemo(() => derivarEvolucionDiaria(evo, evoCtx), [evo, evoCtx]);
 
   const errores: string[] = [];
   if (!evento) errores.push("Seleccione el tipo de seguimiento.");
@@ -259,10 +306,12 @@ export function PhdSeguimientoDialog({
   if (requiereServicio && !servicio) errores.push("Seleccione el servicio al que aplica.");
   if (requiereDescripcion && descripcion.trim().length < 3)
     errores.push("Escriba la descripción del seguimiento.");
+  if (esEvolucionDiaria) errores.push(...evoDeriv.errores);
   if (evento === "RADICACION" && !sinRadicado && !numRadicado.trim())
     errores.push("Ingrese el número de radicado o marque 'Sin número'.");
   if (evento === "RADICACION" && sinRadicado && !motivoSinRadicado.trim())
     errores.push("Indique el motivo de no tener radicado.");
+
   if (evento === "ACEPTACION_PROVEEDOR" && !proveedor.trim())
     errores.push("Indique el proveedor que acepta.");
   if (evento === "CONFIRMACION_ENTREGA_OXIGENO" && (!proveedor.trim() || !fecha.trim()))
@@ -278,6 +327,9 @@ export function PhdSeguimientoDialog({
 
   const invalid = errores.length > 0 || terminal;
 
+  // Para EVOLUCIÓN DIARIA la descripción es la plantilla Índigo canónica.
+  const descripcionFinal = esEvolucionDiaria ? evoDeriv.plantilla : descripcion.trim();
+
   const detalleLegible = () => {
     const p: string[] = [`TIPO: ${EVENTO_LABEL[evento] ?? evento}`];
     if (canalFinal) p.push(`CANAL: ${canalFinal}`);
@@ -291,8 +343,17 @@ export function PhdSeguimientoDialog({
         `TIPO AMB: ${TIPO_AMBULANCIA_LABEL[tipoAmb as keyof typeof TIPO_AMBULANCIA_LABEL] ?? tipoAmb}`,
       );
     }
+    if (esEvolucionDiaria) {
+      const canales = [evo.correo ? "CORREO" : null, evo.plataforma ? "PLATAFORMA" : null]
+        .filter(Boolean)
+        .join(" + ");
+      if (canales) p.push(`ENVÍO EAPB: ${canales}`);
+      if (segEnPlataforma && evo.plataformaFunc)
+        p.push(`PLATAFORMA FUNCIONANDO: ${evo.plataformaFunc}`);
+      if (evo.motivoPend.trim()) p.push(`MOTIVO PENDIENTE: ${evo.motivoPend.trim().toUpperCase()}`);
+    }
     if (fecha) p.push(`FECHA/HORA: ${fecha}`);
-    if (descripcion.trim()) p.push(`DESCRIPCIÓN: ${descripcion.trim()}`);
+    if (descripcionFinal) p.push(`DESCRIPCIÓN: ${descripcionFinal}`);
     if (motivo.trim()) p.push(`MOTIVO: ${motivo.trim().toUpperCase()}`);
     if (observaciones.trim()) p.push(`OBSERVACIONES: ${observaciones.trim()}`);
     return p.join(" · ");
@@ -306,7 +367,8 @@ export function PhdSeguimientoDialog({
           evento: evento as never,
           tipoSeguimiento: EVENTO_LABEL[evento] ?? evento,
           detalle: detalleLegible(),
-          descripcion: descripcion.trim() || undefined,
+          descripcion: descripcionFinal || undefined,
+
           servicioCodigo: (servicio || undefined) as never,
           proveedor: proveedor.trim().toUpperCase() || undefined,
           canal: canalFinal || undefined,
@@ -499,29 +561,29 @@ export function PhdSeguimientoDialog({
               </div>
             )}
 
+            {esEvolucionDiaria && (
+              <EvolucionDiariaFields
+                value={evo}
+                onChange={setEvo}
+                ctx={evoCtx}
+                derivado={evoDeriv}
+              />
+            )}
+
             {requiereDescripcion && (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label className="text-xs">Descripción *</Label>
-                  <Textarea
-                    rows={3}
-                    value={descripcion}
-                    onChange={(e) => setDescripcion(e.target.value)}
-                    placeholder={
-                      evento === "EVOLUCION_DIARIA"
-                        ? "Evolución del trámite en el día…"
-                        : evento === "NOVEDADES"
-                          ? "Novedad presentada…"
-                          : "Describa el seguimiento…"
-                    }
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Fecha y hora del evento</Label>
-                  <AppDateTimeInput name="phd_fecha_evento" value={fecha} onChange={setFecha} />
-                </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Descripción *</Label>
+                <Textarea
+                  rows={3}
+                  value={descripcion}
+                  onChange={(e) => setDescripcion(e.target.value)}
+                  placeholder={
+                    evento === "NOVEDADES" ? "Novedad presentada…" : "Describa el seguimiento…"
+                  }
+                />
               </div>
             )}
+
 
             {evento === "CONFIRMACION_ENTREGA_OXIGENO" && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
