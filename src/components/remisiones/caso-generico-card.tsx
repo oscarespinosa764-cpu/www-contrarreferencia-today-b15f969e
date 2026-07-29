@@ -576,10 +576,12 @@ export function CasoGenericoCard({
                     defaultValue={r.estado_ciclo ?? r.estado ?? ""}
                     readOnly
                   />
-                  <SelectField name="tipo_solicitud" label="Tipo de solicitud" options={PHD_SOLICITUD} required defaultValue={r.tipo_solicitud ?? ""} />
-                  <Field name="unidad_especial" label="Unidad especial" defaultValue={(r.unidad_especial || r.tipo_solicitud_detalle) ?? ""} />
-                  <SelectField name="requiere_ambulancia" label="Requiere ambulancia" options={SI_NO} defaultValue={r.requiere_ambulancia ?? ""} />
-                  <SelectField name="tipo_ambulancia" label="Tipo de ambulancia" options={PHD_AMBULANCIA} defaultValue={r.tipo_ambulancia ?? ""} />
+                  {/* Servicios, unidad especial y tipo de ambulancia son canónicos
+                      (tipos_solicitud / unidad_especial_solicitada / tipo_ambulancia_codigo)
+                      y no se editan desde aquí para no crear fuentes paralelas. */}
+                  <Field name="servicios_display" label="Servicios solicitados" defaultValue={serviciosLabel(r)} readOnly />
+                  <Field name="unidad_especial_display" label="Unidad especial" defaultValue={unidadEspecialLabel(r)} readOnly />
+                  <Field name="tipo_ambulancia_display" label="Tipo de ambulancia" defaultValue={ambulanciaLabel(r)} readOnly />
                   {isAdmin ? (
                     <Field name="codigo_radicacion" label="N° radicado" defaultValue={r.codigo_radicacion ?? ""} />
                   ) : (
