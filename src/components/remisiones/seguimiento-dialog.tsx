@@ -1458,8 +1458,12 @@ export function SeguimientoDialog({
   ]);
 
   useEffect(() => {
+    // Nunca sobrescribir cuando la plantilla proviene de la entrega documental
+    // ya transferida (Fase 5C · A.1): protege contra invalidaciones y
+    // reinicializaciones que dispararían `plantillaGenerada = ""`.
+    if (entregaPreparada) return;
     if (!indigoEditada) setIndigoTexto(plantillaGenerada);
-  }, [plantillaGenerada, indigoEditada]);
+  }, [plantillaGenerada, indigoEditada, entregaPreparada]);
 
   const regenerar = () => {
     setIndigoEditada(false);
