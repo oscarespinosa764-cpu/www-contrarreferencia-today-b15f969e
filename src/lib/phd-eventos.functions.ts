@@ -93,6 +93,7 @@ export const registrarEventoPhd = createServerFn({ method: "POST" })
       evento: data.evento,
       tipo_seguimiento: data.tipoSeguimiento ?? null,
       detalle: data.detalle ?? null,
+      descripcion: data.descripcion ?? null,
       servicio_codigo: data.servicioCodigo ?? null,
       proveedor: data.proveedor ?? null,
       canal: data.canal ?? null,
