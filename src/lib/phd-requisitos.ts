@@ -232,32 +232,48 @@ export function derivarRequisitos(
 }
 
 // --- Catálogo de eventos (tipos de seguimiento) ------------------------------
+// Bloque C: catálogo visible normalizado. Los códigos retirados se conservan
+// SOLO para poder mostrar el historial ya registrado.
 export const EVENTO_LABEL: Record<string, string> = {
-  RADICACION: "RADICACIÓN",
+  // Vigentes
+  ACEPTACION_PROVEEDOR: "ACEPTACIÓN DE TRÁMITE",
+  RADICACION: "RADICADO DEL CASO",
+  EVOLUCION_DIARIA: "EVOLUCIÓN DIARIA",
+  NOVEDADES: "NOVEDADES",
+  OTRO: "OTRO",
+  CONFIRMACION_ENTREGA_OXIGENO: "CONFIRMACIÓN DE ENTREGA DE OXÍGENO",
+  AMBULANCIA_COORDINADA: "COORDINACIÓN DE AMBULANCIA",
+  CONFIRMACION_LLEGADA_AMBULANCIA: "CONFIRMACIÓN DE LLEGADA DE AMBULANCIA",
+  CIERRE_POR_EGRESO: "CONFIRMACIÓN DE EGRESO",
+  CANCELACION_TRAMITE: "CANCELACIÓN DE TRÁMITE",
+  // Históricos (solo lectura)
   EVOLUCION_NOVEDAD: "EVOLUCIÓN / NOVEDAD",
   SEGUIMIENTO_GENERAL: "SEGUIMIENTO GENERAL",
   RESPUESTA_PROVEEDOR: "RESPUESTA DEL PROVEEDOR",
   NO_ACEPTACION_PROVEEDOR: "NO ACEPTACIÓN DEL PROVEEDOR",
-  ACEPTACION_PROVEEDOR: "ACEPTACIÓN DEL PROVEEDOR",
-  CONFIRMACION_ENTREGA_OXIGENO: "CONFIRMACIÓN ENTREGA DE OXÍGENO",
-  AMBULANCIA_COORDINADA: "AMBULANCIA COORDINADA",
-  CONFIRMACION_LLEGADA_AMBULANCIA: "CONFIRMACIÓN DE LLEGADA DE AMBULANCIA",
-  CIERRE_POR_EGRESO: "CIERRE POR EGRESO",
   CANCELACION_PROVEEDOR: "CANCELACIÓN POR EL PROVEEDOR",
   CANCELACION_ESPECIALIDAD: "CANCELACIÓN POR LA ESPECIALIDAD SOLICITANTE",
 };
 
-/** Matriz de disponibilidad (Parte 15). El servidor revalida lo mismo. */
-export function eventosDisponibles(req: RequisitosPhd): string[] {
-  const out: string[] = [
-    "RADICACION",
-    "EVOLUCION_NOVEDAD",
-    "SEGUIMIENTO_GENERAL",
-    "RESPUESTA_PROVEEDOR",
-  ];
-  if (req.aceptacionesPendientes.length > 0) {
-    out.push("ACEPTACION_PROVEEDOR", "NO_ACEPTACION_PROVEEDOR");
-  }
+export type OpcionesEventos = {
+  /** La EAPB del caso exige radicación para los servicios solicitados. */
+  exigeRadicacion?: boolean;
+  /** Ya existe un radicado registrado en el ciclo vigente. */
+  radicacionRegistrada?: boolean;
+};
+
+/** Matriz de disponibilidad (Bloque C). El servidor revalida lo mismo. */
+export function eventosDisponibles(
+  req: RequisitosPhd,
+  opts: OpcionesEventos = {},
+): string[] {
+  const out: string[] = [];
+
+  if (req.aceptacionesPendientes.length > 0) out.push("ACEPTACION_PROVEEDOR");
+  if (opts.exigeRadicacion && !opts.radicacionRegistrada) out.push("RADICACION");
+
+  out.push("EVOLUCION_DIARIA", "NOVEDADES", "OTRO");
+
   if (req.oxigenoAplica && req.oxigenoAceptado && !req.oxigenoEntregado) {
     out.push("CONFIRMACION_ENTREGA_OXIGENO");
   }
@@ -273,6 +289,8 @@ export function eventosDisponibles(req: RequisitosPhd): string[] {
     out.push("CONFIRMACION_LLEGADA_AMBULANCIA");
   }
   if (req.puedeCerrar) out.push("CIERRE_POR_EGRESO");
-  out.push("CANCELACION_PROVEEDOR", "CANCELACION_ESPECIALIDAD");
+
+  out.push("CANCELACION_TRAMITE");
   return out;
 }
+
