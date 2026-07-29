@@ -318,6 +318,12 @@ export function SeguimientoDialog({
 
   // --- Estados base ---
   const [tipoSeg, setTipoSeg] = useState("");
+  // FASE 5E · Bloque A — canal de gestión global (todos los módulos).
+  const [canal, setCanal] = useState("");
+  const [canalOtro, setCanalOtro] = useState("");
+  const [infoTramite, setInfoTramite] = useState<InformacionTramiteValue>(
+    INFORMACION_TRAMITE_INICIAL,
+  );
   const [detalle, setDetalle] = useState(""); // observaciones
   const [estadoSolicitud, setEstadoSolicitud] = useState("");
   const [estadoCaso, setEstadoCaso] = useState("");
