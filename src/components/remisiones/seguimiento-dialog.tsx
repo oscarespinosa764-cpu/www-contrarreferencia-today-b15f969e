@@ -940,6 +940,7 @@ export function SeguimientoDialog({
       T.CANCELACION,
       T.PERTINENCIA,
       T.NOVEDADES,
+      T.INFO_TRAMITE,
       T.OTRO,
     ];
     return arr;
