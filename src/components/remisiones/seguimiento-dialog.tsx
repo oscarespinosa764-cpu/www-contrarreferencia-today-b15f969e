@@ -2553,33 +2553,13 @@ export function SeguimientoDialog({
         update.estado = estadoCaso;
       }
       if (usaIndigo && indigoTexto.trim()) update.trazabilidad_indigo = indigoTexto.trim();
-      // Referencia interna: refleja estado según el seguimiento y cierra al culminar.
+      // Referencia interna (B1.2B): el estado y archivado son server-authoritative
+      // vía trigger `private.seguimientos_ri_estado_apply` sobre `seguimientos`.
+      // El cliente NO debe escribir `estado`/`archivado` desde aquí; solo
+      // trazabilidad Indigo si aplica.
       if (esInterna) {
-        if (tipoSeg === TI.PENDIENTE) update.estado = "PENDIENTE COORDINACION";
-        else if (tipoSeg === TI.COORDINADO) update.estado = "EXAMEN COORDINADO";
-        else if (tipoSeg === TI.PROG_AMB) update.estado = "AMBULANCIA PROGRAMADA";
-        else if (tipoSeg === TI.LLEGADA_AMB) update.estado = "AMBULANCIA EN SITIO";
-        else if (tipoSeg === TI.TEP_ACTIVACION) update.estado = "TEP ACTIVADO";
-        else if (tipoSeg === TI.AMB_COORDINADA_ESP) update.estado = "AMBULANCIA COORDINADA";
-        else if (tipoSeg === TI.CIERRE_CONCLUSION) {
-          update.estado = RI_ESTADO_CIERRE;
-          update.archivado = true;
-        }
-        else if (tipoSeg === TI.CANCELACION_RI) {
-          update.estado = RI_ESTADO_CANCELADO;
-          update.archivado = true;
-        }
-        // B3.1: NOVEDAD EXTERNA "DESCOMPENSACIÓN HEMODINÁMICA" reinicia el
-        // ciclo operativo al estado inicial canónico. La trazabilidad previa
-        // (Trámite/Programación/Llegada/firmas) permanece intacta como
-        // histórico; el nuevo próximo paso disponible es Trámite Coordinado.
-        else if (
-          tipoSeg === TI.NOVEDADES &&
-          riNovExterna &&
-          riNovExternaCod === "DESCOMPENSACION_HEMODINAMICA"
-        ) {
-          update.estado = "PENDIENTE COORDINACION";
-        }
+        delete (update as Record<string, unknown>).estado;
+        delete (update as Record<string, unknown>).archivado;
       }
 
       // Pendientes: cumplimiento completo cierra y archiva el caso.
