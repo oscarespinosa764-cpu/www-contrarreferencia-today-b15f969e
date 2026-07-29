@@ -2809,6 +2809,19 @@ export function SeguimientoDialog({
                 )
               )}
 
+              {/* B1.2B · Estado del caso RI (server-authoritative, solo lectura). */}
+              {esInterna && estadoActual && (
+                <div className="space-y-1.5">
+                  <Label className={labelCls}>Estado del caso (automático)</Label>
+                  <div className="flex h-10 w-full items-center rounded-md border border-border/60 bg-muted/50 px-3 text-sm font-medium text-foreground">
+                    {resolverEstadoRI(estadoActual).label}
+                  </div>
+                  <p className="text-[11px] italic text-muted-foreground">
+                    Este estado se calcula automáticamente en el servidor a partir de los seguimientos.
+                  </p>
+                </div>
+              )}
+
               {/* Tipo de seguimiento */}
               <div className="space-y-1.5">
                 <Label className={labelCls}>Tipo de seguimiento</Label>
