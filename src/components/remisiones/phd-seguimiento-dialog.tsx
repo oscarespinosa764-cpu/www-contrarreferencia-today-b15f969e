@@ -235,6 +235,8 @@ export function PhdSeguimientoDialog({
     setEmpresaAmb((empresaTraslado ?? "").toUpperCase());
     setTipoAmb((tipoAmbulanciaCodigo ?? "").toUpperCase());
     setFirma(null);
+    setEvo(EVOLUCION_DIARIA_INICIAL);
+
   }, [open, empresaTraslado, tipoAmbulanciaCodigo]);
 
   // Preselecciona el único servicio pendiente de aceptación.
