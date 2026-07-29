@@ -638,7 +638,13 @@ export function CasoGenericoCard({
           ipsReceptora={r.ips_receptora}
           empresaTraslado={r.empresa_traslado ?? r.prestador_traslado}
           entidadPago={r.eapb}
+          tiposSolicitud={r.tipos_solicitud}
+          unidadEspecialSolicitada={r.unidad_especial_solicitada ?? r.unidad_especial}
+          tipoAmbulanciaCodigo={r.tipo_ambulancia_codigo}
+          cicloInicioAt={r.ciclo_inicio_at}
+          radicadoCaso={r.codigo_radicacion ?? r.radicado}
         />
+
       ) : (
         <SeguimientoDialog
           open={seg}

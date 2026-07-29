@@ -39,6 +39,8 @@ type SesionRow = {
 };
 
 export type FirmaLlegadaInfo = {
+  /** Id de la sesión de firma (evidencia vinculable server-side). */
+  id: string;
   firmadoAtISO: string;
   codigo: string;
   firmante_nombre: string | null;
@@ -57,11 +59,24 @@ type Props = {
   documento?: string | null;
   unidadDestino?: string | null;
   radicadoCaso?: string | null;
+  /** Módulo/tipo de caso al que pertenece la firma. */
+  tipoCaso?: string;
+  /** Empresa de traslado mostrada al firmante. */
+  empresaTraslado?: string | null;
   /** Se dispara una sola vez cuando el firmante remoto completa la firma. */
   onFirmada?: (info: FirmaLlegadaInfo) => void;
 };
 
-export function RiLlegadaQRPanel({ casoId, paciente, documento, unidadDestino, radicadoCaso, onFirmada }: Props) {
+export function RiLlegadaQRPanel({
+  casoId,
+  paciente,
+  documento,
+  unidadDestino,
+  radicadoCaso,
+  tipoCaso = "referencia_interna",
+  empresaTraslado,
+  onFirmada,
+}: Props) {
   const qc = useQueryClient();
   const [sesionId, setSesionId] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -98,6 +113,7 @@ export function RiLlegadaQRPanel({ casoId, paciente, documento, unidadDestino, r
       setNotificado(true);
       const d = sesion.data;
       onFirmada?.({
+        id: d.id,
         firmadoAtISO: d.firmado_at!,
         codigo: d.codigo_verificacion ?? "",
         firmante_nombre: d.firmante_nombre,
@@ -109,9 +125,9 @@ export function RiLlegadaQRPanel({ casoId, paciente, documento, unidadDestino, r
         empresa: d.empresa_declarada || d.firmante_empresa,
         tipo_ambulancia: d.tipo_ambulancia,
       });
-      qc.invalidateQueries({ queryKey: ["referencia_interna"] });
+      qc.invalidateQueries({ queryKey: [tipoCaso === "domiciliario" ? "domiciliarios" : "referencia_interna"] });
     }
-  }, [firmada, sesion.data, notificado, onFirmada, qc]);
+  }, [firmada, sesion.data, notificado, onFirmada, qc, tipoCaso]);
 
   const generar = async () => {
     setGenerando(true);
@@ -127,7 +143,7 @@ export function RiLlegadaQRPanel({ casoId, paciente, documento, unidadDestino, r
         paciente,
         documento: documento ?? "",
         ips_receptora: unidadDestino ?? "",
-        empresa_traslado: "",
+        empresa_traslado: empresaTraslado ?? "",
         fecha_entrega: new Date().toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" }),
         documentos: [],
         caso_ref: radicadoCaso ?? documento ?? casoId,
@@ -136,7 +152,7 @@ export function RiLlegadaQRPanel({ casoId, paciente, documento, unidadDestino, r
 
       const { id, token: tok } = await crearSesionFirma({
         casoId,
-        tipoCaso: "referencia_interna",
+        tipoCaso,
         snapshot,
         userId: u.user?.id ?? "",
         nombreUsuario: perfil?.nombre || u.user?.email || "—",
@@ -154,7 +170,7 @@ export function RiLlegadaQRPanel({ casoId, paciente, documento, unidadDestino, r
       registrarAuditoria({
         data: {
           accion: "GENERAR_QR_FIRMA",
-          modulo: "referencia_interna",
+          modulo: tipoCaso,
           tabla: "entrega_firmas",
           registroId: id,
           resultado: "exito",
@@ -175,7 +191,7 @@ export function RiLlegadaQRPanel({ casoId, paciente, documento, unidadDestino, r
       registrarAuditoria({
         data: {
           accion: "ANULAR_QR_FIRMA",
-          modulo: "referencia_interna",
+          modulo: tipoCaso,
           tabla: "entrega_firmas",
           registroId: sesionId,
           resultado: "exito",

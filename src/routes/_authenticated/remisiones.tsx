@@ -24,7 +24,8 @@ import {
   descargarReporteGeneralPDF,
   descargarEntregaTurnoPDF,
 } from "@/lib/salientes-export";
-import { agruparPorEtapa } from "@/lib/salientes-grupos";
+import { agruparPorEtapa, type EtapaMeta } from "@/lib/salientes-grupos";
+import { agruparPhdPorSegmento } from "@/lib/phd-requisitos";
 import { GrupoEtapa } from "@/components/remisiones/grupo-etapa";
 import { agruparInternasPorEstado } from "@/lib/ri-estados";
 import { ChevronDown, ChevronRight } from "lucide-react";
@@ -751,13 +752,46 @@ function ListaGenerica({
   ultGestiones?: Record<string, { fecha: string | null; responsable: string | null }>;
 }) {
   if (items.length === 0) return <VacioModulo />;
-  // En PHD / PAD / O2 / Especiales la fuente de verdad del ciclo es
-  // `estado_ciclo` (server-authoritative); `estado` es solo su espejo.
+
+  // PHD / PAD / O2 / Especiales: segmentación por los estados canónicos del
+  // motor de requisitos (Fase 5D · Bloque B). `estado_ciclo` es la verdad.
+  if (tipo === "phd") {
+    const segmentos = agruparPhdPorSegmento(
+      items as Array<Record<string, any> & { estado_ciclo?: string | null; estado?: string | null }>,
+    );
+    return (
+      <div className="grid gap-4">
+        {segmentos.map(({ segmento, items: bucket }) => (
+          <GrupoEtapa
+            key={segmento.key}
+            etapa={
+              {
+                key: segmento.key,
+                titulo: segmento.label,
+                descripcion: segmento.descripcion,
+                color: segmento.color,
+                bar: segmento.bar,
+              } as unknown as EtapaMeta
+            }
+            count={bucket.length}
+          >
+            {bucket.map((it: Record<string, any>) => (
+              <CasoGenericoCard
+                key={it.id as string}
+                tipo={tipo}
+                r={it}
+                canEdit={canEdit}
+                ultimaGestion={ultGestiones?.[it.id as string] ?? null}
+              />
+            ))}
+          </GrupoEtapa>
+        ))}
+      </div>
+    );
+  }
+
   const grupos = agruparPorEtapa(
     items as Array<Record<string, any> & { estado?: string | null }>,
-    tipo === "phd"
-      ? (it) => (it.estado_ciclo as string | null) ?? it.estado
-      : undefined,
   );
 
   return (
@@ -778,6 +812,7 @@ function ListaGenerica({
     </div>
   );
 }
+
 
 function ListaInternas({
   items,

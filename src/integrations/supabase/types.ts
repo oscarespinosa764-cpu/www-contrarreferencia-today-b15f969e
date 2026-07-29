@@ -1027,6 +1027,7 @@ export type Database = {
           ambulancia_obligatoria: boolean | null
           archivado: boolean
           cama: string | null
+          ciclo_inicio_at: string | null
           cie10: string | null
           codigo_radicacion: string | null
           contacto_nombre: string | null
@@ -1072,18 +1073,22 @@ export type Database = {
           requiere_ambulancia: string | null
           servicio: string | null
           tipo_ambulancia: string | null
+          tipo_ambulancia_codigo: string | null
           tipo_documento: string | null
           tipo_solicitud: string | null
           tipo_solicitud_detalle: string | null
           tipo_tramite: string | null
+          tipos_solicitud: string[] | null
           trazabilidad_indigo: string | null
           unidad_especial: string | null
+          unidad_especial_solicitada: string | null
           updated_at: string
         }
         Insert: {
           ambulancia_obligatoria?: boolean | null
           archivado?: boolean
           cama?: string | null
+          ciclo_inicio_at?: string | null
           cie10?: string | null
           codigo_radicacion?: string | null
           contacto_nombre?: string | null
@@ -1129,18 +1134,22 @@ export type Database = {
           requiere_ambulancia?: string | null
           servicio?: string | null
           tipo_ambulancia?: string | null
+          tipo_ambulancia_codigo?: string | null
           tipo_documento?: string | null
           tipo_solicitud?: string | null
           tipo_solicitud_detalle?: string | null
           tipo_tramite?: string | null
+          tipos_solicitud?: string[] | null
           trazabilidad_indigo?: string | null
           unidad_especial?: string | null
+          unidad_especial_solicitada?: string | null
           updated_at?: string
         }
         Update: {
           ambulancia_obligatoria?: boolean | null
           archivado?: boolean
           cama?: string | null
+          ciclo_inicio_at?: string | null
           cie10?: string | null
           codigo_radicacion?: string | null
           contacto_nombre?: string | null
@@ -1186,12 +1195,15 @@ export type Database = {
           requiere_ambulancia?: string | null
           servicio?: string | null
           tipo_ambulancia?: string | null
+          tipo_ambulancia_codigo?: string | null
           tipo_documento?: string | null
           tipo_solicitud?: string | null
           tipo_solicitud_detalle?: string | null
           tipo_tramite?: string | null
+          tipos_solicitud?: string[] | null
           trazabilidad_indigo?: string | null
           unidad_especial?: string | null
+          unidad_especial_solicitada?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -4048,6 +4060,10 @@ export type Database = {
           _observaciones?: string
           _plantilla_indigo?: string
         }
+        Returns: Json
+      }
+      registrar_evento_phd: {
+        Args: { _actor: string; _caso_id: string; _payload: Json }
         Returns: Json
       }
       shift_monthly_usage: {
