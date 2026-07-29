@@ -13,18 +13,16 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
 const EVENTOS = [
-  "RADICACION",
-  "EVOLUCION_NOVEDAD",
-  "SEGUIMIENTO_GENERAL",
-  "RESPUESTA_PROVEEDOR",
-  "NO_ACEPTACION_PROVEEDOR",
   "ACEPTACION_PROVEEDOR",
+  "RADICACION",
+  "EVOLUCION_DIARIA",
+  "NOVEDADES",
+  "OTRO",
   "CONFIRMACION_ENTREGA_OXIGENO",
   "AMBULANCIA_COORDINADA",
   "CONFIRMACION_LLEGADA_AMBULANCIA",
   "CIERRE_POR_EGRESO",
-  "CANCELACION_PROVEEDOR",
-  "CANCELACION_ESPECIALIDAD",
+  "CANCELACION_TRAMITE",
 ] as const;
 
 const schema = z.object({
@@ -32,6 +30,7 @@ const schema = z.object({
   evento: z.enum(EVENTOS),
   tipoSeguimiento: z.string().trim().max(120).optional(),
   detalle: z.string().trim().max(4000).optional(),
+  descripcion: z.string().trim().max(4000).optional(),
   servicioCodigo: z
     .enum(["PHD", "PAD", "PAD_CRONICO", "UNIDADES_ESPECIALES", "OXIGENO_DOMICILIARIO"])
     .optional(),
@@ -49,6 +48,7 @@ const schema = z.object({
   firmaId: z.string().uuid().optional(),
   observaciones: z.string().trim().max(4000).optional(),
 });
+
 
 const MENSAJES: Record<string, string> = {
   NO_AUTENTICADO: "Sesión no válida.",
