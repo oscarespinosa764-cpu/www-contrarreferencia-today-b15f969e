@@ -1265,11 +1265,25 @@ export function SeguimientoDialog({
           );
         case TI.CIERRE_CONCLUSION:
           return appendNota(generarPlantillaRefInternaCulminacion(), detalle);
-        case TI.CANCELACION_RI:
-          return appendNota(
-            `SE CANCELA EL TRÁMITE DE REFERENCIA INTERNA.\nMOTIVO: ${(detalle || "—").toUpperCase()}`,
-            "",
-          );
+        case TI.CANCELACION_RI: {
+          // B1.2 · Plantilla estructurada de cancelación del trámite RI.
+          const pfLbl: Record<string, string> = {
+            ADULTO_MAYOR_SIN_ACOMPANANTE: "ADULTO MAYOR SIN ACOMPAÑANTE",
+            FAMILIAR_NO_PERMITE_TRASLADO: "FAMILIAR NO PERMITE EL TRASLADO",
+          };
+          const partes: string[] = ["SE REGISTRA CANCELACIÓN DEL TRÁMITE DE REFERENCIA INTERNA."];
+          if (riCancelMotivoCod === "NO_ACEPTACION_PACIENTE_FAMILIAR") {
+            partes.push("MOTIVO: NO ACEPTACIÓN POR PARTE DEL PACIENTE Y/O FAMILIAR");
+            partes.push(`MOTIVO PACIENTE/FAMILIAR: ${pfLbl[riCancelPacFam] ?? "—"}`);
+          } else if (riCancelMotivoCod === "OTRO") {
+            partes.push("MOTIVO: OTRO");
+            partes.push(`DESCRIPCIÓN DEL MOTIVO: ${riCancelOtroTexto.trim() || "—"}`);
+          } else {
+            partes.push("MOTIVO: —");
+          }
+          partes.push("ESTADO RESULTANTE: CANCELADO");
+          return appendNota(partes.join("\n"), detalle);
+        }
         case TI.PROG_AMB:
           return appendNota(
             `SE CONFIRMA PROGRAMACIÓN DE AMBULANCIA.\nFECHA/HORA RECOGIDA: ${(riRecFecha && riRecHora) ? `${riRecFecha}, ${riRecHora}` : "—"}\nTIPO AMBULANCIA: ${riRecTipoAmb || "—"}`,
