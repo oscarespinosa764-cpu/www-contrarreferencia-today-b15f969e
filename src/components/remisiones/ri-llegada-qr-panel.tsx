@@ -112,9 +112,6 @@ export function RiLlegadaQRPanel({ casoId, paciente, documento, unidadDestino, r
       qc.invalidateQueries({ queryKey: ["referencia_interna"] });
     }
   }, [firmada, sesion.data, notificado, onFirmada, qc]);
-      qc.invalidateQueries({ queryKey: ["referencia_interna"] });
-    }
-  }, [firmada, sesion.data, notificado, onFirmada, qc]);
 
   const generar = async () => {
     setGenerando(true);
