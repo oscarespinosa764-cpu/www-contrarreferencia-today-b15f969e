@@ -1200,11 +1200,36 @@ export function SeguimientoDialog({
             `SE CONFIRMA PROGRAMACIÓN DE AMBULANCIA.\nFECHA/HORA RECOGIDA: ${(riRecFecha && riRecHora) ? `${riRecFecha}, ${riRecHora}` : "—"}\nTIPO AMBULANCIA: ${riRecTipoAmb || "—"}`,
             detalle,
           );
-        case TI.LLEGADA_AMB:
-          return appendNota(
-            `SE CONFIRMA LLEGADA DE AMBULANCIA.\nFECHA/HORA LLEGADA: ${riLlegFecha} ${riLlegHora}`,
-            detalle,
-          );
+        case TI.LLEGADA_AMB: {
+          const f = riFirmaLlegada;
+          const empresa = (f?.empresa || caso?.empresa_traslado || "").toString().trim() || "—";
+          const sede = (casoInterna?.unidad || casoInterna?.servicio || "—").toString();
+          const fechaHora = riLlegFecha && riLlegHora ? `${riLlegFecha} ${riLlegHora}` : "—";
+          const resp = f?.responsable_nombre?.trim() || "—";
+          const cargoResp = f?.responsable_cargo?.trim() || "—";
+          const tel = f?.firmante_telefono?.trim() || "—";
+          const mismo = f?.firmante_es_responsable === true;
+          const firmanteBlock = f
+            ? mismo
+              ? `FIRMANTE: EL MISMO RESPONSABLE DEL TRASLADO`
+              : `FIRMANTE: ${f.firmante_nombre?.trim() || "—"}\nCARGO DEL FIRMANTE: ${f.firmante_cargo?.trim() || "—"}`
+            : "";
+          const codigoBlock = f?.codigo ? `\nCÓDIGO DE VERIFICACIÓN: ${f.codigo}` : "";
+          const cuerpo = [
+            `CONFIRMACIÓN LLEGADA DE AMBULANCIA.`,
+            `EMPRESA DE TRASLADO: ${empresa}`,
+            `SEDE: ${sede}`,
+            `FECHA/HORA DE LLEGADA: ${fechaHora}`,
+            `RESPONSABLE DEL TRASLADO: ${resp}`,
+            `CARGO DEL RESPONSABLE DEL TRASLADO: ${cargoResp}`,
+            `NÚMERO TELEFÓNICO: ${tel}`,
+            firmanteBlock,
+          ]
+            .filter(Boolean)
+            .join("\n")
+            .concat(codigoBlock);
+          return appendNota(cuerpo, detalle);
+        }
         case TI.TEP_ACTIVACION: {
           const fechaTep = riTepFecha
             ? new Date(riTepFecha).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })
