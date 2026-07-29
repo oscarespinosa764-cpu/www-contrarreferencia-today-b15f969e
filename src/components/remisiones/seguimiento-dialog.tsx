@@ -1331,6 +1331,7 @@ export function SeguimientoDialog({
               AMBULANCIA_SIN_DISPONIBILIDAD: "AMBULANCIA SIN DISPONIBILIDAD",
               RED_NO_CONTRATADA: "RED NO CONTRATADA",
               NO_ACEPTACION_PACIENTE_FAMILIAR: "NO ACEPTACIÓN POR PACIENTE/FAMILIAR",
+              DESCOMPENSACION_HEMODINAMICA: "DESCOMPENSACIÓN HEMODINÁMICA",
             };
             let l = `EXTERNA: ${etiquetas[riNovExternaCod] ?? riNovExternaCod ?? "—"}`;
             if (riNovExternaCod === "NO_ACEPTACION_PACIENTE_FAMILIAR") {
