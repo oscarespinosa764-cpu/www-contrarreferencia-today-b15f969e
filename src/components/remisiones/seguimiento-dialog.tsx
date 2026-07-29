@@ -963,6 +963,14 @@ export function SeguimientoDialog({
     setRiFirmaLlegada(null);
     setRiLlegFecha("");
     setRiLlegHora("");
+    setRiOtroCual("");
+    setRiNovInterna(false);
+    setRiNovExterna(false);
+    setRiNovInternaCod("");
+    setRiNovReprogMotivos([]);
+    setRiNovReprogFH("");
+    setRiNovExternaCod("");
+    setRiNovPacFam("");
   }, [open, evolucionDetalle, especialidadesList, estadoActual]);
 
   // Prefill desde el caso.
