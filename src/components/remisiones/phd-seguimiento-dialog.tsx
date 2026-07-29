@@ -60,7 +60,7 @@ const CANALES = [
   "OTRO",
 ] as const;
 
-const CON_DESCRIPCION = ["EVOLUCION_DIARIA", "NOVEDADES", "OTRO"];
+const CON_DESCRIPCION = ["NOVEDADES", "OTRO"];
 
 type Props = {
   open: boolean;
