@@ -28,8 +28,27 @@ type SesionRow = {
   firmante_nombre: string | null;
   firmante_cargo: string | null;
   firmante_empresa: string | null;
+  firmante_telefono: string | null;
+  firmante_es_responsable: boolean | null;
+  responsable_nombre: string | null;
+  responsable_cargo: string | null;
+  tipo_ambulancia: string | null;
+  empresa_declarada: string | null;
   firmado_at: string | null;
   codigo_verificacion: string | null;
+};
+
+export type FirmaLlegadaInfo = {
+  firmadoAtISO: string;
+  codigo: string;
+  firmante_nombre: string | null;
+  firmante_cargo: string | null;
+  firmante_telefono: string | null;
+  firmante_es_responsable: boolean | null;
+  responsable_nombre: string | null;
+  responsable_cargo: string | null;
+  empresa: string | null;
+  tipo_ambulancia: string | null;
 };
 
 type Props = {
@@ -39,7 +58,7 @@ type Props = {
   unidadDestino?: string | null;
   radicadoCaso?: string | null;
   /** Se dispara una sola vez cuando el firmante remoto completa la firma. */
-  onFirmada?: (info: { firmadoAtISO: string; codigo: string; firmante?: string | null }) => void;
+  onFirmada?: (info: FirmaLlegadaInfo) => void;
 };
 
 export function RiLlegadaQRPanel({ casoId, paciente, documento, unidadDestino, radicadoCaso, onFirmada }: Props) {
@@ -60,7 +79,9 @@ export function RiLlegadaQRPanel({ casoId, paciente, documento, unidadDestino, r
     queryFn: async (): Promise<SesionRow | null> => {
       const { data } = await supabase
         .from("entrega_firmas")
-        .select("id, estado, expira_at, firmante_nombre, firmante_cargo, firmante_empresa, firmado_at, codigo_verificacion")
+        .select(
+          "id, estado, expira_at, firmante_nombre, firmante_cargo, firmante_empresa, firmante_telefono, firmante_es_responsable, responsable_nombre, responsable_cargo, tipo_ambulancia, empresa_declarada, firmado_at, codigo_verificacion",
+        )
         .eq("id", sesionId!)
         .maybeSingle();
       return (data as unknown as SesionRow) ?? null;
@@ -75,10 +96,18 @@ export function RiLlegadaQRPanel({ casoId, paciente, documento, unidadDestino, r
   useEffect(() => {
     if (firmada && sesion.data?.firmado_at && !notificado) {
       setNotificado(true);
+      const d = sesion.data;
       onFirmada?.({
-        firmadoAtISO: sesion.data.firmado_at,
-        codigo: sesion.data.codigo_verificacion ?? "",
-        firmante: sesion.data.firmante_nombre,
+        firmadoAtISO: d.firmado_at!,
+        codigo: d.codigo_verificacion ?? "",
+        firmante_nombre: d.firmante_nombre,
+        firmante_cargo: d.firmante_cargo,
+        firmante_telefono: d.firmante_telefono,
+        firmante_es_responsable: d.firmante_es_responsable,
+        responsable_nombre: d.responsable_nombre,
+        responsable_cargo: d.responsable_cargo,
+        empresa: d.empresa_declarada || d.firmante_empresa,
+        tipo_ambulancia: d.tipo_ambulancia,
       });
       qc.invalidateQueries({ queryKey: ["referencia_interna"] });
     }

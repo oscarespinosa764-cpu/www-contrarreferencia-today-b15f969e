@@ -139,6 +139,8 @@ const EST = {
 const TIPOS_PHD_BASE = [T.EVOLUCION, T.CORREO, T.PLATAFORMA, T.FISICO, T.OTRO] as const;
 
 // --- Referencia interna ---
+// Nota: los VALORES son códigos técnicos persistidos (compatibilidad histórica).
+// TI_LABEL solo cambia la etiqueta visible en el selector y en textos nuevos.
 const TI = {
   PENDIENTE: "PENDIENTE COORDINACIÓN FECHA Y HORA EXAMEN",
   COORDINADO: "EXAMEN COORDINADO",
@@ -149,6 +151,15 @@ const TI = {
   CIERRE_CONCLUSION: "CIERRE POR CULMINACIÓN DE SOLICITUD",
   CANCELACION_RI: "CANCELACIÓN DEL TRÁMITE",
 } as const;
+
+// Labels visibles (Fase 5C · B1). No modifican el código persistido.
+const TI_LABEL: Record<string, string> = {
+  [TI.PENDIENTE]: "TRÁMITE COORDINADO",
+  [TI.LLEGADA_AMB]: "CONFIRMACIÓN LLEGADA DE AMBULANCIA",
+};
+function labelTipoSeg(t: string): string {
+  return TI_LABEL[t] ?? t;
+}
 
 // Estados terminales de referencia_interna que resultan de estas acciones.
 const RI_ESTADO_CIERRE = "CERRADO POR CULMINACION DE SOLICITUD";
@@ -180,7 +191,10 @@ function siguientePasoRI(
     return null;
   }
   if (!ultimo) return TI.PENDIENTE;
-  if (ultimo.startsWith("PENDIENTE COORDINAC")) return TI.COORDINADO;
+  // B1: tras TRÁMITE COORDINADO se salta directamente a PROGRAMACIÓN
+  // (se retira EXAMEN COORDINADO de la creación nueva).
+  if (ultimo.startsWith("PENDIENTE COORDINAC")) return TI.PROG_AMB;
+  // Ruta histórica: casos que ya tienen EXAMEN COORDINADO registrado continúan.
   if (ultimo === TI.COORDINADO.toUpperCase()) return TI.PROG_AMB;
   if (ultimo === TI.PROG_AMB.toUpperCase()) return TI.LLEGADA_AMB;
   if (ultimo === TI.LLEGADA_AMB.toUpperCase()) return TI.CIERRE_CONCLUSION;
@@ -366,6 +380,8 @@ export function SeguimientoDialog({
   const [riRecTipoAmb, setRiRecTipoAmb] = useState("");
   const [riLlegFecha, setRiLlegFecha] = useState("");
   const [riLlegHora, setRiLlegHora] = useState("");
+  // Datos de la firma QR de llegada (poblados cuando el firmante confirma).
+  const [riFirmaLlegada, setRiFirmaLlegada] = useState<import("./ri-llegada-qr-panel").FirmaLlegadaInfo | null>(null);
   // Referencia interna — flujo especial TEP.
   const [riTepProveedor, setRiTepProveedor] = useState("");
   const [riTepFecha, setRiTepFecha] = useState(""); // "YYYY-MM-DDTHH:mm"
@@ -927,6 +943,9 @@ export function SeguimientoDialog({
     setEspNuevas([""]);
     setNuevaUnidad("");
     setNuevaCama("");
+    setRiFirmaLlegada(null);
+    setRiLlegFecha("");
+    setRiLlegHora("");
   }, [open, evolucionDetalle, especialidadesList, estadoActual]);
 
   // Prefill desde el caso.
@@ -1184,11 +1203,36 @@ export function SeguimientoDialog({
             `SE CONFIRMA PROGRAMACIÓN DE AMBULANCIA.\nFECHA/HORA RECOGIDA: ${(riRecFecha && riRecHora) ? `${riRecFecha}, ${riRecHora}` : "—"}\nTIPO AMBULANCIA: ${riRecTipoAmb || "—"}`,
             detalle,
           );
-        case TI.LLEGADA_AMB:
-          return appendNota(
-            `SE CONFIRMA LLEGADA DE AMBULANCIA.\nFECHA/HORA LLEGADA: ${riLlegFecha} ${riLlegHora}`,
-            detalle,
-          );
+        case TI.LLEGADA_AMB: {
+          const f = riFirmaLlegada;
+          const empresa = (f?.empresa || caso?.prestador_traslado || "").toString().trim() || "—";
+          const sede = (casoInterna?.servicio || "—").toString();
+          const fechaHora = riLlegFecha && riLlegHora ? `${riLlegFecha} ${riLlegHora}` : "—";
+          const resp = f?.responsable_nombre?.trim() || "—";
+          const cargoResp = f?.responsable_cargo?.trim() || "—";
+          const tel = f?.firmante_telefono?.trim() || "—";
+          const mismo = f?.firmante_es_responsable === true;
+          const firmanteBlock = f
+            ? mismo
+              ? `FIRMANTE: EL MISMO RESPONSABLE DEL TRASLADO`
+              : `FIRMANTE: ${f.firmante_nombre?.trim() || "—"}\nCARGO DEL FIRMANTE: ${f.firmante_cargo?.trim() || "—"}`
+            : "";
+          const codigoBlock = f?.codigo ? `\nCÓDIGO DE VERIFICACIÓN: ${f.codigo}` : "";
+          const cuerpo = [
+            `CONFIRMACIÓN LLEGADA DE AMBULANCIA.`,
+            `EMPRESA DE TRASLADO: ${empresa}`,
+            `SEDE: ${sede}`,
+            `FECHA/HORA DE LLEGADA: ${fechaHora}`,
+            `RESPONSABLE DEL TRASLADO: ${resp}`,
+            `CARGO DEL RESPONSABLE DEL TRASLADO: ${cargoResp}`,
+            `NÚMERO TELEFÓNICO: ${tel}`,
+            firmanteBlock,
+          ]
+            .filter(Boolean)
+            .join("\n")
+            .concat(codigoBlock);
+          return appendNota(cuerpo, detalle);
+        }
         case TI.TEP_ACTIVACION: {
           const fechaTep = riTepFecha
             ? new Date(riTepFecha).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })
@@ -1946,6 +1990,8 @@ export function SeguimientoDialog({
         if (!riRecTipoAmb.trim()) return toast.error("Selecciona el tipo de ambulancia");
       }
       if (esInterna && tipoSeg === TI.LLEGADA_AMB) {
+        if (!riFirmaLlegada)
+          return toast.error("La llegada requiere firma por QR completada.");
         if (!riLlegFecha.trim() || !isFechaValida(riLlegFecha))
           return toast.error("Fecha de llegada requerida (DD/MM/AAAA)");
         if (!riLlegHora.trim() || !isHoraValida(riLlegHora))
@@ -2517,9 +2563,9 @@ export function SeguimientoDialog({
                         key={t}
                         value={t}
                         className="whitespace-normal [overflow-wrap:anywhere]"
-                        title={t === T.PERTINENCIA ? REVISION_AUT_LABEL_COMPLETO : t}
+                        title={t === T.PERTINENCIA ? REVISION_AUT_LABEL_COMPLETO : labelTipoSeg(t)}
                       >
-                        {t}
+                        {labelTipoSeg(t)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -2980,8 +3026,9 @@ export function SeguimientoDialog({
                     paciente={paciente}
                     documento={documento}
                     radicadoCaso={radicadoCaso}
-                    onFirmada={({ firmadoAtISO }) => {
-                      const d = new Date(firmadoAtISO);
+                    onFirmada={(info) => {
+                      setRiFirmaLlegada(info);
+                      const d = new Date(info.firmadoAtISO);
                       const dd = String(d.getDate()).padStart(2, "0");
                       const mm = String(d.getMonth() + 1).padStart(2, "0");
                       const yyyy = d.getFullYear();
