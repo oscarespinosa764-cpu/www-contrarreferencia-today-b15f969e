@@ -408,26 +408,21 @@ export function PhdSeguimientoDialog({
           </DialogTitle>
         </DialogHeader>
 
-        {/* Tarjeta de contexto del caso */}
-        <div className="rounded-lg border border-border bg-muted/30 p-3">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold uppercase text-foreground">{paciente}</p>
-              <p className="text-xs text-muted-foreground">
-                {tipoDocumento ? `${tipoDocumento} ` : ""}
-                {documento || "—"}
-                {ipsReceptora ? ` · IPS: ${ipsReceptora}` : ""}
-                {unidadEspecialSolicitada ? ` · ${unidadEspecialSolicitada}` : ""}
-              </p>
-            </div>
-            <Badge variant={terminal ? "secondary" : "default"} className="font-semibold">
-              <Lock className="mr-1 h-3 w-3" /> {estado}
-            </Badge>
-          </div>
-          <p className="mt-1 text-[10.5px] uppercase tracking-wide text-muted-foreground">
-            Estado del caso — automático, calculado por los requisitos pendientes.
-          </p>
-        </div>
+        {/* Tarjeta de contexto del caso (unificada FASE 5E · Bloque A) */}
+        <SeguimientoHeaderCard
+          paciente={paciente}
+          documento={documento}
+          tipoDocumento={tipoDocumento}
+          estado={estado}
+          contexto={[
+            ipsReceptora ? `IPS: ${ipsReceptora}` : "",
+            unidadEspecialSolicitada || "",
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+          nota="Estado del caso — automático, calculado por los requisitos pendientes."
+        />
+
 
         {terminal ? (
           <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
