@@ -1277,6 +1277,57 @@ export function SeguimientoDialog({
             `CAMBIO DE UNIDAD.\nUNIDAD ANTERIOR: ${unidadActual || "UNIDAD ACTUAL NO REGISTRADA"}\nCAMA ANTERIOR: ${camaActual || "CAMA ACTUAL NO REGISTRADA"}\nNUEVA UNIDAD: ${nuevaUnidadNorm || "—"}\nNUEVA CAMA: ${nuevaCamaNorm || "—"}\nFECHA/HORA: ${new Date().toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })}`,
             detalle,
           );
+        case TI.OTRO:
+          return appendNota(
+            `OTRO — ${riOtroCual.trim() || "—"}`,
+            detalle,
+          );
+        case TI.NOVEDADES: {
+          const partes: string[] = [];
+          if (riNovInterna) {
+            const etiquetas: Record<string, string> = {
+              EQUIPO_FALLA: "FALLA DEL EQUIPO",
+              REPROGRAMACION: "REPROGRAMACIÓN",
+              DESCOMPENSACION_HEMODINAMICA: "DESCOMPENSACIÓN HEMODINÁMICA",
+              NO_DISPONIBILIDAD_TECNICO: "NO DISPONIBILIDAD DE PERSONAL TÉCNICO",
+            };
+            const et = etiquetas[riNovInternaCod] ?? riNovInternaCod;
+            let l = `INTERNA: ${et || "—"}`;
+            if (riNovInternaCod === "REPROGRAMACION") {
+              const motLbl: Record<string, string> = {
+                RETRASO_AGENDA: "RETRASO DE LA AGENDA",
+                IMPOSIBILIDAD_TOMA_EXAMEN_PREVIO: "IMPOSIBILIDAD DE TOMA DE EXAMEN PREVIO",
+              };
+              const mots = riNovReprogMotivos.map((m) => motLbl[m] ?? m).join(", ");
+              l += ` — MOTIVOS: ${mots || "—"}`;
+              if (riNovReprogFH) {
+                const d = new Date(riNovReprogFH);
+                l += ` — NUEVA FECHA/HORA: ${d.toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })}`;
+              }
+            }
+            partes.push(l);
+          }
+          if (riNovExterna) {
+            const etiquetas: Record<string, string> = {
+              AMBULANCIA_SIN_DISPONIBILIDAD: "AMBULANCIA SIN DISPONIBILIDAD",
+              RED_NO_CONTRATADA: "RED NO CONTRATADA",
+              NO_ACEPTACION_PACIENTE_FAMILIAR: "NO ACEPTACIÓN POR PACIENTE/FAMILIAR",
+            };
+            let l = `EXTERNA: ${etiquetas[riNovExternaCod] ?? riNovExternaCod ?? "—"}`;
+            if (riNovExternaCod === "NO_ACEPTACION_PACIENTE_FAMILIAR") {
+              const pfLbl: Record<string, string> = {
+                ADULTO_MAYOR_SIN_ACOMPANANTE: "ADULTO MAYOR SIN ACOMPAÑANTE",
+                FAMILIAR_NO_PERMITE_TRASLADO: "FAMILIAR NO PERMITE EL TRASLADO",
+              };
+              l += ` — ${pfLbl[riNovPacFam] ?? riNovPacFam ?? "—"}`;
+            }
+            partes.push(l);
+          }
+          return appendNota(
+            `NOVEDAD EN REFERENCIA INTERNA.\n${partes.join("\n") || "—"}`,
+            detalle,
+          );
+        }
         default:
           return "";
       }
