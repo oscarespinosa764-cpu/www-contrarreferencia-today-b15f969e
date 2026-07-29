@@ -139,10 +139,7 @@ export function erroresInformacionTramite(v: InformacionTramiteValue): string[] 
   return e;
 }
 
-export function plantillaInformacionTramite(
-  v: InformacionTramiteValue,
-  canal?: string,
-): string {
+export function plantillaInformacionTramite(v: InformacionTramiteValue, canal?: string): string {
   const quien = v.solicitante.trim().toUpperCase() || "[SOLICITANTE]";
   const par = v.parentesco || "[PARENTESCO]";
   const tel = v.telefono.trim() ? ` TELÉFONO DE CONTACTO: ${v.telefono.trim()}.` : "";
