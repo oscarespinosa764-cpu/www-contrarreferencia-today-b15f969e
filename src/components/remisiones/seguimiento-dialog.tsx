@@ -178,16 +178,36 @@ const RI_ESPECIALES = new Set([
   "EVACUACION_SEDES_AMBULATORIAS",
 ]);
 
-/** Determina el próximo paso permitido para un caso de Referencia Interna. */
+/** Determina el próximo paso permitido para un caso de Referencia Interna.
+ *
+ * B3.1: la novedad EXTERNA "DESCOMPENSACIÓN HEMODINÁMICA" es evento de
+ * reinicio del ciclo operativo. Todo paso secuencial anterior a ese evento
+ * queda como histórico y el siguiente paso vuelve al inicio.
+ */
 function siguientePasoRI(
-  historial: { tipo_seguimiento: string }[] | undefined,
+  historial: { tipo_seguimiento: string; detalles?: unknown }[] | undefined,
   tipoSolicitud: string | null | undefined,
 ): string | null {
   const especial = RI_ESPECIALES.has((tipoSolicitud ?? "").toUpperCase().trim());
-  const IGNORAR = new Set(["CAMBIO DE UNIDAD", "OTRO", "NOVEDADES"]);
-  const ultimo = (historial ?? [])
-    .map((h) => (h.tipo_seguimiento || "").toUpperCase())
-    .find((t) => t && !IGNORAR.has(t));
+  const IGNORAR = new Set(["CAMBIO DE UNIDAD", "OTRO"]);
+  // historial viene ordenado por created_at DESC (ver useQuery del hook).
+  let ultimo: string | undefined;
+  for (const h of historial ?? []) {
+    const t = (h.tipo_seguimiento || "").toUpperCase();
+    if (!t) continue;
+    if (t === "NOVEDADES") {
+      const d = parseDetalles(h.detalles);
+      if (d && d.externa_codigo === "DESCOMPENSACION_HEMODINAMICA") {
+        // Reinicio: no hay pasos secuenciales vigentes posteriores.
+        ultimo = undefined;
+        break;
+      }
+      continue;
+    }
+    if (IGNORAR.has(t)) continue;
+    ultimo = t;
+    break;
+  }
   if (especial) {
     if (!ultimo) return TI.TEP_ACTIVACION;
     if (ultimo === TI.TEP_ACTIVACION.toUpperCase()) return TI.AMB_COORDINADA_ESP;
@@ -908,7 +928,7 @@ export function SeguimientoDialog({
   // Referencia Interna: opciones dinámicas según secuencia + CAMBIO DE UNIDAD (mientras esté activo).
   const TIPOS_INTERNA_DYN = useMemo(() => {
     const proximo = siguientePasoRI(
-      historial as { tipo_seguimiento: string }[] | undefined,
+      historial as { tipo_seguimiento: string; detalles?: unknown }[] | undefined,
       casoInterna?.tipo_solicitud ?? null,
     );
     const activo = !casoInterna?.archivado;
@@ -1288,7 +1308,6 @@ export function SeguimientoDialog({
             const etiquetas: Record<string, string> = {
               EQUIPO_FALLA: "FALLA DEL EQUIPO",
               REPROGRAMACION: "REPROGRAMACIÓN",
-              DESCOMPENSACION_HEMODINAMICA: "DESCOMPENSACIÓN HEMODINÁMICA",
               NO_DISPONIBILIDAD_TECNICO: "NO DISPONIBILIDAD DE PERSONAL TÉCNICO",
             };
             const et = etiquetas[riNovInternaCod] ?? riNovInternaCod;
@@ -1312,6 +1331,7 @@ export function SeguimientoDialog({
               AMBULANCIA_SIN_DISPONIBILIDAD: "AMBULANCIA SIN DISPONIBILIDAD",
               RED_NO_CONTRATADA: "RED NO CONTRATADA",
               NO_ACEPTACION_PACIENTE_FAMILIAR: "NO ACEPTACIÓN POR PACIENTE/FAMILIAR",
+              DESCOMPENSACION_HEMODINAMICA: "DESCOMPENSACIÓN HEMODINÁMICA",
             };
             let l = `EXTERNA: ${etiquetas[riNovExternaCod] ?? riNovExternaCod ?? "—"}`;
             if (riNovExternaCod === "NO_ACEPTACION_PACIENTE_FAMILIAR") {
@@ -1323,10 +1343,11 @@ export function SeguimientoDialog({
             }
             partes.push(l);
           }
-          return appendNota(
-            `NOVEDAD EN REFERENCIA INTERNA.\n${partes.join("\n") || "—"}`,
-            detalle,
-          );
+          const reset = riNovExterna && riNovExternaCod === "DESCOMPENSACION_HEMODINAMICA";
+          const cuerpo = `NOVEDAD EN REFERENCIA INTERNA.\n${partes.join("\n") || "—"}${
+            reset ? "\nESTADO RESULTANTE: PENDIENTE COORDINACIÓN TRÁMITE" : ""
+          }`;
+          return appendNota(cuerpo, detalle);
         }
         default:
           return "";
@@ -2434,6 +2455,17 @@ export function SeguimientoDialog({
           update.estado = RI_ESTADO_CANCELADO;
           update.archivado = true;
         }
+        // B3.1: NOVEDAD EXTERNA "DESCOMPENSACIÓN HEMODINÁMICA" reinicia el
+        // ciclo operativo al estado inicial canónico. La trazabilidad previa
+        // (Trámite/Programación/Llegada/firmas) permanece intacta como
+        // histórico; el nuevo próximo paso disponible es Trámite Coordinado.
+        else if (
+          tipoSeg === TI.NOVEDADES &&
+          riNovExterna &&
+          riNovExternaCod === "DESCOMPENSACION_HEMODINAMICA"
+        ) {
+          update.estado = "PENDIENTE COORDINACION";
+        }
       }
 
       // Pendientes: cumplimiento completo cierra y archiva el caso.
@@ -3251,7 +3283,6 @@ export function SeguimientoDialog({
                         <option value="">Seleccione…</option>
                         <option value="EQUIPO_FALLA">Falla del equipo</option>
                         <option value="REPROGRAMACION">Reprogramación</option>
-                        <option value="DESCOMPENSACION_HEMODINAMICA">Descompensación hemodinámica</option>
                         <option value="NO_DISPONIBILIDAD_TECNICO">No disponibilidad de personal técnico</option>
                       </select>
 
@@ -3309,6 +3340,7 @@ export function SeguimientoDialog({
                         <option value="AMBULANCIA_SIN_DISPONIBILIDAD">Ambulancia sin disponibilidad</option>
                         <option value="RED_NO_CONTRATADA">Red no contratada</option>
                         <option value="NO_ACEPTACION_PACIENTE_FAMILIAR">No aceptación por paciente/familiar</option>
+                        <option value="DESCOMPENSACION_HEMODINAMICA">Descompensación hemodinámica</option>
                       </select>
 
                       {riNovExternaCod === "NO_ACEPTACION_PACIENTE_FAMILIAR" && (
