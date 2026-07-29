@@ -4039,6 +4039,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      registrar_cambio_unidad_ri: {
+        Args: {
+          _caso_id: string
+          _nueva_cama: string
+          _nueva_unidad_codigo: string
+          _observaciones?: string
+          _plantilla_indigo?: string
+        }
+        Returns: Json
+      }
       shift_monthly_usage: {
         Args: { _month: number; _user_id: string; _year: number }
         Returns: {
