@@ -250,11 +250,8 @@ export function CasoGenericoCard({
         servicio: String(f.get("servicio")),
         cama: String(f.get("cama")),
         prioridad: String(f.get("prioridad")),
-        tipo_solicitud: String(f.get("tipo_solicitud")),
-        unidad_especial: String(f.get("unidad_especial") || ""),
-        tipo_solicitud_detalle: String(f.get("unidad_especial") || "") || null,
-        requiere_ambulancia: String(f.get("requiere_ambulancia")),
-        tipo_ambulancia: String(f.get("tipo_ambulancia") || ""),
+        // tipos_solicitud / unidad_especial_solicitada / tipo_ambulancia_codigo
+        // son canónicos y no se reescriben desde la edición administrativa.
         especialidades_tratantes: tratantes.join(", "),
         contacto_nombre: String(f.get("contacto_nombre")),
         contacto_parentesco: String(f.get("contacto_parentesco")),
