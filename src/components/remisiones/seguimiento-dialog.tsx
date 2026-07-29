@@ -178,16 +178,36 @@ const RI_ESPECIALES = new Set([
   "EVACUACION_SEDES_AMBULATORIAS",
 ]);
 
-/** Determina el próximo paso permitido para un caso de Referencia Interna. */
+/** Determina el próximo paso permitido para un caso de Referencia Interna.
+ *
+ * B3.1: la novedad EXTERNA "DESCOMPENSACIÓN HEMODINÁMICA" es evento de
+ * reinicio del ciclo operativo. Todo paso secuencial anterior a ese evento
+ * queda como histórico y el siguiente paso vuelve al inicio.
+ */
 function siguientePasoRI(
-  historial: { tipo_seguimiento: string }[] | undefined,
+  historial: { tipo_seguimiento: string; detalles?: unknown }[] | undefined,
   tipoSolicitud: string | null | undefined,
 ): string | null {
   const especial = RI_ESPECIALES.has((tipoSolicitud ?? "").toUpperCase().trim());
-  const IGNORAR = new Set(["CAMBIO DE UNIDAD", "OTRO", "NOVEDADES"]);
-  const ultimo = (historial ?? [])
-    .map((h) => (h.tipo_seguimiento || "").toUpperCase())
-    .find((t) => t && !IGNORAR.has(t));
+  const IGNORAR = new Set(["CAMBIO DE UNIDAD", "OTRO"]);
+  // historial viene ordenado por created_at DESC (ver useQuery del hook).
+  let ultimo: string | undefined;
+  for (const h of historial ?? []) {
+    const t = (h.tipo_seguimiento || "").toUpperCase();
+    if (!t) continue;
+    if (t === "NOVEDADES") {
+      const d = parseDetalles(h.detalles);
+      if (d && d.externa_codigo === "DESCOMPENSACION_HEMODINAMICA") {
+        // Reinicio: no hay pasos secuenciales vigentes posteriores.
+        ultimo = undefined;
+        break;
+      }
+      continue;
+    }
+    if (IGNORAR.has(t)) continue;
+    ultimo = t;
+    break;
+  }
   if (especial) {
     if (!ultimo) return TI.TEP_ACTIVACION;
     if (ultimo === TI.TEP_ACTIVACION.toUpperCase()) return TI.AMB_COORDINADA_ESP;
