@@ -150,6 +150,9 @@ const TI = {
   AMB_COORDINADA_ESP: "AMBULANCIA COORDINADA",
   CIERRE_CONCLUSION: "CIERRE POR CULMINACIÓN DE SOLICITUD",
   CANCELACION_RI: "CANCELACIÓN DEL TRÁMITE",
+  // B3 · Trazabilidad permanente (no altera la secuencia canónica).
+  OTRO: "OTRO",
+  NOVEDADES: "NOVEDADES",
 } as const;
 
 // Labels visibles (Fase 5C · B1). No modifican el código persistido.
