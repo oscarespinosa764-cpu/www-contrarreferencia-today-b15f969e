@@ -51,6 +51,13 @@ import { fmtFechaHora } from "@/lib/remisiones-utils";
 import { FileSignature, Info, Lock } from "lucide-react";
 import { EntregaDocumentalDialog } from "./entrega-documental-dialog";
 import { RiLlegadaQRPanel, type FirmaLlegadaInfo } from "./ri-llegada-qr-panel";
+import {
+  EvolucionDiariaFields,
+  EVOLUCION_DIARIA_INICIAL,
+  derivarEvolucionDiaria,
+  type EvolucionDiariaValue,
+} from "./evolucion-diaria-fields";
+
 
 const CANALES = [
   "TELEFÓNICO",
