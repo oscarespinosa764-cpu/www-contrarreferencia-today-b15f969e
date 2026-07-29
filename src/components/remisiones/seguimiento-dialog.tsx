@@ -262,6 +262,11 @@ export function SeguimientoDialog({
   const [busy, setBusy] = useState(false);
   const [busyEvo, setBusyEvo] = useState(false);
   const [entregaOpen, setEntregaOpen] = useState(false);
+  // Fase 5C · A.1 — flag para congelar la plantilla Índigo tras transferirla
+  // desde el diálogo de entrega documental. Evita que efectos posteriores
+  // (invalidaciones, re-init) la vacíen. Solo se limpia al cerrar el modal
+  // principal o al cambiar de caso real.
+  const [entregaPreparada, setEntregaPreparada] = useState(false);
   const [cierreEgreso, setCierreEgreso] = useState<"si" | "no" | "">("");
 
   // Radicado
