@@ -338,7 +338,14 @@ export function CasoGenericoCard({
               }
             />
             {tipo === "phd" && (
-              <Dato label="Estado" value={<span className="font-semibold text-foreground">{r.estado || "—"}</span>} />
+              <Dato
+                label="Estado"
+                value={
+                  <span className="font-semibold text-foreground">
+                    {r.estado_ciclo || r.estado || "—"}
+                  </span>
+                }
+              />
             )}
             {tipo === "phd" ? (
               <Dato label="Especialidad tratante" value={r.especialidades_tratantes} />
