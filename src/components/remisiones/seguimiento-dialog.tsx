@@ -3140,8 +3140,50 @@ export function SeguimientoDialog({
                   <p className={labelCls}>Cancelación del trámite</p>
                   <p className="text-[12px] text-status-amber">
                     Esta acción cierra el caso en estado <b>{RI_ESTADO_CANCELADO}</b> y lo archiva.
-                    Escribe el motivo en el campo <b>Detalle</b> (obligatorio, mínimo 5 caracteres).
                   </p>
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Motivo de cancelación *</Label>
+                    <select
+                      value={riCancelMotivoCod}
+                      onChange={(e) => {
+                        const v = e.target.value as typeof riCancelMotivoCod;
+                        setRiCancelMotivoCod(v);
+                        if (v !== "NO_ACEPTACION_PACIENTE_FAMILIAR") setRiCancelPacFam("");
+                        if (v !== "OTRO") setRiCancelOtroTexto("");
+                      }}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="">Seleccione…</option>
+                      <option value="NO_ACEPTACION_PACIENTE_FAMILIAR">No aceptación por paciente/familiar</option>
+                      <option value="OTRO">Otro motivo</option>
+                    </select>
+                  </div>
+                  {riCancelMotivoCod === "NO_ACEPTACION_PACIENTE_FAMILIAR" && (
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Motivo paciente/familiar *</Label>
+                      <select
+                        value={riCancelPacFam}
+                        onChange={(e) => setRiCancelPacFam(e.target.value)}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="">Seleccione…</option>
+                        <option value="ADULTO_MAYOR_SIN_ACOMPANANTE">Adulto mayor sin acompañante</option>
+                        <option value="FAMILIAR_NO_PERMITE_TRASLADO">Familiar no permite el traslado</option>
+                      </select>
+                    </div>
+                  )}
+                  {riCancelMotivoCod === "OTRO" && (
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Descripción del motivo *</Label>
+                      <textarea
+                        value={riCancelOtroTexto}
+                        onChange={(e) => setRiCancelOtroTexto(e.target.value)}
+                        rows={3}
+                        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        placeholder="Describe el motivo de la cancelación (mínimo 5 caracteres)"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
