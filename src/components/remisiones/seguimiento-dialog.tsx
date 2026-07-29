@@ -1987,6 +1987,8 @@ export function SeguimientoDialog({
         if (!riRecTipoAmb.trim()) return toast.error("Selecciona el tipo de ambulancia");
       }
       if (esInterna && tipoSeg === TI.LLEGADA_AMB) {
+        if (!riFirmaLlegada)
+          return toast.error("La llegada requiere firma por QR completada.");
         if (!riLlegFecha.trim() || !isFechaValida(riLlegFecha))
           return toast.error("Fecha de llegada requerida (DD/MM/AAAA)");
         if (!riLlegHora.trim() || !isHoraValida(riLlegHora))
