@@ -973,7 +973,7 @@ export function SeguimientoDialog({
     // Acción terminal de cancelación siempre disponible mientras esté activo.
     if (activo && proximo !== TI.CANCELACION_RI) arr.push(TI.CANCELACION_RI);
     // B3: OTRO y NOVEDADES son trazabilidad permanente mientras el caso esté activo.
-    if (activo) arr.push(TI.OTRO, TI.NOVEDADES);
+    if (activo) arr.push(TI.OTRO, TI.NOVEDADES, T.INFO_TRAMITE);
     return arr;
   }, [historial, casoInterna]);
 
