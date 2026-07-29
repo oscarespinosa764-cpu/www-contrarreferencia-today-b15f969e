@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { resolverEstadoRI } from "@/lib/ri-estados";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
@@ -434,6 +435,14 @@ export function SeguimientoDialog({
   const [riNovReprogFH, setRiNovReprogFH] = useState(""); // ISO
   const [riNovExternaCod, setRiNovExternaCod] = useState("");
   const [riNovPacFam, setRiNovPacFam] = useState("");
+  // B1.2 · Reprogramación sin nueva fecha (mutuamente exclusiva con la fecha).
+  const [riNovReprogSinFecha, setRiNovReprogSinFecha] = useState(false);
+  // B1.2 · Cancelación estructurada del trámite (RI).
+  const [riCancelMotivoCod, setRiCancelMotivoCod] = useState<"" | "NO_ACEPTACION_PACIENTE_FAMILIAR" | "OTRO">("");
+  const [riCancelPacFam, setRiCancelPacFam] = useState("");
+  const [riCancelOtroTexto, setRiCancelOtroTexto] = useState("");
+
+
 
 
   // Revisión autorización estancia hospitalaria (seguimiento de trazabilidad)
@@ -1005,6 +1014,10 @@ export function SeguimientoDialog({
     setRiNovReprogFH("");
     setRiNovExternaCod("");
     setRiNovPacFam("");
+    setRiNovReprogSinFecha(false);
+    setRiCancelMotivoCod("");
+    setRiCancelPacFam("");
+    setRiCancelOtroTexto("");
   }, [open, evolucionDetalle, especialidadesList, estadoActual]);
 
   // Prefill desde el caso.
@@ -1252,11 +1265,25 @@ export function SeguimientoDialog({
           );
         case TI.CIERRE_CONCLUSION:
           return appendNota(generarPlantillaRefInternaCulminacion(), detalle);
-        case TI.CANCELACION_RI:
-          return appendNota(
-            `SE CANCELA EL TRÁMITE DE REFERENCIA INTERNA.\nMOTIVO: ${(detalle || "—").toUpperCase()}`,
-            "",
-          );
+        case TI.CANCELACION_RI: {
+          // B1.2 · Plantilla estructurada de cancelación del trámite RI.
+          const pfLbl: Record<string, string> = {
+            ADULTO_MAYOR_SIN_ACOMPANANTE: "ADULTO MAYOR SIN ACOMPAÑANTE",
+            FAMILIAR_NO_PERMITE_TRASLADO: "FAMILIAR NO PERMITE EL TRASLADO",
+          };
+          const partes: string[] = ["SE REGISTRA CANCELACIÓN DEL TRÁMITE DE REFERENCIA INTERNA."];
+          if (riCancelMotivoCod === "NO_ACEPTACION_PACIENTE_FAMILIAR") {
+            partes.push("MOTIVO: NO ACEPTACIÓN POR PARTE DEL PACIENTE Y/O FAMILIAR");
+            partes.push(`MOTIVO PACIENTE/FAMILIAR: ${pfLbl[riCancelPacFam] ?? "—"}`);
+          } else if (riCancelMotivoCod === "OTRO") {
+            partes.push("MOTIVO: OTRO");
+            partes.push(`DESCRIPCIÓN DEL MOTIVO: ${riCancelOtroTexto.trim() || "—"}`);
+          } else {
+            partes.push("MOTIVO: —");
+          }
+          partes.push("ESTADO RESULTANTE: CANCELADO");
+          return appendNota(partes.join("\n"), detalle);
+        }
         case TI.PROG_AMB:
           return appendNota(
             `SE CONFIRMA PROGRAMACIÓN DE AMBULANCIA.\nFECHA/HORA RECOGIDA: ${(riRecFecha && riRecHora) ? `${riRecFecha}, ${riRecHora}` : "—"}\nTIPO AMBULANCIA: ${riRecTipoAmb || "—"}`,
@@ -1328,14 +1355,18 @@ export function SeguimientoDialog({
             let l = `INTERNA: ${et || "—"}`;
             if (riNovInternaCod === "REPROGRAMACION") {
               const motLbl: Record<string, string> = {
-                RETRASO_AGENDA: "RETRASO DE LA AGENDA",
-                IMPOSIBILIDAD_TOMA_EXAMEN_PREVIO: "IMPOSIBILIDAD DE TOMA DE EXAMEN PREVIO",
+                RETRASO_AGENDA: "RETRASO EN LA AGENDA",
+                IMPOSIBILIDAD_TOMA_EXAMEN_PREVIO: "IMPOSIBILIDAD TOMA POR EXAMEN PREVIO",
               };
               const mots = riNovReprogMotivos.map((m) => motLbl[m] ?? m).join(", ");
-              l += ` — MOTIVOS: ${mots || "—"}`;
-              if (riNovReprogFH) {
+              l += `\nMOTIVO: ${mots || "—"}`;
+              if (riNovReprogSinFecha) {
+                l += `\nFECHA/HORA REPROGRAMADA: PENDIENTE POR DEFINIR`;
+              } else if (riNovReprogFH) {
                 const d = new Date(riNovReprogFH);
-                l += ` — NUEVA FECHA/HORA: ${d.toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })}`;
+                l += `\nFECHA/HORA REPROGRAMADA: ${d.toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })}`;
+              } else {
+                l += `\nFECHA/HORA REPROGRAMADA: —`;
               }
             }
             partes.push(l);
@@ -1344,22 +1375,23 @@ export function SeguimientoDialog({
             const etiquetas: Record<string, string> = {
               AMBULANCIA_SIN_DISPONIBILIDAD: "AMBULANCIA SIN DISPONIBILIDAD",
               RED_NO_CONTRATADA: "RED NO CONTRATADA",
-              NO_ACEPTACION_PACIENTE_FAMILIAR: "NO ACEPTACIÓN POR PACIENTE/FAMILIAR",
               DESCOMPENSACION_HEMODINAMICA: "DESCOMPENSACIÓN HEMODINÁMICA",
             };
-            let l = `EXTERNA: ${etiquetas[riNovExternaCod] ?? riNovExternaCod ?? "—"}`;
-            if (riNovExternaCod === "NO_ACEPTACION_PACIENTE_FAMILIAR") {
-              const pfLbl: Record<string, string> = {
-                ADULTO_MAYOR_SIN_ACOMPANANTE: "ADULTO MAYOR SIN ACOMPAÑANTE",
-                FAMILIAR_NO_PERMITE_TRASLADO: "FAMILIAR NO PERMITE EL TRASLADO",
-              };
-              l += ` — ${pfLbl[riNovPacFam] ?? riNovPacFam ?? "—"}`;
-            }
-            partes.push(l);
+            partes.push(`EXTERNA: ${etiquetas[riNovExternaCod] ?? riNovExternaCod ?? "—"}`);
           }
-          const reset = riNovExterna && riNovExternaCod === "DESCOMPENSACION_HEMODINAMICA";
+          // Estado resultante server-authoritative (solo se muestra en plantilla; el trigger es la autoridad).
+          let estadoRes = "";
+          if (riNovInterna && riNovInternaCod === "REPROGRAMACION") {
+            estadoRes = riNovReprogSinFecha
+              ? "PENDIENTE COORDINACIÓN"
+              : "TRÁMITE COORDINADO SIN CONFIRMACIÓN AMBULANCIA";
+          } else if (riNovExterna && riNovExternaCod === "DESCOMPENSACION_HEMODINAMICA") {
+            estadoRes = "PENDIENTE COORDINACIÓN";
+          } else if (riNovExterna && riNovExternaCod === "AMBULANCIA_SIN_DISPONIBILIDAD") {
+            estadoRes = "TRÁMITE COORDINADO SIN CONFIRMACIÓN AMBULANCIA";
+          }
           const cuerpo = `NOVEDAD EN REFERENCIA INTERNA.\n${partes.join("\n") || "—"}${
-            reset ? "\nESTADO RESULTANTE: PENDIENTE COORDINACIÓN TRÁMITE" : ""
+            estadoRes ? `\nESTADO RESULTANTE: ${estadoRes}` : ""
           }`;
           return appendNota(cuerpo, detalle);
         }
@@ -1804,14 +1836,32 @@ export function SeguimientoDialog({
             out.interna_codigo = riNovInternaCod;
             if (riNovInternaCod === "REPROGRAMACION") {
               out.reprogramacion_motivos = riNovReprogMotivos;
-              if (riNovReprogFH) out.fecha_hora_reprogramada = riNovReprogFH;
+              // B1.2: mutua exclusión sin_nueva_fecha_hora <-> fecha_hora_reprogramada.
+              out.sin_nueva_fecha_hora = !!riNovReprogSinFecha;
+              if (!riNovReprogSinFecha && riNovReprogFH) {
+                out.fecha_hora_reprogramada = riNovReprogFH;
+              }
             }
           }
           if (riNovExterna) {
             out.externa_codigo = riNovExternaCod;
-            if (riNovExternaCod === "NO_ACEPTACION_PACIENTE_FAMILIAR") {
-              out.paciente_familiar_motivo = riNovPacFam;
-            }
+          }
+          return out;
+        }
+        case TI.CANCELACION_RI: {
+          // B1.2 · Motivos estructurados de cancelación del trámite RI.
+          const cod = riCancelMotivoCod;
+          const out: Record<string, unknown> = {
+            ri_evento: "CANCELACION_TRAMITE",
+            cancelacion_motivo_codigo: cod || null,
+            observaciones: detalle.trim() || null,
+          };
+          if (cod === "NO_ACEPTACION_PACIENTE_FAMILIAR") {
+            out.paciente_familiar_motivo = riCancelPacFam || null;
+            out.cancelacion_otro_motivo = null;
+          } else if (cod === "OTRO") {
+            out.paciente_familiar_motivo = null;
+            out.cancelacion_otro_motivo = riCancelOtroTexto.trim();
           }
           return out;
         }
@@ -2050,7 +2100,18 @@ export function SeguimientoDialog({
     setRiLlegHora("");
     setRiTepProveedor("");
     setRiTepFecha("");
-
+    setRiNovInterna(false);
+    setRiNovExterna(false);
+    setRiNovInternaCod("");
+    setRiNovReprogMotivos([]);
+    setRiNovReprogFH("");
+    setRiNovReprogSinFecha(false);
+    setRiNovExternaCod("");
+    setRiNovPacFam("");
+    setRiOtroCual("");
+    setRiCancelMotivoCod("");
+    setRiCancelPacFam("");
+    setRiCancelOtroTexto("");
   };
 
   const guardar = async () => {
@@ -2142,10 +2203,14 @@ export function SeguimientoDialog({
         if (!riTepProveedor.trim()) return toast.error("Selecciona el proveedor de TEP");
         if (!riTepFecha.trim()) return toast.error("Indica la fecha y hora de activación del TEP");
       }
-      // Acción terminal de cancelación: motivo obligatorio.
+      // B1.2 · Cancelación estructurada del trámite RI.
       if (esInterna && tipoSeg === TI.CANCELACION_RI) {
-        if (detalle.trim().length < 5)
-          return toast.error("Describe el motivo de la cancelación (mínimo 5 caracteres).");
+        if (!riCancelMotivoCod)
+          return toast.error("Selecciona el motivo de cancelación.");
+        if (riCancelMotivoCod === "NO_ACEPTACION_PACIENTE_FAMILIAR" && !riCancelPacFam)
+          return toast.error("Selecciona el motivo específico paciente/familiar.");
+        if (riCancelMotivoCod === "OTRO" && riCancelOtroTexto.trim().length < 5)
+          return toast.error("Describe el motivo (mínimo 5 caracteres).");
       }
       // B3 · OTRO (RI): descripción obligatoria.
       if (esInterna && tipoSeg === TI.OTRO) {
@@ -2153,22 +2218,22 @@ export function SeguimientoDialog({
         if (c.length < 3 || c.length > 200)
           return toast.error("¿CUÁL? debe tener entre 3 y 200 caracteres.");
       }
-      // B3 · NOVEDADES (RI): validación estructurada.
+      // B1.2 · NOVEDADES (RI): validación estructurada.
       if (esInterna && tipoSeg === TI.NOVEDADES) {
         if (!riNovInterna && !riNovExterna)
           return toast.error("Selecciona INTERNA, EXTERNA o ambas.");
         if (riNovInterna && !riNovInternaCod)
           return toast.error("Selecciona el código de la novedad interna.");
-        if (riNovInterna && riNovInternaCod === "REPROGRAMACION" && riNovReprogMotivos.length === 0)
-          return toast.error("Selecciona al menos un motivo de reprogramación.");
+        if (riNovInterna && riNovInternaCod === "REPROGRAMACION") {
+          if (riNovReprogMotivos.length === 0)
+            return toast.error("Selecciona al menos un motivo de reprogramación.");
+          if (!riNovReprogSinFecha && !riNovReprogFH)
+            return toast.error("Indica la nueva fecha/hora o marca 'Sin nueva fecha/hora'.");
+          if (riNovReprogSinFecha && riNovReprogFH)
+            return toast.error("Fecha/hora y 'Sin nueva fecha/hora' son mutuamente excluyentes.");
+        }
         if (riNovExterna && !riNovExternaCod)
           return toast.error("Selecciona el código de la novedad externa.");
-        if (
-          riNovExterna &&
-          riNovExternaCod === "NO_ACEPTACION_PACIENTE_FAMILIAR" &&
-          !riNovPacFam
-        )
-          return toast.error("Selecciona el motivo de no aceptación paciente/familiar.");
       }
 
       // Cambio en especialidad: exige cambio real, conservar una activa y motivo.
@@ -2492,33 +2557,13 @@ export function SeguimientoDialog({
         update.estado = estadoCaso;
       }
       if (usaIndigo && indigoTexto.trim()) update.trazabilidad_indigo = indigoTexto.trim();
-      // Referencia interna: refleja estado según el seguimiento y cierra al culminar.
+      // Referencia interna (B1.2B): el estado y archivado son server-authoritative
+      // vía trigger `private.seguimientos_ri_estado_apply` sobre `seguimientos`.
+      // El cliente NO debe escribir `estado`/`archivado` desde aquí; solo
+      // trazabilidad Indigo si aplica.
       if (esInterna) {
-        if (tipoSeg === TI.PENDIENTE) update.estado = "PENDIENTE COORDINACION";
-        else if (tipoSeg === TI.COORDINADO) update.estado = "EXAMEN COORDINADO";
-        else if (tipoSeg === TI.PROG_AMB) update.estado = "AMBULANCIA PROGRAMADA";
-        else if (tipoSeg === TI.LLEGADA_AMB) update.estado = "AMBULANCIA EN SITIO";
-        else if (tipoSeg === TI.TEP_ACTIVACION) update.estado = "TEP ACTIVADO";
-        else if (tipoSeg === TI.AMB_COORDINADA_ESP) update.estado = "AMBULANCIA COORDINADA";
-        else if (tipoSeg === TI.CIERRE_CONCLUSION) {
-          update.estado = RI_ESTADO_CIERRE;
-          update.archivado = true;
-        }
-        else if (tipoSeg === TI.CANCELACION_RI) {
-          update.estado = RI_ESTADO_CANCELADO;
-          update.archivado = true;
-        }
-        // B3.1: NOVEDAD EXTERNA "DESCOMPENSACIÓN HEMODINÁMICA" reinicia el
-        // ciclo operativo al estado inicial canónico. La trazabilidad previa
-        // (Trámite/Programación/Llegada/firmas) permanece intacta como
-        // histórico; el nuevo próximo paso disponible es Trámite Coordinado.
-        else if (
-          tipoSeg === TI.NOVEDADES &&
-          riNovExterna &&
-          riNovExternaCod === "DESCOMPENSACION_HEMODINAMICA"
-        ) {
-          update.estado = "PENDIENTE COORDINACION";
-        }
+        delete (update as Record<string, unknown>).estado;
+        delete (update as Record<string, unknown>).archivado;
       }
 
       // Pendientes: cumplimiento completo cierra y archiva el caso.
@@ -2762,6 +2807,19 @@ export function SeguimientoDialog({
                     )}
                   </div>
                 )
+              )}
+
+              {/* B1.2B · Estado del caso RI (server-authoritative, solo lectura). */}
+              {esInterna && estadoActual && (
+                <div className="space-y-1.5">
+                  <Label className={labelCls}>Estado del caso (automático)</Label>
+                  <div className="flex h-10 w-full items-center rounded-md border border-border/60 bg-muted/50 px-3 text-sm font-medium text-foreground">
+                    {resolverEstadoRI(estadoActual).label}
+                  </div>
+                  <p className="text-[11px] italic text-muted-foreground">
+                    Este estado se calcula automáticamente en el servidor a partir de los seguimientos.
+                  </p>
+                </div>
               )}
 
               {/* Tipo de seguimiento */}
@@ -3099,8 +3157,50 @@ export function SeguimientoDialog({
                   <p className={labelCls}>Cancelación del trámite</p>
                   <p className="text-[12px] text-status-amber">
                     Esta acción cierra el caso en estado <b>{RI_ESTADO_CANCELADO}</b> y lo archiva.
-                    Escribe el motivo en el campo <b>Detalle</b> (obligatorio, mínimo 5 caracteres).
                   </p>
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>Motivo de cancelación *</Label>
+                    <select
+                      value={riCancelMotivoCod}
+                      onChange={(e) => {
+                        const v = e.target.value as typeof riCancelMotivoCod;
+                        setRiCancelMotivoCod(v);
+                        if (v !== "NO_ACEPTACION_PACIENTE_FAMILIAR") setRiCancelPacFam("");
+                        if (v !== "OTRO") setRiCancelOtroTexto("");
+                      }}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="">Seleccione…</option>
+                      <option value="NO_ACEPTACION_PACIENTE_FAMILIAR">No aceptación por paciente/familiar</option>
+                      <option value="OTRO">Otro motivo</option>
+                    </select>
+                  </div>
+                  {riCancelMotivoCod === "NO_ACEPTACION_PACIENTE_FAMILIAR" && (
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Motivo paciente/familiar *</Label>
+                      <select
+                        value={riCancelPacFam}
+                        onChange={(e) => setRiCancelPacFam(e.target.value)}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="">Seleccione…</option>
+                        <option value="ADULTO_MAYOR_SIN_ACOMPANANTE">Adulto mayor sin acompañante</option>
+                        <option value="FAMILIAR_NO_PERMITE_TRASLADO">Familiar no permite el traslado</option>
+                      </select>
+                    </div>
+                  )}
+                  {riCancelMotivoCod === "OTRO" && (
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Descripción del motivo *</Label>
+                      <textarea
+                        value={riCancelOtroTexto}
+                        onChange={(e) => setRiCancelOtroTexto(e.target.value)}
+                        rows={3}
+                        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        placeholder="Describe el motivo de la cancelación (mínimo 5 caracteres)"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -3350,8 +3450,8 @@ export function SeguimientoDialog({
                           <Label className={labelCls}>Motivos de reprogramación *</Label>
                           <div className="flex flex-wrap gap-3">
                             {[
-                              ["RETRASO_AGENDA", "Retraso de la agenda"],
-                              ["IMPOSIBILIDAD_TOMA_EXAMEN_PREVIO", "Imposibilidad de toma de examen previo"],
+                              ["RETRASO_AGENDA", "Retraso en la agenda"],
+                              ["IMPOSIBILIDAD_TOMA_EXAMEN_PREVIO", "Imposibilidad toma por examen previo"],
                             ].map(([v, l]) => (
                               <label key={v} className="flex items-center gap-2 text-sm">
                                 <input
@@ -3369,14 +3469,30 @@ export function SeguimientoDialog({
                               </label>
                             ))}
                           </div>
-                          <div className="space-y-1.5">
-                            <Label className={labelCls}>Nueva fecha/hora (opcional)</Label>
-                            <AppDateTimeInput
-                              name="ri_nov_reprog_fh"
-                              value={riNovReprogFH}
-                              onChange={setRiNovReprogFH}
+                          <label className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={riNovReprogSinFecha}
+                              onChange={(e) => {
+                                setRiNovReprogSinFecha(e.target.checked);
+                                if (e.target.checked) setRiNovReprogFH("");
+                              }}
                             />
-                          </div>
+                            Sin nueva fecha/hora (pendiente por definir)
+                          </label>
+                          {!riNovReprogSinFecha && (
+                            <div className="space-y-1.5">
+                              <Label className={labelCls}>Nueva fecha/hora</Label>
+                              <AppDateTimeInput
+                                name="ri_nov_reprog_fh"
+                                value={riNovReprogFH}
+                                onChange={setRiNovReprogFH}
+                              />
+                            </div>
+                          )}
+                          <p className="text-[11px] italic text-muted-foreground">
+                            Marcar "Sin nueva fecha/hora" es mutuamente excluyente con la fecha; el estado resultante será PENDIENTE COORDINACIÓN.
+                          </p>
                         </>
                       )}
                     </div>
@@ -3389,39 +3505,23 @@ export function SeguimientoDialog({
                         value={riNovExternaCod}
                         onChange={(e) => {
                           setRiNovExternaCod(e.target.value);
-                          if (e.target.value !== "NO_ACEPTACION_PACIENTE_FAMILIAR") {
-                            setRiNovPacFam("");
-                          }
+                          setRiNovPacFam("");
                         }}
                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                       >
                         <option value="">Seleccione…</option>
                         <option value="AMBULANCIA_SIN_DISPONIBILIDAD">Ambulancia sin disponibilidad</option>
                         <option value="RED_NO_CONTRATADA">Red no contratada</option>
-                        <option value="NO_ACEPTACION_PACIENTE_FAMILIAR">No aceptación por paciente/familiar</option>
                         <option value="DESCOMPENSACION_HEMODINAMICA">Descompensación hemodinámica</option>
                       </select>
-
-                      {riNovExternaCod === "NO_ACEPTACION_PACIENTE_FAMILIAR" && (
-                        <>
-                          <Label className={labelCls}>Motivo paciente/familiar *</Label>
-                          <select
-                            value={riNovPacFam}
-                            onChange={(e) => setRiNovPacFam(e.target.value)}
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                          >
-                            <option value="">Seleccione…</option>
-                            <option value="ADULTO_MAYOR_SIN_ACOMPANANTE">Adulto mayor sin acompañante</option>
-                            <option value="FAMILIAR_NO_PERMITE_TRASLADO">Familiar no permite el traslado</option>
-                          </select>
-                        </>
-                      )}
+                      <p className="text-[11px] italic text-muted-foreground">
+                        La NO ACEPTACIÓN por parte del paciente/familiar se registra ahora como CANCELACIÓN estructurada del trámite.
+                      </p>
                     </div>
                   )}
 
                   <p className="text-[11px] italic text-muted-foreground">
-                    Las novedades no alteran la secuencia canónica; quedan como trazabilidad permanente.
-                    Las observaciones van en el campo Detalle.
+                    Las novedades pueden ajustar el estado automáticamente (server-side). Las observaciones van en el campo Detalle.
                   </p>
                 </div>
               )}
