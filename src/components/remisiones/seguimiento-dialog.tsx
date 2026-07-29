@@ -1308,7 +1308,6 @@ export function SeguimientoDialog({
             const etiquetas: Record<string, string> = {
               EQUIPO_FALLA: "FALLA DEL EQUIPO",
               REPROGRAMACION: "REPROGRAMACIÓN",
-              DESCOMPENSACION_HEMODINAMICA: "DESCOMPENSACIÓN HEMODINÁMICA",
               NO_DISPONIBILIDAD_TECNICO: "NO DISPONIBILIDAD DE PERSONAL TÉCNICO",
             };
             const et = etiquetas[riNovInternaCod] ?? riNovInternaCod;
