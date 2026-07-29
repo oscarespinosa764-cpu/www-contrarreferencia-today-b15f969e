@@ -1670,6 +1670,10 @@ export function SeguimientoDialog({
     camaActual,
     nuevaUnidadNorm,
     nuevaCamaNorm,
+    infoTramite,
+    canal,
+    canalOtro,
+    esPendiente,
   ]);
 
   useEffect(() => {
