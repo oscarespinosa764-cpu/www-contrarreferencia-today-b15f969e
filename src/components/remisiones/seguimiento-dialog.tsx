@@ -380,6 +380,8 @@ export function SeguimientoDialog({
   const [riRecTipoAmb, setRiRecTipoAmb] = useState("");
   const [riLlegFecha, setRiLlegFecha] = useState("");
   const [riLlegHora, setRiLlegHora] = useState("");
+  // Datos de la firma QR de llegada (poblados cuando el firmante confirma).
+  const [riFirmaLlegada, setRiFirmaLlegada] = useState<import("./ri-llegada-qr-panel").FirmaLlegadaInfo | null>(null);
   // Referencia interna — flujo especial TEP.
   const [riTepProveedor, setRiTepProveedor] = useState("");
   const [riTepFecha, setRiTepFecha] = useState(""); // "YYYY-MM-DDTHH:mm"
