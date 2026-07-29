@@ -2455,6 +2455,17 @@ export function SeguimientoDialog({
           update.estado = RI_ESTADO_CANCELADO;
           update.archivado = true;
         }
+        // B3.1: NOVEDAD EXTERNA "DESCOMPENSACIÓN HEMODINÁMICA" reinicia el
+        // ciclo operativo al estado inicial canónico. La trazabilidad previa
+        // (Trámite/Programación/Llegada/firmas) permanece intacta como
+        // histórico; el nuevo próximo paso disponible es Trámite Coordinado.
+        else if (
+          tipoSeg === TI.NOVEDADES &&
+          riNovExterna &&
+          riNovExternaCod === "DESCOMPENSACION_HEMODINAMICA"
+        ) {
+          update.estado = "PENDIENTE COORDINACION";
+        }
       }
 
       // Pendientes: cumplimiento completo cierra y archiva el caso.
