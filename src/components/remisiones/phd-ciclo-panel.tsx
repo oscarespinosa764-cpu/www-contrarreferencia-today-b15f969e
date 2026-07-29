@@ -142,40 +142,13 @@ export function PhdCicloPanel({
             {estadoActual || "PENDIENTE ACEPTACION"}
           </Badge>
         </div>
+        {/* El estado del ciclo es server-authoritative: se deriva de los eventos
+            registrados en Seguimiento (registrar_evento_phd). Aquí no existen
+            transiciones manuales para no crear una ruta paralela. */}
         {canEdit && !terminal && (
-          <div className="flex flex-wrap gap-2">
-            {siguientes.map((e) => (
-              <Button
-                key={e}
-                size="sm"
-                variant="outline"
-                className="rounded-full"
-                onClick={() => setPendiente(e)}
-                disabled={mAvanzar.isPending}
-              >
-                {iconoPaso(e)} <span className="ml-1">{e}</span>
-              </Button>
-            ))}
-            {(estadoActual === "AMBULANCIA COORDINADA - PENDIENTE EGRESO" ||
-              estadoActual === "ACEPTADO - PENDIENTE COORDINACION DE AMBULANCIA") && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="rounded-full"
-                onClick={() => setEntregaOpen(true)}
-              >
-                <FileSignature className="mr-1 h-3.5 w-3.5" /> Entrega documental
-              </Button>
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              className="rounded-full text-status-red"
-              onClick={() => setCancelOpen(true)}
-            >
-              <XCircle className="mr-1 h-3.5 w-3.5" /> Cancelar
-            </Button>
-          </div>
+          <p className="text-[11px] text-muted-foreground">
+            El estado avanza automáticamente al registrar los eventos en Seguimiento.
+          </p>
         )}
       </div>
 

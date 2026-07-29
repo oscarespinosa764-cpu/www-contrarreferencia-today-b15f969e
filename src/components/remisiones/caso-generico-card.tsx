@@ -27,10 +27,35 @@ import {
   splitEspecialidades,
   tiempoChip,
 } from "@/lib/remisiones-utils";
+import {
+  SERVICIO_LABEL,
+  TIPO_AMBULANCIA_LABEL,
+  normalizarTipos,
+  type TipoAmbulanciaCodigo,
+} from "@/lib/phd-requisitos";
 import { toast } from "sonner";
 
 type Row = Record<string, any>;
 export type GenericoTipo = "phd" | "interna" | "pendiente";
+
+/** Etiquetas canónicas de los servicios solicitados (fuente: tipos_solicitud). */
+function serviciosLabel(r: Row): string {
+  const tipos = normalizarTipos(r.tipos_solicitud);
+  if (tipos.length > 0) return tipos.map((t) => SERVICIO_LABEL[t]).join(" · ");
+  return r.tipo_solicitud ?? "";
+}
+
+/** Tipo de ambulancia canónico (fuente: tipo_ambulancia_codigo). */
+function ambulanciaLabel(r: Row): string {
+  const cod = r.tipo_ambulancia_codigo as TipoAmbulanciaCodigo | null | undefined;
+  if (cod && TIPO_AMBULANCIA_LABEL[cod]) return TIPO_AMBULANCIA_LABEL[cod];
+  return r.tipo_ambulancia ?? "";
+}
+
+/** Unidad especial canónica. */
+function unidadEspecialLabel(r: Row): string {
+  return r.unidad_especial_solicitada ?? r.unidad_especial ?? r.tipo_solicitud_detalle ?? "";
+}
 
 const SERVICIO_OPCIONES = ["URGENCIAS", "HOSPITALIZACION", "UCI ADULTOS", "QUIROFANO"];
 const PRIORIDAD_OPCIONES = ["ALTA", "MEDIA", "BAJA"];
@@ -225,11 +250,8 @@ export function CasoGenericoCard({
         servicio: String(f.get("servicio")),
         cama: String(f.get("cama")),
         prioridad: String(f.get("prioridad")),
-        tipo_solicitud: String(f.get("tipo_solicitud")),
-        unidad_especial: String(f.get("unidad_especial") || ""),
-        tipo_solicitud_detalle: String(f.get("unidad_especial") || "") || null,
-        requiere_ambulancia: String(f.get("requiere_ambulancia")),
-        tipo_ambulancia: String(f.get("tipo_ambulancia") || ""),
+        // tipos_solicitud / unidad_especial_solicitada / tipo_ambulancia_codigo
+        // son canónicos y no se reescriben desde la edición administrativa.
         especialidades_tratantes: tratantes.join(", "),
         contacto_nombre: String(f.get("contacto_nombre")),
         contacto_parentesco: String(f.get("contacto_parentesco")),
@@ -352,9 +374,12 @@ export function CasoGenericoCard({
             ) : (
               <Dato label="Tipo solicitud" value={r.tipo_solicitud} />
             )}
-            <Dato label={tipo === "phd" ? "Tipo solicitud" : "Tipo ambulancia"} value={tipo === "phd" ? r.tipo_solicitud : r.tipo_ambulancia} />
-            {tipo === "phd" && (
-              <Dato label="Tipo ambulancia" value={r.tipo_ambulancia} />
+            <Dato
+              label={tipo === "phd" ? "Servicios solicitados" : "Tipo ambulancia"}
+              value={tipo === "phd" ? serviciosLabel(r) : r.tipo_ambulancia}
+            />
+            {tipo === "phd" && ambulanciaLabel(r) && (
+              <Dato label="Tipo ambulancia" value={ambulanciaLabel(r)} />
             )}
             {evo && (
               <Dato
@@ -436,13 +461,12 @@ export function CasoGenericoCard({
                 <Dato label="Cama" value={r.cama} />
                 <Dato label="Prioridad" value={r.prioridad} />
                 <Dato label="N° radicado" value={radicado} />
-                <Dato label="Tipo solicitud" value={r.tipo_solicitud} />
-                {(r.unidad_especial || r.tipo_solicitud_detalle) && (
-                  <Dato label="Unidad especial" value={r.unidad_especial || r.tipo_solicitud_detalle} />
+                <Dato label="Servicios solicitados" value={serviciosLabel(r)} />
+                {unidadEspecialLabel(r) && (
+                  <Dato label="Unidad especial" value={unidadEspecialLabel(r)} />
                 )}
-                <Dato label="Requiere ambulancia" value={r.requiere_ambulancia} />
-                {r.requiere_ambulancia === "SI" && (
-                  <Dato label="Tipo ambulancia" value={r.tipo_ambulancia} />
+                {ambulanciaLabel(r) && (
+                  <Dato label="Tipo ambulancia" value={ambulanciaLabel(r)} />
                 )}
                 <Dato label="Estado" value={r.estado_ciclo || r.estado} />
                 <Dato label="Fecha y hora inicio trámite" value={fmtFechaHora(r.fecha_inicio)} />
@@ -551,10 +575,12 @@ export function CasoGenericoCard({
                     defaultValue={r.estado_ciclo ?? r.estado ?? ""}
                     readOnly
                   />
-                  <SelectField name="tipo_solicitud" label="Tipo de solicitud" options={PHD_SOLICITUD} required defaultValue={r.tipo_solicitud ?? ""} />
-                  <Field name="unidad_especial" label="Unidad especial" defaultValue={(r.unidad_especial || r.tipo_solicitud_detalle) ?? ""} />
-                  <SelectField name="requiere_ambulancia" label="Requiere ambulancia" options={SI_NO} defaultValue={r.requiere_ambulancia ?? ""} />
-                  <SelectField name="tipo_ambulancia" label="Tipo de ambulancia" options={PHD_AMBULANCIA} defaultValue={r.tipo_ambulancia ?? ""} />
+                  {/* Servicios, unidad especial y tipo de ambulancia son canónicos
+                      (tipos_solicitud / unidad_especial_solicitada / tipo_ambulancia_codigo)
+                      y no se editan desde aquí para no crear fuentes paralelas. */}
+                  <Field name="servicios_display" label="Servicios solicitados" defaultValue={serviciosLabel(r)} readOnly />
+                  <Field name="unidad_especial_display" label="Unidad especial" defaultValue={unidadEspecialLabel(r)} readOnly />
+                  <Field name="tipo_ambulancia_display" label="Tipo de ambulancia" defaultValue={ambulanciaLabel(r)} readOnly />
                   {isAdmin ? (
                     <Field name="codigo_radicacion" label="N° radicado" defaultValue={r.codigo_radicacion ?? ""} />
                   ) : (
