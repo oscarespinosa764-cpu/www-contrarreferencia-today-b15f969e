@@ -390,6 +390,17 @@ export function SeguimientoDialog({
   const [riTepProveedor, setRiTepProveedor] = useState("");
   const [riTepFecha, setRiTepFecha] = useState(""); // "YYYY-MM-DDTHH:mm"
 
+  // Referencia interna — B3 · OTRO (trazabilidad permanente).
+  const [riOtroCual, setRiOtroCual] = useState("");
+  // Referencia interna — B3 · NOVEDADES (categorías INTERNA/EXTERNA).
+  const [riNovInterna, setRiNovInterna] = useState(false);
+  const [riNovExterna, setRiNovExterna] = useState(false);
+  const [riNovInternaCod, setRiNovInternaCod] = useState("");
+  const [riNovReprogMotivos, setRiNovReprogMotivos] = useState<string[]>([]);
+  const [riNovReprogFH, setRiNovReprogFH] = useState(""); // ISO
+  const [riNovExternaCod, setRiNovExternaCod] = useState("");
+  const [riNovPacFam, setRiNovPacFam] = useState("");
+
 
   // Revisión autorización estancia hospitalaria (seguimiento de trazabilidad)
   const [revOpcion, setRevOpcion] = useState<AutorizacionEstanciaOpcion>("");
