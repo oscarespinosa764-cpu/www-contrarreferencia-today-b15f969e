@@ -2063,7 +2063,18 @@ export function SeguimientoDialog({
     setRiLlegHora("");
     setRiTepProveedor("");
     setRiTepFecha("");
-
+    setRiNovInterna(false);
+    setRiNovExterna(false);
+    setRiNovInternaCod("");
+    setRiNovReprogMotivos([]);
+    setRiNovReprogFH("");
+    setRiNovReprogSinFecha(false);
+    setRiNovExternaCod("");
+    setRiNovPacFam("");
+    setRiOtroCual("");
+    setRiCancelMotivoCod("");
+    setRiCancelPacFam("");
+    setRiCancelOtroTexto("");
   };
 
   const guardar = async () => {
