@@ -26,6 +26,8 @@ import {
 } from "@/lib/salientes-export";
 import { agruparPorEtapa } from "@/lib/salientes-grupos";
 import { GrupoEtapa } from "@/components/remisiones/grupo-etapa";
+import { agruparInternasPorEstado } from "@/lib/ri-estados";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { getDirectorioActivos } from "@/lib/directorio.functions";
 
