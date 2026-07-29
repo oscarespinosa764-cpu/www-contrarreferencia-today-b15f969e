@@ -259,7 +259,7 @@ export function PhdSeguimientoDialog({
     },
   });
 
-  const canalFinal = canal === "OTRO" ? canalOtro.trim().toUpperCase() : canal;
+  const canalFinal = canalFinalDe(canal, canalOtro);
   const requiereServicio = evento === "ACEPTACION_PROVEEDOR";
   const requiereDescripcion = CON_DESCRIPCION.includes(evento);
   const esEvolucionDiaria = evento === "EVOLUCION_DIARIA";
