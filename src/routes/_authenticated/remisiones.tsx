@@ -24,7 +24,8 @@ import {
   descargarReporteGeneralPDF,
   descargarEntregaTurnoPDF,
 } from "@/lib/salientes-export";
-import { agruparPorEtapa } from "@/lib/salientes-grupos";
+import { agruparPorEtapa, type EtapaMeta } from "@/lib/salientes-grupos";
+import { agruparPhdPorSegmento } from "@/lib/phd-requisitos";
 import { GrupoEtapa } from "@/components/remisiones/grupo-etapa";
 import { agruparInternasPorEstado } from "@/lib/ri-estados";
 import { ChevronDown, ChevronRight } from "lucide-react";
@@ -763,16 +764,18 @@ function ListaGenerica({
         {segmentos.map(({ segmento, items: bucket }) => (
           <GrupoEtapa
             key={segmento.key}
-            etapa={{
-              key: segmento.key,
-              label: segmento.label,
-              descripcion: segmento.descripcion,
-              color: segmento.color,
-              bar: segmento.bar,
-            }}
+            etapa={
+              {
+                key: segmento.key,
+                titulo: segmento.label,
+                descripcion: segmento.descripcion,
+                color: segmento.color,
+                bar: segmento.bar,
+              } as unknown as EtapaMeta
+            }
             count={bucket.length}
           >
-            {bucket.map((it) => (
+            {bucket.map((it: Record<string, any>) => (
               <CasoGenericoCard
                 key={it.id as string}
                 tipo={tipo}
