@@ -773,6 +773,78 @@ function ListaGenerica({
   );
 }
 
+function ListaInternas({
+  items,
+  canEdit,
+  ultGestiones,
+}: {
+  items: Record<string, any>[];
+  canEdit: boolean;
+  ultGestiones?: Record<string, { fecha: string | null; responsable: string | null }>;
+}) {
+  if (items.length === 0) return <VacioModulo />;
+  const grupos = agruparInternasPorEstado(
+    items as Array<Record<string, any> & { estado?: string | null }>,
+  );
+  return (
+    <div className="grid gap-4">
+      {grupos.map(({ meta, items: bucket }) => (
+        <GrupoInterna key={meta.codigo} meta={meta} count={bucket.length}>
+          {bucket.map((it) => (
+            <CasoGenericoCard
+              key={it.id as string}
+              tipo="interna"
+              r={it}
+              canEdit={canEdit}
+              ultimaGestion={ultGestiones?.[it.id as string] ?? null}
+            />
+          ))}
+        </GrupoInterna>
+      ))}
+    </div>
+  );
+}
+
+function GrupoInterna({
+  meta,
+  count,
+  children,
+}: {
+  meta: ReturnType<typeof agruparInternasPorEstado>[number]["meta"];
+  count: number;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(true);
+  return (
+    <section className={`rounded-xl border border-l-4 bg-card shadow-sm ${meta.bar}`}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2 rounded-t-xl px-3 py-2 text-left"
+      >
+        {open ? (
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        )}
+        <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${meta.color}`}>
+          {meta.label}
+        </span>
+        <span className="hidden text-[11px] text-muted-foreground sm:inline">{meta.descripcion}</span>
+        {meta.siguientePasoLabel && (
+          <span className="ml-2 hidden rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground md:inline">
+            Sig: {meta.siguientePasoLabel}
+          </span>
+        )}
+        <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">
+          {count}
+        </span>
+      </button>
+      {open && <div className="grid gap-3 border-t border-border p-3">{children}</div>}
+    </section>
+  );
+}
+
 function VacioModulo() {
   return (
     <div className="rounded-2xl border border-border bg-card py-16 text-center shadow-sm">
