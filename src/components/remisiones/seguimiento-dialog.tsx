@@ -3328,6 +3328,7 @@ export function SeguimientoDialog({
                         <option value="AMBULANCIA_SIN_DISPONIBILIDAD">Ambulancia sin disponibilidad</option>
                         <option value="RED_NO_CONTRATADA">Red no contratada</option>
                         <option value="NO_ACEPTACION_PACIENTE_FAMILIAR">No aceptación por paciente/familiar</option>
+                        <option value="DESCOMPENSACION_HEMODINAMICA">Descompensación hemodinámica</option>
                       </select>
 
                       {riNovExternaCod === "NO_ACEPTACION_PACIENTE_FAMILIAR" && (
