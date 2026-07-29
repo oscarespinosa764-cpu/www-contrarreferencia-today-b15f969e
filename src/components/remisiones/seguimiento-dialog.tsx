@@ -1817,14 +1817,32 @@ export function SeguimientoDialog({
             out.interna_codigo = riNovInternaCod;
             if (riNovInternaCod === "REPROGRAMACION") {
               out.reprogramacion_motivos = riNovReprogMotivos;
-              if (riNovReprogFH) out.fecha_hora_reprogramada = riNovReprogFH;
+              // B1.2: mutua exclusión sin_nueva_fecha_hora <-> fecha_hora_reprogramada.
+              out.sin_nueva_fecha_hora = !!riNovReprogSinFecha;
+              if (!riNovReprogSinFecha && riNovReprogFH) {
+                out.fecha_hora_reprogramada = riNovReprogFH;
+              }
             }
           }
           if (riNovExterna) {
             out.externa_codigo = riNovExternaCod;
-            if (riNovExternaCod === "NO_ACEPTACION_PACIENTE_FAMILIAR") {
-              out.paciente_familiar_motivo = riNovPacFam;
-            }
+          }
+          return out;
+        }
+        case TI.CANCELACION_RI: {
+          // B1.2 · Motivos estructurados de cancelación del trámite RI.
+          const cod = riCancelMotivoCod;
+          const out: Record<string, unknown> = {
+            ri_evento: "CANCELACION_TRAMITE",
+            cancelacion_motivo_codigo: cod || null,
+            observaciones: detalle.trim() || null,
+          };
+          if (cod === "NO_ACEPTACION_PACIENTE_FAMILIAR") {
+            out.paciente_familiar_motivo = riCancelPacFam || null;
+            out.cancelacion_otro_motivo = null;
+          } else if (cod === "OTRO") {
+            out.paciente_familiar_motivo = null;
+            out.cancelacion_otro_motivo = riCancelOtroTexto.trim();
           }
           return out;
         }
