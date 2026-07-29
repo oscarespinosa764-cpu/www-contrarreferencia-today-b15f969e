@@ -543,11 +543,14 @@ export function CasoGenericoCard({
                   <SelectField name="servicio" label="Servicio" options={SERVICIO_OPCIONES} required defaultValue={r.servicio ?? ""} />
                   <Field name="cama" label="Cama" defaultValue={r.cama ?? ""} />
                   <SelectField name="prioridad" label="Prioridad" options={PRIORIDAD_OPCIONES} defaultValue={r.prioridad ?? ""} />
-                  {isAdmin ? (
-                    <Field name="estado" label="Estado" defaultValue={r.estado ?? ""} />
-                  ) : (
-                    <Field name="estado_display" label="Estado (se cambia desde Seguimiento)" defaultValue={r.estado ?? ""} readOnly />
-                  )}
+                  {/* El estado de PHD/PAD/O2 es automático (server-authoritative):
+                      se deriva del ciclo y solo cambia desde Seguimiento. */}
+                  <Field
+                    name="estado_display"
+                    label="Estado (automático — se cambia desde Seguimiento)"
+                    defaultValue={r.estado_ciclo ?? r.estado ?? ""}
+                    readOnly
+                  />
                   <SelectField name="tipo_solicitud" label="Tipo de solicitud" options={PHD_SOLICITUD} required defaultValue={r.tipo_solicitud ?? ""} />
                   <Field name="unidad_especial" label="Unidad especial" defaultValue={(r.unidad_especial || r.tipo_solicitud_detalle) ?? ""} />
                   <SelectField name="requiere_ambulancia" label="Requiere ambulancia" options={SI_NO} defaultValue={r.requiere_ambulancia ?? ""} />
