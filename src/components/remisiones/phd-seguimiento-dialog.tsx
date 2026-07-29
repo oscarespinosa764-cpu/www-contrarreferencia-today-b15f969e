@@ -59,13 +59,12 @@ import {
 } from "./evolucion-diaria-fields";
 
 
-const CANALES = [
-  "TELEFÓNICO",
-  "CORREO ELECTRÓNICO",
-  "PLATAFORMA WEB",
-  "FÍSICO / PRESENCIAL",
-  "OTRO",
-] as const;
+import {
+  CanalGestionField,
+  SeguimientoHeaderCard,
+  canalFinalDe,
+} from "./seguimiento-shell";
+
 
 const CON_DESCRIPCION = ["NOVEDADES", "OTRO"];
 
