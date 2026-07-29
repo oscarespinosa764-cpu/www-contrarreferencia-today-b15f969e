@@ -1014,6 +1014,10 @@ export function SeguimientoDialog({
     setRiNovReprogFH("");
     setRiNovExternaCod("");
     setRiNovPacFam("");
+    setRiNovReprogSinFecha(false);
+    setRiCancelMotivoCod("");
+    setRiCancelPacFam("");
+    setRiCancelOtroTexto("");
   }, [open, evolucionDetalle, especialidadesList, estadoActual]);
 
   // Prefill desde el caso.
