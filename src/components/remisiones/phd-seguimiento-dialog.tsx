@@ -499,29 +499,29 @@ export function PhdSeguimientoDialog({
               </div>
             )}
 
+            {esEvolucionDiaria && (
+              <EvolucionDiariaFields
+                value={evo}
+                onChange={setEvo}
+                ctx={evoCtx}
+                derivado={evoDeriv}
+              />
+            )}
+
             {requiereDescripcion && (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label className="text-xs">Descripción *</Label>
-                  <Textarea
-                    rows={3}
-                    value={descripcion}
-                    onChange={(e) => setDescripcion(e.target.value)}
-                    placeholder={
-                      evento === "EVOLUCION_DIARIA"
-                        ? "Evolución del trámite en el día…"
-                        : evento === "NOVEDADES"
-                          ? "Novedad presentada…"
-                          : "Describa el seguimiento…"
-                    }
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Fecha y hora del evento</Label>
-                  <AppDateTimeInput name="phd_fecha_evento" value={fecha} onChange={setFecha} />
-                </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Descripción *</Label>
+                <Textarea
+                  rows={3}
+                  value={descripcion}
+                  onChange={(e) => setDescripcion(e.target.value)}
+                  placeholder={
+                    evento === "NOVEDADES" ? "Novedad presentada…" : "Describa el seguimiento…"
+                  }
+                />
               </div>
             )}
+
 
             {evento === "CONFIRMACION_ENTREGA_OXIGENO" && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
