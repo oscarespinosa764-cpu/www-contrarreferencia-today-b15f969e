@@ -928,7 +928,7 @@ export function SeguimientoDialog({
   // Referencia Interna: opciones dinámicas según secuencia + CAMBIO DE UNIDAD (mientras esté activo).
   const TIPOS_INTERNA_DYN = useMemo(() => {
     const proximo = siguientePasoRI(
-      historial as { tipo_seguimiento: string }[] | undefined,
+      historial as { tipo_seguimiento: string; detalles?: unknown }[] | undefined,
       casoInterna?.tipo_solicitud ?? null,
     );
     const activo = !casoInterna?.archivado;
