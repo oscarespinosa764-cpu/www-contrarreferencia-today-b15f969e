@@ -455,28 +455,13 @@ export function PhdSeguimientoDialog({
                 </Select>
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold uppercase">Canal de gestión *</Label>
-                <Select value={canal} onValueChange={setCanal}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar canal…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CANALES.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {canal === "OTRO" && (
-                  <Input
-                    placeholder="ESPECIFIQUE EL CANAL"
-                    value={canalOtro}
-                    onChange={(e) => setCanalOtro(e.target.value.toUpperCase())}
-                  />
-                )}
-              </div>
+              <CanalGestionField
+                value={canal}
+                onChange={setCanal}
+                otro={canalOtro}
+                onOtroChange={setCanalOtro}
+              />
+
             </div>
 
             {requiereServicio && (
