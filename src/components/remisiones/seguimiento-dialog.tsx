@@ -3391,8 +3391,8 @@ export function SeguimientoDialog({
                           <Label className={labelCls}>Motivos de reprogramación *</Label>
                           <div className="flex flex-wrap gap-3">
                             {[
-                              ["RETRASO_AGENDA", "Retraso de la agenda"],
-                              ["IMPOSIBILIDAD_TOMA_EXAMEN_PREVIO", "Imposibilidad de toma de examen previo"],
+                              ["RETRASO_AGENDA", "Retraso en la agenda"],
+                              ["IMPOSIBILIDAD_TOMA_EXAMEN_PREVIO", "Imposibilidad toma por examen previo"],
                             ].map(([v, l]) => (
                               <label key={v} className="flex items-center gap-2 text-sm">
                                 <input
@@ -3410,14 +3410,30 @@ export function SeguimientoDialog({
                               </label>
                             ))}
                           </div>
-                          <div className="space-y-1.5">
-                            <Label className={labelCls}>Nueva fecha/hora (opcional)</Label>
-                            <AppDateTimeInput
-                              name="ri_nov_reprog_fh"
-                              value={riNovReprogFH}
-                              onChange={setRiNovReprogFH}
+                          <label className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={riNovReprogSinFecha}
+                              onChange={(e) => {
+                                setRiNovReprogSinFecha(e.target.checked);
+                                if (e.target.checked) setRiNovReprogFH("");
+                              }}
                             />
-                          </div>
+                            Sin nueva fecha/hora (pendiente por definir)
+                          </label>
+                          {!riNovReprogSinFecha && (
+                            <div className="space-y-1.5">
+                              <Label className={labelCls}>Nueva fecha/hora</Label>
+                              <AppDateTimeInput
+                                name="ri_nov_reprog_fh"
+                                value={riNovReprogFH}
+                                onChange={setRiNovReprogFH}
+                              />
+                            </div>
+                          )}
+                          <p className="text-[11px] italic text-muted-foreground">
+                            Marcar "Sin nueva fecha/hora" es mutuamente excluyente con la fecha; el estado resultante será PENDIENTE COORDINACIÓN.
+                          </p>
                         </>
                       )}
                     </div>
