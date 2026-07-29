@@ -3049,7 +3049,13 @@ export function SeguimientoDialog({
                           <SelectValue placeholder="Seleccionar unidad…" />
                         </SelectTrigger>
                         <SelectContent>
-                          {catUnidades.length === 0 ? (
+                          {esInterna ? (
+                            RI_UNIDADES_ALLOW.map((u) => (
+                              <SelectItem key={u.codigo} value={u.label} className="whitespace-normal">
+                                {u.label}
+                              </SelectItem>
+                            ))
+                          ) : catUnidades.length === 0 ? (
                             <SelectItem value="__none" disabled>
                               No hay unidades activas en el catálogo
                             </SelectItem>
