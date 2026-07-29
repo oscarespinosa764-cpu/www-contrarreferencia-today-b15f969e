@@ -1,27 +1,33 @@
 // ---------------------------------------------------------------------------
-// Modal de seguimiento dedicado para PHD / PAD / O2 / Especiales.
+// FASE 5D · Bloque B — Modal de seguimiento PHD / PAD / PAD CRÓNICO / O2 /
+// UNIDADES ESPECIALES / AMBULANCIA PARA EGRESO.
 //
-// Correcciones aplicadas (Prompt maestro — PHD Seguimiento):
-// - ESTADO DEL CASO es automático y de solo lectura.
-// - TIPO DE SEGUIMIENTO (evento) y CANAL DE GESTIÓN (medio) están separados.
-// - Se filtran los tipos permitidos según el estado real del caso.
-// - Los eventos disparan transiciones controladas vía avanzarEstadoCiclo.
-// - RADICACIÓN es un evento (usa registrarRadicacion), no un estado.
-// - No aparece WhatsApp en el catálogo de canales.
-// - Los datos se guardan estructurados en seguimientos.detalles (jsonb).
-// - No se toca RLS ni se usa service role. Reutiliza catálogos y funciones
-//   existentes; no crea otra máquina de estados.
+// Principios:
+// - El ESTADO es server-authoritative: se muestra en solo lectura y lo recalcula
+//   el trigger tras cada evento (private.resolver_estado_phd).
+// - Los EVENTOS disponibles se derivan de los REQUISITOS PENDIENTES del ciclo
+//   vigente (no del estado plano). El servidor revalida la misma matriz en
+//   public.registrar_evento_phd.
+// - Cada servicio solicitado tiene aceptación independiente.
+// - La CONFIRMACIÓN DE LLEGADA DE AMBULANCIA exige firma QR verificada.
 // ---------------------------------------------------------------------------
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/lib/backend-client";
-import { registrarAuditoria } from "@/lib/auditoria.functions";
+import { registrarEventoPhd } from "@/lib/phd-eventos.functions";
 import {
-  avanzarEstadoCiclo,
-  registrarRadicacion,
-  type PhdEstadoCiclo,
-} from "@/lib/phd-ciclo.functions";
+  derivarRequisitos,
+  eventosDisponibles as calcularEventos,
+  EVENTO_LABEL,
+  SERVICIO_LABEL,
+  SERVICIOS_CON_ACEPTACION,
+  TIPO_AMBULANCIA_LABEL,
+  TIPOS_AMBULANCIA_CODIGOS,
+  normalizarEstadoPhd,
+  esEstadoTerminalPhd,
+  type ServicioCodigo,
+} from "@/lib/phd-requisitos";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,39 +47,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 import { fmtFechaHora } from "@/lib/remisiones-utils";
-import { FileSignature, Info, Lock } from "lucide-react";
+import { CheckCircle2, Circle, FileSignature, Info, Lock } from "lucide-react";
 import { EntregaDocumentalDialog } from "./entrega-documental-dialog";
+import { RiLlegadaQRPanel, type FirmaLlegadaInfo } from "./ri-llegada-qr-panel";
 
-// --- Catálogo de EVENTOS (Tipo de seguimiento) ------------------------------
-type EventoCodigo =
-  | "RADICACION"
-  | "EVOLUCION_NOVEDAD"
-  | "SEGUIMIENTO_GENERAL"
-  | "RESPUESTA_PROVEEDOR"
-  | "ACEPTACION_PROVEEDOR"
-  | "NO_ACEPTACION_PROVEEDOR"
-  | "COORDINACION_AMBULANCIA"
-  | "CONFIRMACION_EGRESO"
-  | "CANCELACION_PROVEEDOR"
-  | "CANCELACION_ESPECIALIDAD";
-
-const EVENTOS: Record<EventoCodigo, string> = {
-  RADICACION: "RADICACIÓN",
-  EVOLUCION_NOVEDAD: "EVOLUCIÓN / NOVEDAD",
-  SEGUIMIENTO_GENERAL: "SEGUIMIENTO GENERAL",
-  RESPUESTA_PROVEEDOR: "RESPUESTA DEL PROVEEDOR",
-  ACEPTACION_PROVEEDOR: "ACEPTACIÓN DEL PROVEEDOR",
-  NO_ACEPTACION_PROVEEDOR: "NO ACEPTACIÓN DEL PROVEEDOR",
-  COORDINACION_AMBULANCIA: "COORDINACIÓN DE AMBULANCIA",
-  CONFIRMACION_EGRESO: "CONFIRMACIÓN DE EGRESO",
-  CANCELACION_PROVEEDOR: "CANCELACIÓN POR EL PROVEEDOR",
-  CANCELACION_ESPECIALIDAD: "CANCELACIÓN POR LA ESPECIALIDAD SOLICITANTE",
-};
-
-// --- Canales de gestión (sin WhatsApp) --------------------------------------
 const CANALES = [
   "TELEFÓNICO",
   "CORREO ELECTRÓNICO",
@@ -81,56 +60,6 @@ const CANALES = [
   "FÍSICO / PRESENCIAL",
   "OTRO",
 ] as const;
-
-// --- Eventos permitidos por estado ------------------------------------------
-function eventosPermitidos(estado: PhdEstadoCiclo | null): EventoCodigo[] {
-  const e = estado ?? "PENDIENTE ACEPTACION";
-  if (e === "PENDIENTE ACEPTACION") {
-    return [
-      "RADICACION",
-      "EVOLUCION_NOVEDAD",
-      "SEGUIMIENTO_GENERAL",
-      "RESPUESTA_PROVEEDOR",
-      "ACEPTACION_PROVEEDOR",
-      "NO_ACEPTACION_PROVEEDOR",
-      "CANCELACION_PROVEEDOR",
-      "CANCELACION_ESPECIALIDAD",
-    ];
-  }
-  if (e === "ACEPTADO - PENDIENTE EGRESO") {
-    return [
-      "EVOLUCION_NOVEDAD",
-      "SEGUIMIENTO_GENERAL",
-      "CONFIRMACION_EGRESO",
-      "CANCELACION_PROVEEDOR",
-      "CANCELACION_ESPECIALIDAD",
-    ];
-  }
-  if (e === "ACEPTADO - PENDIENTE COORDINACION DE AMBULANCIA") {
-    return [
-      "EVOLUCION_NOVEDAD",
-      "SEGUIMIENTO_GENERAL",
-      "COORDINACION_AMBULANCIA",
-      "CANCELACION_PROVEEDOR",
-      "CANCELACION_ESPECIALIDAD",
-    ];
-  }
-  if (e === "AMBULANCIA COORDINADA - PENDIENTE EGRESO") {
-    return [
-      "EVOLUCION_NOVEDAD",
-      "SEGUIMIENTO_GENERAL",
-      "COORDINACION_AMBULANCIA",
-      "CONFIRMACION_EGRESO",
-      "CANCELACION_PROVEEDOR",
-      "CANCELACION_ESPECIALIDAD",
-    ];
-  }
-  return []; // cerrado
-}
-
-function esTerminal(estado?: string | null) {
-  return (estado ?? "").startsWith("CERRADO");
-}
 
 type Props = {
   open: boolean;
@@ -143,6 +72,13 @@ type Props = {
   ipsReceptora?: string | null;
   empresaTraslado?: string | null;
   entidadPago?: string | null;
+  /** Servicios solicitados (columna canónica `tipos_solicitud`). */
+  tiposSolicitud?: unknown;
+  unidadEspecialSolicitada?: string | null;
+  tipoAmbulanciaCodigo?: string | null;
+  /** Inicio del ciclo vigente: acota los eventos considerados. */
+  cicloInicioAt?: string | null;
+  radicadoCaso?: string | null;
 };
 
 export function PhdSeguimientoDialog({
@@ -156,71 +92,19 @@ export function PhdSeguimientoDialog({
   ipsReceptora,
   empresaTraslado,
   entidadPago,
+  tiposSolicitud,
+  unidadEspecialSolicitada,
+  tipoAmbulanciaCodigo,
+  cicloInicioAt,
+  radicadoCaso,
 }: Props) {
   const qc = useQueryClient();
-  const avanzar = useServerFn(avanzarEstadoCiclo);
-  const radicar = useServerFn(registrarRadicacion);
+  const registrarEvento = useServerFn(registrarEventoPhd);
 
-  const estadoNormalizado = (estadoActual ?? "PENDIENTE ACEPTACION") as PhdEstadoCiclo;
-  const terminal = esTerminal(estadoActual);
-  const eventosDisponibles = useMemo(
-    () => eventosPermitidos(terminal ? null : estadoNormalizado).filter(Boolean),
-    [estadoNormalizado, terminal],
-  );
+  const estado = normalizarEstadoPhd(estadoActual);
+  const terminal = esEstadoTerminalPhd(estadoActual);
 
-  // --- Estado del formulario ------------------------------------------------
-  const [evento, setEvento] = useState<EventoCodigo | "">("");
-  const [canal, setCanal] = useState("");
-  const [canalOtro, setCanalOtro] = useState("");
-  const [observaciones, setObservaciones] = useState("");
-  const [fecha, setFecha] = useState(""); // ISO fecha/hora sencilla del evento
-  const [proveedor, setProveedor] = useState("");
-  const [entregaOpen, setEntregaOpen] = useState(false);
-
-  // Radicación
-  const [numRadicado, setNumRadicado] = useState("");
-  const [sinRadicado, setSinRadicado] = useState(false);
-  const [motivoSinRadicado, setMotivoSinRadicado] = useState("");
-
-  // Aceptación
-  const [codigoAceptacion, setCodigoAceptacion] = useState("");
-  const [requiereAmbulancia, setRequiereAmbulancia] = useState<"SI" | "NO" | "">("");
-
-  // No aceptación / Cancelación / Egreso
-  const [motivo, setMotivo] = useState("");
-  const [responsable, setResponsable] = useState("");
-  const [especialidad, setEspecialidad] = useState("");
-
-  // Coordinación de ambulancia
-  const [empresaAmb, setEmpresaAmb] = useState("");
-  const [tipoAmb, setTipoAmb] = useState("");
-  const [contactoNombre, setContactoNombre] = useState("");
-  const [contactoTel, setContactoTel] = useState("");
-
-  // Reset al abrir
-  useEffect(() => {
-    if (!open) return;
-    setEvento("");
-    setCanal("");
-    setCanalOtro("");
-    setObservaciones("");
-    setFecha("");
-    setProveedor("");
-    setNumRadicado("");
-    setSinRadicado(false);
-    setMotivoSinRadicado("");
-    setCodigoAceptacion("");
-    setRequiereAmbulancia("");
-    setMotivo("");
-    setResponsable("");
-    setEspecialidad("");
-    setEmpresaAmb((empresaTraslado ?? "").toUpperCase());
-    setTipoAmb("");
-    setContactoNombre("");
-    setContactoTel("");
-  }, [open, empresaTraslado]);
-
-  // Historial de seguimientos del caso ---------------------------------------
+  // --- Historial del caso (con marca de ciclo) --------------------------------
   const { data: historial = [] } = useQuery({
     queryKey: ["phd-seguimientos", casoId],
     enabled: open && !!casoId,
@@ -232,7 +116,7 @@ export function PhdSeguimientoDialog({
         .eq("tipo_caso", "domiciliario")
         .eq("archivado", false)
         .order("created_at", { ascending: false })
-        .limit(50);
+        .limit(80);
       return (data ?? []) as Array<{
         id: string;
         created_at: string;
@@ -245,26 +129,82 @@ export function PhdSeguimientoDialog({
     },
   });
 
-  // Catálogo TIPO_AMBULANCIA (para coordinación)
-  const { data: tiposAmb = [] } = useQuery({
-    queryKey: ["cat-tipo-ambulancia"],
-    enabled: open,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("catalogos")
-        .select("valor")
-        .eq("tipo", "TIPO_AMBULANCIA")
-        .eq("activo", true)
-        .order("valor");
-      const rows = (data ?? []).map((d) => (d.valor as string).toUpperCase());
-      return rows.length ? rows : ["TAB", "TAM", "TAM-N", "TAT", "TAN", "TAN-N"];
-    },
-  });
+  // Eventos del ciclo vigente (desde ciclo_inicio_at).
+  const eventosCiclo = useMemo(() => {
+    const desde = cicloInicioAt ? new Date(cicloInicioAt).getTime() : 0;
+    return historial
+      .filter((h) => new Date(h.created_at).getTime() >= desde)
+      .map((h) => {
+        const d = (h.detalles ?? {}) as Record<string, unknown>;
+        return {
+          evento: (d.evento as string) ?? null,
+          servicio_codigo: (d.servicio_codigo as string) ?? null,
+        };
+      });
+  }, [historial, cicloInicioAt]);
 
-  // Catálogo EMPRESA_TEP
+  const req = useMemo(
+    () => derivarRequisitos(tiposSolicitud, eventosCiclo),
+    [tiposSolicitud, eventosCiclo],
+  );
+  const eventosDisponibles = useMemo(
+    () => (terminal ? [] : calcularEventos(req)),
+    [req, terminal],
+  );
+
+  // --- Formulario -------------------------------------------------------------
+  const [evento, setEvento] = useState("");
+  const [canal, setCanal] = useState("");
+  const [canalOtro, setCanalOtro] = useState("");
+  const [observaciones, setObservaciones] = useState("");
+  const [fecha, setFecha] = useState("");
+  const [proveedor, setProveedor] = useState("");
+  const [servicio, setServicio] = useState<ServicioCodigo | "">("");
+  const [numRadicado, setNumRadicado] = useState("");
+  const [sinRadicado, setSinRadicado] = useState(false);
+  const [motivoSinRadicado, setMotivoSinRadicado] = useState("");
+  const [motivo, setMotivo] = useState("");
+  const [responsable, setResponsable] = useState("");
+  const [especialidad, setEspecialidad] = useState("");
+  const [empresaAmb, setEmpresaAmb] = useState("");
+  const [tipoAmb, setTipoAmb] = useState("");
+  const [horaCoord, setHoraCoord] = useState("");
+  const [firma, setFirma] = useState<FirmaLlegadaInfo | null>(null);
+  const [entregaOpen, setEntregaOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setEvento("");
+    setCanal("");
+    setCanalOtro("");
+    setObservaciones("");
+    setFecha("");
+    setProveedor("");
+    setServicio("");
+    setNumRadicado("");
+    setSinRadicado(false);
+    setMotivoSinRadicado("");
+    setMotivo("");
+    setResponsable("");
+    setEspecialidad("");
+    setEmpresaAmb((empresaTraslado ?? "").toUpperCase());
+    setTipoAmb((tipoAmbulanciaCodigo ?? "").toUpperCase());
+    setHoraCoord("");
+    setFirma(null);
+  }, [open, empresaTraslado, tipoAmbulanciaCodigo]);
+
+  // Preselecciona el único servicio pendiente de aceptación.
+  useEffect(() => {
+    if (evento === "ACEPTACION_PROVEEDOR" || evento === "NO_ACEPTACION_PROVEEDOR") {
+      if (!servicio && req.aceptacionesPendientes.length === 1) {
+        setServicio(req.aceptacionesPendientes[0]);
+      }
+    }
+  }, [evento, servicio, req.aceptacionesPendientes]);
+
   const { data: empresas = [] } = useQuery({
     queryKey: ["cat-empresa-tep"],
-    enabled: open && evento === "COORDINACION_AMBULANCIA",
+    enabled: open && evento === "AMBULANCIA_COORDINADA",
     queryFn: async () => {
       const { data } = await supabase
         .from("catalogos")
@@ -276,31 +216,29 @@ export function PhdSeguimientoDialog({
     },
   });
 
-  // Habilita descarga documental (traslado)
-  const puedeEntregaDocumental =
-    estadoNormalizado === "AMBULANCIA COORDINADA - PENDIENTE EGRESO" ||
-    estadoNormalizado === "ACEPTADO - PENDIENTE COORDINACION DE AMBULANCIA";
-
-  // Validación por evento ----------------------------------------------------
-  const canalRequerido = evento !== "RADICACION"; // radicación captura canal como campo del evento también
   const canalFinal = canal === "OTRO" ? canalOtro.trim().toUpperCase() : canal;
+  const requiereServicio =
+    evento === "ACEPTACION_PROVEEDOR" || evento === "NO_ACEPTACION_PROVEEDOR";
 
   const errores: string[] = [];
   if (!evento) errores.push("Seleccione el tipo de seguimiento.");
-  if (canalRequerido && !canalFinal) errores.push("Seleccione un canal de gestión.");
+  if (evento && !canalFinal) errores.push("Seleccione un canal de gestión.");
+  if (requiereServicio && !servicio) errores.push("Seleccione el servicio al que aplica.");
   if (evento === "RADICACION" && !sinRadicado && !numRadicado.trim())
     errores.push("Ingrese el número de radicado o marque 'Sin número'.");
   if (evento === "RADICACION" && sinRadicado && !motivoSinRadicado.trim())
     errores.push("Indique el motivo de no tener radicado.");
   if (evento === "ACEPTACION_PROVEEDOR" && !proveedor.trim())
     errores.push("Indique el proveedor que acepta.");
-  if (evento === "ACEPTACION_PROVEEDOR" && !requiereAmbulancia)
-    errores.push("Indique si requiere ambulancia.");
   if (evento === "NO_ACEPTACION_PROVEEDOR" && (!proveedor.trim() || !motivo.trim()))
     errores.push("Proveedor y motivo son obligatorios.");
-  if (evento === "COORDINACION_AMBULANCIA" && (!empresaAmb.trim() || !tipoAmb.trim()))
-    errores.push("Empresa y tipo de ambulancia son obligatorios.");
-  if (evento === "CONFIRMACION_EGRESO" && (!responsable.trim() || !fecha.trim()))
+  if (evento === "CONFIRMACION_ENTREGA_OXIGENO" && (!proveedor.trim() || !fecha.trim()))
+    errores.push("Proveedor y fecha/hora de entrega son obligatorios.");
+  if (evento === "AMBULANCIA_COORDINADA" && (!empresaAmb.trim() || !tipoAmb.trim() || !fecha.trim()))
+    errores.push("Empresa, tipo de ambulancia y fecha/hora son obligatorios.");
+  if (evento === "CONFIRMACION_LLEGADA_AMBULANCIA" && !firma)
+    errores.push("Se requiere la firma QR de llegada de la ambulancia.");
+  if (evento === "CIERRE_POR_EGRESO" && (!responsable.trim() || !fecha.trim()))
     errores.push("Fecha/hora real de egreso y responsable son obligatorios.");
   if (evento === "CANCELACION_PROVEEDOR" && (!proveedor.trim() || !motivo.trim()))
     errores.push("Proveedor y motivo de cancelación son obligatorios.");
@@ -309,159 +247,56 @@ export function PhdSeguimientoDialog({
 
   const invalid = errores.length > 0 || terminal;
 
-  // Descripción legible generada
-  function resumenLegible(): string {
-    const partes: string[] = [`TIPO: ${EVENTOS[evento as EventoCodigo]}`];
-    if (canalFinal) partes.push(`CANAL: ${canalFinal}`);
-    if (proveedor.trim()) partes.push(`PROVEEDOR: ${proveedor.trim().toUpperCase()}`);
+  const detalleLegible = () => {
+    const p: string[] = [`TIPO: ${EVENTO_LABEL[evento] ?? evento}`];
+    if (canalFinal) p.push(`CANAL: ${canalFinal}`);
+    if (servicio) p.push(`SERVICIO: ${SERVICIO_LABEL[servicio]}`);
+    if (proveedor.trim()) p.push(`PROVEEDOR: ${proveedor.trim().toUpperCase()}`);
     if (evento === "RADICACION")
-      partes.push(sinRadicado ? "N° RADICADO: SIN NÚMERO" : `N° RADICADO: ${numRadicado.trim()}`);
-    if (evento === "ACEPTACION_PROVEEDOR") {
-      if (codigoAceptacion.trim()) partes.push(`CÓDIGO: ${codigoAceptacion.trim()}`);
-      partes.push(`REQUIERE AMBULANCIA: ${requiereAmbulancia}`);
+      p.push(sinRadicado ? "N° RADICADO: SIN NÚMERO" : `N° RADICADO: ${numRadicado.trim()}`);
+    if (evento === "AMBULANCIA_COORDINADA") {
+      p.push(`EMPRESA: ${empresaAmb.trim().toUpperCase()}`);
+      p.push(`TIPO AMB: ${TIPO_AMBULANCIA_LABEL[tipoAmb as keyof typeof TIPO_AMBULANCIA_LABEL] ?? tipoAmb}`);
     }
-    if (evento === "COORDINACION_AMBULANCIA") {
-      partes.push(`EMPRESA: ${empresaAmb.trim().toUpperCase()}`);
-      partes.push(`TIPO AMB: ${tipoAmb.trim().toUpperCase()}`);
-      if (contactoNombre.trim()) partes.push(`CONTACTO: ${contactoNombre.trim().toUpperCase()}`);
-      if (contactoTel.trim()) partes.push(`TEL: ${contactoTel.trim()}`);
-    }
-    if (evento === "CONFIRMACION_EGRESO") {
-      partes.push(`FECHA EGRESO: ${fecha}`);
-      partes.push(`RESPONSABLE: ${responsable.trim().toUpperCase()}`);
-    }
-    if (["NO_ACEPTACION_PROVEEDOR", "CANCELACION_PROVEEDOR", "CANCELACION_ESPECIALIDAD"].includes(
-      evento,
-    )) {
-      if (especialidad.trim()) partes.push(`ESPECIALIDAD: ${especialidad.trim().toUpperCase()}`);
-      if (motivo.trim()) partes.push(`MOTIVO: ${motivo.trim().toUpperCase()}`);
-    }
-    if (observaciones.trim()) partes.push(`OBSERVACIONES: ${observaciones.trim()}`);
-    return partes.join(" · ");
-  }
+    if (fecha) p.push(`FECHA/HORA: ${fecha}`);
+    if (responsable.trim()) p.push(`RESPONSABLE: ${responsable.trim().toUpperCase()}`);
+    if (especialidad.trim()) p.push(`ESPECIALIDAD: ${especialidad.trim().toUpperCase()}`);
+    if (motivo.trim()) p.push(`MOTIVO: ${motivo.trim().toUpperCase()}`);
+    if (observaciones.trim()) p.push(`OBSERVACIONES: ${observaciones.trim()}`);
+    return p.join(" · ");
+  };
 
   const mGuardar = useMutation({
     mutationFn: async () => {
-      if (!evento) throw new Error("Seleccione un evento");
-      const { data: u } = await supabase.auth.getUser();
-      const { data: perfil } = await supabase
-        .from("profiles")
-        .select("nombre")
-        .eq("user_id", u.user?.id ?? "")
-        .maybeSingle();
-      const nombreUsuario = perfil?.nombre || u.user?.email || "—";
-
-      const detallesEstructurados: Record<string, unknown> = {
-        evento,
-        canal: canalFinal || null,
-        proveedor: proveedor.trim().toUpperCase() || null,
-        fecha_evento: fecha || null,
-        observaciones: observaciones.trim() || null,
-        estado_anterior: estadoNormalizado,
-      };
-
-      // 1) Evento RADICACIÓN — persistir en tabla dedicada
-      if (evento === "RADICACION") {
-        const numero = sinRadicado ? "" : numRadicado.trim();
-        await radicar({
-          data: {
-            casoId,
-            eapb: (proveedor || entidadPago || "").trim().toUpperCase() || "SIN EAPB",
-            canal: canalFinal || "OTRO",
-            numeroRadicado: numero || undefined,
-            observaciones: sinRadicado
-              ? `SIN RADICADO — ${motivoSinRadicado.trim()}`
-              : observaciones.trim() || undefined,
-          },
-        });
-        detallesEstructurados.numero_radicado = numero || "SIN NÚMERO";
-        if (sinRadicado) detallesEstructurados.motivo_sin_radicado = motivoSinRadicado.trim();
-      }
-
-      // 2) Transiciones
-      let nuevoEstado: PhdEstadoCiclo | null = null;
-      if (evento === "ACEPTACION_PROVEEDOR") {
-        nuevoEstado =
-          requiereAmbulancia === "SI"
-            ? "ACEPTADO - PENDIENTE COORDINACION DE AMBULANCIA"
-            : "ACEPTADO - PENDIENTE EGRESO";
-        detallesEstructurados.codigo_aceptacion = codigoAceptacion.trim() || null;
-        detallesEstructurados.requiere_ambulancia = requiereAmbulancia;
-      } else if (evento === "COORDINACION_AMBULANCIA") {
-        nuevoEstado = "AMBULANCIA COORDINADA - PENDIENTE EGRESO";
-        detallesEstructurados.empresa_ambulancia = empresaAmb.trim().toUpperCase();
-        detallesEstructurados.tipo_ambulancia = tipoAmb.trim().toUpperCase();
-        detallesEstructurados.contacto_nombre = contactoNombre.trim().toUpperCase() || null;
-        detallesEstructurados.contacto_telefono = contactoTel.trim() || null;
-        // Refleja empresa en el caso para que la Portada / Acta la vean.
-        await supabase
-          .from("domiciliarios")
-          .update({
-            empresa_traslado: empresaAmb.trim().toUpperCase(),
-            tipo_ambulancia: tipoAmb.trim().toUpperCase(),
-          } as never)
-          .eq("id", casoId);
-      } else if (evento === "CONFIRMACION_EGRESO") {
-        nuevoEstado = "CERRADO POR EGRESO";
-        detallesEstructurados.fecha_egreso = fecha;
-        detallesEstructurados.responsable_egreso = responsable.trim().toUpperCase();
-      } else if (evento === "CANCELACION_PROVEEDOR") {
-        nuevoEstado = "CERRADO POR CANCELACION DEL PROVEEDOR";
-        detallesEstructurados.motivo_cancelacion = motivo.trim().toUpperCase();
-      } else if (evento === "CANCELACION_ESPECIALIDAD") {
-        nuevoEstado = "CERRADO POR CANCELACION DE LA ESPECIALIDAD SOLICITANTE";
-        detallesEstructurados.especialidad = especialidad.trim().toUpperCase();
-        detallesEstructurados.motivo_cancelacion = motivo.trim().toUpperCase();
-      }
-
-      if (nuevoEstado) {
-        await avanzar({
-          data: {
-            casoId,
-            nuevoEstado,
-            observaciones: observaciones.trim() || undefined,
-            fechaEvento: fecha || undefined,
-          },
-        });
-        detallesEstructurados.estado_nuevo = nuevoEstado;
-      } else {
-        detallesEstructurados.estado_nuevo = estadoNormalizado;
-      }
-
-      // 3) Insertar seguimiento (auditoría estructurada)
-      const { error } = await supabase.from("seguimientos").insert({
-        caso_id: casoId,
-        tipo_caso: "domiciliario",
-        tipo_seguimiento: EVENTOS[evento as EventoCodigo],
-        radicado: evento === "RADICACION" ? (sinRadicado ? "SIN NÚMERO" : numRadicado.trim()) : null,
-        detalle: resumenLegible(),
-        detalles: detallesEstructurados,
-        nombre_usuario: nombreUsuario,
-        nombre_contacto: contactoNombre.trim().toUpperCase() || null,
-        telefono: contactoTel.trim() || null,
-        estado_solicitud: nuevoEstado ?? estadoNormalizado,
-        created_by: u.user?.id ?? null,
-      } as never);
-      if (error) throw new Error(error.message);
-
-      // 4) Auditoría global
-      await registrarAuditoria({
+      const res = await registrarEvento({
         data: {
-          accion: "PHD_SEGUIMIENTO",
-          modulo: "domiciliarios",
-          tabla: "seguimientos",
-          registroId: casoId,
-          resultado: "exito",
-          detalles: {
-            evento,
-            estado_anterior: estadoNormalizado,
-            estado_nuevo: nuevoEstado ?? estadoNormalizado,
-          },
+          casoId,
+          evento: evento as never,
+          tipoSeguimiento: EVENTO_LABEL[evento] ?? evento,
+          detalle: detalleLegible(),
+          servicioCodigo: (servicio || undefined) as never,
+          proveedor: proveedor.trim().toUpperCase() || undefined,
+          canal: canalFinal || undefined,
+          motivo: motivo.trim().toUpperCase() || undefined,
+          especialidad: especialidad.trim().toUpperCase() || undefined,
+          responsable: responsable.trim().toUpperCase() || undefined,
+          numeroRadicado: sinRadicado
+            ? `SIN NÚMERO — ${motivoSinRadicado.trim().toUpperCase()}`
+            : numRadicado.trim() || undefined,
+          empresaAmbulanciaLabel: empresaAmb.trim().toUpperCase() || undefined,
+          tipoAmbulanciaCodigo: (tipoAmb || undefined) as never,
+          fechaCoordinacion: evento === "AMBULANCIA_COORDINADA" ? fecha : undefined,
+          horaCoordinacion: horaCoord || undefined,
+          fechaEvento: fecha || undefined,
+          firmaId: firma?.id,
+          observaciones: observaciones.trim() || undefined,
         },
-      }).catch(() => {});
+      });
+      if (!res.ok) throw new Error(res.error ?? "No fue posible registrar el evento.");
+      return res;
     },
-    onSuccess: () => {
-      toast.success("Seguimiento registrado");
+    onSuccess: (res) => {
+      toast.success(`Evento registrado — estado: ${res.estadoCiclo ?? "actualizado"}`);
       qc.invalidateQueries({ queryKey: ["phd-seguimientos", casoId] });
       qc.invalidateQueries({ queryKey: ["phd-radicaciones", casoId] });
       qc.invalidateQueries({ queryKey: ["domiciliarios"] });
@@ -471,6 +306,8 @@ export function PhdSeguimientoDialog({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const puedeEntregaDocumental = req.ambulanciaAplica && req.ambulanciaCoordinada;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
@@ -478,7 +315,7 @@ export function PhdSeguimientoDialog({
           <DialogTitle>Seguimiento · {paciente}</DialogTitle>
         </DialogHeader>
 
-        {/* Cabecera de contexto */}
+        {/* Contexto y estado automático */}
         <div className="rounded-lg border border-border bg-muted/30 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="text-xs text-muted-foreground">
@@ -493,12 +330,53 @@ export function PhdSeguimientoDialog({
               ) : null}
             </div>
             <Badge variant={terminal ? "secondary" : "default"} className="font-semibold">
-              <Lock className="mr-1 h-3 w-3" /> {estadoNormalizado}
+              <Lock className="mr-1 h-3 w-3" /> {estado}
             </Badge>
           </div>
           <p className="mt-1 text-[10.5px] uppercase tracking-wide text-muted-foreground">
-            Estado del caso — automático. Se actualiza según el seguimiento registrado.
+            Estado del caso — automático, calculado por los requisitos pendientes.
           </p>
+        </div>
+
+        {/* Tablero de requisitos */}
+        <div className="rounded-lg border border-border p-3">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Requisitos del ciclo
+          </p>
+          {req.tipos.length === 0 ? (
+            <p className="text-xs italic text-muted-foreground">
+              Este caso no tiene tipos de solicitud registrados.
+            </p>
+          ) : (
+            <ul className="space-y-1 text-xs">
+              {req.tipos
+                .filter((t) => SERVICIOS_CON_ACEPTACION.includes(t))
+                .map((t) => (
+                  <Requisito
+                    key={t}
+                    ok={req.aceptacionesCompletas.includes(t)}
+                    label={`Aceptación · ${SERVICIO_LABEL[t]}${
+                      t === "UNIDADES_ESPECIALES" && unidadEspecialSolicitada
+                        ? ` (${unidadEspecialSolicitada})`
+                        : ""
+                    }`}
+                  />
+                ))}
+              {req.oxigenoAplica && (
+                <Requisito ok={req.oxigenoEntregado} label="Entrega de oxígeno confirmada" />
+              )}
+              {req.ambulanciaAplica && (
+                <>
+                  <Requisito ok={req.ambulanciaCoordinada} label="Ambulancia coordinada" />
+                  <Requisito
+                    ok={req.ambulanciaEnSitio}
+                    label="Llegada de ambulancia confirmada (firma QR)"
+                  />
+                </>
+              )}
+              <Requisito ok={terminal} label="Egreso registrado" />
+            </ul>
+          )}
         </div>
 
         {terminal ? (
@@ -508,25 +386,30 @@ export function PhdSeguimientoDialog({
           </div>
         ) : (
           <div className="space-y-4">
-            {/* TIPO DE SEGUIMIENTO */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold uppercase">Tipo de seguimiento *</Label>
-                <Select value={evento} onValueChange={(v) => setEvento(v as EventoCodigo)}>
+                <Select
+                  value={evento}
+                  onValueChange={(v) => {
+                    setEvento(v);
+                    setServicio("");
+                    setFirma(null);
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar evento…" />
                   </SelectTrigger>
                   <SelectContent>
                     {eventosDisponibles.map((code) => (
                       <SelectItem key={code} value={code}>
-                        {EVENTOS[code]}
+                        {EVENTO_LABEL[code] ?? code}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* CANAL DE GESTIÓN */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold uppercase">Canal de gestión *</Label>
                 <Select value={canal} onValueChange={setCanal}>
@@ -551,7 +434,24 @@ export function PhdSeguimientoDialog({
               </div>
             </div>
 
-            {/* CAMPOS DINÁMICOS POR EVENTO */}
+            {requiereServicio && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Servicio al que aplica *</Label>
+                <Select value={servicio} onValueChange={(v) => setServicio(v as ServicioCodigo)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar servicio…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {req.aceptacionesPendientes.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {SERVICIO_LABEL[t]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {evento === "RADICACION" && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5 sm:col-span-2">
@@ -598,75 +498,65 @@ export function PhdSeguimientoDialog({
               </div>
             )}
 
-            {evento === "ACEPTACION_PROVEEDOR" && (
+            {(evento === "ACEPTACION_PROVEEDOR" ||
+              evento === "NO_ACEPTACION_PROVEEDOR" ||
+              evento === "RESPUESTA_PROVEEDOR" ||
+              evento === "CANCELACION_PROVEEDOR") && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Proveedor que acepta *</Label>
+                  <Label className="text-xs">
+                    Proveedor {evento === "RESPUESTA_PROVEEDOR" ? "" : "*"}
+                  </Label>
                   <Input
                     value={proveedor}
                     onChange={(e) => setProveedor(e.target.value.toUpperCase())}
                   />
                 </div>
+                {evento !== "RESPUESTA_PROVEEDOR" && evento !== "ACEPTACION_PROVEEDOR" && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Motivo *</Label>
+                    <Input value={motivo} onChange={(e) => setMotivo(e.target.value.toUpperCase())} />
+                  </div>
+                )}
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Código de aceptación</Label>
-                  <Input
-                    value={codigoAceptacion}
-                    onChange={(e) => setCodigoAceptacion(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label className="text-xs">Fecha/hora de aceptación</Label>
+                  <Label className="text-xs">Fecha/hora del evento</Label>
                   <Input
                     type="datetime-local"
                     value={fecha}
                     onChange={(e) => setFecha(e.target.value)}
                   />
                 </div>
-                <div className="col-span-full space-y-1.5">
-                  <Label className="text-xs">¿Requiere ambulancia? *</Label>
-                  <RadioGroup
-                    value={requiereAmbulancia}
-                    onValueChange={(v) => setRequiereAmbulancia(v as "SI" | "NO")}
-                    className="flex gap-4"
-                  >
-                    <label className="flex items-center gap-1.5 text-sm">
-                      <RadioGroupItem value="SI" /> SÍ
-                    </label>
-                    <label className="flex items-center gap-1.5 text-sm">
-                      <RadioGroupItem value="NO" /> NO
-                    </label>
-                  </RadioGroup>
-                </div>
               </div>
             )}
 
-            {evento === "NO_ACEPTACION_PROVEEDOR" && (
+            {evento === "CONFIRMACION_ENTREGA_OXIGENO" && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Proveedor *</Label>
+                  <Label className="text-xs">Proveedor de oxígeno *</Label>
                   <Input
                     value={proveedor}
                     onChange={(e) => setProveedor(e.target.value.toUpperCase())}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Motivo *</Label>
-                  <Input value={motivo} onChange={(e) => setMotivo(e.target.value.toUpperCase())} />
+                  <Label className="text-xs">Fecha/hora de entrega *</Label>
+                  <Input
+                    type="datetime-local"
+                    value={fecha}
+                    onChange={(e) => setFecha(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label className="text-xs">Recibe / responsable</Label>
+                  <Input
+                    value={responsable}
+                    onChange={(e) => setResponsable(e.target.value.toUpperCase())}
+                  />
                 </div>
               </div>
             )}
 
-            {evento === "RESPUESTA_PROVEEDOR" && (
-              <div className="space-y-1.5">
-                <Label className="text-xs">Proveedor</Label>
-                <Input
-                  value={proveedor}
-                  onChange={(e) => setProveedor(e.target.value.toUpperCase())}
-                />
-              </div>
-            )}
-
-            {evento === "COORDINACION_AMBULANCIA" && (
+            {evento === "AMBULANCIA_COORDINADA" && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label className="text-xs">Empresa de ambulancia *</Label>
@@ -675,7 +565,7 @@ export function PhdSeguimientoDialog({
                       <SelectValue placeholder="Seleccionar…" />
                     </SelectTrigger>
                     <SelectContent>
-                      {(empresas.length ? empresas : (empresaAmb ? [empresaAmb] : [])).map((e) => (
+                      {(empresas.length ? empresas : empresaAmb ? [empresaAmb] : []).map((e) => (
                         <SelectItem key={e} value={e}>
                           {e}
                         </SelectItem>
@@ -690,16 +580,16 @@ export function PhdSeguimientoDialog({
                       <SelectValue placeholder="Seleccionar…" />
                     </SelectTrigger>
                     <SelectContent>
-                      {tiposAmb.map((t) => (
+                      {TIPOS_AMBULANCIA_CODIGOS.map((t) => (
                         <SelectItem key={t} value={t}>
-                          {t}
+                          {TIPO_AMBULANCIA_LABEL[t]}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Fecha/hora estimada</Label>
+                  <Label className="text-xs">Fecha/hora coordinada *</Label>
                   <Input
                     type="datetime-local"
                     value={fecha}
@@ -707,20 +597,37 @@ export function PhdSeguimientoDialog({
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Contacto (nombre)</Label>
-                  <Input
-                    value={contactoNombre}
-                    onChange={(e) => setContactoNombre(e.target.value.toUpperCase())}
-                  />
-                </div>
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label className="text-xs">Teléfono de contacto</Label>
-                  <Input value={contactoTel} onChange={(e) => setContactoTel(e.target.value)} />
+                  <Label className="text-xs">Hora pactada (texto libre)</Label>
+                  <Input value={horaCoord} onChange={(e) => setHoraCoord(e.target.value)} />
                 </div>
               </div>
             )}
 
-            {evento === "CONFIRMACION_EGRESO" && (
+            {evento === "CONFIRMACION_LLEGADA_AMBULANCIA" && (
+              <div className="space-y-2">
+                <p className="text-[11px] text-muted-foreground">
+                  La llegada se confirma con la firma del responsable de la ambulancia mediante el
+                  código QR. Al firmar, el evento queda habilitado para registro.
+                </p>
+                <RiLlegadaQRPanel
+                  casoId={casoId}
+                  paciente={paciente}
+                  documento={documento ?? null}
+                  unidadDestino={ipsReceptora ?? null}
+                  radicadoCaso={radicadoCaso ?? null}
+                  tipoCaso="domiciliario"
+                  empresaTraslado={empresaAmb || empresaTraslado || null}
+                  onFirmada={(info) => setFirma(info)}
+                />
+                {firma && (
+                  <p className="rounded-md border border-emerald-300 bg-emerald-50 p-2 text-[11px] text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">
+                    Firma verificada · {fmtFechaHora(firma.firmadoAtISO)}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {evento === "CIERRE_POR_EGRESO" && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label className="text-xs">Fecha/hora real de egreso *</Label>
@@ -736,29 +643,6 @@ export function PhdSeguimientoDialog({
                     value={responsable}
                     onChange={(e) => setResponsable(e.target.value.toUpperCase())}
                   />
-                </div>
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label className="text-xs">Proveedor</Label>
-                  <Input
-                    value={proveedor}
-                    onChange={(e) => setProveedor(e.target.value.toUpperCase())}
-                  />
-                </div>
-              </div>
-            )}
-
-            {evento === "CANCELACION_PROVEEDOR" && (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Proveedor *</Label>
-                  <Input
-                    value={proveedor}
-                    onChange={(e) => setProveedor(e.target.value.toUpperCase())}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Motivo *</Label>
-                  <Input value={motivo} onChange={(e) => setMotivo(e.target.value.toUpperCase())} />
                 </div>
               </div>
             )}
@@ -786,7 +670,6 @@ export function PhdSeguimientoDialog({
               </div>
             )}
 
-            {/* OBSERVACIONES: común a todos */}
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold uppercase">Observaciones</Label>
               <Textarea
@@ -794,9 +677,6 @@ export function PhdSeguimientoDialog({
                 value={observaciones}
                 onChange={(e) => setObservaciones(e.target.value)}
               />
-              <p className="text-[10.5px] text-muted-foreground">
-                El texto operacional se guarda tal cual. Los datos estructurados van al historial.
-              </p>
             </div>
 
             {puedeEntregaDocumental && (
@@ -820,7 +700,7 @@ export function PhdSeguimientoDialog({
           </div>
         )}
 
-        {/* HISTORIAL COMPACTO */}
+        {/* Historial */}
         <div className="mt-3">
           <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Historial ({historial.length})
@@ -888,5 +768,18 @@ export function PhdSeguimientoDialog({
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function Requisito({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <li className="flex items-center gap-2">
+      {ok ? (
+        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-status-green" />
+      ) : (
+        <Circle className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      )}
+      <span className={ok ? "text-foreground" : "text-muted-foreground"}>{label}</span>
+    </li>
   );
 }
