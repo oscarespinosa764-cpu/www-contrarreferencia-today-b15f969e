@@ -1343,10 +1343,11 @@ export function SeguimientoDialog({
             }
             partes.push(l);
           }
-          return appendNota(
-            `NOVEDAD EN REFERENCIA INTERNA.\n${partes.join("\n") || "—"}`,
-            detalle,
-          );
+          const reset = riNovExterna && riNovExternaCod === "DESCOMPENSACION_HEMODINAMICA";
+          const cuerpo = `NOVEDAD EN REFERENCIA INTERNA.\n${partes.join("\n") || "—"}${
+            reset ? "\nESTADO RESULTANTE: PENDIENTE COORDINACIÓN TRÁMITE" : ""
+          }`;
+          return appendNota(cuerpo, detalle);
         }
         default:
           return "";
