@@ -1355,14 +1355,18 @@ export function SeguimientoDialog({
             let l = `INTERNA: ${et || "—"}`;
             if (riNovInternaCod === "REPROGRAMACION") {
               const motLbl: Record<string, string> = {
-                RETRASO_AGENDA: "RETRASO DE LA AGENDA",
-                IMPOSIBILIDAD_TOMA_EXAMEN_PREVIO: "IMPOSIBILIDAD DE TOMA DE EXAMEN PREVIO",
+                RETRASO_AGENDA: "RETRASO EN LA AGENDA",
+                IMPOSIBILIDAD_TOMA_EXAMEN_PREVIO: "IMPOSIBILIDAD TOMA POR EXAMEN PREVIO",
               };
               const mots = riNovReprogMotivos.map((m) => motLbl[m] ?? m).join(", ");
-              l += ` — MOTIVOS: ${mots || "—"}`;
-              if (riNovReprogFH) {
+              l += `\nMOTIVO: ${mots || "—"}`;
+              if (riNovReprogSinFecha) {
+                l += `\nFECHA/HORA REPROGRAMADA: PENDIENTE POR DEFINIR`;
+              } else if (riNovReprogFH) {
                 const d = new Date(riNovReprogFH);
-                l += ` — NUEVA FECHA/HORA: ${d.toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })}`;
+                l += `\nFECHA/HORA REPROGRAMADA: ${d.toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })}`;
+              } else {
+                l += `\nFECHA/HORA REPROGRAMADA: —`;
               }
             }
             partes.push(l);
@@ -1371,22 +1375,23 @@ export function SeguimientoDialog({
             const etiquetas: Record<string, string> = {
               AMBULANCIA_SIN_DISPONIBILIDAD: "AMBULANCIA SIN DISPONIBILIDAD",
               RED_NO_CONTRATADA: "RED NO CONTRATADA",
-              NO_ACEPTACION_PACIENTE_FAMILIAR: "NO ACEPTACIÓN POR PACIENTE/FAMILIAR",
               DESCOMPENSACION_HEMODINAMICA: "DESCOMPENSACIÓN HEMODINÁMICA",
             };
-            let l = `EXTERNA: ${etiquetas[riNovExternaCod] ?? riNovExternaCod ?? "—"}`;
-            if (riNovExternaCod === "NO_ACEPTACION_PACIENTE_FAMILIAR") {
-              const pfLbl: Record<string, string> = {
-                ADULTO_MAYOR_SIN_ACOMPANANTE: "ADULTO MAYOR SIN ACOMPAÑANTE",
-                FAMILIAR_NO_PERMITE_TRASLADO: "FAMILIAR NO PERMITE EL TRASLADO",
-              };
-              l += ` — ${pfLbl[riNovPacFam] ?? riNovPacFam ?? "—"}`;
-            }
-            partes.push(l);
+            partes.push(`EXTERNA: ${etiquetas[riNovExternaCod] ?? riNovExternaCod ?? "—"}`);
           }
-          const reset = riNovExterna && riNovExternaCod === "DESCOMPENSACION_HEMODINAMICA";
+          // Estado resultante server-authoritative (solo se muestra en plantilla; el trigger es la autoridad).
+          let estadoRes = "";
+          if (riNovInterna && riNovInternaCod === "REPROGRAMACION") {
+            estadoRes = riNovReprogSinFecha
+              ? "PENDIENTE COORDINACIÓN"
+              : "TRÁMITE COORDINADO SIN CONFIRMACIÓN AMBULANCIA";
+          } else if (riNovExterna && riNovExternaCod === "DESCOMPENSACION_HEMODINAMICA") {
+            estadoRes = "PENDIENTE COORDINACIÓN";
+          } else if (riNovExterna && riNovExternaCod === "AMBULANCIA_SIN_DISPONIBILIDAD") {
+            estadoRes = "TRÁMITE COORDINADO SIN CONFIRMACIÓN AMBULANCIA";
+          }
           const cuerpo = `NOVEDAD EN REFERENCIA INTERNA.\n${partes.join("\n") || "—"}${
-            reset ? "\nESTADO RESULTANTE: PENDIENTE COORDINACIÓN TRÁMITE" : ""
+            estadoRes ? `\nESTADO RESULTANTE: ${estadoRes}` : ""
           }`;
           return appendNota(cuerpo, detalle);
         }
