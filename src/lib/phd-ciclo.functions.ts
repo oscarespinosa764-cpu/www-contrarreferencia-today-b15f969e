@@ -30,46 +30,16 @@ const avanzarSchema = z.object({
   fechaEvento: z.string().optional(),
 });
 
+// FASE 5D · Cierre — Ruta desactivada: el estado del ciclo es server-authoritative
+// (private.resolver_estado_phd + public.registrar_evento_phd). Se conserva la
+// firma para no romper consumidores, pero rechaza cualquier escritura directa.
 export const avanzarEstadoCiclo = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => avanzarSchema.parse(d))
-  .handler(async ({ data, context }) => {
-    const { supabase } = context;
-    const patch: {
-      estado_ciclo: PhdEstadoCiclo;
-      fecha_aceptacion?: string;
-      fecha_coordinacion_ambulancia?: string;
-      fecha_cierre?: string;
-      fecha_egreso?: string;
-      motivo_cierre?: string;
-      observaciones?: string;
-    } = { estado_ciclo: data.nuevoEstado };
-    const now = data.fechaEvento ?? new Date().toISOString();
-
-    if (data.nuevoEstado.startsWith("ACEPTADO")) {
-      patch.fecha_aceptacion = now;
-    }
-    if (data.nuevoEstado === "AMBULANCIA COORDINADA - PENDIENTE EGRESO") {
-      patch.fecha_coordinacion_ambulancia = now;
-    }
-    if (data.nuevoEstado.startsWith("CERRADO")) {
-      patch.fecha_cierre = now;
-      if (data.nuevoEstado === "CERRADO POR EGRESO") {
-        patch.fecha_egreso = now;
-      } else {
-        patch.motivo_cierre = data.nuevoEstado;
-      }
-    }
-    if (data.observaciones && data.observaciones.trim()) {
-      patch.observaciones = data.observaciones.trim();
-    }
-
-    const { error } = await supabase
-      .from("domiciliarios")
-      .update(patch)
-      .eq("id", data.casoId);
-    if (error) throw new Error(error.message);
-    return { ok: true, estado_ciclo: data.nuevoEstado };
+  .handler(async () => {
+    throw new Error(
+      "El estado del ciclo se calcula en el servidor: registre el evento correspondiente en Seguimiento.",
+    );
   });
 
 const radicarSchema = z.object({
