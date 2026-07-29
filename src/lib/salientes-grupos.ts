@@ -71,6 +71,11 @@ export function clasificarEtapa(estado: string | null | undefined): EtapaSalient
 
   if (/(DESIST|CANCEL|NEGAD|RECHAZ|SUSPEND)/.test(s)) return "DESISTIMIENTOS";
 
+  // Aceptado pero la ambulancia AÚN está por coordinar (PHD/PAD/O2 y salientes).
+  // Debe evaluarse antes que /COORDINAD/ para no confundir
+  // "PENDIENTE COORDINACION DE AMBULANCIA" con "AMBULANCIA COORDINADA".
+  if (/PENDIENTE\s+(DE\s+)?COORDINACION/.test(s)) return "ACEPTADO_SIN_AMBULANCIA";
+
   // Ambulancia coordinada / en traslado / pendiente de egreso.
   if (/COORDINAD/.test(s) || /AMBULANCIA.*(EGRESO|COORDINAD)/.test(s)) {
     return "AMBULANCIA_COORDINADA";
@@ -85,9 +90,15 @@ export function clasificarEtapa(estado: string | null | undefined): EtapaSalient
   return "OTROS";
 }
 
-/** Agrupa una lista de casos por etapa, respetando el orden canónico. */
+
+/**
+ * Agrupa una lista de casos por etapa, respetando el orden canónico.
+ * `getEstado` permite usar otro campo de estado (p. ej. `estado_ciclo` en
+ * PHD / PAD / O2 / Especiales, donde el ciclo es la fuente de verdad).
+ */
 export function agruparPorEtapa<T extends { estado?: string | null }>(
   items: T[],
+  getEstado?: (item: T) => string | null | undefined,
 ): { etapa: EtapaMeta; items: T[] }[] {
   const buckets: Record<EtapaSaliente, T[]> = {
     PENDIENTE_ACEPTACION: [],
@@ -97,8 +108,9 @@ export function agruparPorEtapa<T extends { estado?: string | null }>(
     OTROS: [],
   };
   for (const it of items) {
-    buckets[clasificarEtapa(it.estado)].push(it);
+    buckets[clasificarEtapa(getEstado ? getEstado(it) : it.estado)].push(it);
   }
+
   return ETAPA_ORDEN
     .map((k) => ({ etapa: ETAPAS_META[k], items: buckets[k] }))
     .filter((g) => g.items.length > 0);
