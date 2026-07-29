@@ -2558,9 +2558,9 @@ export function SeguimientoDialog({
                         key={t}
                         value={t}
                         className="whitespace-normal [overflow-wrap:anywhere]"
-                        title={t === T.PERTINENCIA ? REVISION_AUT_LABEL_COMPLETO : t}
+                        title={t === T.PERTINENCIA ? REVISION_AUT_LABEL_COMPLETO : labelTipoSeg(t)}
                       >
-                        {t}
+                        {labelTipoSeg(t)}
                       </SelectItem>
                     ))}
                   </SelectContent>
