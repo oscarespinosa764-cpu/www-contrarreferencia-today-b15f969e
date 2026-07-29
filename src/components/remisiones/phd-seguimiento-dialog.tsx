@@ -263,6 +263,42 @@ export function PhdSeguimientoDialog({
   const canalFinal = canal === "OTRO" ? canalOtro.trim().toUpperCase() : canal;
   const requiereServicio = evento === "ACEPTACION_PROVEEDOR";
   const requiereDescripcion = CON_DESCRIPCION.includes(evento);
+  const esEvolucionDiaria = evento === "EVOLUCION_DIARIA";
+
+  // ¿La EAPB del caso hace seguimientos en plataforma? (catálogo EAPB)
+  const { data: segEnPlataforma = false } = useQuery({
+    queryKey: ["phd-eapb-plataforma", casoId],
+    enabled: open && !!casoId,
+    queryFn: async () => {
+      const { data: caso } = await supabase
+        .from("domiciliarios")
+        .select("eapb")
+        .eq("id", casoId)
+        .maybeSingle();
+      const eapb = String((caso as { eapb?: string } | null)?.eapb ?? "").trim();
+      if (!eapb) return false;
+      const { data: cat } = await supabase
+        .from("catalogos")
+        .select("valor, seguimientos_en_plataforma")
+        .eq("tipo", "EAPB")
+        .eq("activo", true)
+        .ilike("valor", eapb)
+        .maybeSingle();
+      return (cat as { seguimientos_en_plataforma?: boolean } | null)?.seguimientos_en_plataforma === true;
+    },
+  });
+
+  const evoCtx = useMemo(
+    () => ({
+      segEnPlataforma,
+      especialidades: [] as string[],
+      estadoCaso: estado,
+      esTramiteAdministrativo: false,
+      observacion: observaciones,
+    }),
+    [segEnPlataforma, estado, observaciones],
+  );
+  const evoDeriv = useMemo(() => derivarEvolucionDiaria(evo, evoCtx), [evo, evoCtx]);
 
   const errores: string[] = [];
   if (!evento) errores.push("Seleccione el tipo de seguimiento.");
@@ -270,10 +306,12 @@ export function PhdSeguimientoDialog({
   if (requiereServicio && !servicio) errores.push("Seleccione el servicio al que aplica.");
   if (requiereDescripcion && descripcion.trim().length < 3)
     errores.push("Escriba la descripción del seguimiento.");
+  if (esEvolucionDiaria) errores.push(...evoDeriv.errores);
   if (evento === "RADICACION" && !sinRadicado && !numRadicado.trim())
     errores.push("Ingrese el número de radicado o marque 'Sin número'.");
   if (evento === "RADICACION" && sinRadicado && !motivoSinRadicado.trim())
     errores.push("Indique el motivo de no tener radicado.");
+
   if (evento === "ACEPTACION_PROVEEDOR" && !proveedor.trim())
     errores.push("Indique el proveedor que acepta.");
   if (evento === "CONFIRMACION_ENTREGA_OXIGENO" && (!proveedor.trim() || !fecha.trim()))
