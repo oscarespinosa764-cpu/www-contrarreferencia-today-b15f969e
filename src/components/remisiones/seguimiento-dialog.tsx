@@ -2191,7 +2191,42 @@ export function SeguimientoDialog({
         if (!nuevaUnidadNorm) return toast.error("Selecciona la nueva unidad.");
         if (!nuevaCamaNorm) return toast.error("Indica la nueva cama del paciente.");
         if (!hayCambioUnidad)
-          return toast.error("NO SE IDENTIFICARON CAMBIOS EN LA UBICACIÓN DEL PACIENTE.");
+          return toast.error("La nueva ubicación debe ser diferente de la ubicación actual.");
+        // B2 · Referencia Interna: la operación completa (insert seguimiento +
+        // update de la unidad base + auditoría) se ejecuta en una sola
+        // transacción server-side. El servidor es la única autoridad de
+        // unidad/cama anteriores, allowlist, permisos y atomicidad.
+        if (esInterna) {
+          const codigo = RI_UNIDAD_LABEL_A_CODIGO[nuevaUnidadNorm];
+          if (!codigo) return toast.error("Unidad no permitida.");
+          setBusy(true);
+          const { data: rpcData, error: rpcErr } = await supabase.rpc(
+            "registrar_cambio_unidad_ri" as never,
+            {
+              _caso_id: casoId,
+              _nueva_unidad_codigo: codigo,
+              _nueva_cama: nuevaCamaNorm,
+              _observaciones: detalle.trim() || null,
+              _plantilla_indigo: indigoTexto.trim() || null,
+            } as never,
+          );
+          if (rpcErr) {
+            toast.error(rpcErr.message);
+            setBusy(false);
+            return;
+          }
+          const res = (rpcData ?? {}) as { ok?: boolean; error?: string };
+          if (!res.ok) {
+            toast.error(res.error || "No fue posible registrar el cambio de unidad.");
+            setBusy(false);
+            return;
+          }
+          toast.success("Cambio de unidad registrado");
+          resetCampos();
+          setBusy(false);
+          refrescar();
+          return;
+        }
       }
       if (evoRequiereMotivo && !evoMotivoPend.trim())
         return toast.error("Indica el motivo del pendiente");
