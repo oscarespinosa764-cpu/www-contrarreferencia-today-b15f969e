@@ -1117,42 +1117,26 @@ export function NuevoRegistroDialog({
                     ))}
                   </select>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Requiere ambulancia *
-                  </Label>
-                  <select
-                    value={phdRequiereAmb}
-                    onChange={(e) => {
-                      setPhdRequiereAmb(e.target.value);
-                      if (e.target.value !== "SI") setPhdTipoAmb("");
-                    }}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="">Seleccione…</option>
-                    <option value="SI">SÍ</option>
-                    <option value="NO">NO</option>
-                  </select>
-                </div>
-                {phdRequiereAmb === "SI" && (
+                {phdRequiereAmbulancia && (
                   <div className="space-y-1.5">
                     <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                       Tipo de ambulancia *
                     </Label>
                     <select
-                      value={phdTipoAmb}
-                      onChange={(e) => setPhdTipoAmb(e.target.value)}
+                      value={phdTipoAmbCod}
+                      onChange={(e) => setPhdTipoAmbCod(e.target.value)}
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     >
                       <option value="">Seleccione…</option>
-                      {["TAT", "TAN", "TAN-N"].map((o) => (
+                      {TIPOS_AMBULANCIA_CODIGOS.map((o) => (
                         <option key={o} value={o}>
-                          {o}
+                          {TIPO_AMBULANCIA_LABEL[o]}
                         </option>
                       ))}
                     </select>
                   </div>
                 )}
+
                 <Field name="codigo_radicacion_display" label="Código de radicación" defaultValue="Se asigna según la EAPB" readOnly />
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
