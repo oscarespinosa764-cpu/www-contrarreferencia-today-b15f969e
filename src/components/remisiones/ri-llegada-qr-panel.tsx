@@ -28,8 +28,27 @@ type SesionRow = {
   firmante_nombre: string | null;
   firmante_cargo: string | null;
   firmante_empresa: string | null;
+  firmante_telefono: string | null;
+  firmante_es_responsable: boolean | null;
+  responsable_nombre: string | null;
+  responsable_cargo: string | null;
+  tipo_ambulancia: string | null;
+  empresa_declarada: string | null;
   firmado_at: string | null;
   codigo_verificacion: string | null;
+};
+
+export type FirmaLlegadaInfo = {
+  firmadoAtISO: string;
+  codigo: string;
+  firmante_nombre: string | null;
+  firmante_cargo: string | null;
+  firmante_telefono: string | null;
+  firmante_es_responsable: boolean | null;
+  responsable_nombre: string | null;
+  responsable_cargo: string | null;
+  empresa: string | null;
+  tipo_ambulancia: string | null;
 };
 
 type Props = {
@@ -39,7 +58,7 @@ type Props = {
   unidadDestino?: string | null;
   radicadoCaso?: string | null;
   /** Se dispara una sola vez cuando el firmante remoto completa la firma. */
-  onFirmada?: (info: { firmadoAtISO: string; codigo: string; firmante?: string | null }) => void;
+  onFirmada?: (info: FirmaLlegadaInfo) => void;
 };
 
 export function RiLlegadaQRPanel({ casoId, paciente, documento, unidadDestino, radicadoCaso, onFirmada }: Props) {
