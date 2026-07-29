@@ -1750,6 +1750,36 @@ export function SeguimientoDialog({
             unidad_nueva: nuevaUnidadNorm || null,
             cama_nueva: nuevaCamaNorm || null,
           };
+        case TI.OTRO:
+          return {
+            ri_evento: "OTRO",
+            cual: riOtroCual.trim(),
+            observaciones: detalle.trim() || null,
+          };
+        case TI.NOVEDADES: {
+          const categorias: string[] = [];
+          if (riNovInterna) categorias.push("INTERNA");
+          if (riNovExterna) categorias.push("EXTERNA");
+          const out: Record<string, unknown> = {
+            ri_evento: "NOVEDADES",
+            categorias,
+            observaciones: detalle.trim() || null,
+          };
+          if (riNovInterna) {
+            out.interna_codigo = riNovInternaCod;
+            if (riNovInternaCod === "REPROGRAMACION") {
+              out.reprogramacion_motivos = riNovReprogMotivos;
+              if (riNovReprogFH) out.fecha_hora_reprogramada = riNovReprogFH;
+            }
+          }
+          if (riNovExterna) {
+            out.externa_codigo = riNovExternaCod;
+            if (riNovExternaCod === "NO_ACEPTACION_PACIENTE_FAMILIAR") {
+              out.paciente_familiar_motivo = riNovPacFam;
+            }
+          }
+          return out;
+        }
         default:
           return null;
       }
