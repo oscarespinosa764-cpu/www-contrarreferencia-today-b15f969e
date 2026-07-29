@@ -2157,6 +2157,11 @@ export function SeguimientoDialog({
         return toast.error("Indica las observaciones que justifican el nuevo radicado");
     } else {
       if (!tipoSeg) return toast.error("Selecciona el tipo de seguimiento");
+      if (!canalFinalDe(canal, canalOtro)) return toast.error("Selecciona el canal de gestión");
+      if (!esPendiente && tipoSeg === T.INFO_TRAMITE) {
+        const errs = erroresInformacionTramite(infoTramite);
+        if (errs.length) return toast.error(errs[0]);
+      }
 
       // Validaciones por tipo (salientes / PHD).
       if (esRadicado && generaCodigo && !radicado.trim())
