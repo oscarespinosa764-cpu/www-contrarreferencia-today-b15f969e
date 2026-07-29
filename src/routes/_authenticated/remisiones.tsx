@@ -751,13 +751,44 @@ function ListaGenerica({
   ultGestiones?: Record<string, { fecha: string | null; responsable: string | null }>;
 }) {
   if (items.length === 0) return <VacioModulo />;
-  // En PHD / PAD / O2 / Especiales la fuente de verdad del ciclo es
-  // `estado_ciclo` (server-authoritative); `estado` es solo su espejo.
+
+  // PHD / PAD / O2 / Especiales: segmentación por los estados canónicos del
+  // motor de requisitos (Fase 5D · Bloque B). `estado_ciclo` es la verdad.
+  if (tipo === "phd") {
+    const segmentos = agruparPhdPorSegmento(
+      items as Array<Record<string, any> & { estado_ciclo?: string | null; estado?: string | null }>,
+    );
+    return (
+      <div className="grid gap-4">
+        {segmentos.map(({ segmento, items: bucket }) => (
+          <GrupoEtapa
+            key={segmento.key}
+            etapa={{
+              key: segmento.key,
+              label: segmento.label,
+              descripcion: segmento.descripcion,
+              color: segmento.color,
+              bar: segmento.bar,
+            }}
+            count={bucket.length}
+          >
+            {bucket.map((it) => (
+              <CasoGenericoCard
+                key={it.id as string}
+                tipo={tipo}
+                r={it}
+                canEdit={canEdit}
+                ultimaGestion={ultGestiones?.[it.id as string] ?? null}
+              />
+            ))}
+          </GrupoEtapa>
+        ))}
+      </div>
+    );
+  }
+
   const grupos = agruparPorEtapa(
     items as Array<Record<string, any> & { estado?: string | null }>,
-    tipo === "phd"
-      ? (it) => (it.estado_ciclo as string | null) ?? it.estado
-      : undefined,
   );
 
   return (
@@ -778,6 +809,7 @@ function ListaGenerica({
     </div>
   );
 }
+
 
 function ListaInternas({
   items,
