@@ -2,6 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
+import {
+  SERVICIOS_CODIGOS,
+  SERVICIO_LABEL,
+  TIPOS_AMBULANCIA_CODIGOS,
+  TIPO_AMBULANCIA_LABEL,
+  MAX_TIPOS_SOLICITUD,
+  type ServicioCodigo,
+} from "@/lib/phd-requisitos";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -58,10 +66,9 @@ export function NuevoRegistroDialog({
 
   // --- PHD/PAD/O2/Especiales ---
   const [phdEapb, setPhdEapb] = useState("");
-  const [phdTipoSolicitud, setPhdTipoSolicitud] = useState("");
+  const [phdTipos, setPhdTipos] = useState<ServicioCodigo[]>([]);
   const [phdUnidadEspecial, setPhdUnidadEspecial] = useState("");
-  const [phdRequiereAmb, setPhdRequiereAmb] = useState("");
-  const [phdTipoAmb, setPhdTipoAmb] = useState("");
+  const [phdTipoAmbCod, setPhdTipoAmbCod] = useState("");
   const [phdRegimen, setPhdRegimen] = useState("");
 
   // --- Ref. Interna ---
@@ -240,8 +247,26 @@ export function NuevoRegistroDialog({
     [eapbList, phdEapb],
   );
   const phdTienePlataforma = (phdEapbActual?.extra1 ?? "").toUpperCase() === "SI";
+  // Texto histórico derivado (evidencia legible); la autoridad es `phdTipos`.
+  const phdTipoSolicitud = phdTipos.map((t) => SERVICIO_LABEL[t]).join(" + ");
   const phdGenera = phdGeneraCodigo(phdTipoSolicitud, phdEapbActual ?? undefined);
-  const phdEsUnidadEspecial = /unidad/i.test(phdTipoSolicitud);
+  const phdEsUnidadEspecial = phdTipos.includes("UNIDADES_ESPECIALES");
+  const phdRequiereAmbulancia = phdTipos.includes("AMBULANCIA_EGRESO");
+  const togglePhdTipo = (code: ServicioCodigo) => {
+    setPhdTipos((prev) => {
+      if (prev.includes(code)) {
+        const next = prev.filter((x) => x !== code);
+        if (code === "UNIDADES_ESPECIALES") setPhdUnidadEspecial("");
+        if (code === "AMBULANCIA_EGRESO") setPhdTipoAmbCod("");
+        return next;
+      }
+      if (prev.length >= MAX_TIPOS_SOLICITUD) {
+        toast.error(`Máximo ${MAX_TIPOS_SOLICITUD} tipos de solicitud.`);
+        return prev;
+      }
+      return [...prev, code];
+    });
+  };
 
 
   const toggleList = (arr: string[], v: string, set: (x: string[]) => void) =>
@@ -285,10 +310,9 @@ export function NuevoRegistroDialog({
     setDeptosSel([]);
     setDeptoOtro("");
     setPhdEapb("");
-    setPhdTipoSolicitud("");
+    setPhdTipos([]);
     setPhdUnidadEspecial("");
-    setPhdRequiereAmb("");
-    setPhdTipoAmb("");
+    setPhdTipoAmbCod("");
     setPhdRegimen("");
     setInternaEapb("");
     setRiTipoSol("");
@@ -464,14 +488,15 @@ export function NuevoRegistroDialog({
     if (!String(f.get("cie10") || "").trim()) return toast.error("Indica el CIE-10");
     if (phdTratantes.length === 0)
       return toast.error("Agrega al menos una especialidad tratante");
-    if (!phdTipoSolicitud) return toast.error("Selecciona el tipo de solicitud");
+    if (phdTipos.length === 0) return toast.error("Selecciona al menos un tipo de solicitud");
+    if (phdTipos.length > MAX_TIPOS_SOLICITUD)
+      return toast.error(`Máximo ${MAX_TIPOS_SOLICITUD} tipos de solicitud`);
     if (!phdEapb.trim()) return toast.error("Indica la EAPB / ERP");
     if (!phdRegimen) return toast.error("Selecciona el régimen");
-    if (!phdRequiereAmb) return toast.error("Indica si requiere ambulancia");
-    if (phdRequiereAmb === "SI" && !phdTipoAmb)
+    if (phdRequiereAmbulancia && !phdTipoAmbCod)
       return toast.error("Selecciona el tipo de ambulancia");
-    if (phdEsUnidadEspecial && !phdUnidadEspecial.trim())
-      return toast.error("Indica la unidad especial");
+    if (phdEsUnidadEspecial && phdUnidadEspecial.trim().length < 3)
+      return toast.error("Indica la unidad especial solicitada");
 
     const { data: u } = await supabase.auth.getUser();
     const inicioRaw = String(f.get("fecha_inicio") || "");
@@ -487,7 +512,11 @@ export function NuevoRegistroDialog({
       edad: String(f.get("edad")),
       cie10: String(f.get("cie10")),
       especialidades_tratantes: phdTratantes.join(", "),
+      // Evidencia legible (histórico) — la autoridad operativa es `tipos_solicitud`.
       tipo_solicitud: phdTipoSolicitud,
+      tipos_solicitud: phdTipos,
+      unidad_especial_solicitada: phdEsUnidadEspecial ? phdUnidadEspecial.trim() : null,
+      tipo_ambulancia_codigo: phdRequiereAmbulancia ? phdTipoAmbCod : null,
       tipo_solicitud_detalle: phdEsUnidadEspecial ? phdUnidadEspecial.trim() : null,
       unidad_especial: phdEsUnidadEspecial ? phdUnidadEspecial.trim() : null,
       eapb: phdEapb || null,
@@ -495,13 +524,17 @@ export function NuevoRegistroDialog({
       codigo_radicacion: codigoInicial(genera),
       eapb_tiene_plataforma: phdTienePlataforma,
       eapb_genera_codigo: genera,
-      requiere_ambulancia: phdRequiereAmb,
-      tipo_ambulancia: phdRequiereAmb === "SI" ? phdTipoAmb : null,
+      requiere_ambulancia: phdRequiereAmbulancia ? "SI" : "NO",
+      tipo_ambulancia: phdRequiereAmbulancia
+        ? TIPO_AMBULANCIA_LABEL[phdTipoAmbCod as keyof typeof TIPO_AMBULANCIA_LABEL]
+        : null,
       contacto_nombre: String(f.get("contacto_nombre")),
       contacto_parentesco: String(f.get("contacto_parentesco")),
       contacto_telefono: String(f.get("contacto_telefono")),
       observaciones: String(f.get("observaciones")),
+      estado_ciclo: "PENDIENTE ACEPTACION",
       estado: "PENDIENTE ACEPTACION",
+      ciclo_inicio_at: new Date().toISOString(),
       evolucion: "sin",
       created_by: u.user?.id,
     })
@@ -515,7 +548,7 @@ export function NuevoRegistroDialog({
           modulo: "domiciliarios",
           tabla: "domiciliarios",
           registroId: phdIns?.id ?? null,
-          detalles: { servicio: String(f.get("servicio")), tipo_solicitud: phdTipoSolicitud },
+          detalles: { servicio: String(f.get("servicio")), tipos_solicitud: phdTipos },
         },
       });
     } catch {
