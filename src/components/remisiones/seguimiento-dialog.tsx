@@ -435,6 +435,14 @@ export function SeguimientoDialog({
   const [riNovReprogFH, setRiNovReprogFH] = useState(""); // ISO
   const [riNovExternaCod, setRiNovExternaCod] = useState("");
   const [riNovPacFam, setRiNovPacFam] = useState("");
+  // B1.2 · Reprogramación sin nueva fecha (mutuamente exclusiva con la fecha).
+  const [riNovReprogSinFecha, setRiNovReprogSinFecha] = useState(false);
+  // B1.2 · Cancelación estructurada del trámite (RI).
+  const [riCancelMotivoCod, setRiCancelMotivoCod] = useState<"" | "NO_ACEPTACION_PACIENTE_FAMILIAR" | "OTRO">("");
+  const [riCancelPacFam, setRiCancelPacFam] = useState("");
+  const [riCancelOtroTexto, setRiCancelOtroTexto] = useState("");
+
+
 
 
   // Revisión autorización estancia hospitalaria (seguimiento de trazabilidad)
