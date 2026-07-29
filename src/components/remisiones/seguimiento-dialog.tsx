@@ -900,15 +900,27 @@ export function SeguimientoDialog({
           : [];
 
 
-  // Inicializar al abrir.
+  // Inicializar al abrir. Solo debe correr cuando el diálogo TRANSICIONA
+  // a abierto: si depende de props reactivos (evolucionDetalle, listas,
+  // estadoActual), las invalidaciones que dispara el diálogo hijo de
+  // entrega documental (["remisiones"], ["phd-seguimientos"]) vuelven a
+  // disparar este efecto y borran tipoSeg / indigoEditada / entregaPreparada,
+  // lo que a su vez vacía la plantilla Índigo recién transferida.
+  const initRef = useRef(false);
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      initRef.current = false;
+      return;
+    }
+    if (initRef.current) return;
+    initRef.current = true;
     const parsed = parseEvolucionDetalle(evolucionDetalle, especialidadesList);
     setEvoDetalle(parsed);
     setInicial(parseEvolucionDetalle(evolucionDetalle, especialidadesList));
     setMotivoEvo("");
     setEstadoCaso(estadoActual ?? "");
     setIndigoEditada(false);
+    setEntregaPreparada(false);
     setTipoSeg("");
     setEvoEsp({});
     setEspCierres({});
