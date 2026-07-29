@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.registrar_cambio_unidad_ri(uuid, text, text, text, text) FROM anon, authenticated, PUBLIC;
+GRANT EXECUTE ON FUNCTION public.registrar_cambio_unidad_ri(uuid, text, text, text, text) TO service_role;
