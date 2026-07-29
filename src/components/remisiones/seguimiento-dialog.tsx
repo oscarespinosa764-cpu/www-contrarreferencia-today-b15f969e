@@ -2689,15 +2689,27 @@ export function SeguimientoDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] min-w-0 flex-col gap-0 overflow-hidden p-0 sm:max-w-[56rem]">
-        {/* Encabezado fijo */}
+        {/* Encabezado fijo unificado (FASE 5E · Bloque A) */}
         <DialogHeader className="shrink-0 border-b border-border/60 px-4 py-3 pr-10 text-left sm:px-6">
-          <DialogTitle className="break-words text-base leading-snug">
-            Seguimiento · {paciente}
+          <DialogTitle className="break-words text-base uppercase leading-snug tracking-wide">
+            {esSaliente
+              ? "Seguimientos de remisión"
+              : esInterna
+                ? "Seguimientos de referencia interna"
+                : esPendiente
+                  ? "Seguimientos de pendiente"
+                  : "Seguimientos PHD / PAD / O2 / Especiales"}
           </DialogTitle>
         </DialogHeader>
 
         {/* Cuerpo desplazable (único con scroll vertical, barra invisible) */}
         <div className="min-w-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-4 py-4 scrollbar-invisible sm:px-6">
+          <SeguimientoHeaderCard
+            paciente={paciente}
+            documento={documento}
+            estado={estadoActual}
+            nota="Estado del caso — trazabilidad institucional."
+          />
           {/* Aviso de caso cerrado: modo consulta, sin nuevos seguimientos */}
           {casoCerrado && (
             <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm font-semibold text-destructive">
