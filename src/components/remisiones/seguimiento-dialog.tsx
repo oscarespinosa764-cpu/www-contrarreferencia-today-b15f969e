@@ -2200,22 +2200,26 @@ export function SeguimientoDialog({
           const codigo = RI_UNIDAD_LABEL_A_CODIGO[nuevaUnidadNorm];
           if (!codigo) return toast.error("Unidad no permitida.");
           setBusy(true);
-          const { data: rpcData, error: rpcErr } = await supabase.rpc(
-            "registrar_cambio_unidad_ri" as never,
-            {
-              _caso_id: casoId,
-              _nueva_unidad_codigo: codigo,
-              _nueva_cama: nuevaCamaNorm,
-              _observaciones: detalle.trim() || null,
-              _plantilla_indigo: indigoTexto.trim() || null,
-            } as never,
-          );
-          if (rpcErr) {
-            toast.error(rpcErr.message);
+          let res: { ok?: boolean; error?: string } = {};
+          try {
+            res = await registrarCambioUnidadRI({
+              data: {
+                casoId,
+                nuevaUnidadCodigo: codigo as
+                  | "UCI_ADULTOS"
+                  | "URGENCIAS"
+                  | "HOSPITALIZACION"
+                  | "QUIROFANO",
+                nuevaCama: nuevaCamaNorm,
+                observaciones: detalle.trim() || null,
+                plantillaIndigo: indigoTexto.trim() || null,
+              },
+            });
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Error de red");
             setBusy(false);
             return;
           }
-          const res = (rpcData ?? {}) as { ok?: boolean; error?: string };
           if (!res.ok) {
             toast.error(res.error || "No fue posible registrar el cambio de unidad.");
             setBusy(false);
