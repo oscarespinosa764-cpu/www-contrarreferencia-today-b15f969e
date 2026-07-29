@@ -71,6 +71,11 @@ export function clasificarEtapa(estado: string | null | undefined): EtapaSalient
 
   if (/(DESIST|CANCEL|NEGAD|RECHAZ|SUSPEND)/.test(s)) return "DESISTIMIENTOS";
 
+  // Aceptado pero la ambulancia AÚN está por coordinar (PHD/PAD/O2 y salientes).
+  // Debe evaluarse antes que /COORDINAD/ para no confundir
+  // "PENDIENTE COORDINACION DE AMBULANCIA" con "AMBULANCIA COORDINADA".
+  if (/PENDIENTE\s+(DE\s+)?COORDINACION/.test(s)) return "ACEPTADO_SIN_AMBULANCIA";
+
   // Ambulancia coordinada / en traslado / pendiente de egreso.
   if (/COORDINAD/.test(s) || /AMBULANCIA.*(EGRESO|COORDINAD)/.test(s)) {
     return "AMBULANCIA_COORDINADA";
@@ -84,6 +89,7 @@ export function clasificarEtapa(estado: string | null | undefined): EtapaSalient
 
   return "OTROS";
 }
+
 
 /** Agrupa una lista de casos por etapa, respetando el orden canónico. */
 export function agruparPorEtapa<T extends { estado?: string | null }>(
