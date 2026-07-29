@@ -3366,11 +3366,20 @@ export function SeguimientoDialog({
                         : null
                     }
                     onEntregaCompletada={(res) => {
-                      // Fase 5C · A.9: transferir la plantilla Índigo canónica
+                      // Fase 5C · A.1: transferir la plantilla Índigo canónica
                       // al textarea principal sin registrar el seguimiento.
-                      // El usuario decide cuándo pulsar "Registrar seguimiento".
+                      // Se marca `entregaPreparada` para que ningún efecto
+                      // posterior (invalidaciones, reinit, cambios de deps)
+                      // pueda vaciar la plantilla recién recibida.
+                      if (!res?.plantillaIndigo || !res.plantillaIndigo.trim()) {
+                        toast.error(
+                          "La firma está registrada, pero no fue posible preparar la plantilla para Índigo.",
+                        );
+                        return;
+                      }
                       setIndigoTexto(res.plantillaIndigo);
                       setIndigoEditada(true);
+                      setEntregaPreparada(true);
                     }}
                   />
                   {aceptacionCargando && entregaOpen && (
