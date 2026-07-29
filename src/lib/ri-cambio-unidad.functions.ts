@@ -36,6 +36,10 @@ export const registrarCambioUnidadRI = createServerFn({ method: "POST" })
       _nueva_cama: data.nuevaCama,
       _observaciones: data.observaciones ?? null,
       _plantilla_indigo: data.plantillaIndigo ?? null,
+      // Actor real validado por requireSupabaseAuth + is_active_member. La RPC
+      // corre con service_role, por lo que auth.uid() es NULL; pasar el UID
+      // aquí garantiza atribución correcta de auditoría y evita "No autenticado".
+      _actor_uid: context.userId,
     });
     if (error) return { ok: false, error: error.message };
     return (rpcData ?? { ok: false, error: "Sin respuesta" }) as {

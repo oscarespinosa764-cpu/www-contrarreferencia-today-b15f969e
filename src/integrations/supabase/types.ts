@@ -4041,6 +4041,7 @@ export type Database = {
       }
       registrar_cambio_unidad_ri: {
         Args: {
+          _actor_uid?: string
           _caso_id: string
           _nueva_cama: string
           _nueva_unidad_codigo: string
