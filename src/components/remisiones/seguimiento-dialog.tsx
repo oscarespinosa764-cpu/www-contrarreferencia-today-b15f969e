@@ -178,6 +178,19 @@ const RI_ESPECIALES = new Set([
   "EVACUACION_SEDES_AMBULATORIAS",
 ]);
 
+// B2 · Allowlist estricta de unidades para CAMBIO DE UNIDAD en Referencia Interna.
+// El código es la fuente de verdad para el servidor (RPC atómica); el label es
+// solo presentacional. NO agregar unidades sin autorización explícita.
+const RI_UNIDADES_ALLOW: ReadonlyArray<{ codigo: string; label: string }> = [
+  { codigo: "UCI_ADULTOS", label: "UCI ADULTOS" },
+  { codigo: "URGENCIAS", label: "URGENCIAS" },
+  { codigo: "HOSPITALIZACION", label: "HOSPITALIZACIÓN" },
+  { codigo: "QUIROFANO", label: "QUIRÓFANO" },
+];
+const RI_UNIDAD_LABEL_A_CODIGO: Record<string, string> = Object.fromEntries(
+  RI_UNIDADES_ALLOW.map((u) => [u.label, u.codigo]),
+);
+
 /** Determina el próximo paso permitido para un caso de Referencia Interna.
  *
  * B3.1: la novedad EXTERNA "DESCOMPENSACIÓN HEMODINÁMICA" es evento de
