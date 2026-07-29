@@ -2046,6 +2046,9 @@ export function SeguimientoDialog({
   const resetCampos = () => {
     setDetalle("");
     setTipoSeg("");
+    setCanal("");
+    setCanalOtro("");
+    setInfoTramite(INFORMACION_TRAMITE_INICIAL);
     setEstadoSolicitud("");
     setNombreContacto("");
     setTelefono("");
