@@ -27,10 +27,35 @@ import {
   splitEspecialidades,
   tiempoChip,
 } from "@/lib/remisiones-utils";
+import {
+  SERVICIO_LABEL,
+  TIPO_AMBULANCIA_LABEL,
+  normalizarTipos,
+  type TipoAmbulanciaCodigo,
+} from "@/lib/phd-requisitos";
 import { toast } from "sonner";
 
 type Row = Record<string, any>;
 export type GenericoTipo = "phd" | "interna" | "pendiente";
+
+/** Etiquetas canónicas de los servicios solicitados (fuente: tipos_solicitud). */
+function serviciosLabel(r: Row): string {
+  const tipos = normalizarTipos(r.tipos_solicitud);
+  if (tipos.length > 0) return tipos.map((t) => SERVICIO_LABEL[t]).join(" · ");
+  return r.tipo_solicitud ?? "";
+}
+
+/** Tipo de ambulancia canónico (fuente: tipo_ambulancia_codigo). */
+function ambulanciaLabel(r: Row): string {
+  const cod = r.tipo_ambulancia_codigo as TipoAmbulanciaCodigo | null | undefined;
+  if (cod && TIPO_AMBULANCIA_LABEL[cod]) return TIPO_AMBULANCIA_LABEL[cod];
+  return r.tipo_ambulancia ?? "";
+}
+
+/** Unidad especial canónica. */
+function unidadEspecialLabel(r: Row): string {
+  return r.unidad_especial_solicitada ?? r.unidad_especial ?? r.tipo_solicitud_detalle ?? "";
+}
 
 const SERVICIO_OPCIONES = ["URGENCIAS", "HOSPITALIZACION", "UCI ADULTOS", "QUIROFANO"];
 const PRIORIDAD_OPCIONES = ["ALTA", "MEDIA", "BAJA"];
