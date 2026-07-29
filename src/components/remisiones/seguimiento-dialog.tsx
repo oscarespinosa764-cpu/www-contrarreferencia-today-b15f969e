@@ -184,9 +184,10 @@ function siguientePasoRI(
   tipoSolicitud: string | null | undefined,
 ): string | null {
   const especial = RI_ESPECIALES.has((tipoSolicitud ?? "").toUpperCase().trim());
+  const IGNORAR = new Set(["CAMBIO DE UNIDAD", "OTRO", "NOVEDADES"]);
   const ultimo = (historial ?? [])
     .map((h) => (h.tipo_seguimiento || "").toUpperCase())
-    .find((t) => t && t !== "CAMBIO DE UNIDAD");
+    .find((t) => t && !IGNORAR.has(t));
   if (especial) {
     if (!ultimo) return TI.TEP_ACTIVACION;
     if (ultimo === TI.TEP_ACTIVACION.toUpperCase()) return TI.AMB_COORDINADA_ESP;
