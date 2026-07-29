@@ -452,7 +452,7 @@ export function PhdSeguimientoDialog({
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Fecha y hora del evento</Label>
-                  <AppDateTimeInput value={fecha} onChange={setFecha} />
+                  <AppDateTimeInput name="phd_fecha_evento" value={fecha} onChange={setFecha} />
                 </div>
               </div>
             )}
@@ -477,7 +477,7 @@ export function PhdSeguimientoDialog({
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Fecha y hora de radicación</Label>
-                  <AppDateTimeInput value={fecha} onChange={setFecha} />
+                  <AppDateTimeInput name="phd_fecha_evento" value={fecha} onChange={setFecha} />
                 </div>
                 <label className="col-span-full flex items-center gap-2 text-xs">
                   <input
@@ -518,7 +518,7 @@ export function PhdSeguimientoDialog({
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Fecha y hora del evento</Label>
-                  <AppDateTimeInput value={fecha} onChange={setFecha} />
+                  <AppDateTimeInput name="phd_fecha_evento" value={fecha} onChange={setFecha} />
                 </div>
               </div>
             )}
@@ -534,7 +534,7 @@ export function PhdSeguimientoDialog({
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Fecha y hora de entrega *</Label>
-                  <AppDateTimeInput value={fecha} onChange={setFecha} />
+                  <AppDateTimeInput name="phd_fecha_evento" value={fecha} onChange={setFecha} />
                 </div>
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label className="text-xs">Recibe / responsable</Label>
@@ -580,7 +580,7 @@ export function PhdSeguimientoDialog({
                 </div>
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label className="text-xs">Fecha y hora coordinada *</Label>
-                  <AppDateTimeInput value={fecha} onChange={setFecha} />
+                  <AppDateTimeInput name="phd_fecha_evento" value={fecha} onChange={setFecha} />
                 </div>
               </div>
             )}
@@ -612,7 +612,7 @@ export function PhdSeguimientoDialog({
             {evento === "CIERRE_POR_EGRESO" && (
               <div className="space-y-1.5">
                 <Label className="text-xs">Fecha y hora real del egreso *</Label>
-                <AppDateTimeInput value={fecha} onChange={setFecha} />
+                <AppDateTimeInput name="phd_fecha_evento" value={fecha} onChange={setFecha} />
                 <p className="text-[11px] text-muted-foreground">
                   El responsable queda registrado automáticamente con el usuario de la sesión.
                 </p>
