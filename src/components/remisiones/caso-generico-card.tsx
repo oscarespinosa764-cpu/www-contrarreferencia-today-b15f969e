@@ -377,9 +377,12 @@ export function CasoGenericoCard({
             ) : (
               <Dato label="Tipo solicitud" value={r.tipo_solicitud} />
             )}
-            <Dato label={tipo === "phd" ? "Tipo solicitud" : "Tipo ambulancia"} value={tipo === "phd" ? r.tipo_solicitud : r.tipo_ambulancia} />
-            {tipo === "phd" && (
-              <Dato label="Tipo ambulancia" value={r.tipo_ambulancia} />
+            <Dato
+              label={tipo === "phd" ? "Servicios solicitados" : "Tipo ambulancia"}
+              value={tipo === "phd" ? serviciosLabel(r) : r.tipo_ambulancia}
+            />
+            {tipo === "phd" && ambulanciaLabel(r) && (
+              <Dato label="Tipo ambulancia" value={ambulanciaLabel(r)} />
             )}
             {evo && (
               <Dato
