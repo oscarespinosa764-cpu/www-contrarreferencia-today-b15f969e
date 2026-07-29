@@ -150,6 +150,9 @@ const TI = {
   AMB_COORDINADA_ESP: "AMBULANCIA COORDINADA",
   CIERRE_CONCLUSION: "CIERRE POR CULMINACIÓN DE SOLICITUD",
   CANCELACION_RI: "CANCELACIÓN DEL TRÁMITE",
+  // B3 · Trazabilidad permanente (no altera la secuencia canónica).
+  OTRO: "OTRO",
+  NOVEDADES: "NOVEDADES",
 } as const;
 
 // Labels visibles (Fase 5C · B1). No modifican el código persistido.
@@ -181,9 +184,10 @@ function siguientePasoRI(
   tipoSolicitud: string | null | undefined,
 ): string | null {
   const especial = RI_ESPECIALES.has((tipoSolicitud ?? "").toUpperCase().trim());
+  const IGNORAR = new Set(["CAMBIO DE UNIDAD", "OTRO", "NOVEDADES"]);
   const ultimo = (historial ?? [])
     .map((h) => (h.tipo_seguimiento || "").toUpperCase())
-    .find((t) => t && t !== "CAMBIO DE UNIDAD");
+    .find((t) => t && !IGNORAR.has(t));
   if (especial) {
     if (!ultimo) return TI.TEP_ACTIVACION;
     if (ultimo === TI.TEP_ACTIVACION.toUpperCase()) return TI.AMB_COORDINADA_ESP;
@@ -385,6 +389,17 @@ export function SeguimientoDialog({
   // Referencia interna — flujo especial TEP.
   const [riTepProveedor, setRiTepProveedor] = useState("");
   const [riTepFecha, setRiTepFecha] = useState(""); // "YYYY-MM-DDTHH:mm"
+
+  // Referencia interna — B3 · OTRO (trazabilidad permanente).
+  const [riOtroCual, setRiOtroCual] = useState("");
+  // Referencia interna — B3 · NOVEDADES (categorías INTERNA/EXTERNA).
+  const [riNovInterna, setRiNovInterna] = useState(false);
+  const [riNovExterna, setRiNovExterna] = useState(false);
+  const [riNovInternaCod, setRiNovInternaCod] = useState("");
+  const [riNovReprogMotivos, setRiNovReprogMotivos] = useState<string[]>([]);
+  const [riNovReprogFH, setRiNovReprogFH] = useState(""); // ISO
+  const [riNovExternaCod, setRiNovExternaCod] = useState("");
+  const [riNovPacFam, setRiNovPacFam] = useState("");
 
 
   // Revisión autorización estancia hospitalaria (seguimiento de trazabilidad)
@@ -902,6 +917,8 @@ export function SeguimientoDialog({
     if (activo) arr.push(T.CAMBIO_UNIDAD);
     // Acción terminal de cancelación siempre disponible mientras esté activo.
     if (activo && proximo !== TI.CANCELACION_RI) arr.push(TI.CANCELACION_RI);
+    // B3: OTRO y NOVEDADES son trazabilidad permanente mientras el caso esté activo.
+    if (activo) arr.push(TI.OTRO, TI.NOVEDADES);
     return arr;
   }, [historial, casoInterna]);
 
@@ -946,6 +963,14 @@ export function SeguimientoDialog({
     setRiFirmaLlegada(null);
     setRiLlegFecha("");
     setRiLlegHora("");
+    setRiOtroCual("");
+    setRiNovInterna(false);
+    setRiNovExterna(false);
+    setRiNovInternaCod("");
+    setRiNovReprogMotivos([]);
+    setRiNovReprogFH("");
+    setRiNovExternaCod("");
+    setRiNovPacFam("");
   }, [open, evolucionDetalle, especialidadesList, estadoActual]);
 
   // Prefill desde el caso.
@@ -1252,6 +1277,57 @@ export function SeguimientoDialog({
             `CAMBIO DE UNIDAD.\nUNIDAD ANTERIOR: ${unidadActual || "UNIDAD ACTUAL NO REGISTRADA"}\nCAMA ANTERIOR: ${camaActual || "CAMA ACTUAL NO REGISTRADA"}\nNUEVA UNIDAD: ${nuevaUnidadNorm || "—"}\nNUEVA CAMA: ${nuevaCamaNorm || "—"}\nFECHA/HORA: ${new Date().toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })}`,
             detalle,
           );
+        case TI.OTRO:
+          return appendNota(
+            `OTRO — ${riOtroCual.trim() || "—"}`,
+            detalle,
+          );
+        case TI.NOVEDADES: {
+          const partes: string[] = [];
+          if (riNovInterna) {
+            const etiquetas: Record<string, string> = {
+              EQUIPO_FALLA: "FALLA DEL EQUIPO",
+              REPROGRAMACION: "REPROGRAMACIÓN",
+              DESCOMPENSACION_HEMODINAMICA: "DESCOMPENSACIÓN HEMODINÁMICA",
+              NO_DISPONIBILIDAD_TECNICO: "NO DISPONIBILIDAD DE PERSONAL TÉCNICO",
+            };
+            const et = etiquetas[riNovInternaCod] ?? riNovInternaCod;
+            let l = `INTERNA: ${et || "—"}`;
+            if (riNovInternaCod === "REPROGRAMACION") {
+              const motLbl: Record<string, string> = {
+                RETRASO_AGENDA: "RETRASO DE LA AGENDA",
+                IMPOSIBILIDAD_TOMA_EXAMEN_PREVIO: "IMPOSIBILIDAD DE TOMA DE EXAMEN PREVIO",
+              };
+              const mots = riNovReprogMotivos.map((m) => motLbl[m] ?? m).join(", ");
+              l += ` — MOTIVOS: ${mots || "—"}`;
+              if (riNovReprogFH) {
+                const d = new Date(riNovReprogFH);
+                l += ` — NUEVA FECHA/HORA: ${d.toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })}`;
+              }
+            }
+            partes.push(l);
+          }
+          if (riNovExterna) {
+            const etiquetas: Record<string, string> = {
+              AMBULANCIA_SIN_DISPONIBILIDAD: "AMBULANCIA SIN DISPONIBILIDAD",
+              RED_NO_CONTRATADA: "RED NO CONTRATADA",
+              NO_ACEPTACION_PACIENTE_FAMILIAR: "NO ACEPTACIÓN POR PACIENTE/FAMILIAR",
+            };
+            let l = `EXTERNA: ${etiquetas[riNovExternaCod] ?? riNovExternaCod ?? "—"}`;
+            if (riNovExternaCod === "NO_ACEPTACION_PACIENTE_FAMILIAR") {
+              const pfLbl: Record<string, string> = {
+                ADULTO_MAYOR_SIN_ACOMPANANTE: "ADULTO MAYOR SIN ACOMPAÑANTE",
+                FAMILIAR_NO_PERMITE_TRASLADO: "FAMILIAR NO PERMITE EL TRASLADO",
+              };
+              l += ` — ${pfLbl[riNovPacFam] ?? riNovPacFam ?? "—"}`;
+            }
+            partes.push(l);
+          }
+          return appendNota(
+            `NOVEDAD EN REFERENCIA INTERNA.\n${partes.join("\n") || "—"}`,
+            detalle,
+          );
+        }
         default:
           return "";
       }
@@ -1674,6 +1750,36 @@ export function SeguimientoDialog({
             unidad_nueva: nuevaUnidadNorm || null,
             cama_nueva: nuevaCamaNorm || null,
           };
+        case TI.OTRO:
+          return {
+            ri_evento: "OTRO",
+            cual: riOtroCual.trim(),
+            observaciones: detalle.trim() || null,
+          };
+        case TI.NOVEDADES: {
+          const categorias: string[] = [];
+          if (riNovInterna) categorias.push("INTERNA");
+          if (riNovExterna) categorias.push("EXTERNA");
+          const out: Record<string, unknown> = {
+            ri_evento: "NOVEDADES",
+            categorias,
+            observaciones: detalle.trim() || null,
+          };
+          if (riNovInterna) {
+            out.interna_codigo = riNovInternaCod;
+            if (riNovInternaCod === "REPROGRAMACION") {
+              out.reprogramacion_motivos = riNovReprogMotivos;
+              if (riNovReprogFH) out.fecha_hora_reprogramada = riNovReprogFH;
+            }
+          }
+          if (riNovExterna) {
+            out.externa_codigo = riNovExternaCod;
+            if (riNovExternaCod === "NO_ACEPTACION_PACIENTE_FAMILIAR") {
+              out.paciente_familiar_motivo = riNovPacFam;
+            }
+          }
+          return out;
+        }
         default:
           return null;
       }
@@ -2005,6 +2111,29 @@ export function SeguimientoDialog({
       if (esInterna && tipoSeg === TI.CANCELACION_RI) {
         if (detalle.trim().length < 5)
           return toast.error("Describe el motivo de la cancelación (mínimo 5 caracteres).");
+      }
+      // B3 · OTRO (RI): descripción obligatoria.
+      if (esInterna && tipoSeg === TI.OTRO) {
+        const c = riOtroCual.trim();
+        if (c.length < 3 || c.length > 200)
+          return toast.error("¿CUÁL? debe tener entre 3 y 200 caracteres.");
+      }
+      // B3 · NOVEDADES (RI): validación estructurada.
+      if (esInterna && tipoSeg === TI.NOVEDADES) {
+        if (!riNovInterna && !riNovExterna)
+          return toast.error("Selecciona INTERNA, EXTERNA o ambas.");
+        if (riNovInterna && !riNovInternaCod)
+          return toast.error("Selecciona el código de la novedad interna.");
+        if (riNovInterna && riNovInternaCod === "REPROGRAMACION" && riNovReprogMotivos.length === 0)
+          return toast.error("Selecciona al menos un motivo de reprogramación.");
+        if (riNovExterna && !riNovExternaCod)
+          return toast.error("Selecciona el código de la novedad externa.");
+        if (
+          riNovExterna &&
+          riNovExternaCod === "NO_ACEPTACION_PACIENTE_FAMILIAR" &&
+          !riNovPacFam
+        )
+          return toast.error("Selecciona el motivo de no aceptación paciente/familiar.");
       }
 
       // Cambio en especialidad: exige cambio real, conservar una activa y motivo.
@@ -3049,14 +3178,162 @@ export function SeguimientoDialog({
                 </div>
               )}
 
+              {/* B3 · OTRO (RI) */}
+              {esInterna && tipoSeg === TI.OTRO && (
+                <div className={sectionCls}>
+                  <p className={labelCls}>Otro (trazabilidad permanente)</p>
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>¿Cuál? *</Label>
+                    <Input
+                      value={riOtroCual}
+                      onChange={(e) => setRiOtroCual(e.target.value)}
+                      maxLength={200}
+                      placeholder="Describe brevemente el evento (3–200 caracteres)"
+                    />
+                  </div>
+                  <p className="text-[11px] italic text-muted-foreground">
+                    Este registro no altera la secuencia canónica. Las observaciones van en el campo Detalle.
+                  </p>
+                </div>
+              )}
 
+              {/* B3 · NOVEDADES (RI) */}
+              {esInterna && tipoSeg === TI.NOVEDADES && (
+                <div className={sectionCls}>
+                  <p className={labelCls}>Novedades (INTERNA / EXTERNA)</p>
 
+                  <div className="flex flex-wrap gap-4">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={riNovInterna}
+                        onChange={(e) => {
+                          setRiNovInterna(e.target.checked);
+                          if (!e.target.checked) {
+                            setRiNovInternaCod("");
+                            setRiNovReprogMotivos([]);
+                            setRiNovReprogFH("");
+                          }
+                        }}
+                      />
+                      INTERNA
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={riNovExterna}
+                        onChange={(e) => {
+                          setRiNovExterna(e.target.checked);
+                          if (!e.target.checked) {
+                            setRiNovExternaCod("");
+                            setRiNovPacFam("");
+                          }
+                        }}
+                      />
+                      EXTERNA
+                    </label>
+                  </div>
 
+                  {riNovInterna && (
+                    <div className="space-y-2 rounded-md border border-border/60 p-3">
+                      <Label className={labelCls}>Novedad interna *</Label>
+                      <select
+                        value={riNovInternaCod}
+                        onChange={(e) => {
+                          setRiNovInternaCod(e.target.value);
+                          if (e.target.value !== "REPROGRAMACION") {
+                            setRiNovReprogMotivos([]);
+                            setRiNovReprogFH("");
+                          }
+                        }}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="">Seleccione…</option>
+                        <option value="EQUIPO_FALLA">Falla del equipo</option>
+                        <option value="REPROGRAMACION">Reprogramación</option>
+                        <option value="DESCOMPENSACION_HEMODINAMICA">Descompensación hemodinámica</option>
+                        <option value="NO_DISPONIBILIDAD_TECNICO">No disponibilidad de personal técnico</option>
+                      </select>
 
+                      {riNovInternaCod === "REPROGRAMACION" && (
+                        <>
+                          <Label className={labelCls}>Motivos de reprogramación *</Label>
+                          <div className="flex flex-wrap gap-3">
+                            {[
+                              ["RETRASO_AGENDA", "Retraso de la agenda"],
+                              ["IMPOSIBILIDAD_TOMA_EXAMEN_PREVIO", "Imposibilidad de toma de examen previo"],
+                            ].map(([v, l]) => (
+                              <label key={v} className="flex items-center gap-2 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={riNovReprogMotivos.includes(v)}
+                                  onChange={(e) => {
+                                    setRiNovReprogMotivos((prev) =>
+                                      e.target.checked
+                                        ? [...prev, v]
+                                        : prev.filter((x) => x !== v),
+                                    );
+                                  }}
+                                />
+                                {l}
+                              </label>
+                            ))}
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className={labelCls}>Nueva fecha/hora (opcional)</Label>
+                            <AppDateTimeInput
+                              name="ri_nov_reprog_fh"
+                              value={riNovReprogFH}
+                              onChange={setRiNovReprogFH}
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
 
+                  {riNovExterna && (
+                    <div className="space-y-2 rounded-md border border-border/60 p-3">
+                      <Label className={labelCls}>Novedad externa *</Label>
+                      <select
+                        value={riNovExternaCod}
+                        onChange={(e) => {
+                          setRiNovExternaCod(e.target.value);
+                          if (e.target.value !== "NO_ACEPTACION_PACIENTE_FAMILIAR") {
+                            setRiNovPacFam("");
+                          }
+                        }}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="">Seleccione…</option>
+                        <option value="AMBULANCIA_SIN_DISPONIBILIDAD">Ambulancia sin disponibilidad</option>
+                        <option value="RED_NO_CONTRATADA">Red no contratada</option>
+                        <option value="NO_ACEPTACION_PACIENTE_FAMILIAR">No aceptación por paciente/familiar</option>
+                      </select>
 
+                      {riNovExternaCod === "NO_ACEPTACION_PACIENTE_FAMILIAR" && (
+                        <>
+                          <Label className={labelCls}>Motivo paciente/familiar *</Label>
+                          <select
+                            value={riNovPacFam}
+                            onChange={(e) => setRiNovPacFam(e.target.value)}
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                          >
+                            <option value="">Seleccione…</option>
+                            <option value="ADULTO_MAYOR_SIN_ACOMPANANTE">Adulto mayor sin acompañante</option>
+                            <option value="FAMILIAR_NO_PERMITE_TRASLADO">Familiar no permite el traslado</option>
+                          </select>
+                        </>
+                      )}
+                    </div>
+                  )}
 
-
+                  <p className="text-[11px] italic text-muted-foreground">
+                    Las novedades no alteran la secuencia canónica; quedan como trazabilidad permanente.
+                    Las observaciones van en el campo Detalle.
+                  </p>
+                </div>
+              )}
 
 
               {/* FÍSICO O PRESENCIAL */}
