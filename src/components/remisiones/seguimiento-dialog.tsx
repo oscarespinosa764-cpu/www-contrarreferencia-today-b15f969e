@@ -3453,30 +3453,16 @@ export function SeguimientoDialog({
                         <option value="">Seleccione…</option>
                         <option value="AMBULANCIA_SIN_DISPONIBILIDAD">Ambulancia sin disponibilidad</option>
                         <option value="RED_NO_CONTRATADA">Red no contratada</option>
-                        <option value="NO_ACEPTACION_PACIENTE_FAMILIAR">No aceptación por paciente/familiar</option>
                         <option value="DESCOMPENSACION_HEMODINAMICA">Descompensación hemodinámica</option>
                       </select>
-
-                      {riNovExternaCod === "NO_ACEPTACION_PACIENTE_FAMILIAR" && (
-                        <>
-                          <Label className={labelCls}>Motivo paciente/familiar *</Label>
-                          <select
-                            value={riNovPacFam}
-                            onChange={(e) => setRiNovPacFam(e.target.value)}
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                          >
-                            <option value="">Seleccione…</option>
-                            <option value="ADULTO_MAYOR_SIN_ACOMPANANTE">Adulto mayor sin acompañante</option>
-                            <option value="FAMILIAR_NO_PERMITE_TRASLADO">Familiar no permite el traslado</option>
-                          </select>
-                        </>
-                      )}
+                      <p className="text-[11px] italic text-muted-foreground">
+                        La NO ACEPTACIÓN por parte del paciente/familiar se registra ahora como CANCELACIÓN estructurada del trámite.
+                      </p>
                     </div>
                   )}
 
                   <p className="text-[11px] italic text-muted-foreground">
-                    Las novedades no alteran la secuencia canónica; quedan como trazabilidad permanente.
-                    Las observaciones van en el campo Detalle.
+                    Las novedades pueden ajustar el estado automáticamente (server-side). Las observaciones van en el campo Detalle.
                   </p>
                 </div>
               )}
