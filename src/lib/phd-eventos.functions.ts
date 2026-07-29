@@ -69,6 +69,12 @@ const MENSAJES: Record<string, string> = {
   FIRMA_REQUERIDA: "Se requiere la firma QR de llegada.",
   FIRMA_INVALIDA: "La firma no es válida para este caso o ciclo.",
   FIRMA_YA_USADA: "Esa firma ya fue utilizada.",
+  RADICACION_NO_REQUERIDA:
+    "La aseguradora de este caso no exige radicación según el catálogo de EAPB.",
+  RADICACION_DUPLICADA: "El caso ya tiene un radicado registrado en este ciclo.",
+  DESCRIPCION_REQUERIDA: "La descripción es obligatoria para este tipo de seguimiento.",
+  CANCELACION_DUPLICADA: "El trámite ya fue cancelado.",
+
   EVENTO_NO_PERMITIDO: "Evento no permitido.",
 };
 
