@@ -2203,10 +2203,14 @@ export function SeguimientoDialog({
         if (!riTepProveedor.trim()) return toast.error("Selecciona el proveedor de TEP");
         if (!riTepFecha.trim()) return toast.error("Indica la fecha y hora de activación del TEP");
       }
-      // Acción terminal de cancelación: motivo obligatorio.
+      // B1.2 · Cancelación estructurada del trámite RI.
       if (esInterna && tipoSeg === TI.CANCELACION_RI) {
-        if (detalle.trim().length < 5)
-          return toast.error("Describe el motivo de la cancelación (mínimo 5 caracteres).");
+        if (!riCancelMotivoCod)
+          return toast.error("Selecciona el motivo de cancelación.");
+        if (riCancelMotivoCod === "NO_ACEPTACION_PACIENTE_FAMILIAR" && !riCancelPacFam)
+          return toast.error("Selecciona el motivo específico paciente/familiar.");
+        if (riCancelMotivoCod === "OTRO" && riCancelOtroTexto.trim().length < 5)
+          return toast.error("Describe el motivo (mínimo 5 caracteres).");
       }
       // B3 · OTRO (RI): descripción obligatoria.
       if (esInterna && tipoSeg === TI.OTRO) {
@@ -2214,22 +2218,22 @@ export function SeguimientoDialog({
         if (c.length < 3 || c.length > 200)
           return toast.error("¿CUÁL? debe tener entre 3 y 200 caracteres.");
       }
-      // B3 · NOVEDADES (RI): validación estructurada.
+      // B1.2 · NOVEDADES (RI): validación estructurada.
       if (esInterna && tipoSeg === TI.NOVEDADES) {
         if (!riNovInterna && !riNovExterna)
           return toast.error("Selecciona INTERNA, EXTERNA o ambas.");
         if (riNovInterna && !riNovInternaCod)
           return toast.error("Selecciona el código de la novedad interna.");
-        if (riNovInterna && riNovInternaCod === "REPROGRAMACION" && riNovReprogMotivos.length === 0)
-          return toast.error("Selecciona al menos un motivo de reprogramación.");
+        if (riNovInterna && riNovInternaCod === "REPROGRAMACION") {
+          if (riNovReprogMotivos.length === 0)
+            return toast.error("Selecciona al menos un motivo de reprogramación.");
+          if (!riNovReprogSinFecha && !riNovReprogFH)
+            return toast.error("Indica la nueva fecha/hora o marca 'Sin nueva fecha/hora'.");
+          if (riNovReprogSinFecha && riNovReprogFH)
+            return toast.error("Fecha/hora y 'Sin nueva fecha/hora' son mutuamente excluyentes.");
+        }
         if (riNovExterna && !riNovExternaCod)
           return toast.error("Selecciona el código de la novedad externa.");
-        if (
-          riNovExterna &&
-          riNovExternaCod === "NO_ACEPTACION_PACIENTE_FAMILIAR" &&
-          !riNovPacFam
-        )
-          return toast.error("Selecciona el motivo de no aceptación paciente/familiar.");
       }
 
       // Cambio en especialidad: exige cambio real, conservar una activa y motivo.
