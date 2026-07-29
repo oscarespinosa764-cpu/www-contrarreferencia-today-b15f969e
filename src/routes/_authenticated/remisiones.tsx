@@ -26,6 +26,8 @@ import {
 } from "@/lib/salientes-export";
 import { agruparPorEtapa } from "@/lib/salientes-grupos";
 import { GrupoEtapa } from "@/components/remisiones/grupo-etapa";
+import { agruparInternasPorEstado } from "@/lib/ri-estados";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { getDirectorioActivos } from "@/lib/directorio.functions";
 
@@ -689,7 +691,7 @@ function RemisionesPage() {
           </TabsContent>
 
           <TabsContent value="internas" className="pt-4">
-            <ListaGenerica tipo="interna" items={internas ?? []} canEdit={canEdit} ultGestiones={ultGestiones} />
+            <ListaInternas items={internas ?? []} canEdit={canEdit} ultGestiones={ultGestiones} />
           </TabsContent>
 
           <TabsContent value="pendientes" className="pt-4">
@@ -768,6 +770,78 @@ function ListaGenerica({
         </GrupoEtapa>
       ))}
     </div>
+  );
+}
+
+function ListaInternas({
+  items,
+  canEdit,
+  ultGestiones,
+}: {
+  items: Record<string, any>[];
+  canEdit: boolean;
+  ultGestiones?: Record<string, { fecha: string | null; responsable: string | null }>;
+}) {
+  if (items.length === 0) return <VacioModulo />;
+  const grupos = agruparInternasPorEstado(
+    items as Array<Record<string, any> & { estado?: string | null }>,
+  );
+  return (
+    <div className="grid gap-4">
+      {grupos.map(({ meta, items: bucket }) => (
+        <GrupoInterna key={meta.codigo} meta={meta} count={bucket.length}>
+          {bucket.map((it) => (
+            <CasoGenericoCard
+              key={it.id as string}
+              tipo="interna"
+              r={it}
+              canEdit={canEdit}
+              ultimaGestion={ultGestiones?.[it.id as string] ?? null}
+            />
+          ))}
+        </GrupoInterna>
+      ))}
+    </div>
+  );
+}
+
+function GrupoInterna({
+  meta,
+  count,
+  children,
+}: {
+  meta: ReturnType<typeof agruparInternasPorEstado>[number]["meta"];
+  count: number;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(true);
+  return (
+    <section className={`rounded-xl border border-l-4 bg-card shadow-sm ${meta.bar}`}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2 rounded-t-xl px-3 py-2 text-left"
+      >
+        {open ? (
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        )}
+        <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${meta.color}`}>
+          {meta.label}
+        </span>
+        <span className="hidden text-[11px] text-muted-foreground sm:inline">{meta.descripcion}</span>
+        {meta.siguientePasoLabel && (
+          <span className="ml-2 hidden rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground md:inline">
+            Sig: {meta.siguientePasoLabel}
+          </span>
+        )}
+        <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">
+          {count}
+        </span>
+      </button>
+      {open && <div className="grid gap-3 border-t border-border p-3">{children}</div>}
+    </section>
   );
 }
 
