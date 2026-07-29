@@ -1,109 +1,171 @@
-# FASE 5B — Corrección del flujo de Remisiones Salientes
+# FASE 5C · Bloque B3 — OTRO y NOVEDADES (Referencias Internas)
 
-Alcance acotado: solo Salientes. No tocar RI, Fase 5A, Entrantes, PHD, filtros, turno, login, dispositivos, consentimiento, Modo Práctica.
+Alcance estricto: solo agregar los tipos permanentes **OTRO** y **NOVEDADES** al selector de seguimientos de RI, con formularios estructurados, persistencia en `seguimientos.detalles`, plantilla Índigo, y transiciones de etapa **solo** cuando el prompt lo exige.
 
-## Orden de ejecución
+Se **no** implementa B2 (Hospitalización, Quirófano, persistencia unidad/cama, transacción de Cambio de Unidad).
 
-### 1. Inspección canónica (sin escribir)
-Leer, en paralelo:
-- `src/components/remisiones/seguimiento-dialog.tsx` (tipos TI, gating, aceptación, cancelación, ambulancia, cierre).
-- `src/components/remisiones/entrega-documental-dialog.tsx` (snapshot, precarga, firma QR, checklist, portada).
-- `src/lib/entrega-documental.ts` y `src/lib/entrega-firma.functions.ts` (sesión firma, polling, idempotencia).
-- `src/routes/firma-entrega.tsx` (ruta pública).
-- `src/lib/salientes-admin-edit.functions.ts`, `src/lib/salientes-grupos.ts`, `src/routes/_authenticated/remisiones.tsx` (agrupación/estados).
-- `src/lib/soportes-utils.ts`, `src/lib/entrega-documental.ts` (checklists DOC_ENTREGA, SOAT/ADRES).
-- `src/lib/rc-utils.ts` (posible helper de normalización existente).
-- Tabla `entrega_firmas`, `seguimientos`, `remisiones` (columnas ya disponibles vía types.ts).
+---
 
-Meta: identificar reutilización y evitar segundos sistemas.
+## 1. Disponibilidad (matriz etapa × opción)
 
-### 2. Secuencia entrega ↔ cierre
-- Gating en el modal de seguimiento:
-  - `ENTREGA DOCUMENTAL AMBULANCIA`: visible solo si hay aceptación vigente + ambulancia coordinada + sin entrega registrada.
-  - `CIERRE DE CASO POR EGRESO`: visible solo si hay entrega documental persistida.
-- Detección canónica: consultar `seguimientos` por códigos `ENTREGA_DOC` (o el código real detectado) del mismo caso; no depender de texto de plantilla ni caché.
-- Validación server-side en la función que inserta seguimientos salientes: rechazar cierre por egreso sin entrega y rechazar entrega duplicada, re-consultando dentro de la operación.
+| Etapa RI | Paso B1 | Cancelación | Cambio unidad | OTRO | NOVEDADES |
+|---|---|---|---|---|---|
+| Inicial | Trámite coordinado | ✓ | ✓ | ✓ | ✓ |
+| Tras trámite | Prog. ambulancia | ✓ | ✓ | ✓ | ✓ |
+| Tras programación | Llegada ambulancia | ✓ | ✓ | ✓ | ✓ |
+| Tras llegada | Cierre culminación | ✓ | ✓ | ✓ | ✓ |
+| Terminal | — | — | — | — | — |
 
-### 3. Aceptación con nombre y cargo
-- Añadir dos inputs estructurados en el paso `ACEPTACION_IPS`: `nombre_acepta`, `cargo_acepta` (trim, maxLength 160/120).
-- Persistir dentro del JSONB `detalles` del seguimiento (sin migración de schema; ya es `jsonb`).
-- Mostrar en detalle e Historial cuando existan (render defensivo).
-- No obligatorios al registrar aceptación; obligatorios al finalizar entrega documental.
+Todas las opciones desaparecen si el caso está archivado/terminal. El servidor vuelve a validar en el registro.
 
-### 4. Resolver canónico de aceptación vigente
-Nuevo helper `src/lib/salientes-aceptacion.ts`:
-- Input: `casoId`, lista de seguimientos del caso.
-- Recorre seguimientos por código `ACEPTACION_IPS` y `CANCELACION_ACEPTACION`, excluye las canceladas, devuelve la última vigente: `{ ips, nombre, cargo, seguimientoId }` o `null`.
-- Consumido por: entrega documental (precarga snapshot), función server de entrega (validación), portada.
-- Sin coincidencias parciales ni parsing de plantilla.
+## 2. Tipos y códigos técnicos
 
-### 5. Migración a entrega documental
-- Al abrir `EntregaDocumentalDialog`, precargar del resolver: IPS, nombre, cargo (mismo origen). Empresa de traslado: dejar la fuente actual.
-- Snapshot propio de la entrega: guardar `{ ips, nombre, cargo, empresa, ... }` en la sesión de firma; correcciones se persisten en el snapshot de entrega, no en la aceptación histórica.
-- Guardar `aceptacion_origen_id` en el snapshot para trazabilidad.
-- Bloquear finalización si falta IPS/nombre/cargo/empresa/firma.
+Se agregan a `TI` en `seguimiento-dialog.tsx`:
 
-### 6. `SOAT / ADRES`
-- En el selector documental (nuevos registros): unificar a `SOAT_ADRES` con label `SOAT / ADRES`.
-- Resolver checklist: mapear `SOAT_ADRES` a la lista canónica existente (usar la de SOAT o ADRES ya presente, sin duplicar).
-- Históricos con valor `SOAT` o `ADRES` siguen renderizándose tal cual (fallback de label).
-- Ajuste solo en catálogo/allowlist de código, sin migración de datos.
+- `TI.OTRO = "OTRO_RI"` (label visible `OTRO`)
+- `TI.NOVEDADES = "NOVEDADES_RI"` (label visible `NOVEDADES`)
 
-### 7. Cancelación de aceptación sin observaciones
-- En el paso `CANCELACION_ACEPTACION`: `motivo` obligatorio (≥5), `observaciones` opcional.
-- Ajustar validación en modal + función server + generación de plantilla (omitir sección vacía).
-- No tocar transición de estado.
+Códigos internos (allowlist en cliente y en `private.ri_paso_permitido` extendido):
 
-### 8. Fecha por defecto en Ambulancia Coordinada
-- Al abrir seguimiento nuevo de tipo `AMBULANCIA_COORDINADA`, inicializar `fecha_traslado` con la fecha actual (helper existente); mantener hora manual; no sobrescribir al editar.
+- Categorías: `INTERNA`, `EXTERNA`
+- Internas: `EQUIPO_FALLA`, `REPROGRAMACION`, `DESCOMPENSACION_HEMODINAMICA`, `NO_DISPONIBILIDAD_TECNICO`
+- Reprogramación motivos: `RETRASO_AGENDA`, `IMPOSIBILIDAD_TOMA_EXAMEN_PREVIO`
+- Externas: `AMBULANCIA_SIN_DISPONIBILIDAD`, `RED_NO_CONTRATADA`, `NO_ACEPTACION_PACIENTE_FAMILIAR`
+- Paciente/familiar motivos: `ADULTO_MAYOR_SIN_ACOMPANANTE`, `FAMILIAR_NO_PERMITE_TRASLADO`
 
-### 9. Búsqueda sin tildes (helper global)
-- Crear `src/lib/text-normalize.ts` con `normalizeForSearch(s)` (NFD + strip diacríticos + lowercase + trim).
-- Reemplazar en consumidores reales de Salientes: autocompletes IPS/servicio/especialidad/empresa/documentos.
-- No modificar textareas ni valores persistidos. No aplicar a filtros de otros módulos fuera de alcance.
+## 3. Formulario OTRO
 
-### 10. Sincronización de firma QR (prioridad alta)
-Revisar el mecanismo actual en `RiLlegadaQRPanel` / `EntregaDocumentalDialog`:
-- Confirmar polling con `refetchInterval` sobre `entrega_firmas` por `id` (ya presente).
-- En escritorio: ejecutar polling también en el diálogo de entrega documental (no solo RI). Al detectar `FIRMADA`, cerrar el estado "esperando", mostrar datos sincronizados (nombre/cargo firmante, fecha, estado), habilitar Portada y checklist final.
-- Detener polling al `FIRMADA | VENCIDA | ANULADA` o al cerrar diálogo.
-- Idempotencia: la función server ya usa `.eq('estado','PENDIENTE')`; verificar que no se dupliquen evidencias por caso (índice/lookup por `caso_id` activo).
-- Estados UI: `ESPERANDO FIRMA | FIRMA COMPLETADA | SESIÓN VENCIDA | SESIÓN ANULADA | ERROR`.
+- Campo `¿CUÁL?` obligatorio (trim, 3–200 chars).
+- Campo `OBSERVACIONES` opcional (≤ 1000 chars).
+- Plantilla:
+  ```
+  SE DEJA TRAZABILIDAD DE SEGUIMIENTO REALIZADO POR REFERENCIA Y CONTRARREFERENCIA.
+  TIPO DE SEGUIMIENTO: {cual}
+  OBSERVACIONES: {obs}   ← solo si hay texto
+  ```
+- Persistencia en `seguimientos.detalles`:
+  ```json
+  { "ri_evento": "OTRO", "cual": "...", "observaciones": "..." }
+  ```
+- **No** cambia estado ni etapa del caso. Inserta solo `seguimientos`.
 
-### 11. Portada — evaluación
-Buscar `portada` / `oficio` / template histórico:
-- Si existe la última versión histórica aprobada de la Portada → reutilizarla, alimentada con datos canónicos (snapshot de entrega + aceptación vigente + firmante).
-- **Si NO existe fuente canónica recuperable**: marcar `BLOQUEADO — REQUIERE PLANTILLA HISTÓRICA DE PORTADA` y detener SOLO esta parte. Continuar con el resto.
+## 4. Formulario NOVEDADES
 
-### 12. Lista de chequeo final y descargas
-- Habilitar descarga final SOLO tras firma sincronizada + snapshot completo.
-- Antes: mostrar "pendiente de firma".
-- No regenerar históricos.
+Casillas `INTERNAS` y `EXTERNAS` (≥1 obligatoria). Ambas admitidas.
 
-### 13. Validación de registro de entrega
-Server-side, verificar antes de insertar la entrega:
-- Caso activo, estado compatible.
-- Aceptación vigente resuelta (mismo resolver, ejecutado en server).
-- Firma `FIRMADA` cuyo `caso_id` coincide.
-- Snapshot completo.
-- Sin entrega previa registrada.
+- Si INTERNAS ⇒ select obligatorio `interna_codigo`.
+  - Si `REPROGRAMACION` ⇒ subformulario con casillas `RETRASO_AGENDA` y/o `IMPOSIBILIDAD_TOMA_EXAMEN_PREVIO` (≥1) y `AppDateTimeInput` opcional para nueva fecha/hora.
+- Si EXTERNAS ⇒ select obligatorio `externa_codigo`.
+  - Si `NO_ACEPTACION_PACIENTE_FAMILIAR` ⇒ select obligatorio `paciente_familiar_motivo` (2 opciones).
+- Campo `OBSERVACIONES` opcional (≤ 1000).
 
-### 14. Cierre por egreso atómico
-- Función server: valida entrega persistida, inserta seguimiento de cierre, aplica estado terminal canónico, transición, auditoría, retira de activos — todo en una operación.
+Persistencia en `seguimientos.detalles`:
+```json
+{
+  "ri_evento": "NOVEDADES",
+  "categorias": ["INTERNA","EXTERNA"],
+  "interna_codigo": "REPROGRAMACION",
+  "reprogramacion_motivos": ["RETRASO_AGENDA"],
+  "fecha_hora_reprogramada": "2026-08-01T14:30:00.000Z" | null,
+  "externa_codigo": "AMBULANCIA_SIN_DISPONIBILIDAD",
+  "paciente_familiar_motivo": null,
+  "observaciones": "...",
+  "etapa_anterior": "PROG_AMB",
+  "etapa_posterior": "PROG_AMB_PENDIENTE"
+}
+```
 
-### 15. Auditoría e invalidación
-- Registrar eventos ya listados vía `registrarAuditoria` existente (sin nueva bitácora).
-- Invalidar `["remisiones"]`, `["seguimientos", casoId]`, `["historial"]`, `["ri-firma-estado", sesionId]` — únicamente lo relacionado.
+## 5. Reglas de transición server-side
 
-### 16. Typecheck
-Al final: build automático valida. Sin comandos manuales.
+Se reciben en `registrarSeguimientoRI` (server fn nueva, con `requireSupabaseAuth`) que ejecuta INSERT + UPDATE atómico vía RPC `private.registrar_novedad_ri`.
 
-## Aspectos técnicos
+| Combinación | Efecto sobre RI |
+|---|---|
+| OTRO | Solo `seguimientos`. Sin cambios |
+| Internas ≠ REPROGRAMACION (solas) | Solo `seguimientos`. Sin cambios |
+| REPROGRAMACION **con fecha** | `referencia_interna.fecha_examen/hora_examen ← nueva`. Invalida programación vigente de ambulancia (marca prog. anterior como histórica insertando entrada). Deja pendiente `CONFIRMACION_PROG_AMB`. Trámite Coordinado se preserva. |
+| REPROGRAMACION **sin fecha** | Retira fecha vigente del examen (`NULL`). Invalida programación de ambulancia vigente. Regresa la secuencia a `TRÁMITE COORDINADO` (borrando la marca de "coordinado" mediante seguimiento explícito de reversión). Conserva histórico. |
+| Externa AMBULANCIA_SIN_DISPONIBILIDAD | Invalida programación de ambulancia. Conserva Trámite y fecha del examen. Deja pendiente `CONFIRMACION_PROG_AMB`. |
+| Externa RED_NO_CONTRATADA | Solo trazabilidad. |
+| Externa NO_ACEPTACION_PACIENTE_FAMILIAR | Solo trazabilidad. **No** cancela el caso. |
+| Combinado interno + externo | Un único seguimiento; se aplica la transición más "temprana" (regreso a Trámite prevalece sobre pendiente Programación). |
 
-- **Sin migraciones nuevas salvo indispensables.** Los campos nombre/cargo van en `seguimientos.detalles` (jsonb). Snapshot va en `entrega_firmas.snapshot` (jsonb). `SOAT_ADRES` es solo un código de allowlist en cliente.
-- **Roles**: no ampliar permisos. RLS existente cubre `seguimientos`, `entrega_firmas`, `remisiones`. Validación server dentro de funciones ya autenticadas.
-- **Portada**: si bloqueada, se documenta en el entregable; no se inventa.
-- **Fuera del scope estricto**: no se toca RI (`RiLlegadaQRPanel` puede compartir helpers si aplica sin alterar comportamiento).
+Invalidación de programación de ambulancia = insertar seguimiento `NOVEDADES_RI` con `programacion_invalidada = true` en `detalles`. No se borra el seguimiento previo `PROG_AMB`; el resolver ya usa el más reciente para calcular etapa.
 
-## Entregable
-Al terminar, se produce el reporte con las 19 secciones solicitadas (inspección, causa raíz, secuencia, resolver, migración, tipos documentales, búsqueda sin tildes, firma QR, documentos, estados, funciones server, invalidación, archivos modificados, migraciones, pruebas, matriz por rol, matriz por capa, bloqueadores, estado final).
+## 6. Consumidor de "programación vigente" y "fecha vigente"
+
+Actualmente `siguientePasoRI` mira el último `tipo_seguimiento` distinto de `CAMBIO DE UNIDAD`. Se extiende para ignorar además cualquier `NOVEDADES_RI` que **no** invalide, y para detectar dos marcadores nuevos:
+
+- `NOVEDADES_RI` con `detalles.regresa_tramite=true` ⇒ próximo paso = `PROG_AMB`; el sistema considera que sigue pendiente porque el trámite ya se hizo (se preserva `PENDIENTE_COORDINACION` anterior).
+- `NOVEDADES_RI` con `detalles.reabrir_prog_amb=true` ⇒ próximo paso = `PROG_AMB`.
+
+Se agrega helper `computarEtapaRI(historial)` compartido por selector y servidor.
+
+## 7. Migración SQL mínima
+
+Una sola migración:
+
+1. Extiende `private.ri_paso_permitido` para permitir `OTRO_RI` y `NOVEDADES_RI` en cualquier momento mientras el caso no esté terminal.
+2. Crea `private.registrar_novedad_ri(_caso uuid, _payload jsonb)` (SECURITY DEFINER, `search_path=''`) que:
+   - Valida sesión (`auth.uid()` no nulo, `private.is_active_member`).
+   - Valida caso no archivado / no terminal.
+   - Valida allowlist estricta del payload.
+   - Inserta `seguimientos` con `detalles` saneado.
+   - Aplica UPDATE de `referencia_interna.fecha_examen/hora_examen` cuando la regla lo pide.
+   - Registra `audit_logs` vía `registrar_auditoria_srv`.
+   - Todo en una única transacción (bloque `BEGIN…END` implícito del bloque plpgsql).
+3. `GRANT EXECUTE ... TO authenticated` sobre wrapper público `public.registrar_novedad_ri` que delega a la privada.
+
+Sin nuevas tablas. Sin backfill. Idempotente (usa `CREATE OR REPLACE FUNCTION`).
+
+## 8. Frontend
+
+Archivo principal: `src/components/remisiones/seguimiento-dialog.tsx`.
+
+- Extender `TI`, `TI_LABEL`, `labelTipoSeg`, y `TIPOS_INTERNA_DYN` (agrega `TI.OTRO` y `TI.NOVEDADES` cuando caso activo).
+- Estados nuevos: `otroCualRi`, `novRiCategorias`, `novRiInterna`, `novRiReproMotivos`, `novRiReproFecha`, `novRiReproHora`, `novRiExterna`, `novRiPacFam`, `novRiObs`.
+- Bloques de UI: se extraen dos subcomponentes locales para no inflar el archivo:
+  - `RiOtroFields` (nuevo archivo `src/components/remisiones/ri-otro-fields.tsx`)
+  - `RiNovedadesFields` (nuevo archivo `src/components/remisiones/ri-novedades-fields.tsx`)
+- Plantilla Índigo: nueva rama en el `switch (tipoSeg)` para `TI.OTRO` y `TI.NOVEDADES`.
+- Validaciones frontend antes de submit; envío al server fn nueva.
+- Al éxito: `queryClient.invalidateQueries` sobre `["remisiones"]`, `["seguimientos", casoId]`, `["referencia-interna", casoId]`.
+
+Archivo nuevo: `src/lib/ri-novedades.functions.ts` (server fn + validador Zod).
+
+## 9. Auditoría
+
+Se registra por `registrar_auditoria_srv`:
+
+- `ri.otro.registrado`
+- `ri.novedades.registrado` (con `categorias`, `interna_codigo`, `externa_codigo`)
+- `ri.examen.reprogramado` (con nueva fecha o `null`)
+- `ri.programacion.invalidada`
+
+No se guarda el payload completo. Observaciones se truncan a 200 chars en la auditoría.
+
+## 10. Fuera de alcance
+
+- Códigos de OTRO no se agregan a catálogos administrables — la lista es libre por diseño (`¿CUÁL?`).
+- Historial y detalle: se usa el renderer existente de `seguimientos.detalles` (ya muestra campos clave). No se rediseña la vista.
+- No se modifica cierre, cancelación, cambio de unidad, salientes, firma QR, filtros, turno, login, Control de Mando, Modo Práctica.
+
+## 11. Pruebas
+
+83 casos del prompt. Todos los que dependan de otro rol (operativa, temporal, inactivo, anon) quedan marcados **REQUIERE INTERVENCIÓN MANUAL** en el reporte final; solo se cubre en verificación local admin + typecheck + build + linter.
+
+## 12. Riesgos
+
+- Detectar "programación de ambulancia vigente" a partir de historial sin cambiar el esquema depende de recorrido de `seguimientos`; se agrega marcador booleano en `detalles` (`invalida_programacion=true`, `regresa_tramite=true`) y `computarEtapaRI` lo respeta. Los históricos previos siguen funcionando por el algoritmo actual (fallback al último `tipo_seguimiento` estándar).
+- La reversión a "Trámite Coordinado" no borra la fila previa `PENDIENTE_COORDINACION`; el selector calcula el próximo paso a partir del último marcador de novedad, no del último tipo secuencial.
+
+## 13. Entregable
+
+Al terminar B3 se responderá con:
+
+- Matriz de disponibilidad por etapa.
+- Matriz de códigos.
+- Ejemplos de plantillas.
+- Tabla de archivos modificados (esperado ≤ 4 archivos + 1 migración).
+- Reporte de pruebas (admin verificado, resto REQUIERE INTERVENCIÓN MANUAL).
+- Estado final: **BLOQUE B3 COMPLETO — OTRO Y NOVEDADES LISTOS PARA PRUEBAS MANUALES**.
