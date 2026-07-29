@@ -327,6 +327,9 @@ export function PhdSeguimientoDialog({
 
   const invalid = errores.length > 0 || terminal;
 
+  // Para EVOLUCIÓN DIARIA la descripción es la plantilla Índigo canónica.
+  const descripcionFinal = esEvolucionDiaria ? evoDeriv.plantilla : descripcion.trim();
+
   const detalleLegible = () => {
     const p: string[] = [`TIPO: ${EVENTO_LABEL[evento] ?? evento}`];
     if (canalFinal) p.push(`CANAL: ${canalFinal}`);
@@ -340,8 +343,17 @@ export function PhdSeguimientoDialog({
         `TIPO AMB: ${TIPO_AMBULANCIA_LABEL[tipoAmb as keyof typeof TIPO_AMBULANCIA_LABEL] ?? tipoAmb}`,
       );
     }
+    if (esEvolucionDiaria) {
+      const canales = [evo.correo ? "CORREO" : null, evo.plataforma ? "PLATAFORMA" : null]
+        .filter(Boolean)
+        .join(" + ");
+      if (canales) p.push(`ENVÍO EAPB: ${canales}`);
+      if (segEnPlataforma && evo.plataformaFunc)
+        p.push(`PLATAFORMA FUNCIONANDO: ${evo.plataformaFunc}`);
+      if (evo.motivoPend.trim()) p.push(`MOTIVO PENDIENTE: ${evo.motivoPend.trim().toUpperCase()}`);
+    }
     if (fecha) p.push(`FECHA/HORA: ${fecha}`);
-    if (descripcion.trim()) p.push(`DESCRIPCIÓN: ${descripcion.trim()}`);
+    if (descripcionFinal) p.push(`DESCRIPCIÓN: ${descripcionFinal}`);
     if (motivo.trim()) p.push(`MOTIVO: ${motivo.trim().toUpperCase()}`);
     if (observaciones.trim()) p.push(`OBSERVACIONES: ${observaciones.trim()}`);
     return p.join(" · ");
@@ -355,7 +367,8 @@ export function PhdSeguimientoDialog({
           evento: evento as never,
           tipoSeguimiento: EVENTO_LABEL[evento] ?? evento,
           detalle: detalleLegible(),
-          descripcion: descripcion.trim() || undefined,
+          descripcion: descripcionFinal || undefined,
+
           servicioCodigo: (servicio || undefined) as never,
           proveedor: proveedor.trim().toUpperCase() || undefined,
           canal: canalFinal || undefined,
