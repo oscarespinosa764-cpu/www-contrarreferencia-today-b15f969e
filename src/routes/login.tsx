@@ -46,27 +46,35 @@ const features = [
 const pad = (n: number) => String(n).padStart(2, "0");
 
 function LoginPage() {
-  const { user, loading, setTurnoSesion } = useAuth();
+  const { user, loading, turnoSesion, setTurnoSesion } = useAuth();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [turnoCodigo, setTurnoCodigo] = useState<TurnoCodigo | "">("");
+  const [turnoError, setTurnoError] = useState(false);
 
   const turnoLabel = useClientTime((d) => {
     const t = getTurno(d);
     return `${t.nombre} · ${pad(t.inicio)}:00 – ${pad(t.fin)}:00`;
   });
 
+  // Sólo se navega al aplicativo cuando existe sesión Y turno operativo válido.
   useEffect(() => {
-    if (!loading && user) navigate({ to: "/dashboard", replace: true });
-  }, [user, loading, navigate]);
+    if (!loading && user && turnoSesion) navigate({ to: "/dashboard", replace: true });
+  }, [user, loading, turnoSesion, navigate]);
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (busy) return;
     const form = new FormData(e.currentTarget);
     const email = String(form.get("email")).trim();
     const password = String(form.get("password"));
     if (!email) return toast.error("Ingresa tu correo institucional");
-    if (!isTurnoCodigo(turnoCodigo)) return toast.error("Selecciona el turno operativo");
+    if (!isTurnoCodigo(turnoCodigo)) {
+      setTurnoError(true);
+      document.getElementById("l-turno")?.focus();
+      return toast.error("Seleccione un turno operativo.");
+    }
+    setTurnoError(false);
     setBusy(true);
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -81,6 +89,7 @@ function LoginPage() {
     setTurnoSesion(turnoCodigo);
     navigate({ to: "/dashboard", replace: true });
   };
+
 
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden bg-background lg:flex-row">
