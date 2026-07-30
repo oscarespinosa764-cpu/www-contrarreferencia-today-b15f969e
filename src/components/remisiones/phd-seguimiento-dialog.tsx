@@ -1,3 +1,4 @@
+import { ordenarTiposSeguimiento } from "@/lib/seguimiento-orden";
 // ---------------------------------------------------------------------------
 // FASE 5D · Bloque C — Modal de seguimiento PHD / PAD / PAD CRÓNICO / O2 /
 // UNIDADES ESPECIALES / AMBULANCIA PARA EGRESO.
@@ -201,7 +202,11 @@ export function PhdSeguimientoDialog({
 
   const eventosDisponibles = useMemo(
     () =>
-      terminal ? [] : calcularEventos(req, { exigeRadicacion, radicacionRegistrada }),
+      terminal
+        ? []
+        : ordenarTiposSeguimiento(
+            calcularEventos(req, { exigeRadicacion, radicacionRegistrada }),
+          ),
     [req, terminal, exigeRadicacion, radicacionRegistrada],
   );
 

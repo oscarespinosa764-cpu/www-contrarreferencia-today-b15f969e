@@ -5,6 +5,7 @@ import { supabase } from "@/lib/backend-client";
 import { Button } from "@/components/ui/button";
 import { resolverEstadoRI } from "@/lib/ri-estados";
 import { Badge } from "@/components/ui/badge";
+import { sanitizeOptionalLabel } from "@/lib/seguimiento-orden";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -115,10 +116,12 @@ const CONFIG: Record<
 };
 
 function Dato({ label, value }: { label: string; value: React.ReactNode }) {
+  // A.1: los valores de texto se sanean (nunca "null"/"undefined"/vacío).
+  const safe = typeof value === "string" || typeof value === "number" ? sanitizeOptionalLabel(value) : value;
   return (
     <div>
       <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="text-sm text-foreground">{value || "—"}</p>
+      <p className="text-sm text-foreground">{safe || "—"}</p>
     </div>
   );
 }
@@ -227,10 +230,8 @@ export function CasoGenericoCard({
   const mainLine = tipo === "pendiente" ? nombre : `${nombre}${mainExtra ? `, ${mainExtra}` : ""}`;
 
   // Nunca renderizar textos residuales "null"/"undefined" provenientes de datos históricos.
-  const limpio = (v: unknown): string =>
-    typeof v === "string" && !["null", "undefined", "[object object]"].includes(v.trim().toLowerCase())
-      ? v.trim()
-      : "";
+  const limpio = (v: unknown): string => sanitizeOptionalLabel(v);
+  const prioridadTxt = limpio(r.prioridad);
   const subParts = (
     tipo === "phd"
       ? [r.tipo_solicitud, r.eapb, r.regimen]
@@ -339,9 +340,9 @@ export function CasoGenericoCard({
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
-              {r.prioridad && (
+              {prioridadTxt && (
                 <Badge variant="outline" className={`${prio.badge} text-[10px]`}>
-                  {r.prioridad}
+                  {prioridadTxt}
                 </Badge>
               )}
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${tiempoChip(r.created_at)}`}>
@@ -391,9 +392,9 @@ export function CasoGenericoCard({
           <p className="text-[11px] text-muted-foreground">{subParts.filter(Boolean).join(" · ") || "—"}</p>
         </div>
         <div className="flex items-center gap-1.5">
-          {r.prioridad && (
+          {prioridadTxt && (
             <Badge variant="outline" className={prio.badge}>
-              {r.prioridad}
+              {prioridadTxt}
             </Badge>
           )}
           {tipo === "phd" && (
