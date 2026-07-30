@@ -2832,57 +2832,33 @@ export function SeguimientoDialog({
 
           {!nuevoRadicadoMode && (
             <>
-              {/* Estado del caso */}
-              {esSaliente ? (
+              {/* FASE 5E · B — El estado canónico se muestra solo en la tarjeta
+                  superior. Aquí queda únicamente el selector editable cuando el
+                  módulo lo requiere (no es una vista duplicada del estado). */}
+              {!esSaliente && estadoOpciones && estadoOpciones.length > 0 && (
                 <div className="space-y-1.5">
-                  <Label className={labelCls}>Estado del caso (automático)</Label>
-                  <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-semibold text-foreground">
-                    {estadoDestino || EST.PENDIENTE_ACEPT}
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    El estado se actualiza automáticamente según la cadena de seguimiento.
-                  </p>
-                </div>
-              ) : (
-                estadoOpciones &&
-                estadoOpciones.length > 0 && (
-                  <div className="space-y-1.5">
-                    <Label className={labelCls}>Estado del caso</Label>
-                    <Select
-                      value={estadoCaso}
-                      onValueChange={setEstadoCaso}
-                      disabled={!estadoCasoEditable}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar estado…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {estadoOpciones.map((e) => (
-                          <SelectItem key={e} value={e} className="whitespace-normal">
-                            {e}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {!estadoCasoEditable && (
-                      <p className="text-[10px] text-muted-foreground">
-                        Este tipo de seguimiento no modifica el estado del caso.
-                      </p>
-                    )}
-                  </div>
-                )
-              )}
-
-              {/* B1.2B · Estado del caso RI (server-authoritative, solo lectura). */}
-              {esInterna && estadoActual && (
-                <div className="space-y-1.5">
-                  <Label className={labelCls}>Estado del caso (automático)</Label>
-                  <div className="flex h-10 w-full items-center rounded-md border border-border/60 bg-muted/50 px-3 text-sm font-medium text-foreground">
-                    {resolverEstadoRI(estadoActual).label}
-                  </div>
-                  <p className="text-[11px] italic text-muted-foreground">
-                    Este estado se calcula automáticamente en el servidor a partir de los seguimientos.
-                  </p>
+                  <Label className={labelCls}>Estado del caso</Label>
+                  <Select
+                    value={estadoCaso}
+                    onValueChange={setEstadoCaso}
+                    disabled={!estadoCasoEditable}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar estado…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {estadoOpciones.map((e) => (
+                        <SelectItem key={e} value={e} className="whitespace-normal">
+                          {e}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {!estadoCasoEditable && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Este tipo de seguimiento no modifica el estado del caso.
+                    </p>
+                  )}
                 </div>
               )}
 
