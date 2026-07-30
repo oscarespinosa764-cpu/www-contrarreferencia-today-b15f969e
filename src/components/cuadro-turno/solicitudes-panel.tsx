@@ -44,7 +44,13 @@ import { getSoporteSignedUrl } from "@/lib/soportes-utils";
 import { minutosAHoras } from "@/lib/solicitudes-utils";
 import { FileDown, Paperclip } from "lucide-react";
 
-export function SolicitudesPanel() {
+/** Estados canónicos que representan una solicitud aún sin decisión. */
+export const ESTADOS_PENDIENTES = ["PENDIENTE", "DEVUELTA PARA AJUSTE"] as const;
+export function isSolicitudPendiente(r: { status?: string | null }) {
+  return (ESTADOS_PENDIENTES as readonly string[]).includes((r.status ?? "").trim().toUpperCase());
+}
+
+export function SolicitudesPanel({ soloPendientes = false }: { soloPendientes?: boolean }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [filtroEstado, setFiltroEstado] = useState<string>("TODAS");
@@ -63,33 +69,47 @@ export function SolicitudesPanel() {
   });
 
   const filtradas = useMemo(
-    () => requests.filter((r) => filtroEstado === "TODAS" || r.status === filtroEstado),
-    [requests, filtroEstado],
+    () =>
+      soloPendientes
+        ? requests.filter(isSolicitudPendiente)
+        : requests.filter((r) => filtroEstado === "TODAS" || r.status === filtroEstado),
+    [requests, filtroEstado, soloPendientes],
   );
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <Label className="text-xs">Estado</Label>
-        <Select value={filtroEstado} onValueChange={setFiltroEstado}>
-          <SelectTrigger className="w-56">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="TODAS">Todas</SelectItem>
-            {ESTADOS_SOLICITUD.map((e) => (
-              <SelectItem key={e} value={e}>
-                {e}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <span className="text-xs text-muted-foreground">{filtradas.length} solicitud(es)</span>
-      </div>
+      {soloPendientes ? (
+        <p className="text-xs text-muted-foreground">
+          {filtradas.length} solicitud(es) pendiente(s) de decisión.
+        </p>
+      ) : (
+        <div className="flex items-center gap-3">
+          <Label className="text-xs">Estado</Label>
+          <Select value={filtroEstado} onValueChange={setFiltroEstado}>
+            <SelectTrigger className="w-56">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="TODAS">Todas</SelectItem>
+              {ESTADOS_SOLICITUD.map((e) => (
+                <SelectItem key={e} value={e}>
+                  {e}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-xs text-muted-foreground">{filtradas.length} solicitud(es)</span>
+        </div>
+      )}
 
       {filtradas.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No hay solicitudes.</p>
+        <p className="text-sm text-muted-foreground">
+          {soloPendientes
+            ? "No hay solicitudes pendientes de verificación para los filtros seleccionados."
+            : "No hay solicitudes."}
+        </p>
       ) : (
+
         <div className="space-y-2">
           {filtradas.map((r) => (
             <Card key={r.id} className="flex flex-wrap items-center justify-between gap-3 p-3">
@@ -133,7 +153,13 @@ export function SolicitudesPanel() {
             setSel(null);
             qc.invalidateQueries({ queryKey: ["shift-requests"] });
             qc.invalidateQueries({ queryKey: ["absenteeism"] });
+            qc.invalidateQueries({ queryKey: ["audit-aprobados"] });
+            qc.invalidateQueries({ queryKey: ["historial-cambios"] });
+            qc.invalidateQueries({ queryKey: ["frag-pendientes"] });
+            qc.invalidateQueries({ queryKey: ["control-mensual"] });
+            qc.invalidateQueries({ queryKey: ["cuadro-mensual"] });
           }}
+
         />
       )}
     </div>
@@ -198,7 +224,7 @@ function RevisionDialog({
   const aprobar = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase
+      const { data: upd, error } = await supabase
         .from("shift_requests")
         .update({
           status: "APROBADA",
@@ -208,8 +234,16 @@ function RevisionDialog({
           register_absenteeism: registrarAus,
           cuadro_applied: true,
         })
-        .eq("id", request.id);
+        .eq("id", request.id)
+        .eq("status", request.status)
+        .select("id");
       if (error) throw error;
+      if (!upd || upd.length === 0) {
+        toast.error("La solicitud ya fue decidida por otro usuario. Actualiza la lista.");
+        onDone();
+        return;
+      }
+
 
       // Cambio efectivo del cuadro (best-effort, conserva la programación original)
       await aplicarCoberturaCuadro(request, adminId);
@@ -293,17 +327,25 @@ function RevisionDialog({
     if (!razon.trim()) return toast.error("La razón es obligatoria.");
     setSaving(true);
     try {
-      const { error } = await supabase
+      const { data: upd, error } = await supabase
         .from("shift_requests")
         .update({
           status: nuevoEstado,
           rejected_by: adminId,
           rejected_at: new Date().toISOString(),
-          rejection_reason: razon,
+          rejection_reason: razon.trim().slice(0, 1000),
           response_observation: obs || null,
         })
-        .eq("id", request.id);
+        .eq("id", request.id)
+        .eq("status", request.status)
+        .select("id");
       if (error) throw error;
+      if (!upd || upd.length === 0) {
+        toast.error("La solicitud ya fue decidida por otro usuario. Actualiza la lista.");
+        onDone();
+        return;
+      }
+
       await supabase.from("shift_request_audit").insert({
         request_id: request.id,
         action: nuevoEstado === "NEGADA" ? "NEGADA" : "DEVUELTA",

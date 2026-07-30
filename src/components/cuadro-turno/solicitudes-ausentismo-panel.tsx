@@ -192,9 +192,23 @@ export function SolicitudesAusentismoPanel({ isAdmin }: { isAdmin: boolean }) {
         <ControlMensualPanel />
         {!isAdmin && <MiTurnoPanel />}
       </TabsContent>
-      <TabsContent value="pendientes">
-        {isAdmin ? <PendientesVerificacionPanel /> : <MiTurnoPanel />}
+      <TabsContent value="pendientes" className="space-y-6">
+        {isAdmin ? (
+          <>
+            <section className="space-y-2">
+              <h3 className="text-sm font-bold uppercase">Solicitudes pendientes de decisión</h3>
+              <SolicitudesPanel soloPendientes />
+            </section>
+            <section className="space-y-2">
+              <h3 className="text-sm font-bold uppercase">Devoluciones de tiempo por verificar</h3>
+              <PendientesVerificacionPanel />
+            </section>
+          </>
+        ) : (
+          <MiTurnoPanel />
+        )}
       </TabsContent>
+
       <TabsContent value="ausentismo">
         {isAdmin ? <AusentismoPanel /> : <MiTurnoPanel />}
       </TabsContent>
