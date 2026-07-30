@@ -201,7 +201,11 @@ export function PhdSeguimientoDialog({
 
   const eventosDisponibles = useMemo(
     () =>
-      terminal ? [] : calcularEventos(req, { exigeRadicacion, radicacionRegistrada }),
+      terminal
+        ? []
+        : ordenarTiposSeguimiento(
+            calcularEventos(req, { exigeRadicacion, radicacionRegistrada }),
+          ),
     [req, terminal, exigeRadicacion, radicacionRegistrada],
   );
 

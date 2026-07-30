@@ -936,7 +936,8 @@ export function SeguimientoDialog({
       T.INFO_TRAMITE,
       T.OTRO,
     ];
-    return arr;
+    // A.1: orden canónico (propias → información → novedades → cancelación → otro).
+    return ordenarTiposSeguimiento(arr);
   }, [
     mostrarOpcionRadicado,
     mostrarAceptacion,
@@ -950,7 +951,10 @@ export function SeguimientoDialog({
 
   // Tipos para PHD/PAD/O2/Especiales (subconjunto saliente).
   const TIPOS_PHD = useMemo(() => {
-    return [...(mostrarOpcionRadicado ? [T.RADICADO] : []), ...TIPOS_PHD_BASE];
+    return ordenarTiposSeguimiento([
+      ...(mostrarOpcionRadicado ? [T.RADICADO] : []),
+      ...TIPOS_PHD_BASE,
+    ]);
   }, [mostrarOpcionRadicado]);
 
   // Referencia Interna: opciones dinámicas según secuencia + CAMBIO DE UNIDAD (mientras esté activo).
@@ -968,7 +972,8 @@ export function SeguimientoDialog({
     if (activo && proximo !== TI.CANCELACION_RI) arr.push(TI.CANCELACION_RI);
     // B3: OTRO y NOVEDADES son trazabilidad permanente mientras el caso esté activo.
     if (activo) arr.push(TI.OTRO, TI.NOVEDADES, T.INFO_TRAMITE);
-    return arr;
+    // A.1: la acción principal del ciclo va primero; luego las transversales.
+    return ordenarTiposSeguimiento(arr, { principal: proximo });
   }, [historial, casoInterna, estadoActual]);
 
   const TIPOS_SEG: string[] = esSaliente
