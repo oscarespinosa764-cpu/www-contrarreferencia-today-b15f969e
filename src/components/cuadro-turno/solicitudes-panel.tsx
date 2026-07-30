@@ -44,7 +44,13 @@ import { getSoporteSignedUrl } from "@/lib/soportes-utils";
 import { minutosAHoras } from "@/lib/solicitudes-utils";
 import { FileDown, Paperclip } from "lucide-react";
 
-export function SolicitudesPanel() {
+/** Estados canónicos que representan una solicitud aún sin decisión. */
+export const ESTADOS_PENDIENTES = ["PENDIENTE", "DEVUELTA PARA AJUSTE"] as const;
+export function isSolicitudPendiente(r: { status?: string | null }) {
+  return (ESTADOS_PENDIENTES as readonly string[]).includes((r.status ?? "").trim().toUpperCase());
+}
+
+export function SolicitudesPanel({ soloPendientes = false }: { soloPendientes?: boolean }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [filtroEstado, setFiltroEstado] = useState<string>("TODAS");
@@ -63,33 +69,47 @@ export function SolicitudesPanel() {
   });
 
   const filtradas = useMemo(
-    () => requests.filter((r) => filtroEstado === "TODAS" || r.status === filtroEstado),
-    [requests, filtroEstado],
+    () =>
+      soloPendientes
+        ? requests.filter(isSolicitudPendiente)
+        : requests.filter((r) => filtroEstado === "TODAS" || r.status === filtroEstado),
+    [requests, filtroEstado, soloPendientes],
   );
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <Label className="text-xs">Estado</Label>
-        <Select value={filtroEstado} onValueChange={setFiltroEstado}>
-          <SelectTrigger className="w-56">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="TODAS">Todas</SelectItem>
-            {ESTADOS_SOLICITUD.map((e) => (
-              <SelectItem key={e} value={e}>
-                {e}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <span className="text-xs text-muted-foreground">{filtradas.length} solicitud(es)</span>
-      </div>
+      {soloPendientes ? (
+        <p className="text-xs text-muted-foreground">
+          {filtradas.length} solicitud(es) pendiente(s) de decisión.
+        </p>
+      ) : (
+        <div className="flex items-center gap-3">
+          <Label className="text-xs">Estado</Label>
+          <Select value={filtroEstado} onValueChange={setFiltroEstado}>
+            <SelectTrigger className="w-56">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="TODAS">Todas</SelectItem>
+              {ESTADOS_SOLICITUD.map((e) => (
+                <SelectItem key={e} value={e}>
+                  {e}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-xs text-muted-foreground">{filtradas.length} solicitud(es)</span>
+        </div>
+      )}
 
       {filtradas.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No hay solicitudes.</p>
+        <p className="text-sm text-muted-foreground">
+          {soloPendientes
+            ? "No hay solicitudes pendientes de verificación para los filtros seleccionados."
+            : "No hay solicitudes."}
+        </p>
       ) : (
+
         <div className="space-y-2">
           {filtradas.map((r) => (
             <Card key={r.id} className="flex flex-wrap items-center justify-between gap-3 p-3">
