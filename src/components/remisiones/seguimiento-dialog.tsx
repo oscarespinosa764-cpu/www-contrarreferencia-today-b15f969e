@@ -4762,75 +4762,16 @@ export function SeguimientoDialog({
             </div>
           )}
 
-          {/* Últimos seguimientos (mínimo 5) */}
-          <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Últimos seguimientos
-            </p>
-            {(historial?.length ?? 0) === 0 ? (
-              <p className="rounded-md border border-dashed border-border py-6 text-center text-sm italic text-muted-foreground">
-                Sin seguimientos registrados.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {historial!.slice(0, 5).map((h) => (
-                  <div key={h.id} className="rounded-lg border border-border bg-card p-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-xs font-semibold text-foreground">
-                        {h.tipo_seguimiento || "Seguimiento"}
-                      </span>
-                      <span className="text-[11px] text-muted-foreground">
-                        {fmtFechaHora(h.created_at)}
-                      </span>
-                    </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-2">
-                      {h.estado_solicitud && (
-                        <span className="inline-block rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-foreground">
-                          {h.estado_solicitud}
-                        </span>
-                      )}
-                      <span className="text-[11px] text-muted-foreground">
-                        {h.nombre_usuario || "—"}
-                      </span>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="ml-auto h-6 gap-1 px-2 text-[11px]"
-                        onClick={() => setVerDetalle(h as Record<string, unknown>)}
-                      >
-                        <Eye className="h-3.5 w-3.5" /> Ver detalle
-                      </Button>
-                    </div>
-                    {(() => {
-                      const det = parseDetalles(h.detalles);
-                      const estado = det?.estado_evolucion_especialidades as string | undefined;
-                      if (!estado) return null;
-                      const evol = (det?.especialidades_evolucionadas as string[] | null) ?? [];
-                      const pend = (det?.especialidades_pendientes as string[] | null) ?? [];
-                      const medio = det?.medio_evolucion as string | undefined;
-                      return (
-                        <div className="mt-1.5 space-y-0.5 rounded-md bg-muted/40 px-2 py-1 text-[11px]">
-                          <p className="font-semibold text-foreground">
-                            EVOLUCIÓN {estado}
-                            {medio ? ` · ${medio}` : ""}
-                          </p>
-                          {evol.length > 0 && (
-                            <p className="text-muted-foreground">
-                              Evolucionadas: {evol.join(", ")}
-                            </p>
-                          )}
-                          {pend.length > 0 && (
-                            <p className="text-status-amber">Pendientes: {pend.join(", ")}</p>
-                          )}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* HISTÓRICOS (FASE 5E · Bloque B) — tarjetas compactas + Ver detalle */}
+          <SeguimientoHistoricos
+            items={(historial ?? []) as unknown as SeguimientoRow[]}
+            metaDe={(h) => {
+              const est = h.estado_solicitud as string | undefined;
+              const det = parseDetalles(h.detalles as unknown);
+              const evo = det?.estado_evolucion_especialidades as string | undefined;
+              return [est, evo ? `EVOLUCIÓN ${evo}` : ""].filter(Boolean).join(" · ") || null;
+            }}
+          />
         </div>
 
         {/* Pie fijo */}
