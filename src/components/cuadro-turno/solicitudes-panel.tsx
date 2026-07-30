@@ -327,17 +327,25 @@ function RevisionDialog({
     if (!razon.trim()) return toast.error("La razón es obligatoria.");
     setSaving(true);
     try {
-      const { error } = await supabase
+      const { data: upd, error } = await supabase
         .from("shift_requests")
         .update({
           status: nuevoEstado,
           rejected_by: adminId,
           rejected_at: new Date().toISOString(),
-          rejection_reason: razon,
+          rejection_reason: razon.trim().slice(0, 1000),
           response_observation: obs || null,
         })
-        .eq("id", request.id);
+        .eq("id", request.id)
+        .eq("status", request.status)
+        .select("id");
       if (error) throw error;
+      if (!upd || upd.length === 0) {
+        toast.error("La solicitud ya fue decidida por otro usuario. Actualiza la lista.");
+        onDone();
+        return;
+      }
+
       await supabase.from("shift_request_audit").insert({
         request_id: request.id,
         action: nuevoEstado === "NEGADA" ? "NEGADA" : "DEVUELTA",
