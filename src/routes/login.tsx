@@ -204,8 +204,19 @@ function LoginPage() {
               </Label>
               <div className="relative">
                 <Clock className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Select value={turnoCodigo} onValueChange={(v) => setTurnoCodigo(v as TurnoCodigo)}>
-                  <SelectTrigger id="l-turno" className="h-12 pl-11">
+                <Select
+                  value={turnoCodigo}
+                  onValueChange={(v) => {
+                    setTurnoCodigo(v as TurnoCodigo);
+                    setTurnoError(false);
+                  }}
+                >
+                  <SelectTrigger
+                    id="l-turno"
+                    aria-invalid={turnoError}
+                    aria-describedby={turnoError ? "l-turno-error" : undefined}
+                    className={`h-12 pl-11 ${turnoError ? "border-destructive" : ""}`}
+                  >
                     <SelectValue placeholder="Selecciona tu turno" />
                   </SelectTrigger>
                   <SelectContent>
@@ -215,7 +226,13 @@ function LoginPage() {
                   </SelectContent>
                 </Select>
               </div>
+              {(turnoError || (user && !turnoSesion)) && (
+                <p id="l-turno-error" role="alert" className="ml-1 text-xs font-medium text-destructive">
+                  Seleccione un turno operativo para continuar.
+                </p>
+              )}
             </div>
+
             <Button
               type="submit"
               className="h-12 w-full text-sm font-bold uppercase tracking-wide shadow-elegant"
