@@ -2252,7 +2252,9 @@ export function SeguimientoDialog({
           return toast.error("Fecha de recogida requerida (DD/MM/AAAA)");
         if (!riRecHora.trim() || !isHoraValida(riRecHora))
           return toast.error("Hora de recogida requerida (HH:MM)");
-        if (!riRecTipoAmb.trim()) return toast.error("Selecciona el tipo de ambulancia");
+        const emp = riRecEmpresa.trim();
+        if (emp.length < 3 || emp.length > 160)
+          return toast.error("Indica la empresa de ambulancia (3-160 caracteres).");
       }
       if (esInterna && tipoSeg === TI.LLEGADA_AMB) {
         if (!riFirmaLlegada)
