@@ -223,22 +223,28 @@ export function CasoGenericoCard({
   const invalidateKey =
     tipo === "phd" ? "domiciliarios" : tipo === "interna" ? "referencia-interna" : "pendientes-rem";
 
-  // Línea principal: [NOMBRE], [TIPODOC]: [DOC] · [EDAD] años
-  const docPart = documento ? `${r.tipo_documento || "DOC"}: ${documento}` : "";
-  const edadPart = tipo === "phd" && r.edad ? fmtEdad(r.edad) : "";
-  const mainExtra = [docPart, edadPart].filter(Boolean).join(" · ");
-  const mainLine = tipo === "pendiente" ? nombre : `${nombre}${mainExtra ? `, ${mainExtra}` : ""}`;
+  // Línea principal global: NOMBRE // TIPODOC: DOC · EDAD AÑOS
+  const mainLine =
+    tipo === "pendiente"
+      ? buildPacienteIdentityLine({ nombre })
+      : buildPacienteIdentityLine({
+          nombre,
+          tipoDocumento: r.tipo_documento,
+          documento,
+          edad: tipo === "phd" ? r.edad : null,
+        });
 
   // Nunca renderizar textos residuales "null"/"undefined" provenientes de datos históricos.
   const limpio = (v: unknown): string => sanitizeOptionalLabel(v);
   const prioridadTxt = limpio(r.prioridad);
-  const subParts = (
+  // Segunda línea propia de cada módulo (grupos con "|", elementos con "·").
+  const subLine = buildModuleSummaryLine(
     tipo === "phd"
-      ? [r.tipo_solicitud, r.eapb, r.regimen]
+      ? [[r.tipo_solicitud], [r.eapb, r.regimen]]
       : tipo === "interna"
-        ? [r.tipo_solicitud, r.servicio, r.eapb]
-        : [r.tipo_pendiente, r.ips_area]
-  ).map(limpio);
+        ? [[r.tipo_solicitud], [r.servicio, r.eapb]]
+        : [[r.tipo_pendiente], [r.ips_area]],
+  );
 
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
