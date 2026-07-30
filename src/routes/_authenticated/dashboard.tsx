@@ -344,7 +344,7 @@ function Dashboard() {
       {/* AVISOS OPERATIVOS AGRUPADOS POR CASO */}
       <div className="mt-5">
         <Panel
-          title="Avisos operativos agrupados por caso"
+          title="AVISOS OPERATIVOS"
           action={
             <Button asChild variant="outline" size="sm" className="rounded-full">
               <Link to="/reglas">{avisosAgrupados.length} caso(s) · Ver todos</Link>
