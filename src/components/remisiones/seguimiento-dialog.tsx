@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { resolverEstadoRI } from "@/lib/ri-estados";
+import { resolverEstadoRI, siguienteTipoSeguimientoRI } from "@/lib/ri-estados";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
