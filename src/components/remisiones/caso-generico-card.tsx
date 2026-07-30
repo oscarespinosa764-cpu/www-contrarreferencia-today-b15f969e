@@ -323,8 +323,67 @@ export function CasoGenericoCard({
   };
 
   return (
-    <div className={`rounded-xl border border-border border-l-4 ${prio.borderL} bg-card p-3.5 shadow-sm`}>
+    <div
+      className={`rounded-xl border border-border border-l-4 ${prio.borderL} bg-card shadow-sm ${
+        compact ? "p-2.5" : "p-3.5"
+      }`}
+    >
+      {compact ? (
+        <>
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="truncate text-[13px] font-bold uppercase text-foreground">{mainLine}</p>
+              <p className="truncate text-[11px] text-muted-foreground">
+                {subParts.filter(Boolean).join(" · ") || "—"}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5">
+              {r.prioridad && (
+                <Badge variant="outline" className={`${prio.badge} text-[10px]`}>
+                  {r.prioridad}
+                </Badge>
+              )}
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${tiempoChip(r.created_at)}`}>
+                {fmtTranscurrido(r.created_at)}
+              </span>
+            </div>
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <span className="min-w-0 truncate text-[10.5px] text-muted-foreground">
+              <span className="font-semibold">Última gestión:</span>{" "}
+              {ultimaGestion
+                ? `${fmtFechaHora(ultimaGestion.fecha)} · ${ultimaGestion.responsable || "—"}`
+                : "Sin seguimientos registrados"}
+            </span>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 rounded-full"
+                title="Ver caso"
+                aria-label="Ver caso"
+                onClick={() => setVer(true)}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+              {canEdit && (
+                <Button
+                  size="icon"
+                  className="h-9 w-9 rounded-full"
+                  title="Seguimiento"
+                  aria-label="Seguimiento"
+                  onClick={() => setSeg(true)}
+                >
+                  <ClipboardCheck className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
       {/* Encabezado */}
+
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-sm font-bold uppercase text-foreground">{mainLine}</p>
