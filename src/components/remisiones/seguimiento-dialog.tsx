@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { resolverEstadoRI } from "@/lib/ri-estados";
+import { resolverEstadoRI, siguienteTipoSeguimientoRI } from "@/lib/ri-estados";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
@@ -211,25 +211,32 @@ const RI_UNIDAD_LABEL_A_CODIGO: Record<string, string> = Object.fromEntries(
 
 /** Determina el próximo paso permitido para un caso de Referencia Interna.
  *
- * B3.1: la novedad EXTERNA "DESCOMPENSACIÓN HEMODINÁMICA" es evento de
- * reinicio del ciclo operativo. Todo paso secuencial anterior a ese evento
- * queda como histórico y el siguiente paso vuelve al inicio.
+ * FASE 5G · A: la ruta estándar se deriva del ESTADO CANÓNICO del caso
+ * (server-authoritative, aplicado por `private.seguimientos_ri_estado_apply`),
+ * de modo que estado, segmento, badge y selector pertenezcan siempre al mismo
+ * ciclo operativo. La ruta especial (TEP) conserva su cálculo por historial.
  */
 function siguientePasoRI(
   historial: { tipo_seguimiento: string; detalles?: unknown }[] | undefined,
   tipoSolicitud: string | null | undefined,
+  estadoActualRI: string | null | undefined,
 ): string | null {
   const especial = RI_ESPECIALES.has((tipoSolicitud ?? "").toUpperCase().trim());
+  if (!especial) return siguienteTipoSeguimientoRI(estadoActualRI);
+
   const IGNORAR = new Set(["CAMBIO DE UNIDAD", "OTRO"]);
-  // historial viene ordenado por created_at DESC (ver useQuery del hook).
   let ultimo: string | undefined;
   for (const h of historial ?? []) {
     const t = (h.tipo_seguimiento || "").toUpperCase();
     if (!t) continue;
     if (t === "NOVEDADES") {
       const d = parseDetalles(h.detalles);
-      if (d && d.externa_codigo === "DESCOMPENSACION_HEMODINAMICA") {
-        // Reinicio: no hay pasos secuenciales vigentes posteriores.
+      const reinicia =
+        d &&
+        (d.externa_codigo === "DESCOMPENSACION_HEMODINAMICA" ||
+          d.externa_codigo === "AMBULANCIA_SIN_DISPONIBILIDAD" ||
+          d.interna_codigo === "REPROGRAMACION");
+      if (reinicia) {
         ultimo = undefined;
         break;
       }
@@ -239,20 +246,9 @@ function siguientePasoRI(
     ultimo = t;
     break;
   }
-  if (especial) {
-    if (!ultimo) return TI.TEP_ACTIVACION;
-    if (ultimo === TI.TEP_ACTIVACION.toUpperCase()) return TI.AMB_COORDINADA_ESP;
-    if (ultimo === TI.AMB_COORDINADA_ESP.toUpperCase()) return TI.CIERRE_CONCLUSION;
-    return null;
-  }
-  if (!ultimo) return TI.PENDIENTE;
-  // B1: tras TRÁMITE COORDINADO se salta directamente a PROGRAMACIÓN
-  // (se retira EXAMEN COORDINADO de la creación nueva).
-  if (ultimo.startsWith("PENDIENTE COORDINAC")) return TI.PROG_AMB;
-  // Ruta histórica: casos que ya tienen EXAMEN COORDINADO registrado continúan.
-  if (ultimo === TI.COORDINADO.toUpperCase()) return TI.PROG_AMB;
-  if (ultimo === TI.PROG_AMB.toUpperCase()) return TI.LLEGADA_AMB;
-  if (ultimo === TI.LLEGADA_AMB.toUpperCase()) return TI.CIERRE_CONCLUSION;
+  if (!ultimo) return TI.TEP_ACTIVACION;
+  if (ultimo === TI.TEP_ACTIVACION.toUpperCase()) return TI.AMB_COORDINADA_ESP;
+  if (ultimo === TI.AMB_COORDINADA_ESP.toUpperCase()) return TI.CIERRE_CONCLUSION;
   return null;
 }
 
@@ -439,6 +435,8 @@ export function SeguimientoDialog({
   const [riRecFecha, setRiRecFecha] = useState("");
   const [riRecHora, setRiRecHora] = useState("");
   const [riRecTipoAmb, setRiRecTipoAmb] = useState("");
+  // FASE 5G · A — Empresa de ambulancia (catálogo canónico EMPRESA_TEP, default SEM).
+  const [riRecEmpresa, setRiRecEmpresa] = useState("");
   const [riLlegFecha, setRiLlegFecha] = useState("");
   const [riLlegHora, setRiLlegHora] = useState("");
   // Datos de la firma QR de llegada (poblados cuando el firmante confirma).
@@ -693,21 +691,6 @@ export function SeguimientoDialog({
     },
   });
 
-  // Catálogo de tipos de ambulancia activos (para CONFIRMACIÓN DE PROGRAMACIÓN en RI).
-  const { data: catTipoAmbulancia = [] } = useQuery({
-    queryKey: ["cat-tipo-ambulancia-seg"],
-    enabled: open && esInterna,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("catalogos")
-        .select("valor")
-        .eq("tipo", "TIPO_AMBULANCIA")
-        .eq("activo", true)
-        .order("orden", { ascending: true })
-        .order("valor", { ascending: true });
-      return (data ?? []).map((r) => String(r.valor ?? "").trim()).filter(Boolean);
-    },
-  });
 
   // Historial de especialidades del caso: permite conocer las especialidades
   // que fueron cerradas (para ofrecer reactivación) sin duplicar información.
@@ -975,6 +958,7 @@ export function SeguimientoDialog({
     const proximo = siguientePasoRI(
       historial as { tipo_seguimiento: string; detalles?: unknown }[] | undefined,
       casoInterna?.tipo_solicitud ?? null,
+      estadoActual,
     );
     const activo = !casoInterna?.archivado;
     const arr: string[] = [];
@@ -985,7 +969,7 @@ export function SeguimientoDialog({
     // B3: OTRO y NOVEDADES son trazabilidad permanente mientras el caso esté activo.
     if (activo) arr.push(TI.OTRO, TI.NOVEDADES, T.INFO_TRAMITE);
     return arr;
-  }, [historial, casoInterna]);
+  }, [historial, casoInterna, estadoActual]);
 
   const TIPOS_SEG: string[] = esSaliente
     ? TIPOS_SALIENTES
@@ -996,6 +980,25 @@ export function SeguimientoDialog({
         : esPendiente
           ? TIPOS_PENDIENTE
           : [];
+
+  // FASE 5G · A — Programación de ambulancia: el tipo proviene EXCLUSIVAMENTE
+  // de la creación del caso (solo lectura) y la empresa se precarga con SEM
+  // resuelta desde el catálogo canónico (sin inventar registros).
+  const empresaSemCatalogo = useMemo(() => {
+    const list = empresasTepInterna as string[];
+    return (
+      list.find((v) => /(^|[\s\-·])SEM($|[\s\-·])/i.test(v)) ??
+      list.find((v) => /\bSEM\b/i.test(v)) ??
+      ""
+    );
+  }, [empresasTepInterna]);
+
+  useEffect(() => {
+    if (!open || !esInterna || tipoSeg !== TI.PROG_AMB) return;
+    const canon = (casoInterna?.tipo_ambulancia ?? "").trim();
+    setRiRecTipoAmb((prev) => (prev === canon ? prev : canon));
+    setRiRecEmpresa((prev) => (prev ? prev : empresaSemCatalogo));
+  }, [open, esInterna, tipoSeg, casoInterna?.tipo_ambulancia, empresaSemCatalogo]);
 
 
   // Inicializar al abrir. Solo debe correr cuando el diálogo TRANSICIONA
@@ -1317,11 +1320,15 @@ export function SeguimientoDialog({
           partes.push("ESTADO RESULTANTE: CANCELADO");
           return appendNota(partes.join("\n"), detalle);
         }
-        case TI.PROG_AMB:
-          return appendNota(
-            `SE CONFIRMA PROGRAMACIÓN DE AMBULANCIA.\nFECHA/HORA RECOGIDA: ${(riRecFecha && riRecHora) ? `${riRecFecha}, ${riRecHora}` : "—"}\nTIPO AMBULANCIA: ${riRecTipoAmb || "—"}`,
-            detalle,
-          );
+        case TI.PROG_AMB: {
+          const lineas = [
+            "CONFIRMACIÓN DE PROGRAMACIÓN DE AMBULANCIA.",
+            `FECHA/HORA DE RECOGIDA: ${riRecFecha && riRecHora ? `${riRecFecha}, ${riRecHora}` : "—"}`,
+            `TIPO DE AMBULANCIA: ${(casoInterna?.tipo_ambulancia ?? "").trim() || "—"}`,
+            `EMPRESA DE AMBULANCIA: ${riRecEmpresa.trim() || "—"}`,
+          ];
+          return appendNota(lineas.join("\n"), detalle);
+        }
         case TI.LLEGADA_AMB: {
           const f = riFirmaLlegada;
           const empresa = (f?.empresa || caso?.prestador_traslado || "").toString().trim() || "—";
@@ -1768,6 +1775,7 @@ export function SeguimientoDialog({
     qc.invalidateQueries({ queryKey: ["remisiones"] });
     qc.invalidateQueries({ queryKey: ["domiciliarios"] });
     qc.invalidateQueries({ queryKey: ["referencia-interna"] });
+    qc.invalidateQueries({ queryKey: ["ri-caso", casoId] });
     qc.invalidateQueries({ queryKey: ["pendientes-rem"] });
     qc.invalidateQueries({ queryKey: ["pendientes"] });
     qc.invalidateQueries({ queryKey: ["seguimientos-ult"] });
@@ -1830,7 +1838,9 @@ export function SeguimientoDialog({
           return {
             fecha_recogida: riRecFecha.trim() || null,
             hora_recogida: riRecHora.trim() || null,
-            tipo_ambulancia: riRecTipoAmb.trim() || null,
+            // El servidor reescribe el tipo con el valor canónico del caso.
+            tipo_ambulancia: (casoInterna?.tipo_ambulancia ?? "").trim() || null,
+            empresa_ambulancia_nombre: riRecEmpresa.trim(),
           };
         case TI.LLEGADA_AMB:
           return {
@@ -2136,6 +2146,7 @@ export function SeguimientoDialog({
     setRiRecFecha("");
     setRiRecHora("");
     setRiRecTipoAmb("");
+    setRiRecEmpresa("");
     setRiLlegFecha("");
     setRiLlegHora("");
     setRiTepProveedor("");
@@ -2234,7 +2245,9 @@ export function SeguimientoDialog({
           return toast.error("Fecha de recogida requerida (DD/MM/AAAA)");
         if (!riRecHora.trim() || !isHoraValida(riRecHora))
           return toast.error("Hora de recogida requerida (HH:MM)");
-        if (!riRecTipoAmb.trim()) return toast.error("Selecciona el tipo de ambulancia");
+        const emp = riRecEmpresa.trim();
+        if (emp.length < 3 || emp.length > 160)
+          return toast.error("Indica la empresa de ambulancia (3-160 caracteres).");
       }
       if (esInterna && tipoSeg === TI.LLEGADA_AMB) {
         if (!riFirmaLlegada)
@@ -3375,18 +3388,27 @@ export function SeguimientoDialog({
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className={labelCls}>Tipo de ambulancia *</Label>
-                      <select
-                        value={riRecTipoAmb}
-                        onChange={(e) => setRiRecTipoAmb(e.target.value)}
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      <Label className={labelCls}>Tipo de ambulancia</Label>
+                      <Input
+                        value={riRecTipoAmb || "—"}
+                        readOnly
+                        disabled
+                        className="bg-muted/50"
+                      />
+                      <p className="text-[11px] text-muted-foreground">
+                        Definido en la creación del caso. No es modificable.
+                      </p>
+                    </div>
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <AutoComplete
+                        label="Empresa de ambulancia *"
+                        value={riRecEmpresa}
+                        onChange={setRiRecEmpresa}
+                        options={empresasTepInterna as string[]}
+                        placeholder="Escriba o seleccione la empresa…"
+                        openAllOnFocus
                         required
-                      >
-                        <option value="" disabled>Seleccione…</option>
-                        {catTipoAmbulancia.map((v) => (
-                          <option key={v} value={v}>{v}</option>
-                        ))}
-                      </select>
+                      />
                     </div>
                   </div>
                 </div>

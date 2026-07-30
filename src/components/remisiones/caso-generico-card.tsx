@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/lib/backend-client";
 import { Button } from "@/components/ui/button";
+import { resolverEstadoRI } from "@/lib/ri-estados";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -136,19 +137,13 @@ function fromDatetimeLocal(v: FormDataEntryValue | null): string | null {
   return isNaN(d.getTime()) ? null : d.toISOString();
 }
 
+// FASE 5G · A — El badge de Referencia Interna usa la fuente canónica de estado
+// (misma que el segmentador y el modal). Nunca muestra "ACTIVO" ni valores nulos.
 function EstadoBadge({ estado }: { estado?: string | null }) {
-  const txt = (estado || "").trim();
-  const activo = txt.toUpperCase() === "ACTIVO";
+  const meta = resolverEstadoRI(estado);
   return (
-    <Badge
-      variant="outline"
-      className={
-        activo
-          ? "border-status-green/40 bg-status-green/15 font-semibold text-status-green"
-          : "font-semibold"
-      }
-    >
-      {txt || "—"}
+    <Badge variant="outline" className={`font-semibold ${meta.color}`}>
+      {meta.label}
     </Badge>
   );
 }
@@ -231,12 +226,18 @@ export function CasoGenericoCard({
   const mainExtra = [docPart, edadPart].filter(Boolean).join(" · ");
   const mainLine = tipo === "pendiente" ? nombre : `${nombre}${mainExtra ? `, ${mainExtra}` : ""}`;
 
-  const subParts =
+  // Nunca renderizar textos residuales "null"/"undefined" provenientes de datos históricos.
+  const limpio = (v: unknown): string =>
+    typeof v === "string" && !["null", "undefined", "[object object]"].includes(v.trim().toLowerCase())
+      ? v.trim()
+      : "";
+  const subParts = (
     tipo === "phd"
       ? [r.tipo_solicitud, r.eapb, r.regimen]
       : tipo === "interna"
         ? [r.tipo_solicitud, r.servicio, r.eapb]
-        : [r.tipo_pendiente, r.ips_area];
+        : [r.tipo_pendiente, r.ips_area]
+  ).map(limpio);
 
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -555,7 +556,7 @@ export function CasoGenericoCard({
                 <Dato label="Tipo ambulancia" value={r.tipo_ambulancia} />
                 <Dato label="EAPB / ERP" value={r.eapb} />
                 <Dato label="Prioridad" value={r.prioridad} />
-                <Dato label="Estado" value={r.estado} />
+                <Dato label="Estado" value={resolverEstadoRI(r.estado).label} />
                 <Dato label="Fecha y hora radicación" value={fmtFechaHora(r.fecha_radicado)} />
                 <Dato label="Tiempo del trámite" value={fmtTranscurrido(r.created_at)} />
               </>
