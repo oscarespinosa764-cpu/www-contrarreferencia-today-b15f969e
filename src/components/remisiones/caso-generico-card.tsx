@@ -136,19 +136,13 @@ function fromDatetimeLocal(v: FormDataEntryValue | null): string | null {
   return isNaN(d.getTime()) ? null : d.toISOString();
 }
 
+// FASE 5G · A — El badge de Referencia Interna usa la fuente canónica de estado
+// (misma que el segmentador y el modal). Nunca muestra "ACTIVO" ni valores nulos.
 function EstadoBadge({ estado }: { estado?: string | null }) {
-  const txt = (estado || "").trim();
-  const activo = txt.toUpperCase() === "ACTIVO";
+  const meta = resolverEstadoRI(estado);
   return (
-    <Badge
-      variant="outline"
-      className={
-        activo
-          ? "border-status-green/40 bg-status-green/15 font-semibold text-status-green"
-          : "font-semibold"
-      }
-    >
-      {txt || "—"}
+    <Badge variant="outline" className={`font-semibold ${meta.color}`}>
+      {meta.label}
     </Badge>
   );
 }
