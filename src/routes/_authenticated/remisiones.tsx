@@ -435,9 +435,9 @@ function RemisionesPage() {
     <div>
       <AppHeader title="DASHBOARD OPERATIVO SALIENTES" subtitle="Casos activos" />
 
-      {/* Superior: Entrega de turno (con exportaciones) + Avisos operativos */}
+      {/* Superior: Entrega de turno (con tarjetas resumen) + Pendientes operativos */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <Panel title="Entrega de turno">
+        <Panel title="Entrega de turno" bodyMaxHeight={null}>
           <div className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
             <div className="space-y-1.5">
               <Label className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
@@ -496,9 +496,63 @@ function RemisionesPage() {
               {busyReporte ? "Generando…" : "Reporte general"}
             </Button>
           </div>
+
+          {/* Tarjetas resumen compactas (mismos conteos y colores) */}
+          <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border pt-3 sm:grid-cols-3 xl:grid-cols-4">
+            <StatCard compact title="Remisiones activas" value={stats.activas} caption="Hacia otras IPS" color="blue" />
+            <StatCard compact title="Pendientes aceptación" value={stats.pendientes} caption="Esperando respuesta" color="amber" />
+            <StatCard compact title="PHD / PAD / O2 / Especiales" value={stats.especiales} caption="Activos especiales" color="sky" />
+            <StatCard compact title="Ref. internas" value={stats.internas} caption="Casos internos CEDIM" color="teal" />
+            <StatCard compact title="Pend. generales" value={stats.generales} caption="Otros pendientes" color="amber" />
+            <StatCard compact title="Acep. pendiente ambulancia" value={stats.acepPendiente} caption="Traslado por coordinar" color="amber" />
+            <StatCard compact title="Acep. ambulancia coordinada" value={stats.acepCoordinada} caption="Traslado ya definido" color="green" />
+            <SplitStatCard
+              compact
+              title="Desistimientos de remisión"
+              color="red"
+              parts={[
+                { label: "IPS / depto específico", value: stats.desistIps },
+                { label: "Remisión general", value: stats.desistGeneral },
+              ]}
+            />
+          </div>
         </Panel>
 
-        {/* Avisos operativos (reubicado al espacio del antiguo cuadro Exportaciones) */}
+        {/* Pendientes operativos — misma fuente canónica (query "pendientes-rem") */}
+        <Panel
+          title="Pendientes operativos"
+          action={
+            <span className="rounded-full bg-status-amber/15 px-2.5 py-1 text-[11px] font-semibold text-status-amber">
+              {pendientes?.length ?? 0} activos
+            </span>
+          }
+          bodyMaxHeight={null}
+        >
+          {!pendientes ? (
+            <p className="py-6 text-center text-sm italic text-muted-foreground">Cargando…</p>
+          ) : pendientes.length === 0 ? (
+            <p className="py-6 text-center text-sm italic text-muted-foreground">
+              Sin pendientes operativos activos.
+            </p>
+          ) : (
+            <div className="max-h-[26rem] space-y-2 overflow-y-auto pr-1">
+              {pendientes.map((p: Record<string, any>) => (
+                <CasoGenericoCard
+                  key={p.id}
+                  compact
+                  tipo="pendiente"
+                  r={p}
+                  canEdit={canEdit}
+                  ultimaGestion={ultGestiones?.[p.id] ?? null}
+                />
+              ))}
+            </div>
+          )}
+        </Panel>
+      </div>
+
+      {/* Avisos operativos (reubicado al espacio de las antiguas tarjetas resumen) */}
+      <div className="mt-4">
         <Panel
           title="Avisos operativos"
           action={
@@ -506,13 +560,14 @@ function RemisionesPage() {
               {avisos.length} activos
             </span>
           }
+          bodyMaxHeight={null}
         >
           {avisos.length === 0 ? (
             <p className="py-6 text-center text-sm italic text-muted-foreground">
               Sin avisos operativos activos para el turno.
             </p>
           ) : (
-            <div className="max-h-80 space-y-2 overflow-y-auto">
+            <div className="grid max-h-80 gap-2 overflow-y-auto pr-1 lg:grid-cols-2">
               {avisos.map((a) => {
                 const fuerte = a.severidad === "ALTO" || a.severidad === "CRITICO";
                 return (
@@ -541,25 +596,6 @@ function RemisionesPage() {
         </Panel>
       </div>
 
-      {/* Tarjetas de estado */}
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-        <StatCard title="Remisiones activas" value={stats.activas} caption="Hacia otras IPS" color="blue" />
-        <StatCard title="Pendientes aceptación" value={stats.pendientes} caption="Esperando respuesta" color="amber" />
-        <StatCard title="PHD / PAD / O2 / Especiales" value={stats.especiales} caption="Activos especiales" color="sky" />
-        <StatCard title="Ref. internas" value={stats.internas} caption="Casos internos CEDIM" color="teal" />
-        <StatCard title="Pend. generales" value={stats.generales} caption="Otros pendientes" color="amber" />
-        <StatCard title="Acep. pendiente ambulancia" value={stats.acepPendiente} caption="Traslado por coordinar" color="amber" />
-        <StatCard title="Acep. ambulancia coordinada" value={stats.acepCoordinada} caption="Traslado ya definido" color="green" />
-        <SplitStatCard
-          title="Desistimientos de remisión"
-          color="red"
-          parts={[
-            { label: "IPS / depto específico", value: stats.desistIps },
-            { label: "Remisión general", value: stats.desistGeneral },
-          ]}
-        />
-      </div>
-
       {/* Pestañas + filtros + lista */}
       <div className="mt-5">
         <Tabs value={tab} onValueChange={setTab}>
@@ -567,8 +603,8 @@ function RemisionesPage() {
             <TabsTrigger value="remisiones">📋 Remisiones</TabsTrigger>
             <TabsTrigger value="especiales">🚑 PHD/PAD/O2/Especiales</TabsTrigger>
             <TabsTrigger value="internas">🏥 Ref. Internas</TabsTrigger>
-            <TabsTrigger value="pendientes">⏳ Pendientes</TabsTrigger>
           </TabsList>
+
 
           {/* Fila de filtros + acciones — FiltersBar mide su propio ancho útil vía @container */}
           <div className="mt-3 flex flex-wrap items-center gap-3">
