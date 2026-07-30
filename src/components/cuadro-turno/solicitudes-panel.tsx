@@ -153,7 +153,13 @@ export function SolicitudesPanel({ soloPendientes = false }: { soloPendientes?: 
             setSel(null);
             qc.invalidateQueries({ queryKey: ["shift-requests"] });
             qc.invalidateQueries({ queryKey: ["absenteeism"] });
+            qc.invalidateQueries({ queryKey: ["audit-aprobados"] });
+            qc.invalidateQueries({ queryKey: ["historial-cambios"] });
+            qc.invalidateQueries({ queryKey: ["frag-pendientes"] });
+            qc.invalidateQueries({ queryKey: ["control-mensual"] });
+            qc.invalidateQueries({ queryKey: ["cuadro-mensual"] });
           }}
+
         />
       )}
     </div>
