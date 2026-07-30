@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/lib/backend-client";
 import { Button } from "@/components/ui/button";
+import { resolverEstadoRI } from "@/lib/ri-estados";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -225,12 +226,18 @@ export function CasoGenericoCard({
   const mainExtra = [docPart, edadPart].filter(Boolean).join(" · ");
   const mainLine = tipo === "pendiente" ? nombre : `${nombre}${mainExtra ? `, ${mainExtra}` : ""}`;
 
-  const subParts =
+  // Nunca renderizar textos residuales "null"/"undefined" provenientes de datos históricos.
+  const limpio = (v: unknown): string =>
+    typeof v === "string" && !["null", "undefined", "[object object]"].includes(v.trim().toLowerCase())
+      ? v.trim()
+      : "";
+  const subParts = (
     tipo === "phd"
       ? [r.tipo_solicitud, r.eapb, r.regimen]
       : tipo === "interna"
         ? [r.tipo_solicitud, r.servicio, r.eapb]
-        : [r.tipo_pendiente, r.ips_area];
+        : [r.tipo_pendiente, r.ips_area]
+  ).map(limpio);
 
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
