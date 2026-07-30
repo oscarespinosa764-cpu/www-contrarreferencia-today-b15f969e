@@ -2759,8 +2759,8 @@ export function SeguimientoDialog({
             paciente={paciente}
             documento={documento}
             estado={esInterna ? resolverEstadoRI(estadoActual).label : estadoActual}
-            />
           />
+
           {/* Aviso de caso cerrado: modo consulta, sin nuevos seguimientos */}
           {casoCerrado && (
             <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm font-semibold text-destructive">
