@@ -179,7 +179,7 @@ export function SolicitudesAusentismoPanel({ isAdmin }: { isAdmin: boolean }) {
     <Tabs value={sub} onValueChange={setSub} className="space-y-4">
       <TabsList>
         <TabsTrigger value="solicitudes">Solicitudes y Cambios</TabsTrigger>
-        <TabsTrigger value="pendientes">Pendientes de Verificación</TabsTrigger>
+        <TabsTrigger value="pendientes">Pendientes de Aprobacion y Verificación</TabsTrigger>
         <TabsTrigger value="ausentismo">Control de Ausentismo</TabsTrigger>
       </TabsList>
       <TabsContent value="solicitudes" className="space-y-4">
