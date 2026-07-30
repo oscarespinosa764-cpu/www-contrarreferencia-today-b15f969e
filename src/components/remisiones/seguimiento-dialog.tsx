@@ -982,7 +982,7 @@ export function SeguimientoDialog({
     // B3: OTRO y NOVEDADES son trazabilidad permanente mientras el caso esté activo.
     if (activo) arr.push(TI.OTRO, TI.NOVEDADES, T.INFO_TRAMITE);
     return arr;
-  }, [historial, casoInterna]);
+  }, [historial, casoInterna, estadoActual]);
 
   const TIPOS_SEG: string[] = esSaliente
     ? TIPOS_SALIENTES
