@@ -2759,7 +2759,7 @@ export function SeguimientoDialog({
             paciente={paciente}
             documento={documento}
             estado={esInterna ? resolverEstadoRI(estadoActual).label : estadoActual}
-            nota="Estado del caso — trazabilidad institucional."
+            />
           />
           {/* Aviso de caso cerrado: modo consulta, sin nuevos seguimientos */}
           {casoCerrado && (
