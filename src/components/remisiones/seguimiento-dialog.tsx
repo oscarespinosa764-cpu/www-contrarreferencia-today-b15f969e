@@ -3393,18 +3393,27 @@ export function SeguimientoDialog({
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className={labelCls}>Tipo de ambulancia *</Label>
-                      <select
-                        value={riRecTipoAmb}
-                        onChange={(e) => setRiRecTipoAmb(e.target.value)}
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      <Label className={labelCls}>Tipo de ambulancia</Label>
+                      <Input
+                        value={riRecTipoAmb || "—"}
+                        readOnly
+                        disabled
+                        className="bg-muted/50"
+                      />
+                      <p className="text-[11px] text-muted-foreground">
+                        Definido en la creación del caso. No es modificable.
+                      </p>
+                    </div>
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <AutoComplete
+                        label="Empresa de ambulancia *"
+                        value={riRecEmpresa}
+                        onChange={setRiRecEmpresa}
+                        options={empresasTepInterna as string[]}
+                        placeholder="Escriba o seleccione la empresa…"
+                        openAllOnFocus
                         required
-                      >
-                        <option value="" disabled>Seleccione…</option>
-                        {catTipoAmbulancia.map((v) => (
-                          <option key={v} value={v}>{v}</option>
-                        ))}
-                      </select>
+                      />
                     </div>
                   </div>
                 </div>
