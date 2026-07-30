@@ -4743,6 +4743,25 @@ export function SeguimientoDialog({
             </div>
           )}
 
+          {/* Aviso amarillo unificado de validaciones (FASE 5E · Bloque B) */}
+          {!casoCerrado && (
+            <SeguimientoValidationSummary
+              errores={[
+                ...(tipoSeg ? [] : ["Seleccione el tipo de seguimiento."]),
+                ...(tipoSeg && !canalFinalDe(canal, canalOtro)
+                  ? [
+                      canal === "OTRO"
+                        ? "Especifique el canal de gestión."
+                        : "Seleccione un canal de gestión.",
+                    ]
+                  : []),
+                ...(!esPendiente && tipoSeg === T.INFO_TRAMITE
+                  ? erroresInformacionTramite(infoTramite)
+                  : []),
+              ]}
+            />
+          )}
+
           {/* HISTÓRICOS (FASE 5E · Bloque B) — tarjetas compactas + Ver detalle */}
           <SeguimientoHistoricos
             items={(historial ?? []) as unknown as SeguimientoRow[]}
