@@ -211,25 +211,32 @@ const RI_UNIDAD_LABEL_A_CODIGO: Record<string, string> = Object.fromEntries(
 
 /** Determina el próximo paso permitido para un caso de Referencia Interna.
  *
- * B3.1: la novedad EXTERNA "DESCOMPENSACIÓN HEMODINÁMICA" es evento de
- * reinicio del ciclo operativo. Todo paso secuencial anterior a ese evento
- * queda como histórico y el siguiente paso vuelve al inicio.
+ * FASE 5G · A: la ruta estándar se deriva del ESTADO CANÓNICO del caso
+ * (server-authoritative, aplicado por `private.seguimientos_ri_estado_apply`),
+ * de modo que estado, segmento, badge y selector pertenezcan siempre al mismo
+ * ciclo operativo. La ruta especial (TEP) conserva su cálculo por historial.
  */
 function siguientePasoRI(
   historial: { tipo_seguimiento: string; detalles?: unknown }[] | undefined,
   tipoSolicitud: string | null | undefined,
+  estadoActualRI: string | null | undefined,
 ): string | null {
   const especial = RI_ESPECIALES.has((tipoSolicitud ?? "").toUpperCase().trim());
+  if (!especial) return siguienteTipoSeguimientoRI(estadoActualRI);
+
   const IGNORAR = new Set(["CAMBIO DE UNIDAD", "OTRO"]);
-  // historial viene ordenado por created_at DESC (ver useQuery del hook).
   let ultimo: string | undefined;
   for (const h of historial ?? []) {
     const t = (h.tipo_seguimiento || "").toUpperCase();
     if (!t) continue;
     if (t === "NOVEDADES") {
       const d = parseDetalles(h.detalles);
-      if (d && d.externa_codigo === "DESCOMPENSACION_HEMODINAMICA") {
-        // Reinicio: no hay pasos secuenciales vigentes posteriores.
+      const reinicia =
+        d &&
+        (d.externa_codigo === "DESCOMPENSACION_HEMODINAMICA" ||
+          d.externa_codigo === "AMBULANCIA_SIN_DISPONIBILIDAD" ||
+          d.interna_codigo === "REPROGRAMACION");
+      if (reinicia) {
         ultimo = undefined;
         break;
       }
@@ -239,20 +246,9 @@ function siguientePasoRI(
     ultimo = t;
     break;
   }
-  if (especial) {
-    if (!ultimo) return TI.TEP_ACTIVACION;
-    if (ultimo === TI.TEP_ACTIVACION.toUpperCase()) return TI.AMB_COORDINADA_ESP;
-    if (ultimo === TI.AMB_COORDINADA_ESP.toUpperCase()) return TI.CIERRE_CONCLUSION;
-    return null;
-  }
-  if (!ultimo) return TI.PENDIENTE;
-  // B1: tras TRÁMITE COORDINADO se salta directamente a PROGRAMACIÓN
-  // (se retira EXAMEN COORDINADO de la creación nueva).
-  if (ultimo.startsWith("PENDIENTE COORDINAC")) return TI.PROG_AMB;
-  // Ruta histórica: casos que ya tienen EXAMEN COORDINADO registrado continúan.
-  if (ultimo === TI.COORDINADO.toUpperCase()) return TI.PROG_AMB;
-  if (ultimo === TI.PROG_AMB.toUpperCase()) return TI.LLEGADA_AMB;
-  if (ultimo === TI.LLEGADA_AMB.toUpperCase()) return TI.CIERRE_CONCLUSION;
+  if (!ultimo) return TI.TEP_ACTIVACION;
+  if (ultimo === TI.TEP_ACTIVACION.toUpperCase()) return TI.AMB_COORDINADA_ESP;
+  if (ultimo === TI.AMB_COORDINADA_ESP.toUpperCase()) return TI.CIERRE_CONCLUSION;
   return null;
 }
 
