@@ -691,21 +691,6 @@ export function SeguimientoDialog({
     },
   });
 
-  // Catálogo de tipos de ambulancia activos (para CONFIRMACIÓN DE PROGRAMACIÓN en RI).
-  const { data: catTipoAmbulancia = [] } = useQuery({
-    queryKey: ["cat-tipo-ambulancia-seg"],
-    enabled: open && esInterna,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("catalogos")
-        .select("valor")
-        .eq("tipo", "TIPO_AMBULANCIA")
-        .eq("activo", true)
-        .order("orden", { ascending: true })
-        .order("valor", { ascending: true });
-      return (data ?? []).map((r) => String(r.valor ?? "").trim()).filter(Boolean);
-    },
-  });
 
   // Historial de especialidades del caso: permite conocer las especialidades
   // que fueron cerradas (para ofrecer reactivación) sin duplicar información.
@@ -2160,6 +2145,7 @@ export function SeguimientoDialog({
     setRiRecFecha("");
     setRiRecHora("");
     setRiRecTipoAmb("");
+    setRiRecEmpresa("");
     setRiLlegFecha("");
     setRiLlegHora("");
     setRiTepProveedor("");
