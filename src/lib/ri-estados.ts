@@ -123,3 +123,32 @@ export function agruparInternasPorEstado<T extends { estado?: string | null }>(
     items: buckets.get(meta.codigo)!,
   }));
 }
+
+// ============================================================================
+// FASE 5G · A — Acción principal siguiente derivada del estado canónico.
+// Devuelve el código técnico persistido en `seguimientos.tipo_seguimiento`.
+// Fuente única compartida por el modal (selector) y la tarjeta; el servidor
+// revalida con `private.ri_paso_permitido`.
+// ============================================================================
+export const RI_TIPO_TRAMITE_COORDINADO = "PENDIENTE COORDINACIÓN FECHA Y HORA EXAMEN";
+export const RI_TIPO_PROG_AMB = "CONFIRMACIÓN DE PROGRAMACIÓN DE AMBULANCIA";
+export const RI_TIPO_LLEGADA_AMB = "CONFIRMACIÓN DE LLEGADA DE AMBULANCIA";
+export const RI_TIPO_CIERRE = "CIERRE POR CULMINACIÓN DE SOLICITUD";
+
+export function siguienteTipoSeguimientoRI(
+  estado: string | null | undefined,
+): string | null {
+  const meta = resolverEstadoRI(estado);
+  switch (meta.codigo) {
+    case "PENDIENTE COORDINACION":
+      return RI_TIPO_TRAMITE_COORDINADO;
+    case "TRAMITE COORDINADO SIN CONFIRMACION AMBULANCIA":
+      return RI_TIPO_PROG_AMB;
+    case "AMBULANCIA PROGRAMADA":
+      return RI_TIPO_LLEGADA_AMB;
+    case "AMBULANCIA EN SITIO PTE CONFIRMACION REINGRESO":
+      return RI_TIPO_CIERRE;
+    default:
+      return null;
+  }
+}
