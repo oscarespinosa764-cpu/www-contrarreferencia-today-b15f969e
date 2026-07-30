@@ -17,6 +17,7 @@ import { PhdSeguimientoDialog } from "./phd-seguimiento-dialog";
 import { PhdCicloPanel } from "./phd-ciclo-panel";
 import { useAuth } from "@/lib/auth";
 import { editarCasoSalienteAdmin } from "@/lib/salientes-admin-edit.functions";
+import { buildPacienteIdentityLine, buildModuleSummaryLine } from "@/lib/caso-cabecera";
 import {
   evolucionMeta,
   fmtEdad,
