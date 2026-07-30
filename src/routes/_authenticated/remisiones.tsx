@@ -17,7 +17,12 @@ import { FiltersBar, countActiveFilters } from "@/components/filters/filters-bar
 import { TURNOS_CANONICOS, TURNOS_CODIGOS } from "@/lib/turno";
 import { CasoRemisionCard, type Remision } from "@/components/remisiones/caso-remision-card";
 import { CasoGenericoCard, type GenericoTipo } from "@/components/remisiones/caso-generico-card";
-import { NuevoRegistroDialog } from "@/components/remisiones/nuevo-registro-dialog";
+import {
+  NuevoRegistroDialog,
+  GENERAL_CREATION_TABS,
+  PENDING_CREATION_TABS,
+  type NuevoRegistroTab,
+} from "@/components/remisiones/nuevo-registro-dialog";
 import { useAvisosOperativos } from "@/lib/use-avisos-operativos";
 import { NIVEL_BADGE } from "@/lib/avisos-reglas";
 import {
@@ -53,6 +58,11 @@ function RemisionesPage() {
   const initialEstado =
     search.f === "pendientes" ? "pendiente" : search.f === "aceptadas" ? "aceptad" : "todos";
   const [open, setOpen] = useState(false);
+  // Contexto de apertura del modal canónico (un único modal, parametrizado).
+  const [nuevoCtx, setNuevoCtx] = useState<{ initialTab: NuevoRegistroTab; allowedTabs: NuevoRegistroTab[] }>({
+    initialTab: "remision",
+    allowedTabs: GENERAL_CREATION_TABS,
+  });
   const [q, setQ] = useState("");
   const [prioridad, setPrioridad] = useState("todas");
   const [estadoFiltro, setEstadoFiltro] = useState(initialEstado);
@@ -522,9 +532,25 @@ function RemisionesPage() {
         <Panel
           title="Pendientes operativos"
           action={
-            <span className="rounded-full bg-status-amber/15 px-2.5 py-1 text-[11px] font-semibold text-status-amber">
-              {pendientes?.length ?? 0} activos
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-status-amber/15 px-2.5 py-1 text-[11px] font-semibold text-status-amber">
+                {pendientes?.length ?? 0} activos
+              </span>
+              {canEdit && (
+                <Button
+                  size="icon"
+                  className="h-8 w-8 rounded-full"
+                  title="Crear pendiente"
+                  aria-label="Crear pendiente"
+                  onClick={() => {
+                    setNuevoCtx({ initialTab: "pendiente", allowedTabs: PENDING_CREATION_TABS });
+                    setOpen(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           }
           bodyMaxHeight={null}
         >
@@ -678,7 +704,21 @@ function RemisionesPage() {
             {/* Zona de acciones — separada de los filtros */}
             <div className="flex shrink-0 items-center gap-2">
               {canEdit && (
-                <Button className="rounded-full" onClick={() => setOpen(true)}>
+                <Button
+                  className="rounded-full"
+                  onClick={() => {
+                    const map: Record<string, NuevoRegistroTab> = {
+                      remisiones: "remision",
+                      especiales: "phd",
+                      internas: "interna",
+                    };
+                    setNuevoCtx({
+                      initialTab: map[tab] ?? "remision",
+                      allowedTabs: GENERAL_CREATION_TABS,
+                    });
+                    setOpen(true);
+                  }}
+                >
                   <Plus className="mr-1.5 h-4 w-4" /> Nuevo
                 </Button>
               )}
@@ -736,7 +776,12 @@ function RemisionesPage() {
       </div>
 
       {/* Modal nuevo registro */}
-      <NuevoRegistroDialog open={open} onOpenChange={setOpen} />
+      <NuevoRegistroDialog
+        open={open}
+        onOpenChange={setOpen}
+        initialTab={nuevoCtx.initialTab}
+        allowedTabs={nuevoCtx.allowedTabs}
+      />
 
       {/* Confirmación entrega de turno */}
       <Dialog open={confirmEntrega} onOpenChange={setConfirmEntrega}>
