@@ -1335,11 +1335,15 @@ export function SeguimientoDialog({
           partes.push("ESTADO RESULTANTE: CANCELADO");
           return appendNota(partes.join("\n"), detalle);
         }
-        case TI.PROG_AMB:
-          return appendNota(
-            `SE CONFIRMA PROGRAMACIÓN DE AMBULANCIA.\nFECHA/HORA RECOGIDA: ${(riRecFecha && riRecHora) ? `${riRecFecha}, ${riRecHora}` : "—"}\nTIPO AMBULANCIA: ${riRecTipoAmb || "—"}`,
-            detalle,
-          );
+        case TI.PROG_AMB: {
+          const lineas = [
+            "CONFIRMACIÓN DE PROGRAMACIÓN DE AMBULANCIA.",
+            `FECHA/HORA DE RECOGIDA: ${riRecFecha && riRecHora ? `${riRecFecha}, ${riRecHora}` : "—"}`,
+            `TIPO DE AMBULANCIA: ${(casoInterna?.tipo_ambulancia ?? "").trim() || "—"}`,
+            `EMPRESA DE AMBULANCIA: ${riRecEmpresa.trim() || "—"}`,
+          ];
+          return appendNota(lineas.join("\n"), detalle);
+        }
         case TI.LLEGADA_AMB: {
           const f = riFirmaLlegada;
           const empresa = (f?.empresa || caso?.prestador_traslado || "").toString().trim() || "—";
