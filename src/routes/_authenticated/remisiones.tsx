@@ -49,7 +49,7 @@ function RemisionesPage() {
   const { canEdit, user, turnoSesion } = useAuth();
   const qc = useQueryClient();
   const search = Route.useSearch();
-  const initialTab = search.tab && ["remisiones", "especiales", "internas", "pendientes"].includes(search.tab) ? search.tab : "remisiones";
+  const initialTab = search.tab && ["remisiones", "especiales", "internas"].includes(search.tab) ? search.tab : "remisiones";
   const initialEstado =
     search.f === "pendientes" ? "pendiente" : search.f === "aceptadas" ? "aceptad" : "todos";
   const [open, setOpen] = useState(false);
