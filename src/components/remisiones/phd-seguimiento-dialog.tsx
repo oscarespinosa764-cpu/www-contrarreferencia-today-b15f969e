@@ -431,7 +431,7 @@ export function PhdSeguimientoDialog({
       <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-base uppercase tracking-wide">
-            Seguimientos PHD / PAD / O2 / Especiales
+            SEGUIMIENTOS - ATENCIÓN DOMICILIARIA
           </DialogTitle>
         </DialogHeader>
 
@@ -447,7 +447,6 @@ export function PhdSeguimientoDialog({
           ]
             .filter(Boolean)
             .join(" · ")}
-          nota="Estado del caso — automático, calculado por los requisitos pendientes."
         />
 
 

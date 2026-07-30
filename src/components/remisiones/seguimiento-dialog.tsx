@@ -2744,12 +2744,12 @@ export function SeguimientoDialog({
         <DialogHeader className="shrink-0 border-b border-border/60 px-4 py-3 pr-10 text-left sm:px-6">
           <DialogTitle className="break-words text-base uppercase leading-snug tracking-wide">
             {esSaliente
-              ? "Seguimientos de remisión"
+              ? "SEGUIMIENTOS - REMISIONES"
               : esInterna
-                ? "Seguimientos de referencia interna"
+                ? "SEGUIMIENTOS - REFERENCIAS INTERNAS"
                 : esPendiente
-                  ? "Seguimientos de pendiente"
-                  : "Seguimientos PHD / PAD / O2 / Especiales"}
+                  ? "SEGUIMIENTOS - PENDIENTES"
+                  : "SEGUIMIENTOS - ATENCIÓN DOMICILIARIA"}
           </DialogTitle>
         </DialogHeader>
 
@@ -2758,9 +2758,10 @@ export function SeguimientoDialog({
           <SeguimientoHeaderCard
             paciente={paciente}
             documento={documento}
+            tipoDocumento={caso?.tipo_documento}
             estado={esInterna ? resolverEstadoRI(estadoActual).label : estadoActual}
-            nota="Estado del caso — trazabilidad institucional."
           />
+
           {/* Aviso de caso cerrado: modo consulta, sin nuevos seguimientos */}
           {casoCerrado && (
             <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm font-semibold text-destructive">

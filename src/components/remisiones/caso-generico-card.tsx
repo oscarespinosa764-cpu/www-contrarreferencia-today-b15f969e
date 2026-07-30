@@ -17,6 +17,7 @@ import { PhdSeguimientoDialog } from "./phd-seguimiento-dialog";
 import { PhdCicloPanel } from "./phd-ciclo-panel";
 import { useAuth } from "@/lib/auth";
 import { editarCasoSalienteAdmin } from "@/lib/salientes-admin-edit.functions";
+import { buildPacienteIdentityLine, buildModuleSummaryLine } from "@/lib/caso-cabecera";
 import {
   evolucionMeta,
   fmtEdad,
@@ -223,22 +224,28 @@ export function CasoGenericoCard({
   const invalidateKey =
     tipo === "phd" ? "domiciliarios" : tipo === "interna" ? "referencia-interna" : "pendientes-rem";
 
-  // Línea principal: [NOMBRE], [TIPODOC]: [DOC] · [EDAD] años
-  const docPart = documento ? `${r.tipo_documento || "DOC"}: ${documento}` : "";
-  const edadPart = tipo === "phd" && r.edad ? fmtEdad(r.edad) : "";
-  const mainExtra = [docPart, edadPart].filter(Boolean).join(" · ");
-  const mainLine = tipo === "pendiente" ? nombre : `${nombre}${mainExtra ? `, ${mainExtra}` : ""}`;
+  // Línea principal global: NOMBRE // TIPODOC: DOC · EDAD AÑOS
+  const mainLine =
+    tipo === "pendiente"
+      ? buildPacienteIdentityLine({ nombre })
+      : buildPacienteIdentityLine({
+          nombre,
+          tipoDocumento: r.tipo_documento,
+          documento,
+          edad: tipo === "phd" ? r.edad : null,
+        });
 
   // Nunca renderizar textos residuales "null"/"undefined" provenientes de datos históricos.
   const limpio = (v: unknown): string => sanitizeOptionalLabel(v);
   const prioridadTxt = limpio(r.prioridad);
-  const subParts = (
+  // Segunda línea propia de cada módulo (grupos con "|", elementos con "·").
+  const subLine = buildModuleSummaryLine(
     tipo === "phd"
-      ? [r.tipo_solicitud, r.eapb, r.regimen]
+      ? [[r.tipo_solicitud], [r.eapb, r.regimen]]
       : tipo === "interna"
-        ? [r.tipo_solicitud, r.servicio, r.eapb]
-        : [r.tipo_pendiente, r.ips_area]
-  ).map(limpio);
+        ? [[r.tipo_solicitud], [r.servicio, r.eapb]]
+        : [[r.tipo_pendiente], [r.ips_area]],
+  );
 
   const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -336,7 +343,7 @@ export function CasoGenericoCard({
             <div className="min-w-0">
               <p className="truncate text-[13px] font-bold uppercase text-foreground">{mainLine}</p>
               <p className="truncate text-[11px] text-muted-foreground">
-                {subParts.filter(Boolean).join(" · ") || "—"}
+                {subLine || "—"}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
@@ -389,7 +396,7 @@ export function CasoGenericoCard({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-sm font-bold uppercase text-foreground">{mainLine}</p>
-          <p className="text-[11px] text-muted-foreground">{subParts.filter(Boolean).join(" · ") || "—"}</p>
+          <p className="text-[11px] text-muted-foreground">{subLine || "—"}</p>
         </div>
         <div className="flex items-center gap-1.5">
           {prioridadTxt && (
