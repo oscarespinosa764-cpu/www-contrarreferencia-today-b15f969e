@@ -556,7 +556,7 @@ export function CasoGenericoCard({
                 <Dato label="Tipo ambulancia" value={r.tipo_ambulancia} />
                 <Dato label="EAPB / ERP" value={r.eapb} />
                 <Dato label="Prioridad" value={r.prioridad} />
-                <Dato label="Estado" value={r.estado} />
+                <Dato label="Estado" value={resolverEstadoRI(r.estado).label} />
                 <Dato label="Fecha y hora radicación" value={fmtFechaHora(r.fecha_radicado)} />
                 <Dato label="Tiempo del trámite" value={fmtTranscurrido(r.created_at)} />
               </>
