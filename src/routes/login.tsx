@@ -46,27 +46,35 @@ const features = [
 const pad = (n: number) => String(n).padStart(2, "0");
 
 function LoginPage() {
-  const { user, loading, setTurnoSesion } = useAuth();
+  const { user, loading, turnoSesion, setTurnoSesion } = useAuth();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [turnoCodigo, setTurnoCodigo] = useState<TurnoCodigo | "">("");
+  const [turnoError, setTurnoError] = useState(false);
 
   const turnoLabel = useClientTime((d) => {
     const t = getTurno(d);
     return `${t.nombre} · ${pad(t.inicio)}:00 – ${pad(t.fin)}:00`;
   });
 
+  // Sólo se navega al aplicativo cuando existe sesión Y turno operativo válido.
   useEffect(() => {
-    if (!loading && user) navigate({ to: "/dashboard", replace: true });
-  }, [user, loading, navigate]);
+    if (!loading && user && turnoSesion) navigate({ to: "/dashboard", replace: true });
+  }, [user, loading, turnoSesion, navigate]);
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (busy) return;
     const form = new FormData(e.currentTarget);
     const email = String(form.get("email")).trim();
     const password = String(form.get("password"));
     if (!email) return toast.error("Ingresa tu correo institucional");
-    if (!isTurnoCodigo(turnoCodigo)) return toast.error("Selecciona el turno operativo");
+    if (!isTurnoCodigo(turnoCodigo)) {
+      setTurnoError(true);
+      document.getElementById("l-turno")?.focus();
+      return toast.error("Seleccione un turno operativo.");
+    }
+    setTurnoError(false);
     setBusy(true);
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -81,6 +89,7 @@ function LoginPage() {
     setTurnoSesion(turnoCodigo);
     navigate({ to: "/dashboard", replace: true });
   };
+
 
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden bg-background lg:flex-row">
@@ -195,8 +204,19 @@ function LoginPage() {
               </Label>
               <div className="relative">
                 <Clock className="pointer-events-none absolute left-3.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Select value={turnoCodigo} onValueChange={(v) => setTurnoCodigo(v as TurnoCodigo)}>
-                  <SelectTrigger id="l-turno" className="h-12 pl-11">
+                <Select
+                  value={turnoCodigo}
+                  onValueChange={(v) => {
+                    setTurnoCodigo(v as TurnoCodigo);
+                    setTurnoError(false);
+                  }}
+                >
+                  <SelectTrigger
+                    id="l-turno"
+                    aria-invalid={turnoError}
+                    aria-describedby={turnoError ? "l-turno-error" : undefined}
+                    className={`h-12 pl-11 ${turnoError ? "border-destructive" : ""}`}
+                  >
                     <SelectValue placeholder="Selecciona tu turno" />
                   </SelectTrigger>
                   <SelectContent>
@@ -206,7 +226,13 @@ function LoginPage() {
                   </SelectContent>
                 </Select>
               </div>
+              {(turnoError || (user && !turnoSesion)) && (
+                <p id="l-turno-error" role="alert" className="ml-1 text-xs font-medium text-destructive">
+                  Seleccione un turno operativo para continuar.
+                </p>
+              )}
             </div>
+
             <Button
               type="submit"
               className="h-12 w-full text-sm font-bold uppercase tracking-wide shadow-elegant"
