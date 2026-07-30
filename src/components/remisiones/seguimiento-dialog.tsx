@@ -1,3 +1,4 @@
+import { ordenarTiposSeguimiento } from "@/lib/seguimiento-orden";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { resolverEstadoRI, siguienteTipoSeguimientoRI } from "@/lib/ri-estados";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
