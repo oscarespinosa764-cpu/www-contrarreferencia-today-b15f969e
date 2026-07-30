@@ -69,6 +69,11 @@ import {
   plantillaInformacionTramite,
   type InformacionTramiteValue,
 } from "./seguimiento-shell";
+import {
+  SeguimientoHistoricos,
+  SeguimientoValidationSummary,
+  type SeguimientoRow,
+} from "./seguimiento-historicos";
 
 
 const CON_DESCRIPCION = ["NOVEDADES", "OTRO"];
