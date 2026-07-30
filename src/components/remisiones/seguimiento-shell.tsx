@@ -19,17 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DictationTextarea } from "@/components/voz/dictation-textarea";
-import { PARENTESCO_OPCIONES } from "@/lib/indigo-trazabilidad";
 import { Lock } from "lucide-react";
+import { CANALES_GESTION_LABELS, CANAL_OTRO_MAX } from "@/lib/canal-gestion";
 
-export const CANALES_GESTION = [
-  "TELEFÓNICO",
-  "CORREO ELECTRÓNICO",
-  "PLATAFORMA WEB",
-  "FÍSICO / PRESENCIAL",
-  "OTRO",
-] as const;
+// Allowlist ÚNICA compartida con el servidor (src/lib/canal-gestion.ts).
+export const CANALES_GESTION = CANALES_GESTION_LABELS;
 
 const labelCls = "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
 
@@ -102,7 +96,8 @@ export function CanalGestionField({
       </Select>
       {value === "OTRO" && (
         <Input
-          placeholder="ESPECIFIQUE EL CANAL"
+          maxLength={CANAL_OTRO_MAX}
+          placeholder="¿CUÁL ES EL CANAL DE GESTIÓN?"
           value={otro}
           onChange={(e) => onOtroChange(e.target.value.toUpperCase())}
         />
@@ -116,47 +111,61 @@ export function canalFinalDe(canal: string, canalOtro: string): string {
 }
 
 // --- Información del trámite -------------------------------------------------
+// FASE 5E · Bloque A.1 — Formulario canónico: SOLO nombre y parentesco del
+// solicitante. Las observaciones se registran en la casilla general del modal
+// (no se crea una segunda casilla). Los campos TELÉFONO e INFORMACIÓN BRINDADA
+// quedan retirados para registros nuevos; los históricos se conservan intactos.
 
 export type InformacionTramiteValue = {
   solicitante: string;
   parentesco: string;
-  telefono: string;
-  observacion: string;
 };
 
 export const INFORMACION_TRAMITE_INICIAL: InformacionTramiteValue = {
   solicitante: "",
   parentesco: "",
-  telefono: "",
-  observacion: "",
 };
+
+export const INFO_TRAMITE_MIN = 3;
+export const INFO_TRAMITE_MAX_NOMBRE = 120;
+export const INFO_TRAMITE_MAX_PARENTESCO = 80;
 
 export function erroresInformacionTramite(v: InformacionTramiteValue): string[] {
   const e: string[] = [];
-  if (!v.solicitante.trim()) e.push("Indica el nombre de quien solicita la información.");
-  if (!v.parentesco) e.push("Indica el parentesco / relación de quien solicita.");
-  if (!v.observacion.trim()) e.push("Describe la información brindada del trámite.");
+  const nombre = v.solicitante.trim();
+  const par = v.parentesco.trim();
+  if (nombre.length < INFO_TRAMITE_MIN)
+    e.push("Indica el nombre y apellido del solicitante.");
+  if (nombre.length > INFO_TRAMITE_MAX_NOMBRE)
+    e.push("El nombre del solicitante es demasiado largo.");
+  if (par.length < INFO_TRAMITE_MIN) e.push("Indica el parentesco del solicitante.");
+  if (par.length > INFO_TRAMITE_MAX_PARENTESCO)
+    e.push("El parentesco del solicitante es demasiado largo.");
   return e;
 }
 
-export function plantillaInformacionTramite(v: InformacionTramiteValue, canal?: string): string {
-  const quien = v.solicitante.trim().toUpperCase() || "[SOLICITANTE]";
-  const par = v.parentesco || "[PARENTESCO]";
-  const tel = v.telefono.trim() ? ` TELÉFONO DE CONTACTO: ${v.telefono.trim()}.` : "";
-  const via = canal ? ` POR CANAL ${canal}` : "";
-  return `SE BRINDA INFORMACIÓN DEL TRÁMITE${via} A ${quien}, EN CALIDAD DE ${par}.${tel} INFORMACIÓN SUMINISTRADA: ${
-    v.observacion.trim().toUpperCase() || "[DETALLE]"
-  } NO SE MODIFICA EL ESTADO DEL CASO; SE DEJA TRAZABILIDAD DE LA ATENCIÓN BRINDADA.`;
+export function plantillaInformacionTramite(
+  v: InformacionTramiteValue,
+  canal?: string,
+  observaciones?: string,
+): string {
+  const lineas = [
+    "INFORMACIÓN DEL TRÁMITE.",
+    `NOMBRE Y APELLIDO DEL SOLICITANTE: ${v.solicitante.trim().toUpperCase()}`,
+    `PARENTESCO DEL SOLICITANTE: ${v.parentesco.trim().toUpperCase()}`,
+  ];
+  if (canal && canal.trim()) lineas.push(`CANAL DE GESTIÓN: ${canal.trim().toUpperCase()}`);
+  if (observaciones && observaciones.trim())
+    lineas.push(`OBSERVACIONES: ${observaciones.trim().toUpperCase()}`);
+  return lineas.join("\n");
 }
 
 export function InformacionTramiteFields({
   value,
   onChange,
-  dictationKey = "seguimiento.informacion_tramite",
 }: {
   value: InformacionTramiteValue;
   onChange: (v: InformacionTramiteValue) => void;
-  dictationKey?: string;
 }) {
   const set = (patch: Partial<InformacionTramiteValue>) => onChange({ ...value, ...patch });
   return (
@@ -164,54 +173,29 @@ export function InformacionTramiteFields({
       <p className={labelCls}>Información del trámite</p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label className={labelCls}>Nombre de quien solicita *</Label>
+          <Label className={labelCls}>Nombre y apellido del solicitante *</Label>
           <Input
             value={value.solicitante}
+            maxLength={INFO_TRAMITE_MAX_NOMBRE}
             onChange={(e) => set({ solicitante: e.target.value.toUpperCase() })}
             placeholder="Nombre y apellido"
           />
         </div>
         <div className="space-y-1.5">
-          <Label className={labelCls}>Parentesco / relación *</Label>
-          <Select value={value.parentesco} onValueChange={(v) => set({ parentesco: v })}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Seleccionar…" />
-            </SelectTrigger>
-            <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
-              {PARENTESCO_OPCIONES.map((p) => (
-                <SelectItem
-                  key={p}
-                  value={p}
-                  className="whitespace-normal [overflow-wrap:anywhere]"
-                >
-                  {p}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5 sm:col-span-2">
-          <Label className={labelCls}>Teléfono de contacto</Label>
+          <Label className={labelCls}>Parentesco del solicitante *</Label>
           <Input
-            value={value.telefono}
-            onChange={(e) => set({ telefono: e.target.value })}
-            placeholder="Opcional"
+            value={value.parentesco}
+            maxLength={INFO_TRAMITE_MAX_PARENTESCO}
+            onChange={(e) => set({ parentesco: e.target.value.toUpperCase() })}
+            placeholder="MADRE, HIJO, ACUDIENTE…"
           />
         </div>
       </div>
-      <div className="space-y-1.5">
-        <Label className={labelCls}>Información brindada *</Label>
-        <DictationTextarea
-          dictationKey={dictationKey}
-          value={value.observacion}
-          onChange={(e) => set({ observacion: e.target.value })}
-          rows={3}
-          placeholder="Describe la información entregada sobre el trámite"
-        />
-      </div>
       <p className="text-[10px] text-muted-foreground">
-        Este seguimiento es informativo: no modifica el estado del caso.
+        Registra la información entregada en la casilla general de observaciones. Este
+        seguimiento es informativo: no modifica el estado del caso.
       </p>
     </div>
   );
 }
+

@@ -1264,8 +1264,9 @@ export function SeguimientoDialog({
   const plantillaGenerada = useMemo(() => {
     // FASE 5E · Bloque A — Información del trámite (transversal, no cambia estado).
     if (!esPendiente && tipoSeg === T.INFO_TRAMITE) {
-      return appendNota(
-        plantillaInformacionTramite(infoTramite, canalFinalDe(canal, canalOtro)),
+      return plantillaInformacionTramite(
+        infoTramite,
+        canalFinalDe(canal, canalOtro),
         detalle,
       );
     }
@@ -2436,10 +2437,10 @@ export function SeguimientoDialog({
           canal_gestion: canalFinalDe(canal, canalOtro) || null,
           ...(!esPendiente && tipoSeg === T.INFO_TRAMITE
             ? {
-                solicitante: infoTramite.solicitante.trim() || null,
-                parentesco: infoTramite.parentesco || null,
-                telefono_contacto: infoTramite.telefono.trim() || null,
-                informacion: infoTramite.observacion.trim() || null,
+                evento: "INFORMACION_TRAMITE",
+                nombre_solicitante: infoTramite.solicitante.trim() || null,
+                parentesco_solicitante: infoTramite.parentesco.trim() || null,
+                observaciones: detalle.trim() || null,
               }
             : {}),
         } as never,

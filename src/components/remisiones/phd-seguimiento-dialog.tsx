@@ -63,6 +63,11 @@ import {
   CanalGestionField,
   SeguimientoHeaderCard,
   canalFinalDe,
+  InformacionTramiteFields,
+  INFORMACION_TRAMITE_INICIAL,
+  erroresInformacionTramite,
+  plantillaInformacionTramite,
+  type InformacionTramiteValue,
 } from "./seguimiento-shell";
 
 
@@ -214,6 +219,9 @@ export function PhdSeguimientoDialog({
   const [firma, setFirma] = useState<FirmaLlegadaInfo | null>(null);
   const [entregaOpen, setEntregaOpen] = useState(false);
   const [evo, setEvo] = useState<EvolucionDiariaValue>(EVOLUCION_DIARIA_INICIAL);
+  const [infoTramite, setInfoTramite] = useState<InformacionTramiteValue>(
+    INFORMACION_TRAMITE_INICIAL,
+  );
 
 
   useEffect(() => {
@@ -235,6 +243,7 @@ export function PhdSeguimientoDialog({
     setTipoAmb((tipoAmbulanciaCodigo ?? "").toUpperCase());
     setFirma(null);
     setEvo(EVOLUCION_DIARIA_INICIAL);
+    setInfoTramite(INFORMACION_TRAMITE_INICIAL);
 
   }, [open, empresaTraslado, tipoAmbulanciaCodigo]);
 
@@ -260,6 +269,7 @@ export function PhdSeguimientoDialog({
   });
 
   const canalFinal = canalFinalDe(canal, canalOtro);
+  const esInfoTramite = evento === "INFORMACION_TRAMITE";
   const requiereServicio = evento === "ACEPTACION_PROVEEDOR";
   const requiereDescripcion = CON_DESCRIPCION.includes(evento);
   const esEvolucionDiaria = evento === "EVOLUCION_DIARIA";
@@ -306,6 +316,7 @@ export function PhdSeguimientoDialog({
   if (requiereDescripcion && descripcion.trim().length < 3)
     errores.push("Escriba la descripción del seguimiento.");
   if (esEvolucionDiaria) errores.push(...evoDeriv.errores);
+  if (esInfoTramite) errores.push(...erroresInformacionTramite(infoTramite));
   if (evento === "RADICACION" && !sinRadicado && !numRadicado.trim())
     errores.push("Ingrese el número de radicado o marque 'Sin número'.");
   if (evento === "RADICACION" && sinRadicado && !motivoSinRadicado.trim())
@@ -327,7 +338,11 @@ export function PhdSeguimientoDialog({
   const invalid = errores.length > 0 || terminal;
 
   // Para EVOLUCIÓN DIARIA la descripción es la plantilla Índigo canónica.
-  const descripcionFinal = esEvolucionDiaria ? evoDeriv.plantilla : descripcion.trim();
+  const descripcionFinal = esEvolucionDiaria
+    ? evoDeriv.plantilla
+    : esInfoTramite
+      ? plantillaInformacionTramite(infoTramite, canalFinal, observaciones)
+      : descripcion.trim();
 
   const detalleLegible = () => {
     const p: string[] = [`TIPO: ${EVENTO_LABEL[evento] ?? evento}`];
@@ -381,6 +396,8 @@ export function PhdSeguimientoDialog({
           fechaEvento: fecha || undefined,
           firmaId: firma?.id,
           observaciones: observaciones.trim() || undefined,
+          nombreSolicitante: esInfoTramite ? infoTramite.solicitante.trim() : undefined,
+          parentescoSolicitante: esInfoTramite ? infoTramite.parentesco.trim() : undefined,
         },
       });
       if (!res.ok) throw new Error(res.error ?? "No fue posible registrar el evento.");
@@ -463,6 +480,10 @@ export function PhdSeguimientoDialog({
               />
 
             </div>
+
+            {esInfoTramite && (
+              <InformacionTramiteFields value={infoTramite} onChange={setInfoTramite} />
+            )}
 
             {requiereServicio && (
               <div className="space-y-1.5">
