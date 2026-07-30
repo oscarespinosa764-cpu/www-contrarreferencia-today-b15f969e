@@ -971,6 +971,7 @@ export function SeguimientoDialog({
     const proximo = siguientePasoRI(
       historial as { tipo_seguimiento: string; detalles?: unknown }[] | undefined,
       casoInterna?.tipo_solicitud ?? null,
+      estadoActual,
     );
     const activo = !casoInterna?.archivado;
     const arr: string[] = [];
