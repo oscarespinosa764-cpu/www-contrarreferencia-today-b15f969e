@@ -86,6 +86,11 @@ import { resolverAceptacionVigente } from "@/lib/salientes-aceptacion.functions"
 import { limpiarNombreAcepta, limpiarCargoAcepta, NOMBRE_ACEPTA_MAX, CARGO_ACEPTA_MAX } from "@/lib/salientes-aceptacion";
 import { registrarCambioUnidadRI } from "@/lib/ri-cambio-unidad.functions";
 import {
+  SeguimientoHistoricos,
+  SeguimientoValidationSummary,
+  type SeguimientoRow,
+} from "@/components/remisiones/seguimiento-historicos";
+import {
   CanalGestionField,
   InformacionTramiteFields,
   INFORMACION_TRAMITE_INICIAL,
