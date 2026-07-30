@@ -219,6 +219,9 @@ export function PhdSeguimientoDialog({
   const [firma, setFirma] = useState<FirmaLlegadaInfo | null>(null);
   const [entregaOpen, setEntregaOpen] = useState(false);
   const [evo, setEvo] = useState<EvolucionDiariaValue>(EVOLUCION_DIARIA_INICIAL);
+  const [infoTramite, setInfoTramite] = useState<InformacionTramiteValue>(
+    INFORMACION_TRAMITE_INICIAL,
+  );
 
 
   useEffect(() => {
