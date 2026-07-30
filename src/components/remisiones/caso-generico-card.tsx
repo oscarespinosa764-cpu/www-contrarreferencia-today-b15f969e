@@ -177,12 +177,16 @@ export function CasoGenericoCard({
   r,
   canEdit,
   ultimaGestion,
+  compact = false,
 }: {
   tipo: GenericoTipo;
   r: Row;
   canEdit: boolean;
   ultimaGestion?: { fecha: string | null; responsable: string | null } | null;
+  /** Variante compacta (panel Pendientes operativos): mismos datos y acciones, acciones por icono. */
+  compact?: boolean;
 }) {
+
   const cfg = CONFIG[tipo];
   const qc = useQueryClient();
   const { isAdmin } = useAuth();
