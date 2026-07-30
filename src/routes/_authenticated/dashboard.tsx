@@ -218,7 +218,7 @@ function Dashboard() {
           className="focus:outline-none focus:ring-2 focus:ring-primary rounded-2xl"
         >
           <StatCard
-            title="PHD / PAD / O2 / Especiales"
+            title="Atencion Domiciliaria"
             value={data?.domActivos}
             caption="Ciclos domiciliarios activos"
             color="teal"

@@ -627,7 +627,7 @@ function RemisionesPage() {
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="flex h-auto flex-wrap">
             <TabsTrigger value="remisiones">📋 Remisiones</TabsTrigger>
-            <TabsTrigger value="especiales">🚑 PHD/PAD/O2/Especiales</TabsTrigger>
+            <TabsTrigger value="especiales">🚑 Atencion Domiciliaria</TabsTrigger>
             <TabsTrigger value="internas">🏥 Ref. Internas</TabsTrigger>
           </TabsList>
 
