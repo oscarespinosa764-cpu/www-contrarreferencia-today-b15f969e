@@ -224,7 +224,7 @@ function RevisionDialog({
   const aprobar = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase
+      const { data: upd, error } = await supabase
         .from("shift_requests")
         .update({
           status: "APROBADA",
@@ -234,8 +234,16 @@ function RevisionDialog({
           register_absenteeism: registrarAus,
           cuadro_applied: true,
         })
-        .eq("id", request.id);
+        .eq("id", request.id)
+        .eq("status", request.status)
+        .select("id");
       if (error) throw error;
+      if (!upd || upd.length === 0) {
+        toast.error("La solicitud ya fue decidida por otro usuario. Actualiza la lista.");
+        onDone();
+        return;
+      }
+
 
       // Cambio efectivo del cuadro (best-effort, conserva la programación original)
       await aplicarCoberturaCuadro(request, adminId);
