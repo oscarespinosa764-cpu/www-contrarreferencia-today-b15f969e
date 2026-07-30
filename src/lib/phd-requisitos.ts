@@ -241,6 +241,7 @@ export const EVENTO_LABEL: Record<string, string> = {
   EVOLUCION_DIARIA: "EVOLUCIÓN DIARIA",
   NOVEDADES: "NOVEDADES",
   OTRO: "OTRO",
+  INFORMACION_TRAMITE: "INFORMACIÓN DEL TRÁMITE",
   CONFIRMACION_ENTREGA_OXIGENO: "CONFIRMACIÓN DE ENTREGA DE OXÍGENO",
   AMBULANCIA_COORDINADA: "COORDINACIÓN DE AMBULANCIA",
   CONFIRMACION_LLEGADA_AMBULANCIA: "CONFIRMACIÓN DE LLEGADA DE AMBULANCIA",
@@ -272,7 +273,7 @@ export function eventosDisponibles(
   if (req.aceptacionesPendientes.length > 0) out.push("ACEPTACION_PROVEEDOR");
   if (opts.exigeRadicacion && !opts.radicacionRegistrada) out.push("RADICACION");
 
-  out.push("EVOLUCION_DIARIA", "NOVEDADES", "OTRO");
+  out.push("EVOLUCION_DIARIA", "NOVEDADES", "OTRO", "INFORMACION_TRAMITE");
 
   if (req.oxigenoAplica && req.oxigenoAceptado && !req.oxigenoEntregado) {
     out.push("CONFIRMACION_ENTREGA_OXIGENO");

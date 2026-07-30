@@ -11,6 +11,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { esCanalValido } from "@/lib/canal-gestion";
 
 const EVENTOS = [
   "ACEPTACION_PROVEEDOR",
@@ -18,6 +19,7 @@ const EVENTOS = [
   "EVOLUCION_DIARIA",
   "NOVEDADES",
   "OTRO",
+  "INFORMACION_TRAMITE",
   "CONFIRMACION_ENTREGA_OXIGENO",
   "AMBULANCIA_COORDINADA",
   "CONFIRMACION_LLEGADA_AMBULANCIA",
@@ -47,7 +49,27 @@ const schema = z.object({
   fechaEvento: z.string().trim().max(60).optional(),
   firmaId: z.string().uuid().optional(),
   observaciones: z.string().trim().max(4000).optional(),
-});
+  // FASE 5E · A.1 — Información del trámite (solo estos dos campos nuevos).
+  nombreSolicitante: z.string().trim().min(3).max(120).optional(),
+  parentescoSolicitante: z.string().trim().min(3).max(80).optional(),
+})
+  .strict()
+  .superRefine((v, ctx) => {
+    // Canal de gestión obligatorio y dentro de la allowlist compartida para
+    // TODO evento manual registrado desde el modal.
+    const canal = (v.canal ?? "").trim().toUpperCase();
+    if (!canal) {
+      ctx.addIssue({ code: "custom", message: "Canal de gestión requerido", path: ["canal"] });
+    } else if (!esCanalValido(canal)) {
+      ctx.addIssue({ code: "custom", message: "Canal de gestión no válido", path: ["canal"] });
+    }
+    if (v.evento === "INFORMACION_TRAMITE") {
+      if (!v.nombreSolicitante)
+        ctx.addIssue({ code: "custom", message: "Nombre del solicitante requerido", path: ["nombreSolicitante"] });
+      if (!v.parentescoSolicitante)
+        ctx.addIssue({ code: "custom", message: "Parentesco del solicitante requerido", path: ["parentescoSolicitante"] });
+    }
+  });
 
 
 const MENSAJES: Record<string, string> = {
@@ -72,6 +94,9 @@ const MENSAJES: Record<string, string> = {
   RADICACION_NO_REQUERIDA:
     "La aseguradora de este caso no exige radicación según el catálogo de EAPB.",
   RADICACION_DUPLICADA: "El caso ya tiene un radicado registrado en este ciclo.",
+  SOLICITANTE_REQUERIDO: "El nombre y el parentesco del solicitante son obligatorios.",
+  CANAL_REQUERIDO: "El canal de gestión es obligatorio.",
+  CANAL_NO_VALIDO: "El canal de gestión no es válido.",
   DESCRIPCION_REQUERIDA: "La descripción es obligatoria para este tipo de seguimiento.",
   CANCELACION_DUPLICADA: "El trámite ya fue cancelado.",
 
@@ -108,6 +133,8 @@ export const registrarEventoPhd = createServerFn({ method: "POST" })
       fecha_evento: data.fechaEvento ?? null,
       firma_id: data.firmaId ?? null,
       observaciones: data.observaciones ?? null,
+      nombre_solicitante: data.nombreSolicitante ?? null,
+      parentesco_solicitante: data.parentescoSolicitante ?? null,
     };
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
