@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/lib/backend-client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { sanitizeOptionalLabel } from "@/lib/seguimiento-orden";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -86,10 +87,12 @@ export type Remision = {
 };
 
 function Dato({ label, value }: { label: string; value: React.ReactNode }) {
+  // A.1: los valores de texto se sanean (nunca "null"/"undefined"/vacío).
+  const safe = typeof value === "string" || typeof value === "number" ? sanitizeOptionalLabel(value) : value;
   return (
     <div>
       <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="text-sm text-foreground">{value || "—"}</p>
+      <p className="text-sm text-foreground">{safe || "—"}</p>
     </div>
   );
 }
@@ -255,9 +258,9 @@ export function CasoRemisionCard({
           </p>
         </div>
         <div className="flex items-center gap-1.5">
-          {r.prioridad && (
+          {sanitizeOptionalLabel(r.prioridad) && (
             <Badge variant="outline" className={prio.badge}>
-              {r.prioridad}
+              {sanitizeOptionalLabel(r.prioridad)}
             </Badge>
           )}
           <Badge variant="secondary" className="font-mono text-[10px]">
@@ -282,7 +285,7 @@ export function CasoRemisionCard({
           label="Estado"
           value={
             <span className={pendiente ? "font-semibold text-status-red" : "font-semibold text-foreground"}>
-              {r.estado || "—"}
+              {sanitizeOptionalLabel(r.estado) || "—"}
             </span>
           }
         />
