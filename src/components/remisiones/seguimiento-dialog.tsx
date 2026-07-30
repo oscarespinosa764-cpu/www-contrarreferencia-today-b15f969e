@@ -36,7 +36,7 @@ import {
 } from "@/lib/remisiones-utils";
 import { toast } from "sonner";
 import { PlantillasEnPaso } from "@/components/coordinacion/plantillas-en-paso";
-import { Copy, RotateCcw, Plus, X, Eye } from "lucide-react";
+import { Copy, RotateCcw, Plus, X } from "lucide-react";
 import {
   ACERCAMIENTO_OPCIONES,
   AMBULANCIA_VARIANTES,
@@ -85,6 +85,11 @@ import { RiLlegadaQRPanel } from "@/components/remisiones/ri-llegada-qr-panel";
 import { resolverAceptacionVigente } from "@/lib/salientes-aceptacion.functions";
 import { limpiarNombreAcepta, limpiarCargoAcepta, NOMBRE_ACEPTA_MAX, CARGO_ACEPTA_MAX } from "@/lib/salientes-aceptacion";
 import { registrarCambioUnidadRI } from "@/lib/ri-cambio-unidad.functions";
+import {
+  SeguimientoHistoricos,
+  SeguimientoValidationSummary,
+  type SeguimientoRow,
+} from "@/components/remisiones/seguimiento-historicos";
 import {
   CanalGestionField,
   InformacionTramiteFields,
@@ -489,7 +494,6 @@ export function SeguimientoDialog({
   const [indigoEditada, setIndigoEditada] = useState(false);
 
   // Ver detalle / últimos seguimientos
-  const [verDetalle, setVerDetalle] = useState<Record<string, unknown> | null>(null);
 
   // Datos del caso (remisiones salientes y PHD/PAD/O2/Especiales).
   const { data: caso } = useQuery({
@@ -2735,7 +2739,7 @@ export function SeguimientoDialog({
           <SeguimientoHeaderCard
             paciente={paciente}
             documento={documento}
-            estado={estadoActual}
+            estado={esInterna ? resolverEstadoRI(estadoActual).label : estadoActual}
             nota="Estado del caso — trazabilidad institucional."
           />
           {/* Aviso de caso cerrado: modo consulta, sin nuevos seguimientos */}
@@ -2832,57 +2836,33 @@ export function SeguimientoDialog({
 
           {!nuevoRadicadoMode && (
             <>
-              {/* Estado del caso */}
-              {esSaliente ? (
+              {/* FASE 5E · B — El estado canónico se muestra solo en la tarjeta
+                  superior. Aquí queda únicamente el selector editable cuando el
+                  módulo lo requiere (no es una vista duplicada del estado). */}
+              {!esSaliente && estadoOpciones && estadoOpciones.length > 0 && (
                 <div className="space-y-1.5">
-                  <Label className={labelCls}>Estado del caso (automático)</Label>
-                  <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-semibold text-foreground">
-                    {estadoDestino || EST.PENDIENTE_ACEPT}
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    El estado se actualiza automáticamente según la cadena de seguimiento.
-                  </p>
-                </div>
-              ) : (
-                estadoOpciones &&
-                estadoOpciones.length > 0 && (
-                  <div className="space-y-1.5">
-                    <Label className={labelCls}>Estado del caso</Label>
-                    <Select
-                      value={estadoCaso}
-                      onValueChange={setEstadoCaso}
-                      disabled={!estadoCasoEditable}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar estado…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {estadoOpciones.map((e) => (
-                          <SelectItem key={e} value={e} className="whitespace-normal">
-                            {e}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {!estadoCasoEditable && (
-                      <p className="text-[10px] text-muted-foreground">
-                        Este tipo de seguimiento no modifica el estado del caso.
-                      </p>
-                    )}
-                  </div>
-                )
-              )}
-
-              {/* B1.2B · Estado del caso RI (server-authoritative, solo lectura). */}
-              {esInterna && estadoActual && (
-                <div className="space-y-1.5">
-                  <Label className={labelCls}>Estado del caso (automático)</Label>
-                  <div className="flex h-10 w-full items-center rounded-md border border-border/60 bg-muted/50 px-3 text-sm font-medium text-foreground">
-                    {resolverEstadoRI(estadoActual).label}
-                  </div>
-                  <p className="text-[11px] italic text-muted-foreground">
-                    Este estado se calcula automáticamente en el servidor a partir de los seguimientos.
-                  </p>
+                  <Label className={labelCls}>Estado del caso</Label>
+                  <Select
+                    value={estadoCaso}
+                    onValueChange={setEstadoCaso}
+                    disabled={!estadoCasoEditable}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar estado…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {estadoOpciones.map((e) => (
+                        <SelectItem key={e} value={e} className="whitespace-normal">
+                          {e}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {!estadoCasoEditable && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Este tipo de seguimiento no modifica el estado del caso.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -4762,75 +4742,35 @@ export function SeguimientoDialog({
             </div>
           )}
 
-          {/* Últimos seguimientos (mínimo 5) */}
-          <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Últimos seguimientos
-            </p>
-            {(historial?.length ?? 0) === 0 ? (
-              <p className="rounded-md border border-dashed border-border py-6 text-center text-sm italic text-muted-foreground">
-                Sin seguimientos registrados.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {historial!.slice(0, 5).map((h) => (
-                  <div key={h.id} className="rounded-lg border border-border bg-card p-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-xs font-semibold text-foreground">
-                        {h.tipo_seguimiento || "Seguimiento"}
-                      </span>
-                      <span className="text-[11px] text-muted-foreground">
-                        {fmtFechaHora(h.created_at)}
-                      </span>
-                    </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-2">
-                      {h.estado_solicitud && (
-                        <span className="inline-block rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-foreground">
-                          {h.estado_solicitud}
-                        </span>
-                      )}
-                      <span className="text-[11px] text-muted-foreground">
-                        {h.nombre_usuario || "—"}
-                      </span>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="ml-auto h-6 gap-1 px-2 text-[11px]"
-                        onClick={() => setVerDetalle(h as Record<string, unknown>)}
-                      >
-                        <Eye className="h-3.5 w-3.5" /> Ver detalle
-                      </Button>
-                    </div>
-                    {(() => {
-                      const det = parseDetalles(h.detalles);
-                      const estado = det?.estado_evolucion_especialidades as string | undefined;
-                      if (!estado) return null;
-                      const evol = (det?.especialidades_evolucionadas as string[] | null) ?? [];
-                      const pend = (det?.especialidades_pendientes as string[] | null) ?? [];
-                      const medio = det?.medio_evolucion as string | undefined;
-                      return (
-                        <div className="mt-1.5 space-y-0.5 rounded-md bg-muted/40 px-2 py-1 text-[11px]">
-                          <p className="font-semibold text-foreground">
-                            EVOLUCIÓN {estado}
-                            {medio ? ` · ${medio}` : ""}
-                          </p>
-                          {evol.length > 0 && (
-                            <p className="text-muted-foreground">
-                              Evolucionadas: {evol.join(", ")}
-                            </p>
-                          )}
-                          {pend.length > 0 && (
-                            <p className="text-status-amber">Pendientes: {pend.join(", ")}</p>
-                          )}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Aviso amarillo unificado de validaciones (FASE 5E · Bloque B) */}
+          {!casoCerrado && (
+            <SeguimientoValidationSummary
+              errores={[
+                ...(tipoSeg ? [] : ["Seleccione el tipo de seguimiento."]),
+                ...(tipoSeg && !canalFinalDe(canal, canalOtro)
+                  ? [
+                      canal === "OTRO"
+                        ? "Especifique el canal de gestión."
+                        : "Seleccione un canal de gestión.",
+                    ]
+                  : []),
+                ...(!esPendiente && tipoSeg === T.INFO_TRAMITE
+                  ? erroresInformacionTramite(infoTramite)
+                  : []),
+              ]}
+            />
+          )}
+
+          {/* HISTÓRICOS (FASE 5E · Bloque B) — tarjetas compactas + Ver detalle */}
+          <SeguimientoHistoricos
+            items={(historial ?? []) as unknown as SeguimientoRow[]}
+            metaDe={(h) => {
+              const est = h.estado_solicitud as string | undefined;
+              const det = parseDetalles(h.detalles as unknown);
+              const evo = det?.estado_evolucion_especialidades as string | undefined;
+              return [est, evo ? `EVOLUCIÓN ${evo}` : ""].filter(Boolean).join(" · ") || null;
+            }}
+          />
         </div>
 
         {/* Pie fijo */}
@@ -4848,82 +4788,6 @@ export function SeguimientoDialog({
           </Button>
         </div>
       </DialogContent>
-
-      {/* Detalle de un seguimiento */}
-      <Dialog open={!!verDetalle} onOpenChange={(v) => !v && setVerDetalle(null)}>
-        <DialogContent className="max-h-[90vh] w-[calc(100vw-1.5rem)] overflow-auto p-4 sm:max-w-lg sm:p-6">
-          <DialogHeader>
-            <DialogTitle className="text-base">
-              {(verDetalle?.tipo_seguimiento as string) || "Detalle del seguimiento"}
-            </DialogTitle>
-          </DialogHeader>
-          {verDetalle && (
-            <div className="space-y-3 text-sm">
-              <p className="text-xs text-muted-foreground">
-                {fmtFechaHora(verDetalle.created_at as string)} ·{" "}
-                {(verDetalle.nombre_usuario as string) || "—"}
-              </p>
-              {(verDetalle.estado_solicitud as string) && (
-                <p>
-                  <span className={labelCls}>Estado de solicitud:</span>{" "}
-                  {verDetalle.estado_solicitud as string}
-                </p>
-              )}
-              {(verDetalle.radicado as string) && (
-                <p>
-                  <span className={labelCls}>Radicado:</span> {verDetalle.radicado as string}
-                </p>
-              )}
-              {(verDetalle.nombre_contacto as string) && (
-                <p>
-                  <span className={labelCls}>Contacto:</span> {verDetalle.nombre_contacto as string}
-                  {(verDetalle.telefono as string) ? ` · ${verDetalle.telefono as string}` : ""}
-                </p>
-              )}
-              {(() => {
-                const det = parseDetalles(verDetalle.detalles);
-                const estado = det?.estado_evolucion_especialidades as string | undefined;
-                if (!estado) return null;
-                const evol = (det?.especialidades_evolucionadas as string[] | null) ?? [];
-                const pend = (det?.especialidades_pendientes as string[] | null) ?? [];
-                const medio = det?.medio_evolucion as string | undefined;
-                return (
-                  <div className="space-y-1">
-                    <p className={labelCls}>Evolución por especialidades</p>
-                    <p className="text-foreground">
-                      Estado: <span className="font-semibold">{estado}</span>
-                      {medio ? ` · ${medio}` : ""}
-                    </p>
-                    {evol.length > 0 && <p>Evolucionadas: {evol.join(", ")}</p>}
-                    {pend.length > 0 && (
-                      <p className="text-status-amber">Pendientes: {pend.join(", ")}</p>
-                    )}
-                  </div>
-                );
-              })()}
-              {(verDetalle.detalle as string) && (
-                <div>
-                  <p className={labelCls}>Observaciones</p>
-                  <p className="whitespace-pre-wrap break-words text-foreground">
-                    {verDetalle.detalle as string}
-                  </p>
-                </div>
-              )}
-              {(verDetalle.plantilla_indigo as string) && (
-                <div>
-                  <p className={labelCls}>Plantilla Índigo</p>
-                  <Textarea
-                    readOnly
-                    value={verDetalle.plantilla_indigo as string}
-                    rows={6}
-                    className="font-mono text-xs leading-relaxed"
-                  />
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </Dialog>
   );
 }

@@ -69,6 +69,11 @@ import {
   plantillaInformacionTramite,
   type InformacionTramiteValue,
 } from "./seguimiento-shell";
+import {
+  SeguimientoHistoricos,
+  SeguimientoValidationSummary,
+  type SeguimientoRow,
+} from "./seguimiento-historicos";
 
 
 const CON_DESCRIPCION = ["NOVEDADES", "OTRO"];
@@ -716,53 +721,20 @@ export function PhdSeguimientoDialog({
               </Button>
             )}
 
-            {errores.length > 0 && (
-              <ul className="space-y-1 rounded-md border border-amber-300 bg-amber-50 p-2 text-[11px] text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-                {errores.map((e, i) => (
-                  <li key={i}>• {e}</li>
-                ))}
-              </ul>
-            )}
+            <SeguimientoValidationSummary errores={errores} />
           </div>
         )}
 
-        {/* Historial */}
+        {/* HISTÓRICOS (FASE 5E · Bloque B) */}
         <div className="mt-3">
-          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Historial ({historial.length})
-          </p>
-          {historial.length === 0 ? (
-            <p className="text-xs italic text-muted-foreground">Sin seguimientos registrados.</p>
-          ) : (
-            <ul className="max-h-56 space-y-1 overflow-auto pr-1">
-              {historial.map((h) => {
-                const d = (h.detalles ?? {}) as Record<string, unknown>;
-                return (
-                  <li
-                    key={h.id}
-                    className="rounded-md border border-border bg-background px-2 py-1.5 text-xs"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-1">
-                      <span className="font-semibold">{h.tipo_seguimiento}</span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {fmtFechaHora(h.created_at)} · {h.nombre_usuario || "—"}
-                      </span>
-                    </div>
-                    {Boolean(d.estado_anterior || d.estado_nuevo) && (
-                      <p className="text-[10.5px] text-muted-foreground">
-                        {String(d.estado_anterior ?? "")} → {String(d.estado_nuevo ?? "")}
-                      </p>
-                    )}
-                    {h.detalle && (
-                      <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">
-                        {h.detalle}
-                      </p>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+          <SeguimientoHistoricos
+            items={historial as unknown as SeguimientoRow[]}
+            metaDe={(h) => {
+              const d = (h.detalles ?? {}) as Record<string, unknown>;
+              if (!d.estado_anterior && !d.estado_nuevo) return null;
+              return `${String(d.estado_anterior ?? "")} → ${String(d.estado_nuevo ?? "")}`;
+            }}
+          />
         </div>
 
         <DialogFooter>
