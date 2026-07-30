@@ -343,7 +343,7 @@ export function CasoGenericoCard({
             <div className="min-w-0">
               <p className="truncate text-[13px] font-bold uppercase text-foreground">{mainLine}</p>
               <p className="truncate text-[11px] text-muted-foreground">
-                {subParts.filter(Boolean).join(" · ") || "—"}
+                {subLine || "—"}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
