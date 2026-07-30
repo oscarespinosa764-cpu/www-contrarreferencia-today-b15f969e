@@ -2758,6 +2758,7 @@ export function SeguimientoDialog({
           <SeguimientoHeaderCard
             paciente={paciente}
             documento={documento}
+            tipoDocumento={caso?.tipo_documento}
             estado={esInterna ? resolverEstadoRI(estadoActual).label : estadoActual}
           />
 
