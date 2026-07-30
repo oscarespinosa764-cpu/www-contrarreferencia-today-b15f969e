@@ -38,6 +38,7 @@ const ESTADO_OPCIONES = [
   "DESISTIMIENTO IPS",
   "DESISTIMIENTO GENERAL",
 ];
+import { buildPacienteIdentityLine, buildModuleSummaryLine } from "@/lib/caso-cabecera";
 import {
   evolucionMeta,
   fmtEdad,
