@@ -487,6 +487,10 @@ export function CasoGenericoCard({
           {fmtTranscurrido(r.created_at)}
         </span>
       </div>
+        </>
+      )}
+
+
 
       {/* Ver caso */}
       <Dialog open={ver} onOpenChange={setVer}>
