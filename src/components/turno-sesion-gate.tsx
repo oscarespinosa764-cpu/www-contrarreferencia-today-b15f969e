@@ -15,7 +15,7 @@ export function TurnoSesionGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (falta) {
-      navigate({ to: "/login", search: { turno: "requerido" }, replace: true });
+      navigate({ to: "/login", replace: true });
     }
   }, [falta, navigate]);
 
