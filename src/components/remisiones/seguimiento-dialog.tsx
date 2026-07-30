@@ -996,6 +996,25 @@ export function SeguimientoDialog({
           ? TIPOS_PENDIENTE
           : [];
 
+  // FASE 5G · A — Programación de ambulancia: el tipo proviene EXCLUSIVAMENTE
+  // de la creación del caso (solo lectura) y la empresa se precarga con SEM
+  // resuelta desde el catálogo canónico (sin inventar registros).
+  const empresaSemCatalogo = useMemo(() => {
+    const list = empresasTepInterna as string[];
+    return (
+      list.find((v) => /(^|[\s\-·])SEM($|[\s\-·])/i.test(v)) ??
+      list.find((v) => /\bSEM\b/i.test(v)) ??
+      ""
+    );
+  }, [empresasTepInterna]);
+
+  useEffect(() => {
+    if (!open || !esInterna || tipoSeg !== TI.PROG_AMB) return;
+    const canon = (casoInterna?.tipo_ambulancia ?? "").trim();
+    setRiRecTipoAmb((prev) => (prev === canon ? prev : canon));
+    setRiRecEmpresa((prev) => (prev ? prev : empresaSemCatalogo));
+  }, [open, esInterna, tipoSeg, casoInterna?.tipo_ambulancia, empresaSemCatalogo]);
+
 
   // Inicializar al abrir. Solo debe correr cuando el diálogo TRANSICIONA
   // a abierto: si depende de props reactivos (evolucionDetalle, listas,
