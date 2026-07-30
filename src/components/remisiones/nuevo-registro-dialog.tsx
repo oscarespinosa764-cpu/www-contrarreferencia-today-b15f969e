@@ -34,15 +34,45 @@ import {
   type AlcanceRed,
 } from "@/lib/indigo-trazabilidad";
 
+/** Tipos de registro que soporta el modal canónico único. */
+export type NuevoRegistroTab = "remision" | "phd" | "interna" | "pendiente";
+
+/** Accesos permitidos desde el botón NUEVO general (Pendiente excluido). */
+export const GENERAL_CREATION_TABS: NuevoRegistroTab[] = ["remision", "phd", "interna"];
+/** Acceso permitido desde el botón + de Pendientes operativos. */
+export const PENDING_CREATION_TABS: NuevoRegistroTab[] = ["pendiente"];
+
+const TAB_LABEL: Record<NuevoRegistroTab, string> = {
+  remision: "📋 Remisión",
+  phd: "🚑 PHD/PAD/O₂/Especiales",
+  interna: "🏥 Ref. Interna",
+  pendiente: "⏳ Pendiente",
+};
+
 export function NuevoRegistroDialog({
   open,
   onOpenChange,
+  initialTab = "remision",
+  allowedTabs = GENERAL_CREATION_TABS,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  /** Formulario mostrado al abrir (según el punto de entrada). */
+  initialTab?: NuevoRegistroTab;
+  /** Formularios accesibles en esta apertura. La autoridad real es el servidor. */
+  allowedTabs?: NuevoRegistroTab[];
 }) {
   const qc = useQueryClient();
-  const [tab, setTab] = useState("remision");
+  // Normaliza el contexto: si el tipo inicial no está permitido, cae al primero válido.
+  const tabsVisibles = allowedTabs.length ? allowedTabs : GENERAL_CREATION_TABS;
+  const tabInicial: NuevoRegistroTab = tabsVisibles.includes(initialTab)
+    ? initialTab
+    : tabsVisibles[0];
+  const [tab, setTab] = useState<NuevoRegistroTab>(tabInicial);
+  // Cada apertura se inicializa desde sus parámetros actuales (sin estado residual).
+  useEffect(() => {
+    if (open) setTab(tabInicial);
+  }, [open, tabInicial]);
   const [tratantes, setTratantes] = useState<string[]>([]);
   const [receptoras, setReceptoras] = useState<string[]>([]);
   const [phdTratantes, setPhdTratantes] = useState<string[]>([]);
@@ -325,6 +355,7 @@ export function NuevoRegistroDialog({
     setPendArea("");
     setPendPrioridad("");
     setPendEvoEn([]);
+    setTab(tabInicial);
   };
 
 
@@ -692,13 +723,16 @@ export function NuevoRegistroDialog({
           <DialogTitle>Nuevo registro</DialogTitle>
         </DialogHeader>
 
-        <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="flex-wrap">
-            <TabsTrigger value="remision">📋 Remisión</TabsTrigger>
-            <TabsTrigger value="phd">🚑 PHD/PAD/O₂/Especiales</TabsTrigger>
-            <TabsTrigger value="interna">🏥 Ref. Interna</TabsTrigger>
-            <TabsTrigger value="pendiente">⏳ Pendiente</TabsTrigger>
-          </TabsList>
+        <Tabs value={tab} onValueChange={(v) => {
+          if (tabsVisibles.includes(v as NuevoRegistroTab)) setTab(v as NuevoRegistroTab);
+        }}>
+          {tabsVisibles.length > 1 && (
+            <TabsList className="flex-wrap">
+              {tabsVisibles.map((t) => (
+                <TabsTrigger key={t} value={t}>{TAB_LABEL[t]}</TabsTrigger>
+              ))}
+            </TabsList>
+          )}
 
           {/* REMISIÓN */}
           <TabsContent value="remision" className="pt-4">
