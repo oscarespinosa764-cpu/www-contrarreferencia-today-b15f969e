@@ -716,13 +716,7 @@ export function PhdSeguimientoDialog({
               </Button>
             )}
 
-            {errores.length > 0 && (
-              <ul className="space-y-1 rounded-md border border-amber-300 bg-amber-50 p-2 text-[11px] text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-                {errores.map((e, i) => (
-                  <li key={i}>• {e}</li>
-                ))}
-              </ul>
-            )}
+            <SeguimientoValidationSummary errores={errores} />
           </div>
         )}
 
