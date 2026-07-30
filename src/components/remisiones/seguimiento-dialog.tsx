@@ -2735,7 +2735,7 @@ export function SeguimientoDialog({
           <SeguimientoHeaderCard
             paciente={paciente}
             documento={documento}
-            estado={estadoActual}
+            estado={esInterna ? resolverEstadoRI(estadoActual).label : estadoActual}
             nota="Estado del caso — trazabilidad institucional."
           />
           {/* Aviso de caso cerrado: modo consulta, sin nuevos seguimientos */}
