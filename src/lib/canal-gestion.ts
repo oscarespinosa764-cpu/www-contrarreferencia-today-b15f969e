@@ -17,7 +17,9 @@ export const CANALES_GESTION_CATALOGO = [
   { codigo: "OTRO", label: "OTRO" },
 ] as const;
 
-export const CANALES_GESTION_LABELS = CANALES_GESTION_CATALOGO.map((c) => c.label);
+export const CANALES_GESTION_LABELS: string[] = CANALES_GESTION_CATALOGO.map(
+  (c) => c.label,
+);
 
 export const CANAL_OTRO_MIN = 3;
 export const CANAL_OTRO_MAX = 80;
