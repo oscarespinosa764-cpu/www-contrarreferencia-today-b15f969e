@@ -36,7 +36,7 @@ import {
 } from "@/lib/remisiones-utils";
 import { toast } from "sonner";
 import { PlantillasEnPaso } from "@/components/coordinacion/plantillas-en-paso";
-import { Copy, RotateCcw, Plus, X, Eye } from "lucide-react";
+import { Copy, RotateCcw, Plus, X } from "lucide-react";
 import {
   ACERCAMIENTO_OPCIONES,
   AMBULANCIA_VARIANTES,
@@ -494,7 +494,6 @@ export function SeguimientoDialog({
   const [indigoEditada, setIndigoEditada] = useState(false);
 
   // Ver detalle / últimos seguimientos
-  const [verDetalle, setVerDetalle] = useState<Record<string, unknown> | null>(null);
 
   // Datos del caso (remisiones salientes y PHD/PAD/O2/Especiales).
   const { data: caso } = useQuery({
