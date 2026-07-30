@@ -435,6 +435,8 @@ export function SeguimientoDialog({
   const [riRecFecha, setRiRecFecha] = useState("");
   const [riRecHora, setRiRecHora] = useState("");
   const [riRecTipoAmb, setRiRecTipoAmb] = useState("");
+  // FASE 5G · A — Empresa de ambulancia (catálogo canónico EMPRESA_TEP, default SEM).
+  const [riRecEmpresa, setRiRecEmpresa] = useState("");
   const [riLlegFecha, setRiLlegFecha] = useState("");
   const [riLlegHora, setRiLlegHora] = useState("");
   // Datos de la firma QR de llegada (poblados cuando el firmante confirma).
