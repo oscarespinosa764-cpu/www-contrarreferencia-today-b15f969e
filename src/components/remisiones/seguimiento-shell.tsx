@@ -20,14 +20,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Lock } from "lucide-react";
+import { CANALES_GESTION_LABELS, CANAL_OTRO_MAX } from "@/lib/canal-gestion";
 
-export const CANALES_GESTION = [
-  "TELEFÓNICO",
-  "CORREO ELECTRÓNICO",
-  "PLATAFORMA WEB",
-  "FÍSICO / PRESENCIAL",
-  "OTRO",
-] as const;
+// Allowlist ÚNICA compartida con el servidor (src/lib/canal-gestion.ts).
+export const CANALES_GESTION = CANALES_GESTION_LABELS;
 
 const labelCls = "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
 
@@ -100,7 +96,8 @@ export function CanalGestionField({
       </Select>
       {value === "OTRO" && (
         <Input
-          placeholder="ESPECIFIQUE EL CANAL"
+          maxLength={CANAL_OTRO_MAX}
+          placeholder="¿CUÁL ES EL CANAL DE GESTIÓN?"
           value={otro}
           onChange={(e) => onOtroChange(e.target.value.toUpperCase())}
         />
