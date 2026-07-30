@@ -19,8 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DictationTextarea } from "@/components/voz/dictation-textarea";
-import { PARENTESCO_OPCIONES } from "@/lib/indigo-trazabilidad";
 import { Lock } from "lucide-react";
 
 export const CANALES_GESTION = [
