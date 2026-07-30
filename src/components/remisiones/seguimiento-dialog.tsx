@@ -1775,6 +1775,7 @@ export function SeguimientoDialog({
     qc.invalidateQueries({ queryKey: ["remisiones"] });
     qc.invalidateQueries({ queryKey: ["domiciliarios"] });
     qc.invalidateQueries({ queryKey: ["referencia-interna"] });
+    qc.invalidateQueries({ queryKey: ["ri-caso", casoId] });
     qc.invalidateQueries({ queryKey: ["pendientes-rem"] });
     qc.invalidateQueries({ queryKey: ["pendientes"] });
     qc.invalidateQueries({ queryKey: ["seguimientos-ult"] });
