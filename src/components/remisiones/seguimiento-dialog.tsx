@@ -1848,7 +1848,9 @@ export function SeguimientoDialog({
           return {
             fecha_recogida: riRecFecha.trim() || null,
             hora_recogida: riRecHora.trim() || null,
-            tipo_ambulancia: riRecTipoAmb.trim() || null,
+            // El servidor reescribe el tipo con el valor canónico del caso.
+            tipo_ambulancia: (casoInterna?.tipo_ambulancia ?? "").trim() || null,
+            empresa_ambulancia_nombre: riRecEmpresa.trim(),
           };
         case TI.LLEGADA_AMB:
           return {
