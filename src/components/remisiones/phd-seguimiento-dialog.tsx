@@ -447,7 +447,6 @@ export function PhdSeguimientoDialog({
           ]
             .filter(Boolean)
             .join(" · ")}
-          nota="Estado del caso — automático, calculado por los requisitos pendientes."
         />
 
 
