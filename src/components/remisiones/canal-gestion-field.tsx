@@ -199,6 +199,8 @@ export function CanalGestionField({
   onChange,
   dualPermitido = false,
   motivoNoDual = null,
+  canalesBloqueados,
+  motivoBloqueo = null,
   observacionesSlot,
 }: {
   value: CanalGestionValue;
@@ -207,13 +209,20 @@ export function CanalGestionField({
   dualPermitido?: boolean;
   /** Motivo informativo cuando el dual no aplica en Evolución Diaria. */
   motivoNoDual?: string | null;
+  /** Canales deshabilitados por una regla canónica (p. ej. excepción NUEVA EPS). */
+  canalesBloqueados?: string[];
+  /** Explicación visible del bloqueo. */
+  motivoBloqueo?: string | null;
   observacionesSlot?: React.ReactNode;
 }) {
 
+  const bloqueados = canalesBloqueados ?? [];
   const set = (patch: Partial<CanalGestionValue>) => onChange({ ...value, ...patch });
   const activo = (c: string) => value.canales.includes(c);
+  const bloqueado = (c: string) => bloqueados.includes(c);
 
   const toggleCanal = (codigo: string) => {
+    if (bloqueado(codigo)) return;
     const dualPair = codigo === CANAL_CODES.CORREO || codigo === CANAL_CODES.PLATAFORMA;
     if (activo(codigo)) {
       // Solo puede deseleccionarse cuando queda otro canal (dual).
