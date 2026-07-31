@@ -739,11 +739,14 @@ export function SeguimientoDialog({
   // Flag independiente (Parte 2): ¿los seguimientos de esta EAPB se hacen en
   // plataforma? Se resuelve desde el catálogo EAPB del caso, no de la radicación.
   const casoEapbNombre = (caso?.asegurador || caso?.eapb || "").trim();
-  const segEnPlataforma = useMemo(
-    () =>
-      eapbCat.find((e) => e.valor === casoEapbNombre)?.seguimientos_en_plataforma === true,
+  // Resolución CANÓNICA del registro activo del catálogo (equivalencia
+  // normalizada + allowlist de alias). Nunca coincidencia parcial.
+  const eapbResuelta = useMemo(
+    () => resolverEapbCatalogo(casoEapbNombre, eapbCat),
     [eapbCat, casoEapbNombre],
   );
+  const segEnPlataforma = eapbResuelta.fila?.seguimientos_en_plataforma === true;
+
   const esAdminCaso = esTramiteAdministrativo(caso?.tipo_tramite ?? "");
 
   // --- CAMBIO EN ESPECIALIDAD (manejo por especialidades) ---
