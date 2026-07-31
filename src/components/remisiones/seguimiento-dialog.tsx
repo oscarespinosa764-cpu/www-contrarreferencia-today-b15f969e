@@ -85,6 +85,8 @@ import {
   EVO_ESTADO_META,
   esNuevaEpsCanonica,
   esRedNoContratadaCanonica,
+  resolverEapbCatalogo,
+
   persistirCumplimiento,
   resolverCumplimientoEvolucionDiaria,
 } from "@/lib/evolucion-diaria";
