@@ -31,6 +31,9 @@ type CatRow = {
   radica_oxigeno?: boolean | null;
   radica_unidad_especial?: boolean | null;
   seguimientos_en_plataforma?: boolean | null;
+  /** Regla operativa (Fase 5E C.5). No depende de ninguna dirección de correo. */
+  evolucion_por_correo?: boolean | null;
+  /** LEGADO: dato de contacto; no participa en reglas operativas. */
   eapb_correo_radicacion?: string | null;
   eapb_sla_horas?: number | null;
   eapb_requisitos_radicacion?: string | null;
