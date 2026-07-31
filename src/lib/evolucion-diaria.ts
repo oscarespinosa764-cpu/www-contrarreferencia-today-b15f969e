@@ -279,7 +279,10 @@ export function resolverCumplimientoEvolucionDiaria(
     motivo_pendiente = canales_pendientes.length > 0 ? motivo_pendiente : null;
   }
 
-  const algunaGestion = realizados.length > 0 || especialidades_evolucionadas.length > 0;
+  const algunaGestion =
+    realizados.length > 0 ||
+    especialidades_evolucionadas.length > 0 ||
+    (i.canalesRealizados ?? []).length > 0;
 
   let estado: EstadoCumplimiento;
   if (!algunaGestion) estado = "SIN_EVOLUCIONAR";
