@@ -304,6 +304,7 @@ export function CatalogoMaestras({ moduloFijo }: { moduloFijo?: string } = {}) {
     const nuevoSegPlataforma = isEAPB
       ? String(f.get("seguimientos_en_plataforma")) === "SI"
       : undefined;
+    const nuevoEvoCorreo = isEAPB ? String(f.get("evolucion_por_correo")) === "SI" : undefined;
     const slaRaw = isEAPB ? String(f.get("eapb_sla_horas") ?? "").trim() : "";
     const slaNum = slaRaw ? Number(slaRaw) : NaN;
     const radicaPatch = isEAPB
@@ -313,8 +314,9 @@ export function CatalogoMaestras({ moduloFijo }: { moduloFijo?: string } = {}) {
           radica_oxigeno: radicaFlags.radica_oxigeno,
           radica_unidad_especial: radicaFlags.radica_unidad_especial,
           seguimientos_en_plataforma: nuevoSegPlataforma,
-          eapb_correo_radicacion:
-            (String(f.get("eapb_correo_radicacion") ?? "").trim() || null) as string | null,
+          evolucion_por_correo: nuevoEvoCorreo,
+          // eapb_correo_radicacion es LEGADO (dato de contacto): no se edita ni
+          // se reescribe desde este formulario operativo.
           eapb_sla_horas: Number.isFinite(slaNum) && slaNum > 0 ? slaNum : null,
           eapb_requisitos_radicacion:
             (String(f.get("eapb_requisitos_radicacion") ?? "").trim() || null) as string | null,
@@ -331,18 +333,24 @@ export function CatalogoMaestras({ moduloFijo }: { moduloFijo?: string } = {}) {
       })
       .eq("id", editing.id);
     if (error) return toast.error(error.message);
-    // Auditar cambio del canal de seguimientos por plataforma (solo si cambió).
-    if (isEAPB && !!editing.seguimientos_en_plataforma !== nuevoSegPlataforma) {
+    // Auditar cambio de las reglas operativas de evolución (solo si cambiaron).
+    if (
+      isEAPB &&
+      (!!editing.seguimientos_en_plataforma !== nuevoSegPlataforma ||
+        !!editing.evolucion_por_correo !== nuevoEvoCorreo)
+    ) {
       registrarAuditoria({
         data: {
-          accion: "editar_eapb_seguimientos_plataforma",
+          accion: "editar_eapb_reglas_evolucion",
           modulo: "catalogos",
           tabla: "catalogos",
           registroId: editing.id,
           resultado: "exito",
           detalles: {
-            anterior: !!editing.seguimientos_en_plataforma ? "SI" : "NO",
-            nuevo: nuevoSegPlataforma ? "SI" : "NO",
+            plataforma_anterior: editing.seguimientos_en_plataforma ? "SI" : "NO",
+            plataforma_nuevo: nuevoSegPlataforma ? "SI" : "NO",
+            correo_anterior: editing.evolucion_por_correo ? "SI" : "NO",
+            correo_nuevo: nuevoEvoCorreo ? "SI" : "NO",
           },
         },
       }).catch(() => {});
