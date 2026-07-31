@@ -304,18 +304,18 @@ export function PhdSeguimientoDialog({
       if (!eapb) return { plataforma: false, correo: false, existe: false };
       const { data: cat } = await supabase
         .from("catalogos")
-        .select("valor, seguimientos_en_plataforma, eapb_correo_radicacion")
+        .select("valor, seguimientos_en_plataforma, evolucion_por_correo")
         .eq("tipo", "EAPB")
         .eq("activo", true)
         .ilike("valor", eapb)
         .maybeSingle();
       const row = cat as
-        | { seguimientos_en_plataforma?: boolean; eapb_correo_radicacion?: string | null }
+        | { seguimientos_en_plataforma?: boolean; evolucion_por_correo?: boolean | null }
         | null;
       return {
         existe: !!row,
         plataforma: row?.seguimientos_en_plataforma === true,
-        correo: !!(row?.eapb_correo_radicacion ?? "").trim(),
+        correo: row?.evolucion_por_correo === true,
       };
     },
   });

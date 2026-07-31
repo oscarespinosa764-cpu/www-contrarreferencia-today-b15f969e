@@ -157,9 +157,9 @@ export function resolverExcepcionNuevaEpsRedNoContratada(args: {
 
 
 export type CumplimientoEvolucionInput = {
-  /** Catálogo EAPB activo: existe correo de radicación. */
+  /** Regla operativa del catálogo EAPB: EVOLUCIÓN POR CORREO ELECTRÓNICO. */
   correoRequerido: boolean;
-  /** Catálogo EAPB activo: seguimientos en plataforma. */
+  /** Regla operativa del catálogo EAPB: EVOLUCIÓN EN PLATAFORMA WEB. */
   plataformaRequerida: boolean;
   /** Códigos de canal seleccionados en CANAL DE GESTIÓN. */
   canalesRealizados: string[];
@@ -206,8 +206,8 @@ export function resolverCumplimientoEvolucionDiaria(
   const requeridos: string[] = [];
   if (i.correoRequerido) requeridos.push(C);
   if (i.plataformaRequerida) requeridos.push(P);
-  // Sin configuración de catálogo, el correo es el canal mínimo exigible.
-  if (requeridos.length === 0) requeridos.push(C);
+  // Fase 5E · C.5: cuando la EAPB/ERP no declara ninguna regla operativa NO se
+  // inventa un canal exigible (antes se forzaba CORREO por defecto).
 
   const realizadosSet: Set<string> = new Set(
     [...(i.canalesPreviosCiclo ?? []), ...(i.canalesRealizados ?? [])]
@@ -279,7 +279,10 @@ export function resolverCumplimientoEvolucionDiaria(
     motivo_pendiente = canales_pendientes.length > 0 ? motivo_pendiente : null;
   }
 
-  const algunaGestion = realizados.length > 0 || especialidades_evolucionadas.length > 0;
+  const algunaGestion =
+    realizados.length > 0 ||
+    especialidades_evolucionadas.length > 0 ||
+    (i.canalesRealizados ?? []).length > 0;
 
   let estado: EstadoCumplimiento;
   if (!algunaGestion) estado = "SIN_EVOLUCIONAR";

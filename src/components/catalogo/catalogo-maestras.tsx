@@ -31,6 +31,9 @@ type CatRow = {
   radica_oxigeno?: boolean | null;
   radica_unidad_especial?: boolean | null;
   seguimientos_en_plataforma?: boolean | null;
+  /** Regla operativa (Fase 5E C.5). No depende de ninguna dirección de correo. */
+  evolucion_por_correo?: boolean | null;
+  /** LEGADO: dato de contacto; no participa en reglas operativas. */
   eapb_correo_radicacion?: string | null;
   eapb_sla_horas?: number | null;
   eapb_requisitos_radicacion?: string | null;
@@ -219,7 +222,7 @@ export function CatalogoMaestras({ moduloFijo }: { moduloFijo?: string } = {}) {
       const { data, error } = await supabase
         .from("catalogos")
         .select(
-          "id, tipo, valor, extra1, extra2, extra3, activo, radica_phd, radica_pad, radica_oxigeno, radica_unidad_especial, seguimientos_en_plataforma, eapb_correo_radicacion, eapb_sla_horas, eapb_requisitos_radicacion",
+          "id, tipo, valor, extra1, extra2, extra3, activo, radica_phd, radica_pad, radica_oxigeno, radica_unidad_especial, seguimientos_en_plataforma, evolucion_por_correo, eapb_correo_radicacion, eapb_sla_horas, eapb_requisitos_radicacion",
         )
         .neq("tipo", "plantilla")
         .order("tipo")
@@ -301,6 +304,7 @@ export function CatalogoMaestras({ moduloFijo }: { moduloFijo?: string } = {}) {
     const nuevoSegPlataforma = isEAPB
       ? String(f.get("seguimientos_en_plataforma")) === "SI"
       : undefined;
+    const nuevoEvoCorreo = isEAPB ? String(f.get("evolucion_por_correo")) === "SI" : undefined;
     const slaRaw = isEAPB ? String(f.get("eapb_sla_horas") ?? "").trim() : "";
     const slaNum = slaRaw ? Number(slaRaw) : NaN;
     const radicaPatch = isEAPB
@@ -310,8 +314,9 @@ export function CatalogoMaestras({ moduloFijo }: { moduloFijo?: string } = {}) {
           radica_oxigeno: radicaFlags.radica_oxigeno,
           radica_unidad_especial: radicaFlags.radica_unidad_especial,
           seguimientos_en_plataforma: nuevoSegPlataforma,
-          eapb_correo_radicacion:
-            (String(f.get("eapb_correo_radicacion") ?? "").trim() || null) as string | null,
+          evolucion_por_correo: nuevoEvoCorreo,
+          // eapb_correo_radicacion es LEGADO (dato de contacto): no se edita ni
+          // se reescribe desde este formulario operativo.
           eapb_sla_horas: Number.isFinite(slaNum) && slaNum > 0 ? slaNum : null,
           eapb_requisitos_radicacion:
             (String(f.get("eapb_requisitos_radicacion") ?? "").trim() || null) as string | null,
@@ -328,18 +333,24 @@ export function CatalogoMaestras({ moduloFijo }: { moduloFijo?: string } = {}) {
       })
       .eq("id", editing.id);
     if (error) return toast.error(error.message);
-    // Auditar cambio del canal de seguimientos por plataforma (solo si cambió).
-    if (isEAPB && !!editing.seguimientos_en_plataforma !== nuevoSegPlataforma) {
+    // Auditar cambio de las reglas operativas de evolución (solo si cambiaron).
+    if (
+      isEAPB &&
+      (!!editing.seguimientos_en_plataforma !== nuevoSegPlataforma ||
+        !!editing.evolucion_por_correo !== nuevoEvoCorreo)
+    ) {
       registrarAuditoria({
         data: {
-          accion: "editar_eapb_seguimientos_plataforma",
+          accion: "editar_eapb_reglas_evolucion",
           modulo: "catalogos",
           tabla: "catalogos",
           registroId: editing.id,
           resultado: "exito",
           detalles: {
-            anterior: !!editing.seguimientos_en_plataforma ? "SI" : "NO",
-            nuevo: nuevoSegPlataforma ? "SI" : "NO",
+            plataforma_anterior: editing.seguimientos_en_plataforma ? "SI" : "NO",
+            plataforma_nuevo: nuevoSegPlataforma ? "SI" : "NO",
+            correo_anterior: editing.evolucion_por_correo ? "SI" : "NO",
+            correo_nuevo: nuevoEvoCorreo ? "SI" : "NO",
           },
         },
       }).catch(() => {});
@@ -659,22 +670,41 @@ export function CatalogoMaestras({ moduloFijo }: { moduloFijo?: string } = {}) {
                       <option value="NO">No</option>
                     </select>
                   </div>
-                  <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
-                    <Label htmlFor="seguimientos_en_plataforma">
-                      ¿Los seguimientos se hacen en plataforma?
+                  <div className="space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Reglas de evolución
                     </Label>
-                    <select
-                      id="seguimientos_en_plataforma"
-                      name="seguimientos_en_plataforma"
-                      defaultValue={editing.seguimientos_en_plataforma ? "SI" : "NO"}
-                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
-                    >
-                      <option value="SI">Sí</option>
-                      <option value="NO">No</option>
-                    </select>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="evolucion_por_correo" className="text-xs">
+                        EVOLUCIÓN POR CORREO ELECTRÓNICO
+                      </Label>
+                      <select
+                        id="evolucion_por_correo"
+                        name="evolucion_por_correo"
+                        defaultValue={editing.evolucion_por_correo ? "SI" : "NO"}
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                      >
+                        <option value="SI">Sí</option>
+                        <option value="NO">No</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="seguimientos_en_plataforma" className="text-xs">
+                        EVOLUCIÓN EN PLATAFORMA WEB
+                      </Label>
+                      <select
+                        id="seguimientos_en_plataforma"
+                        name="seguimientos_en_plataforma"
+                        defaultValue={editing.seguimientos_en_plataforma ? "SI" : "NO"}
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                      >
+                        <option value="SI">Sí</option>
+                        <option value="NO">No</option>
+                      </select>
+                    </div>
                     <p className="text-[11px] text-muted-foreground">
-                      Independiente de "Tiene plataforma" (radicación). Si es "No", la Evolución
-                      diaria solo ofrecerá el canal de correo.
+                      Reglas operativas de la Evolución Diaria. No dependen de ninguna dirección de
+                      correo: los datos de contacto se consultarán en RED &amp; DISPONIBILIDAD.
                     </p>
                   </div>
                   <div className="space-y-2 rounded-lg border border-border/60 bg-muted/30 p-3">
@@ -704,21 +734,6 @@ export function CatalogoMaestras({ moduloFijo }: { moduloFijo?: string } = {}) {
                     <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                       Configuración de radicación PHD/PAD/O2/Especiales
                     </Label>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="eapb_correo_radicacion" className="text-xs">
-                        Correo(s) de radicación
-                      </Label>
-                      <Input
-                        id="eapb_correo_radicacion"
-                        name="eapb_correo_radicacion"
-                        type="text"
-                        placeholder="correo1@eapb.com; correo2@eapb.com"
-                        defaultValue={editing.eapb_correo_radicacion ?? ""}
-                      />
-                      <p className="text-[10px] text-muted-foreground">
-                        Separar múltiples correos con punto y coma (;).
-                      </p>
-                    </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="eapb_sla_horas" className="text-xs">
                         SLA de respuesta (horas)
