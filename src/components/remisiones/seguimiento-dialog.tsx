@@ -515,17 +515,22 @@ export function SeguimientoDialog({
     queryKey: ["indigo-caso", tabla, casoId],
     enabled: open && usaIndigo,
     queryFn: async () => {
+      const tablaReal = (tabla ?? "remisiones") as "remisiones";
+      // `remision_por` (motivo real de la remisión, p. ej. RED NO CONTRATADA)
+      // solo existe en `remisiones`; en otros módulos no se solicita.
+      const cols =
+        "eapb, asegurador, tipo_tramite, eapb_tiene_plataforma, eapb_genera_codigo, plataforma_funcionando, ips_receptora, codigo_radicacion, tipo_documento, cie10, tipo_ambulancia, servicio, cama, prestador_traslado" +
+        (tablaReal === "remisiones" ? ", remision_por" : "");
       const { data } = await supabase
-        .from((tabla ?? "remisiones") as "remisiones")
-        .select(
-          "eapb, asegurador, tipo_tramite, eapb_tiene_plataforma, eapb_genera_codigo, plataforma_funcionando, ips_receptora, codigo_radicacion, tipo_documento, cie10, tipo_ambulancia, servicio, cama, prestador_traslado",
-        )
+        .from(tablaReal)
+        .select(cols)
         .eq("id", casoId)
         .maybeSingle();
-      return data as {
+      return data as unknown as {
         eapb: string | null;
         asegurador: string | null;
         tipo_tramite: string | null;
+        remision_por?: string | null;
         eapb_tiene_plataforma: boolean | null;
         eapb_genera_codigo: boolean | null;
         plataforma_funcionando: boolean | null;
