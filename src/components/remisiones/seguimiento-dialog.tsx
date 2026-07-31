@@ -85,6 +85,8 @@ import {
   EVO_ESTADO_META,
   esNuevaEpsCanonica,
   esRedNoContratadaCanonica,
+  resolverEapbCatalogo,
+
   persistirCumplimiento,
   resolverCumplimientoEvolucionDiaria,
 } from "@/lib/evolucion-diaria";
@@ -737,11 +739,14 @@ export function SeguimientoDialog({
   // Flag independiente (Parte 2): ¿los seguimientos de esta EAPB se hacen en
   // plataforma? Se resuelve desde el catálogo EAPB del caso, no de la radicación.
   const casoEapbNombre = (caso?.asegurador || caso?.eapb || "").trim();
-  const segEnPlataforma = useMemo(
-    () =>
-      eapbCat.find((e) => e.valor === casoEapbNombre)?.seguimientos_en_plataforma === true,
+  // Resolución CANÓNICA del registro activo del catálogo (equivalencia
+  // normalizada + allowlist de alias). Nunca coincidencia parcial.
+  const eapbResuelta = useMemo(
+    () => resolverEapbCatalogo(casoEapbNombre, eapbCat),
     [eapbCat, casoEapbNombre],
   );
+  const segEnPlataforma = eapbResuelta.fila?.seguimientos_en_plataforma === true;
+
   const esAdminCaso = esTramiteAdministrativo(caso?.tipo_tramite ?? "");
 
   // --- CAMBIO EN ESPECIALIDAD (manejo por especialidades) ---
@@ -1251,17 +1256,34 @@ export function SeguimientoDialog({
   // FASE 5E · Bloque C — canal de gestión estructurado (fuente única).
   // La combinación dual CORREO + PLATAFORMA solo se habilita en EVOLUCIÓN
   // DIARIA cuando el catálogo de la EAPB del caso declara ambas capacidades.
-  const eapbCasoCat = useMemo(
-    () => eapbCat.find((e) => e.valor === casoEapbNombre) ?? null,
-    [eapbCat, casoEapbNombre],
-  );
-  const eapbEvoCorreo = !!(eapbCasoCat?.eapb_correo_radicacion ?? "").trim();
+  const eapbCasoCat = eapbResuelta.fila;
+  const correoRadicacionRaw = (eapbCasoCat?.eapb_correo_radicacion ?? "").trim();
+  const eapbEvoCorreo =
+    correoRadicacionRaw !== "" &&
+    !["null", "undefined"].includes(correoRadicacionRaw.toLowerCase());
   const dualPermitido = dualCanalPermitido({
     esEvolucionDiaria: tipoSeg === T.EVOLUCION,
     catalogoActivo: !!eapbCasoCat,
     evolucionPorCorreo: eapbEvoCorreo,
     evolucionPorPlataforma: segEnPlataforma === true,
   });
+  // Motivo visible (fail-closed) cuando el dual no se habilita en Evolución
+  // Diaria: permite al operador saber qué falta configurar en Catálogos.
+  const dualMotivo: string | null =
+    tipoSeg !== T.EVOLUCION || dualPermitido
+      ? null
+      : eapbResuelta.motivo === "SIN_EAPB"
+        ? "El caso no tiene EAPB/ERP identificable."
+        : eapbResuelta.motivo === "MULTIPLES_COINCIDENCIAS"
+          ? "La EAPB/ERP tiene varios registros activos en Catálogos; requiere revisión."
+          : eapbResuelta.motivo === "SIN_COINCIDENCIA_CATALOGO"
+            ? `La EAPB/ERP "${casoEapbNombre}" no tiene un registro activo en Catálogos.`
+            : !eapbEvoCorreo && segEnPlataforma
+              ? "Esta EAPB/ERP no tiene CORREO DE RADICACIÓN configurado en Catálogos: solo se permite un canal."
+              : eapbEvoCorreo && !segEnPlataforma
+                ? "Esta EAPB/ERP no tiene SEGUIMIENTOS EN PLATAFORMA habilitados en Catálogos: solo se permite un canal."
+                : "La EAPB/ERP no tiene habilitados correo y plataforma en Catálogos.";
+
   const canalPersist = useMemo(() => canalGestionPersist(canalV), [canalV]);
   const canalFinal = canalPersist.canal_gestion ?? "";
 
@@ -2950,7 +2972,9 @@ export function SeguimientoDialog({
                 value={canalV}
                 onChange={setCanalV}
                 dualPermitido={dualPermitido}
+                motivoNoDual={dualMotivo}
               />
+
 
               {/* INFORMACIÓN DEL TRÁMITE (no aplica a PENDIENTES) */}
               {!esPendiente && tipoSeg === T.INFO_TRAMITE && (

@@ -198,14 +198,18 @@ export function CanalGestionField({
   value,
   onChange,
   dualPermitido = false,
+  motivoNoDual = null,
   observacionesSlot,
 }: {
   value: CanalGestionValue;
   onChange: (v: CanalGestionValue) => void;
   /** EVOLUCIÓN DIARIA + EAPB con correo y plataforma habilitados en catálogo. */
   dualPermitido?: boolean;
+  /** Motivo informativo cuando el dual no aplica en Evolución Diaria. */
+  motivoNoDual?: string | null;
   observacionesSlot?: React.ReactNode;
 }) {
+
   const set = (patch: Partial<CanalGestionValue>) => onChange({ ...value, ...patch });
   const activo = (c: string) => value.canales.includes(c);
 
@@ -281,12 +285,15 @@ export function CanalGestionField({
             </button>
           ))}
         </div>
-        {dualPermitido && (
+        {dualPermitido ? (
           <p className="text-[10px] text-muted-foreground">
             Evolución diaria: esta EAPB permite seleccionar CORREO ELECTRÓNICO y PLATAFORMA WEB
             simultáneamente.
           </p>
-        )}
+        ) : motivoNoDual ? (
+          <p className="text-[10px] text-muted-foreground">{motivoNoDual}</p>
+        ) : null}
+
       </div>
 
       {activo(CANAL_CODES.OTRO) && (
