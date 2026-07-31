@@ -96,11 +96,17 @@ import {
   InformacionTramiteFields,
   INFORMACION_TRAMITE_INICIAL,
   SeguimientoHeaderCard,
-  canalFinalDe,
   erroresInformacionTramite,
   plantillaInformacionTramite,
   type InformacionTramiteValue,
 } from "@/components/remisiones/seguimiento-shell";
+import {
+  CANAL_GESTION_INICIAL,
+  canalGestionPersist,
+  erroresCanalGestion,
+  plantillaCanalGestion,
+  type CanalGestionValue,
+} from "@/lib/canal-gestion";
 
 type Props = {
   open: boolean;
