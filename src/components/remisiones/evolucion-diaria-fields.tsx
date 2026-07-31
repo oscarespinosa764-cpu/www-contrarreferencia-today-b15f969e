@@ -24,6 +24,7 @@ import {
   EVO_ESTADO_META,
   INDIGO_EXCEPCION_CORREO,
   INDIGO_EXCEPCION_PLATAFORMA,
+  canalesResumenEvolucion,
   estadoCanalEvolucion,
   resolverCumplimientoEvolucionDiaria,
   type CumplimientoEvolucion,
@@ -159,7 +160,7 @@ export function CanalesEvolucionResumen({ resolver }: { resolver: CumplimientoEv
     <div className="space-y-1.5 rounded-lg border border-border/60 bg-background/40 p-3">
       <p className={labelCls}>Canales de evolución</p>
       <ul className="space-y-1">
-        {resolver.canales_requeridos.map((c) => {
+        {canalesResumenEvolucion(resolver).map((c) => {
           const est = estadoCanalEvolucion(resolver, c);
           return (
             <li key={c} className="flex items-center justify-between gap-2 text-sm">
@@ -198,7 +199,9 @@ export function EvolucionDiariaFields({
   // Motivo libre solo cuando queda un canal pendiente que NO está documentado
   // por el selector de plataforma ni exento por la excepción autorizada.
   const requiereMotivo =
-    r.canales_pendientes.length > 0 && !r.plataforma_pendiente_por_falla;
+    r.canales_pendientes.length > 0 &&
+    !r.plataforma_pendiente_por_falla &&
+    !r.excepcion_aplicada;
 
   return (
     <div className="space-y-3 rounded-lg border border-border bg-muted/20 p-3">

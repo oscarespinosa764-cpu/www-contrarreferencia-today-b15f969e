@@ -199,6 +199,8 @@ export function CanalGestionField({
   onChange,
   dualPermitido = false,
   motivoNoDual = null,
+  canalesBloqueados,
+  motivoBloqueo = null,
   observacionesSlot,
 }: {
   value: CanalGestionValue;
@@ -207,13 +209,20 @@ export function CanalGestionField({
   dualPermitido?: boolean;
   /** Motivo informativo cuando el dual no aplica en Evolución Diaria. */
   motivoNoDual?: string | null;
+  /** Canales deshabilitados por una regla canónica (p. ej. excepción NUEVA EPS). */
+  canalesBloqueados?: string[];
+  /** Explicación visible del bloqueo. */
+  motivoBloqueo?: string | null;
   observacionesSlot?: React.ReactNode;
 }) {
 
+  const bloqueados = canalesBloqueados ?? [];
   const set = (patch: Partial<CanalGestionValue>) => onChange({ ...value, ...patch });
   const activo = (c: string) => value.canales.includes(c);
+  const bloqueado = (c: string) => bloqueados.includes(c);
 
   const toggleCanal = (codigo: string) => {
+    if (bloqueado(codigo)) return;
     const dualPair = codigo === CANAL_CODES.CORREO || codigo === CANAL_CODES.PLATAFORMA;
     if (activo(codigo)) {
       // Solo puede deseleccionarse cuando queda otro canal (dual).
@@ -274,18 +283,22 @@ export function CanalGestionField({
               key={c.codigo}
               type="button"
               aria-pressed={activo(c.codigo)}
+              disabled={bloqueado(c.codigo)}
+              title={bloqueado(c.codigo) ? (motivoBloqueo ?? undefined) : undefined}
               onClick={() => toggleCanal(c.codigo)}
               className={`min-h-9 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide transition-colors ${
                 activo(c.codigo)
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-muted/40 text-muted-foreground hover:text-foreground"
-              }`}
+              } ${bloqueado(c.codigo) ? "cursor-not-allowed opacity-40 hover:text-muted-foreground" : ""}`}
             >
               {c.label}
             </button>
           ))}
         </div>
-        {dualPermitido ? (
+        {motivoBloqueo ? (
+          <p className="text-[10px] text-muted-foreground">{motivoBloqueo}</p>
+        ) : dualPermitido ? (
           <p className="text-[10px] text-muted-foreground">
             Evolución diaria: esta EAPB permite seleccionar CORREO ELECTRÓNICO y PLATAFORMA WEB
             simultáneamente.

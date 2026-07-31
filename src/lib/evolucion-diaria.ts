@@ -188,6 +188,10 @@ export type CumplimientoEvolucion = {
   especialidades_pendientes: string[];
   plataforma_funcionando: boolean | null;
   excepcion_aplicada: null | "NUEVA_EPS_RED_NO_CONTRATADA";
+  /** Variante canónica de la excepción (Fase 5E · C.6). */
+  variante_excepcion: null | "PLATAFORMA_FUNCIONANDO" | "PLATAFORMA_CAIDA";
+  /** Canales que la excepción deshabilita para ESTA evolución diaria. */
+  canales_bloqueados: string[];
   plataforma_pendiente_por_falla: boolean;
   motivo_pendiente: string | null;
   variante_indigo: VarianteIndigo;
@@ -214,8 +218,6 @@ export function resolverCumplimientoEvolucionDiaria(
       .map(upper)
       .filter((c) => c === C || c === P),
   );
-  const realizados = requeridos.filter((c) => realizadosSet.has(c));
-
   const requeridasEsp = (i.especialidadesRequeridas ?? []).map(upper).filter(Boolean);
   const evolucionadasSet: Set<string> = new Set(
     [...(i.especialidadesPreviasCiclo ?? []), ...(i.especialidadesEvolucionadas ?? [])].map(upper),
@@ -223,11 +225,55 @@ export function resolverCumplimientoEvolucionDiaria(
   const especialidades_evolucionadas = requeridasEsp.filter((e) => evolucionadasSet.has(e));
   const especialidades_pendientes = requeridasEsp.filter((e) => !evolucionadasSet.has(e));
 
+  // --- Excepción canónica NUEVA EPS + RED NO CONTRATADA (Fase 5E · C.6) -----
+  // La excepción NO depende de lo que el usuario ya seleccionó: depende solo
+  // del contexto canónico y de ¿PLATAFORMA EAPB FUNCIONANDO?
+  const excepcionElegible =
+    i.esNuevaEps === true &&
+    i.esRedNoContratada === true &&
+    i.correoRequerido === true &&
+    i.plataformaRequerida === true;
+
+  const canales_exentos: string[] = [];
+  const canales_bloqueados: string[] = [];
+  let excepcion_aplicada: CumplimientoEvolucion["excepcion_aplicada"] = null;
+  let variante_excepcion: CumplimientoEvolucion["variante_excepcion"] = null;
+  let variante_indigo: VarianteIndigo = "GENERAL";
+  let requeridos_final = requeridos;
+
+  if (excepcionElegible && i.plataformaFuncionando === true) {
+    // Solo PLATAFORMA WEB es válida; CORREO queda exento y deshabilitado.
+    excepcion_aplicada = "NUEVA_EPS_RED_NO_CONTRATADA";
+    variante_excepcion = "PLATAFORMA_FUNCIONANDO";
+    variante_indigo = "EXCEPCION_PLATAFORMA";
+    canales_exentos.push(C);
+    canales_bloqueados.push(C);
+    requeridos_final = [P];
+  } else if (excepcionElegible && i.plataformaFuncionando === false) {
+    // Solo CORREO es válido; PLATAFORMA queda exenta pero pendiente por falla.
+    excepcion_aplicada = "NUEVA_EPS_RED_NO_CONTRATADA";
+    variante_excepcion = "PLATAFORMA_CAIDA";
+    variante_indigo = "EXCEPCION_CORREO";
+    canales_exentos.push(P);
+    canales_bloqueados.push(P);
+  }
+
+  const canales_exigibles = requeridos_final.filter((c) => !canales_exentos.includes(c));
+  const realizados = canales_exigibles.filter((c) => realizadosSet.has(c));
+  const canales_pendientes = canales_exigibles.filter((c) => !realizadosSet.has(c));
+
   const errores: string[] = [];
   // Contradicción: la plataforma no funciona pero se declara realizada.
   if (i.plataformaRequerida && i.plataformaFuncionando === false && realizadosSet.has(P)) {
     errores.push(
       "No puede registrar PLATAFORMA WEB como realizada cuando indicó que la plataforma no está funcionando.",
+    );
+  }
+  if (excepcion_aplicada && canales_bloqueados.some((c) => realizadosSet.has(c))) {
+    errores.push(
+      variante_excepcion === "PLATAFORMA_FUNCIONANDO"
+        ? "En este caso (NUEVA EPS · RED NO CONTRATADA) con plataforma funcionando solo aplica PLATAFORMA WEB."
+        : "En este caso (NUEVA EPS · RED NO CONTRATADA) con plataforma en falla solo aplica CORREO ELECTRÓNICO.",
     );
   }
   if (i.plataformaRequerida && i.plataformaFuncionando == null) {
@@ -237,46 +283,21 @@ export function resolverCumplimientoEvolucionDiaria(
     errores.push("Seleccione el canal de gestión utilizado para la evolución.");
   }
 
-  // --- Excepción canónica NUEVA EPS + RED NO CONTRATADA ---------------------
-  const excepcionElegible =
-    i.esNuevaEps === true &&
-    i.esRedNoContratada === true &&
-    i.correoRequerido === true &&
-    i.plataformaRequerida === true;
-
-  const canales_exentos: string[] = [];
-  let excepcion_aplicada: CumplimientoEvolucion["excepcion_aplicada"] = null;
-  let variante_indigo: VarianteIndigo = "GENERAL";
-
-  if (excepcionElegible) {
-    if (i.plataformaFuncionando === true && realizadosSet.has(P)) {
-      canales_exentos.push(C);
-      excepcion_aplicada = "NUEVA_EPS_RED_NO_CONTRATADA";
-      variante_indigo = "EXCEPCION_PLATAFORMA";
-    } else if (
-      i.plataformaFuncionando === false &&
-      realizadosSet.has(C) &&
-      !realizadosSet.has(P)
-    ) {
-      canales_exentos.push(P);
-      excepcion_aplicada = "NUEVA_EPS_RED_NO_CONTRATADA";
-      variante_indigo = "EXCEPCION_CORREO";
-    }
-  }
-
-  const canales_exigibles = requeridos.filter((c) => !canales_exentos.includes(c));
-  const canales_pendientes = canales_exigibles.filter((c) => !realizadosSet.has(c));
-
   const plataforma_pendiente_por_falla =
     i.plataformaRequerida === true && i.plataformaFuncionando === false && !realizadosSet.has(P);
 
   let motivo_pendiente: string | null =
     (i.motivoPendiente ?? "").trim().toUpperCase() || null;
-  if (plataforma_pendiente_por_falla && !motivo_pendiente) {
-    motivo_pendiente = MOTIVO_PLATAFORMA_NO_FUNCIONAL;
-  }
-  if (!plataforma_pendiente_por_falla && motivo_pendiente === MOTIVO_PLATAFORMA_NO_FUNCIONAL) {
-    motivo_pendiente = canales_pendientes.length > 0 ? motivo_pendiente : null;
+  if (excepcion_aplicada) {
+    // La excepción autorizada NO genera motivo libre ni lo solicita.
+    motivo_pendiente = null;
+  } else {
+    if (plataforma_pendiente_por_falla && !motivo_pendiente) {
+      motivo_pendiente = MOTIVO_PLATAFORMA_NO_FUNCIONAL;
+    }
+    if (!plataforma_pendiente_por_falla && motivo_pendiente === MOTIVO_PLATAFORMA_NO_FUNCIONAL) {
+      motivo_pendiente = canales_pendientes.length > 0 ? motivo_pendiente : null;
+    }
   }
 
   const algunaGestion =
@@ -292,7 +313,7 @@ export function resolverCumplimientoEvolucionDiaria(
 
   return {
     estado,
-    canales_requeridos: requeridos,
+    canales_requeridos: requeridos_final,
     canales_exigibles,
     canales_realizados: realizados,
     canales_pendientes,
@@ -302,6 +323,8 @@ export function resolverCumplimientoEvolucionDiaria(
     especialidades_pendientes,
     plataforma_funcionando: i.plataformaRequerida ? (i.plataformaFuncionando ?? null) : null,
     excepcion_aplicada,
+    variante_excepcion,
+    canales_bloqueados,
     plataforma_pendiente_por_falla,
     motivo_pendiente,
     variante_indigo,
@@ -314,12 +337,19 @@ export function estadoCanalEvolucion(
   r: CumplimientoEvolucion,
   canal: string,
 ): "REALIZADO" | "PENDIENTE" | "PENDIENTE POR FALLA" | "EXENTO" | "NO APLICA" {
-  if (!r.canales_requeridos.includes(canal)) return "NO APLICA";
   if (r.canales_realizados.includes(canal)) return "REALIZADO";
-  if (r.canales_exentos.includes(canal)) return "EXENTO";
   if (canal === CANAL_CODES.PLATAFORMA && r.plataforma_pendiente_por_falla)
     return "PENDIENTE POR FALLA";
+  if (r.canales_exentos.includes(canal)) return "EXENTO";
+  if (!r.canales_requeridos.includes(canal)) return "NO APLICA";
   return "PENDIENTE";
+}
+
+/** Canales visibles en el resumen: exigibles + exentos por la excepción. */
+export function canalesResumenEvolucion(r: CumplimientoEvolucion): string[] {
+  const out = [...r.canales_requeridos];
+  for (const c of r.canales_exentos) if (!out.includes(c)) out.push(c);
+  return out;
 }
 
 /** Datos estructurados que se persisten dentro de `detalles` (JSONB vigente). */
@@ -335,6 +365,7 @@ export function persistirCumplimiento(r: CumplimientoEvolucion): Record<string, 
     especialidades_pendientes: r.especialidades_pendientes,
     estado_cumplimiento: r.estado,
     excepcion_aplicada: r.excepcion_aplicada,
+    variante_excepcion: r.variante_excepcion,
     motivo_pendiente: r.motivo_pendiente,
     plataforma_pendiente_por_falla: r.plataforma_pendiente_por_falla || null,
   };

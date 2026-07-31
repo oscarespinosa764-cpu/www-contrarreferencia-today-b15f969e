@@ -1328,7 +1328,31 @@ export function SeguimientoDialog({
   const evoRequiereMotivo =
     esEvolucionSal &&
     evoResolver.canales_pendientes.length > 0 &&
-    !evoResolver.plataforma_pendiente_por_falla;
+    !evoResolver.plataforma_pendiente_por_falla &&
+    !evoResolver.excepcion_aplicada;
+
+  // --- FASE 5E · C.6 — excepción NUEVA EPS + RED NO CONTRATADA -------------
+  // La excepción define un ÚNICO canal válido según ¿plataforma funcionando?
+  // y bloquea el otro (no hay selección dual en este escenario).
+  const evoExcepcion = esEvolucionSal && evoResolver.excepcion_aplicada !== null;
+  const canalesBloqueadosEvo = evoExcepcion ? evoResolver.canales_bloqueados : [];
+  const motivoBloqueoEvo = !evoExcepcion
+    ? null
+    : evoResolver.variante_excepcion === "PLATAFORMA_FUNCIONANDO"
+      ? "NUEVA EPS · RED NO CONTRATADA con plataforma funcionando: la evolución se registra únicamente por PLATAFORMA WEB."
+      : "NUEVA EPS · RED NO CONTRATADA con plataforma no funcional: la evolución se registra únicamente por CORREO ELECTRÓNICO.";
+  const dualEfectivo = dualPermitido && !evoExcepcion;
+
+  // Limpia automáticamente el canal que dejó de ser válido al cambiar el
+  // estado de la plataforma dentro de la excepción.
+  useEffect(() => {
+    if (canalesBloqueadosEvo.length === 0) return;
+    setCanalV((prev) => {
+      const limpios = prev.canales.filter((c) => !canalesBloqueadosEvo.includes(c));
+      return limpios.length === prev.canales.length ? prev : { ...prev, canales: limpios };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canalesBloqueadosEvo.join("|")]);
   const evoEstadoSal: EvolucionEstado =
     evoResolver.estado === "EVOLUCIONADO"
       ? "completo"
@@ -1336,8 +1360,8 @@ export function SeguimientoDialog({
         ? "parcial"
         : "sin";
   const canalErrores = useMemo(
-    () => erroresCanalGestion(canalV, { dualPermitido }),
-    [canalV, dualPermitido],
+    () => erroresCanalGestion(canalV, { dualPermitido: dualEfectivo }),
+    [canalV, dualEfectivo],
   );
 
   // --- Plantilla Índigo generada según el tipo ---
@@ -2970,8 +2994,10 @@ export function SeguimientoDialog({
               <CanalGestionField
                 value={canalV}
                 onChange={setCanalV}
-                dualPermitido={dualPermitido}
+                dualPermitido={dualEfectivo}
                 motivoNoDual={dualMotivo}
+                canalesBloqueados={canalesBloqueadosEvo}
+                motivoBloqueo={motivoBloqueoEvo}
               />
 
 
