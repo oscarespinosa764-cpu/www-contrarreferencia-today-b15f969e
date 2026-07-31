@@ -1296,7 +1296,7 @@ export function SeguimientoDialog({
       especialidadesList,
       evoEspEvolucionadas,
       casoEapbNombre,
-      caso?.tipo_tramite,
+      caso?.remision_por,
       evoMotivoPend,
     ],
   );
