@@ -48,15 +48,66 @@ export const INDIGO_EXCEPCION_CORREO =
 
 export const MOTIVO_PLATAFORMA_NO_FUNCIONAL = "PLATAFORMA EAPB NO FUNCIONAL";
 
-/** Identificación canónica (exacta normalizada) de NUEVA EPS. */
+/**
+ * Allowlist estricta de alias canónicos de NUEVA EPS tal como existen en el
+ * catálogo real (`public.catalogos`, tipo EAPB). NO se usan coincidencias
+ * parciales: el texto normalizado debe ser exactamente uno de estos alias.
+ */
+export const NUEVA_EPS_ALIAS = [
+  "nueva eps",
+  "nueva eps s.a.",
+  "nueva eps sa",
+  "nueva eps s a",
+  "nueva eps s.a.s.",
+] as const;
+
+/** Identificación canónica (equivalencia exacta normalizada) de NUEVA EPS. */
 export function esNuevaEpsCanonica(eapb: unknown): boolean {
-  return normalizeForSearch(eapb) === "nueva eps";
+  const n = normalizeForSearch(eapb);
+  return (NUEVA_EPS_ALIAS as readonly string[]).includes(n);
 }
 
 /** Identificación canónica (exacta normalizada) de RED NO CONTRATADA. */
-export function esRedNoContratadaCanonica(tipoTramite: unknown): boolean {
-  return normalizeForSearch(tipoTramite) === "red no contratada";
+export function esRedNoContratadaCanonica(remisionPor: unknown): boolean {
+  return normalizeForSearch(remisionPor) === "red no contratada";
 }
+
+export type ResultadoExcepcion = {
+  aplica: boolean;
+  eapbCanonica: string | null;
+  remisionPorCanonica: string | null;
+  motivoNoAplica: string | null;
+};
+
+/**
+ * Función canónica ÚNICA de la excepción NUEVA EPS + RED NO CONTRATADA.
+ * El servidor recalcula la misma tabla de verdad; el cliente nunca es
+ * autoridad.
+ */
+export function resolverExcepcionNuevaEpsRedNoContratada(args: {
+  modulo: string;
+  esEvolucionDiaria: boolean;
+  eapb: unknown;
+  remisionPor: unknown;
+  correoRequerido: boolean;
+  plataformaRequerida: boolean;
+}): ResultadoExcepcion {
+  const eapbOk = esNuevaEpsCanonica(args.eapb);
+  const redOk = esRedNoContratadaCanonica(args.remisionPor);
+  const base = {
+    eapbCanonica: eapbOk ? "NUEVA EPS" : null,
+    remisionPorCanonica: redOk ? "RED NO CONTRATADA" : null,
+  };
+  let motivo: string | null = null;
+  if (args.modulo !== "remision") motivo = "MODULO_NO_APLICA";
+  else if (!args.esEvolucionDiaria) motivo = "TIPO_NO_ES_EVOLUCION_DIARIA";
+  else if (!eapbOk) motivo = "EAPB_NO_ES_NUEVA_EPS";
+  else if (!redOk) motivo = "REMISION_POR_NO_ES_RED_NO_CONTRATADA";
+  else if (!args.correoRequerido || !args.plataformaRequerida)
+    motivo = "CATALOGO_NO_EXIGE_CORREO_Y_PLATAFORMA";
+  return { aplica: motivo === null, motivoNoAplica: motivo, ...base };
+}
+
 
 export type CumplimientoEvolucionInput = {
   /** Catálogo EAPB activo: existe correo de radicación. */
