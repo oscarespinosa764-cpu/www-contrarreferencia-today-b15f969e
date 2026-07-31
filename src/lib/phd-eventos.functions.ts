@@ -12,7 +12,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import {
-  CANAL_CODES,
   dualCanalPermitido,
   erroresCanalesCodigos,
   esCanalValido,
@@ -161,7 +160,6 @@ export const registrarEventoPhd = createServerFn({ method: "POST" })
       const err = erroresCanalesCodigos(canalesEnv, false);
       if (err) return { ok: false, error: err };
     }
-    void CANAL_CODES;
 
     const payload: Record<string, unknown> = {
       evento: data.evento,
