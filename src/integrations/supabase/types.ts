@@ -581,6 +581,7 @@ export type Database = {
           eapb_correo_radicacion: string | null
           eapb_requisitos_radicacion: string | null
           eapb_sla_horas: number | null
+          evolucion_por_correo: boolean
           extra1: string | null
           extra2: string | null
           extra3: string | null
@@ -605,6 +606,7 @@ export type Database = {
           eapb_correo_radicacion?: string | null
           eapb_requisitos_radicacion?: string | null
           eapb_sla_horas?: number | null
+          evolucion_por_correo?: boolean
           extra1?: string | null
           extra2?: string | null
           extra3?: string | null
@@ -629,6 +631,7 @@ export type Database = {
           eapb_correo_radicacion?: string | null
           eapb_requisitos_radicacion?: string | null
           eapb_sla_horas?: number | null
+          evolucion_por_correo?: boolean
           extra1?: string | null
           extra2?: string | null
           extra3?: string | null
