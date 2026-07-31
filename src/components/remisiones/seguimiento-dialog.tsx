@@ -104,6 +104,7 @@ import {
   CANAL_GESTION_INICIAL,
   canalGestionPersist,
   dualCanalPermitido,
+  CANAL_CODES,
   erroresCanalGestion,
   plantillaCanalGestion,
   type CanalGestionValue,
@@ -1493,25 +1494,13 @@ export function SeguimientoDialog({
       case T.EVOLUCION:
         // Con especialidades tratantes registradas, se deja trazabilidad por
         // especialidad (evolucionadas / pendientes). Sin ellas, plantilla clásica.
-        if (especialidadesList.length > 0) {
-          base = generarPlantillaEvolucionEspecialidades({
-            evolucionadas: evoEspEvolucionadas,
-            pendientes: evoEspPendientes,
-            enviadoCorreo: evoCorreo,
-            enviadoPlataforma: segEnPlataforma ? evoPlataforma : false,
-            observacion: detalle,
-          });
-        } else {
-          base = generarPlantillaEvolucionDiaria({
-            estadoCaso,
-            esTramiteAdministrativo: esAdminCaso,
-            tienePlataforma: segEnPlataforma,
-            plataformaFunciona: segEnPlataforma ? plataformaFuncSeg === "SI" : null,
-            enviadoCorreo: evoCorreo,
-            enviadoPlataforma: evoPlataforma,
-            motivoPendiente: evoMotivoPend,
-          });
-        }
+        base = plantillaEvolucionDesdeResolver(evoResolver, {
+          especialidades: especialidadesList,
+          estadoCaso,
+          esTramiteAdministrativo: esAdminCaso,
+          tienePlataforma: segEnPlataforma,
+          observacion: detalle,
+        });
         break;
       case T.CORREO:
         base = generarPlantillaCorreoSeg(asunto, estadoSolicitud);
@@ -1971,15 +1960,11 @@ export function SeguimientoDialog({
         return { radicado: radicado.trim() };
       case T.EVOLUCION:
         return {
-          plataforma_funcionando: segEnPlataforma ? plataformaFuncSeg : null,
+          // Estructura canónica del resolver único (el servidor la recalcula).
+          ...persistirCumplimiento(evoResolver),
           enviado_correo: evoCorreo,
           enviado_plataforma: segEnPlataforma ? evoPlataforma : null,
           estado_evolucion: evoEstadoSal,
-          motivo_pendiente: evoRequiereMotivo ? evoMotivoPend.trim() : null,
-          // Trazabilidad por especialidades tratantes (Parte 9).
-          especialidades_evolucionadas: especialidadesList.length > 0 ? evoEspEvolucionadas : null,
-          especialidades_pendientes: especialidadesList.length > 0 ? evoEspPendientes : null,
-          estado_evolucion_especialidades: especialidadesList.length > 0 ? evoEspEstado : null,
           medio_evolucion:
             evoCorreo && evoPlataforma
               ? "CORREO Y PLATAFORMA"
