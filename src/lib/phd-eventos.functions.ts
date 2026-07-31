@@ -11,7 +11,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import { esCanalValido } from "@/lib/canal-gestion";
+import {
+  dualCanalPermitido,
+  erroresCanalesCodigos,
+  esCanalValido,
+} from "@/lib/canal-gestion";
 
 const EVENTOS = [
   "ACEPTACION_PROVEEDOR",
@@ -38,6 +42,8 @@ const schema = z.object({
     .optional(),
   proveedor: z.string().trim().max(200).optional(),
   canal: z.string().trim().max(80).optional(),
+  // FASE 5E · C.1 — códigos canónicos de canal (máx. 2, allowlist estricta).
+  canales: z.array(z.string().trim().max(60)).max(3).optional(),
   motivo: z.string().trim().max(500).optional(),
   especialidad: z.string().trim().max(200).optional(),
   responsable: z.string().trim().max(200).optional(),
@@ -113,6 +119,47 @@ export const registrarEventoPhd = createServerFn({ method: "POST" })
       _user_id: context.userId,
     });
     if (!isActive) return { ok: false, error: "Usuario no autorizado" };
+
+    // FASE 5E · C.1 — la autorización de doble canal se recalcula SIEMPRE desde
+    // las fuentes canónicas (caso + catálogo EAPB), nunca desde el cliente.
+    const canalesEnv = (data.canales ?? []).map((c) => c.trim().toUpperCase());
+    if (canalesEnv.length > 1) {
+      const { data: casoRow } = await context.supabase
+        .from("domiciliarios")
+        .select("eapb")
+        .eq("id", data.casoId)
+        .maybeSingle();
+      const eapb = String((casoRow as { eapb?: string } | null)?.eapb ?? "").trim();
+      let correo = false;
+      let plataforma = false;
+      let existe = false;
+      if (eapb) {
+        const { data: cat } = await context.supabase
+          .from("catalogos")
+          .select("seguimientos_en_plataforma, eapb_correo_radicacion")
+          .eq("tipo", "EAPB")
+          .eq("activo", true)
+          .ilike("valor", eapb)
+          .maybeSingle();
+        const row = cat as
+          | { seguimientos_en_plataforma?: boolean; eapb_correo_radicacion?: string | null }
+          | null;
+        existe = !!row;
+        plataforma = row?.seguimientos_en_plataforma === true;
+        correo = !!(row?.eapb_correo_radicacion ?? "").trim();
+      }
+      const dual = dualCanalPermitido({
+        esEvolucionDiaria: data.evento === "EVOLUCION_DIARIA",
+        catalogoActivo: existe,
+        evolucionPorCorreo: correo,
+        evolucionPorPlataforma: plataforma,
+      });
+      const err = erroresCanalesCodigos(canalesEnv, dual);
+      if (err) return { ok: false, error: err };
+    } else {
+      const err = erroresCanalesCodigos(canalesEnv, false);
+      if (err) return { ok: false, error: err };
+    }
 
     const payload: Record<string, unknown> = {
       evento: data.evento,

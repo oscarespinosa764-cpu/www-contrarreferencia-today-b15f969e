@@ -476,3 +476,42 @@ export function esCanalValido(valor: string | null | undefined): boolean {
   if (LABELS_HISTORICOS.includes(v) || CANALES_GESTION_LABELS.includes(v)) return true;
   return v.length >= CANAL_OTRO_MIN && v.length <= CANAL_OTRO_MAX;
 }
+
+// --- FASE 5E · Bloque C.1 — Autorización de doble canal ----------------------
+// Regla ÚNICA (fail-closed) compartida por cliente y servidor: la selección
+// simultánea CORREO ELECTRÓNICO + PLATAFORMA WEB solo se habilita cuando el
+// tipo de seguimiento real es EVOLUCIÓN DIARIA y el registro ACTIVO del
+// catálogo EAPB del caso declara ambas capacidades.
+export function dualCanalPermitido(args: {
+  esEvolucionDiaria: boolean;
+  catalogoActivo: boolean;
+  evolucionPorCorreo: boolean;
+  evolucionPorPlataforma: boolean;
+}): boolean {
+  return (
+    args.esEvolucionDiaria === true &&
+    args.catalogoActivo === true &&
+    args.evolucionPorCorreo === true &&
+    args.evolucionPorPlataforma === true
+  );
+}
+
+/** Valida la lista de códigos de canal enviada al servidor (allowlist estricta). */
+export function erroresCanalesCodigos(
+  canales: string[] | undefined | null,
+  dualPermitido: boolean,
+): string | null {
+  const lista = (canales ?? []).map((c) => (c ?? "").trim().toUpperCase());
+  if (lista.length === 0) return null; // compatibilidad: solo se envió el resumen
+  if (lista.some((c) => !CANALES_GESTION_CODIGOS.includes(c)))
+    return "Canal de gestión no válido.";
+  if (new Set(lista).size !== lista.length) return "Canal de gestión duplicado.";
+  if (lista.length > 2) return "Solo se permite un canal de gestión.";
+  if (lista.length === 2) {
+    const dual =
+      lista.includes(CANAL_CODES.CORREO) && lista.includes(CANAL_CODES.PLATAFORMA);
+    if (!dual || !dualPermitido)
+      return "La combinación de canales no está autorizada.";
+  }
+  return null;
+}
