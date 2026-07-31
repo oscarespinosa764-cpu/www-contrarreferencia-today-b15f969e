@@ -222,7 +222,7 @@ export function CatalogoMaestras({ moduloFijo }: { moduloFijo?: string } = {}) {
       const { data, error } = await supabase
         .from("catalogos")
         .select(
-          "id, tipo, valor, extra1, extra2, extra3, activo, radica_phd, radica_pad, radica_oxigeno, radica_unidad_especial, seguimientos_en_plataforma, eapb_correo_radicacion, eapb_sla_horas, eapb_requisitos_radicacion",
+          "id, tipo, valor, extra1, extra2, extra3, activo, radica_phd, radica_pad, radica_oxigeno, radica_unidad_especial, seguimientos_en_plataforma, evolucion_por_correo, eapb_correo_radicacion, eapb_sla_horas, eapb_requisitos_radicacion",
         )
         .neq("tipo", "plantilla")
         .order("tipo")
