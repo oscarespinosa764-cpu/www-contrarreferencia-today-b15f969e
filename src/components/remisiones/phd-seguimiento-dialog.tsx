@@ -72,6 +72,7 @@ import {
 import {
   CANAL_GESTION_INICIAL,
   canalGestionPersist,
+  dualCanalPermitido,
   erroresCanalGestion,
   plantillaCanalGestion,
   type CanalGestionValue,
@@ -289,9 +290,9 @@ export function PhdSeguimientoDialog({
   const requiereDescripcion = CON_DESCRIPCION.includes(evento);
   const esEvolucionDiaria = evento === "EVOLUCION_DIARIA";
 
-  // ¿La EAPB del caso hace seguimientos en plataforma? (catálogo EAPB)
-  const { data: segEnPlataforma = false } = useQuery({
-    queryKey: ["phd-eapb-plataforma", casoId],
+  // Configuración canónica de la EAPB del caso (catálogo EAPB activo).
+  const { data: eapbCfg = { plataforma: false, correo: false, existe: false } } = useQuery({
+    queryKey: ["phd-eapb-cfg", casoId],
     enabled: open && !!casoId,
     queryFn: async () => {
       const { data: caso } = await supabase
@@ -300,16 +301,31 @@ export function PhdSeguimientoDialog({
         .eq("id", casoId)
         .maybeSingle();
       const eapb = String((caso as { eapb?: string } | null)?.eapb ?? "").trim();
-      if (!eapb) return false;
+      if (!eapb) return { plataforma: false, correo: false, existe: false };
       const { data: cat } = await supabase
         .from("catalogos")
-        .select("valor, seguimientos_en_plataforma")
+        .select("valor, seguimientos_en_plataforma, eapb_correo_radicacion")
         .eq("tipo", "EAPB")
         .eq("activo", true)
         .ilike("valor", eapb)
         .maybeSingle();
-      return (cat as { seguimientos_en_plataforma?: boolean } | null)?.seguimientos_en_plataforma === true;
+      const row = cat as
+        | { seguimientos_en_plataforma?: boolean; eapb_correo_radicacion?: string | null }
+        | null;
+      return {
+        existe: !!row,
+        plataforma: row?.seguimientos_en_plataforma === true,
+        correo: !!(row?.eapb_correo_radicacion ?? "").trim(),
+      };
     },
+  });
+  const segEnPlataforma = eapbCfg.plataforma;
+  // FASE 5E · C.1 — doble canal condicionado por catálogo (fail-closed).
+  const dualPermitido = dualCanalPermitido({
+    esEvolucionDiaria: evento === "EVOLUCION_DIARIA",
+    catalogoActivo: eapbCfg.existe,
+    evolucionPorCorreo: eapbCfg.correo,
+    evolucionPorPlataforma: eapbCfg.plataforma,
   });
 
   const evoCtx = useMemo(
@@ -326,7 +342,7 @@ export function PhdSeguimientoDialog({
 
   const errores: string[] = [];
   if (!evento) errores.push("Seleccione el tipo de seguimiento.");
-  if (evento) errores.push(...erroresCanalGestion(canalV, { dualPermitido: esEvolucionDiaria && segEnPlataforma === true }));
+  if (evento) errores.push(...erroresCanalGestion(canalV, { dualPermitido }));
   if (requiereServicio && !servicio) errores.push("Seleccione el servicio al que aplica.");
   if (requiereDescripcion && descripcion.trim().length < 3)
     errores.push("Escriba la descripción del seguimiento.");
@@ -402,6 +418,7 @@ export function PhdSeguimientoDialog({
           servicioCodigo: (servicio || undefined) as never,
           proveedor: proveedor.trim().toUpperCase() || undefined,
           canal: canalFinal || undefined,
+          canales: canalPersist.canales_gestion.length ? canalPersist.canales_gestion : undefined,
           motivo: motivo.trim().toUpperCase() || undefined,
           numeroRadicado: sinRadicado
             ? `SIN NÚMERO — ${motivoSinRadicado.trim().toUpperCase()}`
@@ -490,7 +507,7 @@ export function PhdSeguimientoDialog({
               <CanalGestionField
                 value={canalV}
                 onChange={setCanalV}
-                dualPermitido={esEvolucionDiaria && segEnPlataforma === true}
+                dualPermitido={dualPermitido}
               />
 
             </div>
