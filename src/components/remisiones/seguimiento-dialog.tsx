@@ -2962,7 +2962,7 @@ export function SeguimientoDialog({
                 </div>
               )}
 
-              {/* EVOLUCIÓN DIARIA (salientes v2) */}
+              {/* EVOLUCIÓN DIARIA — resolver único (FASE 5E · C.3) */}
               {esEvolucionSal && (
                 <div className={sectionCls}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -2971,18 +2971,20 @@ export function SeguimientoDialog({
                       className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${evoMetaSal.chip}`}
                     >
                       <span className={`h-2 w-2 rounded-full ${evoMetaSal.dot}`} />
-                      {evoMetaSal.label.toUpperCase()}
+                      {EVO_ESTADO_LABEL[evoResolver.estado]}
                     </span>
                   </div>
 
                   {segEnPlataforma && (
                     <div className="space-y-1.5">
-                      <Label className={labelCls}>¿Plataforma EAPB funcionando?</Label>
+                      <Label className={labelCls} htmlFor="evo-plataforma-func-sal">
+                        ¿Plataforma EAPB funcionando?
+                      </Label>
                       <Select
                         value={plataformaFuncSeg}
                         onValueChange={(v) => setPlataformaFuncSeg(v as "SI" | "NO")}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger id="evo-plataforma-func-sal">
                           <SelectValue placeholder="Seleccionar…" />
                         </SelectTrigger>
                         <SelectContent>
@@ -2993,27 +2995,12 @@ export function SeguimientoDialog({
                     </div>
                   )}
 
-                  <div className="space-y-1.5">
-                    <label className="flex items-center gap-2 text-sm">
-                      <Checkbox checked={evoCorreo} onCheckedChange={(v) => setEvoCorreo(!!v)} />
-                      EAPB CORREO
-                    </label>
-                    {segEnPlataforma && (
-                      <label className="flex items-center gap-2 text-sm">
-                        <Checkbox
-                          checked={evoPlataforma}
-                          onCheckedChange={(v) => setEvoPlataforma(!!v)}
-                        />
-                        EAPB PLATAFORMA
-                      </label>
-                    )}
-                  </div>
+                  {/* Resumen NO editable: refleja CANAL DE GESTIÓN. */}
+                  <CanalesEvolucionResumen resolver={evoResolver} />
 
                   {evoRequiereMotivo && (
                     <div className="space-y-1.5">
-                      <Label className={labelCls}>
-                        Motivo del pendiente ({evoCorreo ? "falta plataforma" : "falta correo"})
-                      </Label>
+                      <Label className={labelCls}>Motivo del pendiente</Label>
                       <DictationTextarea
                         dictationKey="salientes.seguimiento.motivo_pendiente"
                         value={evoMotivoPend}
@@ -3024,21 +3011,9 @@ export function SeguimientoDialog({
                     </div>
                   )}
 
-                  {/* Especialidades tratantes (Parte 9) */}
+                  {/* Especialidades tratantes */}
                   <div className="space-y-2 rounded-lg border border-border/60 bg-background/40 p-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className={labelCls}>Especialidades tratantes</p>
-                      {especialidadesList.length > 0 && (
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${evoEspMeta[evoEspEstado].chip}`}
-                        >
-                          <span
-                            className={`h-2 w-2 rounded-full ${evoEspMeta[evoEspEstado].dot}`}
-                          />
-                          EVOLUCIÓN {evoEspEstado}
-                        </span>
-                      )}
-                    </div>
+                    <p className={labelCls}>Especialidades tratantes</p>
                     {especialidadesList.length === 0 ? (
                       <p className="text-xs italic text-muted-foreground">
                         No hay especialidades tratantes registradas para este caso. Puedes continuar
@@ -3072,14 +3047,25 @@ export function SeguimientoDialog({
                             </label>
                           ))}
                         </div>
-                        {evoEspEstado === "PARCIAL" && (
-                          <p className="text-[11px] text-status-amber">
-                            Pendiente: {evoEspPendientes.join(", ")}.
-                          </p>
-                        )}
                       </>
                     )}
                   </div>
+
+                  {(evoResolver.canales_pendientes.length > 0 ||
+                    evoEspPendientes.length > 0) && (
+                    <div className="space-y-0.5">
+                      <p className={labelCls}>Pendientes</p>
+                      <p className="text-[11px] text-status-amber">
+                        {[
+                          ...evoResolver.canales_pendientes.map(
+                            (c) => CANAL_LABEL_EVO[c] ?? c,
+                          ),
+                          ...evoEspPendientes,
+                        ].join(", ")}
+                        .
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
