@@ -356,8 +356,6 @@ export function SeguimientoDialog({
   const [motivoEvo, setMotivoEvo] = useState("");
 
   // Evolución diaria (salientes v2)
-  const [evoCorreo, setEvoCorreo] = useState(false);
-  const [evoPlataforma, setEvoPlataforma] = useState(false);
   const [plataformaFuncSeg, setPlataformaFuncSeg] = useState<"" | "SI" | "NO">("");
   const [evoMotivoPend, setEvoMotivoPend] = useState("");
   // Evolución diaria por especialidades tratantes (Parte 9): marca cuáles ya evolucionaron.
@@ -1192,55 +1190,7 @@ export function SeguimientoDialog({
   // Casilla "Ambulancia" solo disponible tras coordinar ambulancia (o pendiente egreso).
   const novAmbDisponible = faseAceptadoCon || facePendienteEgreso;
 
-  // --- Estado de evolución diaria (salientes v2) ---
-  // El canal PLATAFORMA depende de si la EAPB hace seguimientos en plataforma.
-  const evoEstadoSal: EvolucionEstado = useMemo(() => {
-    if (segEnPlataforma) {
-      const n = (evoCorreo ? 1 : 0) + (evoPlataforma ? 1 : 0);
-      return n === 0 ? "sin" : n === 1 ? "parcial" : "completo";
-    }
-    return evoCorreo ? "completo" : "sin";
-  }, [segEnPlataforma, evoCorreo, evoPlataforma]);
-  const evoMetaSal = evolucionMeta[evoEstadoSal];
-  const evoRequiereMotivo = esEvolucionSal && segEnPlataforma && evoEstadoSal === "parcial";
-
-  // --- Evolución por especialidades tratantes (Parte 9) ---
-  const evoEspEvolucionadas = useMemo(
-    () => especialidadesList.filter((e) => evoEsp[e]),
-    [especialidadesList, evoEsp],
-  );
-  const evoEspPendientes = useMemo(
-    () => especialidadesList.filter((e) => !evoEsp[e]),
-    [especialidadesList, evoEsp],
-  );
-  const evoEspEstado: "COMPLETA" | "PARCIAL" | "PENDIENTE" =
-    especialidadesList.length === 0
-      ? "PENDIENTE"
-      : evoEspEvolucionadas.length === especialidadesList.length
-        ? "COMPLETA"
-        : evoEspEvolucionadas.length > 0
-          ? "PARCIAL"
-          : "PENDIENTE";
-  const evoEspMeta: Record<string, { chip: string; dot: string }> = {
-    COMPLETA: { chip: "bg-status-green/15 text-status-green", dot: "bg-status-green" },
-    PARCIAL: { chip: "bg-status-amber/15 text-status-amber", dot: "bg-status-amber" },
-    PENDIENTE: { chip: "bg-muted text-muted-foreground", dot: "bg-muted-foreground" },
-  };
   const toggleEvoEsp = (esp: string) => setEvoEsp((prev) => ({ ...prev, [esp]: !prev[esp] }));
-
-  // Autollenar/limpiar el motivo automático "PLATAFORMA NO FUNCIONAL".
-  // Solo aplica al Caso B: se envió por CORREO, falta plataforma y la plataforma NO funciona.
-  useEffect(() => {
-    if (!esEvolucionSal) return;
-    const casoB = evoCorreo && !evoPlataforma && plataformaFuncSeg === "NO";
-    if (casoB && !evoMotivoPend.trim()) {
-      setEvoMotivoPend("PLATAFORMA NO FUNCIONAL");
-    } else if (!casoB && evoMotivoPend === "PLATAFORMA NO FUNCIONAL") {
-      // Limpia el autollenado si cambian las condiciones (p.ej. solo plataforma).
-      setEvoMotivoPend("");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [esEvolucionSal, evoCorreo, evoPlataforma, plataformaFuncSeg]);
 
   // Estado de la solicitud automático para EVOLUCIÓN DIARIA → PENDIENTE (no editable).
   useEffect(() => {
@@ -1297,6 +1247,56 @@ export function SeguimientoDialog({
   });
   const canalPersist = useMemo(() => canalGestionPersist(canalV), [canalV]);
   const canalFinal = canalPersist.canal_gestion ?? "";
+
+  // --- FASE 5E · C.3 — RESOLVER ÚNICO de cumplimiento de EVOLUCIÓN DIARIA ---
+  // Los canales provienen EXCLUSIVAMENTE de CANAL DE GESTIÓN; no existen
+  // controles duplicados EAPB CORREO / EAPB PLATAFORMA.
+  const evoCorreo = canalV.canales.includes(CANAL_CODES.CORREO);
+  const evoPlataforma = canalV.canales.includes(CANAL_CODES.PLATAFORMA);
+  const evoEspEvolucionadas = useMemo(
+    () => especialidadesList.filter((e) => evoEsp[e]),
+    [especialidadesList, evoEsp],
+  );
+  const evoResolver = useMemo(
+    () =>
+      resolverCumplimientoEvolucionDiaria({
+        correoRequerido: eapbEvoCorreo || !segEnPlataforma,
+        plataformaRequerida: segEnPlataforma === true,
+        canalesRealizados: canalV.canales,
+        plataformaFuncionando:
+          segEnPlataforma && plataformaFuncSeg ? plataformaFuncSeg === "SI" : null,
+        especialidadesRequeridas: especialidadesList,
+        especialidadesEvolucionadas: evoEspEvolucionadas,
+        esNuevaEps: esNuevaEpsCanonica(casoEapbNombre),
+        esRedNoContratada: esRedNoContratadaCanonica(caso?.tipo_tramite ?? ""),
+        motivoPendiente: evoMotivoPend,
+      }),
+    [
+      eapbEvoCorreo,
+      segEnPlataforma,
+      canalV.canales,
+      plataformaFuncSeg,
+      especialidadesList,
+      evoEspEvolucionadas,
+      casoEapbNombre,
+      caso?.tipo_tramite,
+      evoMotivoPend,
+    ],
+  );
+  const evoMetaSal = EVO_ESTADO_META[evoResolver.estado];
+  const evoEspPendientes = evoResolver.especialidades_pendientes;
+  // Motivo libre solo cuando el pendiente NO queda documentado por el selector
+  // de plataforma ni exento por la excepción autorizada.
+  const evoRequiereMotivo =
+    esEvolucionSal &&
+    evoResolver.canales_pendientes.length > 0 &&
+    !evoResolver.plataforma_pendiente_por_falla;
+  const evoEstadoSal: EvolucionEstado =
+    evoResolver.estado === "EVOLUCIONADO"
+      ? "completo"
+      : evoResolver.estado === "EVOLUCION_PARCIAL"
+        ? "parcial"
+        : "sin";
   const canalErrores = useMemo(
     () => erroresCanalGestion(canalV, { dualPermitido }),
     [canalV, dualPermitido],
@@ -2120,8 +2120,6 @@ export function SeguimientoDialog({
     setNombreContacto("");
     setTelefono("");
     setRadicado("");
-    setEvoCorreo(false);
-    setEvoPlataforma(false);
     setEvoEsp({});
     setEspCierres({});
     setEspNuevas([""]);
