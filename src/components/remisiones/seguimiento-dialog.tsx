@@ -60,8 +60,6 @@ import {
   generarPlantillaCierreAdmision,
   generarPlantillaCierreTraslado,
   generarPlantillaCorreoSeg,
-  generarPlantillaEvolucionDiaria,
-  generarPlantillaEvolucionEspecialidades,
   generarPlantillaFisico,
   generarPlantillaNegaciones,
   generarPlantillaNuevoRadicado,
@@ -81,6 +79,19 @@ import {
   type ContactoDestino,
   type NegacionGrupo,
 } from "@/lib/indigo-trazabilidad";
+import {
+  CANAL_LABEL_EVO,
+  EVO_ESTADO_LABEL,
+  EVO_ESTADO_META,
+  esNuevaEpsCanonica,
+  esRedNoContratadaCanonica,
+  persistirCumplimiento,
+  resolverCumplimientoEvolucionDiaria,
+} from "@/lib/evolucion-diaria";
+import {
+  CanalesEvolucionResumen,
+  plantillaEvolucionDesdeResolver,
+} from "@/components/remisiones/evolucion-diaria-fields";
 import { EntregaDocumentalDialog } from "@/components/remisiones/entrega-documental-dialog";
 import { RiLlegadaQRPanel } from "@/components/remisiones/ri-llegada-qr-panel";
 import { resolverAceptacionVigente } from "@/lib/salientes-aceptacion.functions";
