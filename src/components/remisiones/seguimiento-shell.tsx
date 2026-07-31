@@ -68,47 +68,9 @@ export function SeguimientoHeaderCard({
   );
 }
 
-export function CanalGestionField({
-  value,
-  onChange,
-  otro,
-  onOtroChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  otro: string;
-  onOtroChange: (v: string) => void;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label className={labelCls}>Canal de gestión *</Label>
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="w-full">
-          <SelectValue placeholder="Seleccionar canal…" />
-        </SelectTrigger>
-        <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
-          {CANALES_GESTION.map((c) => (
-            <SelectItem key={c} value={c} className="whitespace-normal [overflow-wrap:anywhere]">
-              {c}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      {value === "OTRO" && (
-        <Input
-          maxLength={CANAL_OTRO_MAX}
-          placeholder="¿CUÁL ES EL CANAL DE GESTIÓN?"
-          value={otro}
-          onChange={(e) => onOtroChange(e.target.value.toUpperCase())}
-        />
-      )}
-    </div>
-  );
-}
-
-export function canalFinalDe(canal: string, canalOtro: string): string {
-  return canal === "OTRO" ? canalOtro.trim().toUpperCase() : canal;
-}
+// FASE 5E · Bloque C — el selector canónico vive en su propio módulo y es
+// compartido por los cuatro módulos de seguimiento.
+export { CanalGestionField } from "@/components/remisiones/canal-gestion-field";
 
 // --- Información del trámite -------------------------------------------------
 // FASE 5E · Bloque A.1 — Formulario canónico: SOLO nombre y parentesco del
