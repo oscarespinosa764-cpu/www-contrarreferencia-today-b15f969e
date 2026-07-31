@@ -716,21 +716,6 @@ export function CatalogoMaestras({ moduloFijo }: { moduloFijo?: string } = {}) {
                       Configuración de radicación PHD/PAD/O2/Especiales
                     </Label>
                     <div className="space-y-1.5">
-                      <Label htmlFor="eapb_correo_radicacion" className="text-xs">
-                        Correo(s) de radicación
-                      </Label>
-                      <Input
-                        id="eapb_correo_radicacion"
-                        name="eapb_correo_radicacion"
-                        type="text"
-                        placeholder="correo1@eapb.com; correo2@eapb.com"
-                        defaultValue={editing.eapb_correo_radicacion ?? ""}
-                      />
-                      <p className="text-[10px] text-muted-foreground">
-                        Separar múltiples correos con punto y coma (;).
-                      </p>
-                    </div>
-                    <div className="space-y-1.5">
                       <Label htmlFor="eapb_sla_horas" className="text-xs">
                         SLA de respuesta (horas)
                       </Label>
