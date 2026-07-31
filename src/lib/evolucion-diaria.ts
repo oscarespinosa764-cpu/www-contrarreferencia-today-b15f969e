@@ -188,6 +188,10 @@ export type CumplimientoEvolucion = {
   especialidades_pendientes: string[];
   plataforma_funcionando: boolean | null;
   excepcion_aplicada: null | "NUEVA_EPS_RED_NO_CONTRATADA";
+  /** Variante canónica de la excepción (Fase 5E · C.6). */
+  variante_excepcion: null | "PLATAFORMA_FUNCIONANDO" | "PLATAFORMA_CAIDA";
+  /** Canales que la excepción deshabilita para ESTA evolución diaria. */
+  canales_bloqueados: string[];
   plataforma_pendiente_por_falla: boolean;
   motivo_pendiente: string | null;
   variante_indigo: VarianteIndigo;
