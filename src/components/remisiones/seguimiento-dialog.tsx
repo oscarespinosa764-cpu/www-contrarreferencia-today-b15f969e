@@ -2972,7 +2972,9 @@ export function SeguimientoDialog({
                 value={canalV}
                 onChange={setCanalV}
                 dualPermitido={dualPermitido}
+                motivoNoDual={dualMotivo}
               />
+
 
               {/* INFORMACIÓN DEL TRÁMITE (no aplica a PENDIENTES) */}
               {!esPendiente && tipoSeg === T.INFO_TRAMITE && (
