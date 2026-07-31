@@ -72,6 +72,53 @@ export function esRedNoContratadaCanonica(remisionPor: unknown): boolean {
   return normalizeForSearch(remisionPor) === "red no contratada";
 }
 
+/**
+ * Normalización canónica de nombre de EAPB/ERP para comparar contra el
+ * catálogo: sin tildes, mayúsculas, espacios colapsados. NO se usa para
+ * persistir ni para mostrar.
+ */
+export function normEapb(v: unknown): string {
+  return normalizeForSearch(v).replace(/\s+/g, " ").trim();
+}
+
+export type ResolucionEapbCatalogo<T> = {
+  fila: T | null;
+  /** Motivo técnico cuando no se resolvió (fail-closed, para la UI). */
+  motivo:
+    | null
+    | "SIN_EAPB"
+    | "SIN_COINCIDENCIA_CATALOGO"
+    | "MULTIPLES_COINCIDENCIAS";
+};
+
+/**
+ * Resuelve el registro ACTIVO ÚNICO del catálogo EAPB que corresponde al texto
+ * real del caso. Orden estricto:
+ *   1) equivalencia exacta normalizada;
+ *   2) allowlist canónica de alias (NUEVA EPS) cuando no hubo coincidencia.
+ * Nunca usa coincidencias parciales ni toma "el primero" de varios.
+ */
+export function resolverEapbCatalogo<T extends { valor: string }>(
+  nombre: unknown,
+  filas: readonly T[],
+): ResolucionEapbCatalogo<T> {
+  const n = normEapb(nombre);
+  if (!n) return { fila: null, motivo: "SIN_EAPB" };
+
+  const exactas = filas.filter((f) => normEapb(f.valor) === n);
+  if (exactas.length === 1) return { fila: exactas[0], motivo: null };
+  if (exactas.length > 1) return { fila: null, motivo: "MULTIPLES_COINCIDENCIAS" };
+
+  if (esNuevaEpsCanonica(nombre)) {
+    const alias = filas.filter((f) => esNuevaEpsCanonica(f.valor));
+    if (alias.length === 1) return { fila: alias[0], motivo: null };
+    if (alias.length > 1) return { fila: null, motivo: "MULTIPLES_COINCIDENCIAS" };
+  }
+
+  return { fila: null, motivo: "SIN_COINCIDENCIA_CATALOGO" };
+}
+
+
 export type ResultadoExcepcion = {
   aplica: boolean;
   eapbCanonica: string | null;
