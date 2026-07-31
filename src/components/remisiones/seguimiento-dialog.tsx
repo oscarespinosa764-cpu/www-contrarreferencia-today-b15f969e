@@ -103,6 +103,7 @@ import {
 import {
   CANAL_GESTION_INICIAL,
   canalGestionPersist,
+  dualCanalPermitido,
   erroresCanalGestion,
   plantillaCanalGestion,
   type CanalGestionValue,
@@ -1288,8 +1289,12 @@ export function SeguimientoDialog({
     [eapbCat, casoEapbNombre],
   );
   const eapbEvoCorreo = !!(eapbCasoCat?.eapb_correo_radicacion ?? "").trim();
-  const dualPermitido =
-    tipoSeg === T.EVOLUCION && segEnPlataforma === true && eapbEvoCorreo;
+  const dualPermitido = dualCanalPermitido({
+    esEvolucionDiaria: tipoSeg === T.EVOLUCION,
+    catalogoActivo: !!eapbCasoCat,
+    evolucionPorCorreo: eapbEvoCorreo,
+    evolucionPorPlataforma: segEnPlataforma === true,
+  });
   const canalPersist = useMemo(() => canalGestionPersist(canalV), [canalV]);
   const canalFinal = canalPersist.canal_gestion ?? "";
   const canalErrores = useMemo(
