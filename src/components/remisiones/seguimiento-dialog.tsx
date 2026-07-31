@@ -1285,7 +1285,7 @@ export function SeguimientoDialog({
         especialidadesRequeridas: especialidadesList,
         especialidadesEvolucionadas: evoEspEvolucionadas,
         esNuevaEps: esNuevaEpsCanonica(casoEapbNombre),
-        esRedNoContratada: esRedNoContratadaCanonica(caso?.tipo_tramite ?? ""),
+        esRedNoContratada: esRedNoContratadaCanonica(caso?.remision_por ?? ""),
         motivoPendiente: evoMotivoPend,
       }),
     [
