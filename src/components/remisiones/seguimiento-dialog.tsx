@@ -586,7 +586,7 @@ export function SeguimientoDialog({
       const { data } = await supabase
         .from("catalogos")
         .select(
-          "valor, extra1, extra2, extra3, seguimientos_en_plataforma, eapb_correo_radicacion",
+          "valor, extra1, extra2, extra3, seguimientos_en_plataforma, evolucion_por_correo",
         )
         .eq("tipo", "EAPB")
         .eq("activo", true)
@@ -597,7 +597,7 @@ export function SeguimientoDialog({
         extra2: string | null;
         extra3: string | null;
         seguimientos_en_plataforma: boolean | null;
-        eapb_correo_radicacion: string | null;
+        evolucion_por_correo: boolean | null;
       }[];
     },
   });
@@ -1257,10 +1257,9 @@ export function SeguimientoDialog({
   // La combinación dual CORREO + PLATAFORMA solo se habilita en EVOLUCIÓN
   // DIARIA cuando el catálogo de la EAPB del caso declara ambas capacidades.
   const eapbCasoCat = eapbResuelta.fila;
-  const correoRadicacionRaw = (eapbCasoCat?.eapb_correo_radicacion ?? "").trim();
-  const eapbEvoCorreo =
-    correoRadicacionRaw !== "" &&
-    !["null", "undefined"].includes(correoRadicacionRaw.toLowerCase());
+  // Regla operativa canónica (Fase 5E C.5): booleano del catálogo, NUNCA una
+  // dirección de correo. Los datos de contacto viven en RED & DISPONIBILIDAD.
+  const eapbEvoCorreo = eapbCasoCat?.evolucion_por_correo === true;
   const dualPermitido = dualCanalPermitido({
     esEvolucionDiaria: tipoSeg === T.EVOLUCION,
     catalogoActivo: !!eapbCasoCat,
@@ -1279,10 +1278,10 @@ export function SeguimientoDialog({
           : eapbResuelta.motivo === "SIN_COINCIDENCIA_CATALOGO"
             ? `La EAPB/ERP "${casoEapbNombre}" no tiene un registro activo en Catálogos.`
             : !eapbEvoCorreo && segEnPlataforma
-              ? "Esta EAPB/ERP no tiene CORREO DE RADICACIÓN configurado en Catálogos: solo se permite un canal."
+              ? "Esta EAPB/ERP no está configurada para evolución por correo electrónico."
               : eapbEvoCorreo && !segEnPlataforma
-                ? "Esta EAPB/ERP no tiene SEGUIMIENTOS EN PLATAFORMA habilitados en Catálogos: solo se permite un canal."
-                : "La EAPB/ERP no tiene habilitados correo y plataforma en Catálogos.";
+                ? "Esta EAPB/ERP no está configurada para evolución en plataforma web."
+                : "La EAPB/ERP no tiene configurados canales operativos de evolución por correo o plataforma.";
 
   const canalPersist = useMemo(() => canalGestionPersist(canalV), [canalV]);
   const canalFinal = canalPersist.canal_gestion ?? "";
@@ -1299,7 +1298,7 @@ export function SeguimientoDialog({
   const evoResolver = useMemo(
     () =>
       resolverCumplimientoEvolucionDiaria({
-        correoRequerido: eapbEvoCorreo || !segEnPlataforma,
+        correoRequerido: eapbEvoCorreo,
         plataformaRequerida: segEnPlataforma === true,
         canalesRealizados: canalV.canales,
         plataformaFuncionando:

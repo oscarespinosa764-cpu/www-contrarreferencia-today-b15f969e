@@ -48,7 +48,7 @@ export const EVOLUCION_DIARIA_INICIAL: EvolucionDiariaValue = {
 };
 
 export type EvolucionDiariaContexto = {
-  /** Catálogo EAPB activo: existe correo de radicación. */
+  /** Regla operativa: la EAPB/ERP evoluciona por CORREO ELECTRÓNICO. */
   correoRequerido?: boolean;
   /** La EAPB del caso hace seguimientos en plataforma. */
   segEnPlataforma: boolean;
@@ -78,7 +78,7 @@ export function derivarEvolucionDiaria(
 ): EvolucionDiariaDerivado {
   const especialidades = ctx.especialidades ?? [];
   const resolver = resolverCumplimientoEvolucionDiaria({
-    correoRequerido: ctx.correoRequerido !== false,
+    correoRequerido: ctx.correoRequerido === true,
     plataformaRequerida: ctx.segEnPlataforma === true,
     canalesRealizados: ctx.canalesRealizados ?? [],
     plataformaFuncionando:

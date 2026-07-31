@@ -136,17 +136,17 @@ export const registrarEventoPhd = createServerFn({ method: "POST" })
       if (eapb) {
         const { data: cat } = await context.supabase
           .from("catalogos")
-          .select("seguimientos_en_plataforma, eapb_correo_radicacion")
+          .select("seguimientos_en_plataforma, evolucion_por_correo")
           .eq("tipo", "EAPB")
           .eq("activo", true)
           .ilike("valor", eapb)
           .maybeSingle();
         const row = cat as
-          | { seguimientos_en_plataforma?: boolean; eapb_correo_radicacion?: string | null }
+          | { seguimientos_en_plataforma?: boolean; evolucion_por_correo?: boolean | null }
           | null;
         existe = !!row;
         plataforma = row?.seguimientos_en_plataforma === true;
-        correo = !!(row?.eapb_correo_radicacion ?? "").trim();
+        correo = row?.evolucion_por_correo === true;
       }
       const dual = dualCanalPermitido({
         esEvolucionDiaria: data.evento === "EVOLUCION_DIARIA",
