@@ -323,6 +323,8 @@ export function resolverCumplimientoEvolucionDiaria(
     especialidades_pendientes,
     plataforma_funcionando: i.plataformaRequerida ? (i.plataformaFuncionando ?? null) : null,
     excepcion_aplicada,
+    variante_excepcion,
+    canales_bloqueados,
     plataforma_pendiente_por_falla,
     motivo_pendiente,
     variante_indigo,
@@ -335,12 +337,19 @@ export function estadoCanalEvolucion(
   r: CumplimientoEvolucion,
   canal: string,
 ): "REALIZADO" | "PENDIENTE" | "PENDIENTE POR FALLA" | "EXENTO" | "NO APLICA" {
-  if (!r.canales_requeridos.includes(canal)) return "NO APLICA";
   if (r.canales_realizados.includes(canal)) return "REALIZADO";
-  if (r.canales_exentos.includes(canal)) return "EXENTO";
   if (canal === CANAL_CODES.PLATAFORMA && r.plataforma_pendiente_por_falla)
     return "PENDIENTE POR FALLA";
+  if (r.canales_exentos.includes(canal)) return "EXENTO";
+  if (!r.canales_requeridos.includes(canal)) return "NO APLICA";
   return "PENDIENTE";
+}
+
+/** Canales visibles en el resumen: exigibles + exentos por la excepción. */
+export function canalesResumenEvolucion(r: CumplimientoEvolucion): string[] {
+  const out = [...r.canales_requeridos];
+  for (const c of r.canales_exentos) if (!out.includes(c)) out.push(c);
+  return out;
 }
 
 /** Datos estructurados que se persisten dentro de `detalles` (JSONB vigente). */
@@ -356,6 +365,7 @@ export function persistirCumplimiento(r: CumplimientoEvolucion): Record<string, 
     especialidades_pendientes: r.especialidades_pendientes,
     estado_cumplimiento: r.estado,
     excepcion_aplicada: r.excepcion_aplicada,
+    variante_excepcion: r.variante_excepcion,
     motivo_pendiente: r.motivo_pendiente,
     plataforma_pendiente_por_falla: r.plataforma_pendiente_por_falla || null,
   };
