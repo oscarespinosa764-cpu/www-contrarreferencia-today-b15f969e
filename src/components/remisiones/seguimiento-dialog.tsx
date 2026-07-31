@@ -1360,8 +1360,8 @@ export function SeguimientoDialog({
         ? "parcial"
         : "sin";
   const canalErrores = useMemo(
-    () => erroresCanalGestion(canalV, { dualPermitido }),
-    [canalV, dualPermitido],
+    () => erroresCanalGestion(canalV, { dualPermitido: dualEfectivo }),
+    [canalV, dualEfectivo],
   );
 
   // --- Plantilla Índigo generada según el tipo ---
@@ -2994,8 +2994,10 @@ export function SeguimientoDialog({
               <CanalGestionField
                 value={canalV}
                 onChange={setCanalV}
-                dualPermitido={dualPermitido}
+                dualPermitido={dualEfectivo}
                 motivoNoDual={dualMotivo}
+                canalesBloqueados={canalesBloqueadosEvo}
+                motivoBloqueo={motivoBloqueoEvo}
               />
 
 
