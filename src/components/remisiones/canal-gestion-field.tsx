@@ -285,12 +285,15 @@ export function CanalGestionField({
             </button>
           ))}
         </div>
-        {dualPermitido && (
+        {dualPermitido ? (
           <p className="text-[10px] text-muted-foreground">
             Evolución diaria: esta EAPB permite seleccionar CORREO ELECTRÓNICO y PLATAFORMA WEB
             simultáneamente.
           </p>
-        )}
+        ) : motivoNoDual ? (
+          <p className="text-[10px] text-muted-foreground">{motivoNoDual}</p>
+        ) : null}
+
       </div>
 
       {activo(CANAL_CODES.OTRO) && (
