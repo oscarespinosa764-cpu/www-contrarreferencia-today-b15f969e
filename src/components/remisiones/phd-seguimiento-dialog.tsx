@@ -331,12 +331,14 @@ export function PhdSeguimientoDialog({
   const evoCtx = useMemo(
     () => ({
       segEnPlataforma,
+      correoRequerido: eapbCfg.correo,
+      canalesRealizados: canalV.canales,
       especialidades: [] as string[],
       estadoCaso: estado,
       esTramiteAdministrativo: false,
       observacion: observaciones,
     }),
-    [segEnPlataforma, estado, observaciones],
+    [segEnPlataforma, eapbCfg.correo, canalV.canales, estado, observaciones],
   );
   const evoDeriv = useMemo(() => derivarEvolucionDiaria(evo, evoCtx), [evo, evoCtx]);
 
@@ -390,9 +392,7 @@ export function PhdSeguimientoDialog({
       );
     }
     if (esEvolucionDiaria) {
-      const canales = [evo.correo ? "CORREO" : null, evo.plataforma ? "PLATAFORMA" : null]
-        .filter(Boolean)
-        .join(" + ");
+      const canales = evoDeriv.resolver.canales_realizados.join(" + ");
       if (canales) p.push(`ENVÍO EAPB: ${canales}`);
       if (segEnPlataforma && evo.plataformaFunc)
         p.push(`PLATAFORMA FUNCIONANDO: ${evo.plataformaFunc}`);
