@@ -157,9 +157,9 @@ export function resolverExcepcionNuevaEpsRedNoContratada(args: {
 
 
 export type CumplimientoEvolucionInput = {
-  /** Catálogo EAPB activo: existe correo de radicación. */
+  /** Regla operativa del catálogo EAPB: EVOLUCIÓN POR CORREO ELECTRÓNICO. */
   correoRequerido: boolean;
-  /** Catálogo EAPB activo: seguimientos en plataforma. */
+  /** Regla operativa del catálogo EAPB: EVOLUCIÓN EN PLATAFORMA WEB. */
   plataformaRequerida: boolean;
   /** Códigos de canal seleccionados en CANAL DE GESTIÓN. */
   canalesRealizados: string[];
