@@ -111,7 +111,7 @@ export function resolverCumplimientoEvolucionDiaria(
   // Sin configuración de catálogo, el correo es el canal mínimo exigible.
   if (requeridos.length === 0) requeridos.push(C);
 
-  const realizadosSet = new Set(
+  const realizadosSet: Set<string> = new Set(
     [...(i.canalesPreviosCiclo ?? []), ...(i.canalesRealizados ?? [])]
       .map(upper)
       .filter((c) => c === C || c === P),
@@ -119,7 +119,7 @@ export function resolverCumplimientoEvolucionDiaria(
   const realizados = requeridos.filter((c) => realizadosSet.has(c));
 
   const requeridasEsp = (i.especialidadesRequeridas ?? []).map(upper).filter(Boolean);
-  const evolucionadasSet = new Set(
+  const evolucionadasSet: Set<string> = new Set(
     [...(i.especialidadesPreviasCiclo ?? []), ...(i.especialidadesEvolucionadas ?? [])].map(upper),
   );
   const especialidades_evolucionadas = requeridasEsp.filter((e) => evolucionadasSet.has(e));
