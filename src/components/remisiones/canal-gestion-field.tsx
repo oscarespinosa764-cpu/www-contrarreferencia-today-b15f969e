@@ -283,18 +283,22 @@ export function CanalGestionField({
               key={c.codigo}
               type="button"
               aria-pressed={activo(c.codigo)}
+              disabled={bloqueado(c.codigo)}
+              title={bloqueado(c.codigo) ? (motivoBloqueo ?? undefined) : undefined}
               onClick={() => toggleCanal(c.codigo)}
               className={`min-h-9 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide transition-colors ${
                 activo(c.codigo)
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-muted/40 text-muted-foreground hover:text-foreground"
-              }`}
+              } ${bloqueado(c.codigo) ? "cursor-not-allowed opacity-40 hover:text-muted-foreground" : ""}`}
             >
               {c.label}
             </button>
           ))}
         </div>
-        {dualPermitido ? (
+        {motivoBloqueo ? (
+          <p className="text-[10px] text-muted-foreground">{motivoBloqueo}</p>
+        ) : dualPermitido ? (
           <p className="text-[10px] text-muted-foreground">
             Evolución diaria: esta EAPB permite seleccionar CORREO ELECTRÓNICO y PLATAFORMA WEB
             simultáneamente.
