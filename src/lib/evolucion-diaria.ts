@@ -206,8 +206,8 @@ export function resolverCumplimientoEvolucionDiaria(
   const requeridos: string[] = [];
   if (i.correoRequerido) requeridos.push(C);
   if (i.plataformaRequerida) requeridos.push(P);
-  // Sin configuración de catálogo, el correo es el canal mínimo exigible.
-  if (requeridos.length === 0) requeridos.push(C);
+  // Fase 5E · C.5: cuando la EAPB/ERP no declara ninguna regla operativa NO se
+  // inventa un canal exigible (antes se forzaba CORREO por defecto).
 
   const realizadosSet: Set<string> = new Set(
     [...(i.canalesPreviosCiclo ?? []), ...(i.canalesRealizados ?? [])]
