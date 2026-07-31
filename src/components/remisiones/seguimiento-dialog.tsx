@@ -60,8 +60,6 @@ import {
   generarPlantillaCierreAdmision,
   generarPlantillaCierreTraslado,
   generarPlantillaCorreoSeg,
-  generarPlantillaEvolucionDiaria,
-  generarPlantillaEvolucionEspecialidades,
   generarPlantillaFisico,
   generarPlantillaNegaciones,
   generarPlantillaNuevoRadicado,
@@ -81,6 +79,19 @@ import {
   type ContactoDestino,
   type NegacionGrupo,
 } from "@/lib/indigo-trazabilidad";
+import {
+  CANAL_LABEL_EVO,
+  EVO_ESTADO_LABEL,
+  EVO_ESTADO_META,
+  esNuevaEpsCanonica,
+  esRedNoContratadaCanonica,
+  persistirCumplimiento,
+  resolverCumplimientoEvolucionDiaria,
+} from "@/lib/evolucion-diaria";
+import {
+  CanalesEvolucionResumen,
+  plantillaEvolucionDesdeResolver,
+} from "@/components/remisiones/evolucion-diaria-fields";
 import { EntregaDocumentalDialog } from "@/components/remisiones/entrega-documental-dialog";
 import { RiLlegadaQRPanel } from "@/components/remisiones/ri-llegada-qr-panel";
 import { resolverAceptacionVigente } from "@/lib/salientes-aceptacion.functions";
@@ -104,6 +115,7 @@ import {
   CANAL_GESTION_INICIAL,
   canalGestionPersist,
   dualCanalPermitido,
+  CANAL_CODES,
   erroresCanalGestion,
   plantillaCanalGestion,
   type CanalGestionValue,
@@ -356,8 +368,6 @@ export function SeguimientoDialog({
   const [motivoEvo, setMotivoEvo] = useState("");
 
   // Evolución diaria (salientes v2)
-  const [evoCorreo, setEvoCorreo] = useState(false);
-  const [evoPlataforma, setEvoPlataforma] = useState(false);
   const [plataformaFuncSeg, setPlataformaFuncSeg] = useState<"" | "SI" | "NO">("");
   const [evoMotivoPend, setEvoMotivoPend] = useState("");
   // Evolución diaria por especialidades tratantes (Parte 9): marca cuáles ya evolucionaron.
@@ -1192,55 +1202,7 @@ export function SeguimientoDialog({
   // Casilla "Ambulancia" solo disponible tras coordinar ambulancia (o pendiente egreso).
   const novAmbDisponible = faseAceptadoCon || facePendienteEgreso;
 
-  // --- Estado de evolución diaria (salientes v2) ---
-  // El canal PLATAFORMA depende de si la EAPB hace seguimientos en plataforma.
-  const evoEstadoSal: EvolucionEstado = useMemo(() => {
-    if (segEnPlataforma) {
-      const n = (evoCorreo ? 1 : 0) + (evoPlataforma ? 1 : 0);
-      return n === 0 ? "sin" : n === 1 ? "parcial" : "completo";
-    }
-    return evoCorreo ? "completo" : "sin";
-  }, [segEnPlataforma, evoCorreo, evoPlataforma]);
-  const evoMetaSal = evolucionMeta[evoEstadoSal];
-  const evoRequiereMotivo = esEvolucionSal && segEnPlataforma && evoEstadoSal === "parcial";
-
-  // --- Evolución por especialidades tratantes (Parte 9) ---
-  const evoEspEvolucionadas = useMemo(
-    () => especialidadesList.filter((e) => evoEsp[e]),
-    [especialidadesList, evoEsp],
-  );
-  const evoEspPendientes = useMemo(
-    () => especialidadesList.filter((e) => !evoEsp[e]),
-    [especialidadesList, evoEsp],
-  );
-  const evoEspEstado: "COMPLETA" | "PARCIAL" | "PENDIENTE" =
-    especialidadesList.length === 0
-      ? "PENDIENTE"
-      : evoEspEvolucionadas.length === especialidadesList.length
-        ? "COMPLETA"
-        : evoEspEvolucionadas.length > 0
-          ? "PARCIAL"
-          : "PENDIENTE";
-  const evoEspMeta: Record<string, { chip: string; dot: string }> = {
-    COMPLETA: { chip: "bg-status-green/15 text-status-green", dot: "bg-status-green" },
-    PARCIAL: { chip: "bg-status-amber/15 text-status-amber", dot: "bg-status-amber" },
-    PENDIENTE: { chip: "bg-muted text-muted-foreground", dot: "bg-muted-foreground" },
-  };
   const toggleEvoEsp = (esp: string) => setEvoEsp((prev) => ({ ...prev, [esp]: !prev[esp] }));
-
-  // Autollenar/limpiar el motivo automático "PLATAFORMA NO FUNCIONAL".
-  // Solo aplica al Caso B: se envió por CORREO, falta plataforma y la plataforma NO funciona.
-  useEffect(() => {
-    if (!esEvolucionSal) return;
-    const casoB = evoCorreo && !evoPlataforma && plataformaFuncSeg === "NO";
-    if (casoB && !evoMotivoPend.trim()) {
-      setEvoMotivoPend("PLATAFORMA NO FUNCIONAL");
-    } else if (!casoB && evoMotivoPend === "PLATAFORMA NO FUNCIONAL") {
-      // Limpia el autollenado si cambian las condiciones (p.ej. solo plataforma).
-      setEvoMotivoPend("");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [esEvolucionSal, evoCorreo, evoPlataforma, plataformaFuncSeg]);
 
   // Estado de la solicitud automático para EVOLUCIÓN DIARIA → PENDIENTE (no editable).
   useEffect(() => {
@@ -1297,6 +1259,56 @@ export function SeguimientoDialog({
   });
   const canalPersist = useMemo(() => canalGestionPersist(canalV), [canalV]);
   const canalFinal = canalPersist.canal_gestion ?? "";
+
+  // --- FASE 5E · C.3 — RESOLVER ÚNICO de cumplimiento de EVOLUCIÓN DIARIA ---
+  // Los canales provienen EXCLUSIVAMENTE de CANAL DE GESTIÓN; no existen
+  // controles duplicados EAPB CORREO / EAPB PLATAFORMA.
+  const evoCorreo = canalV.canales.includes(CANAL_CODES.CORREO);
+  const evoPlataforma = canalV.canales.includes(CANAL_CODES.PLATAFORMA);
+  const evoEspEvolucionadas = useMemo(
+    () => especialidadesList.filter((e) => evoEsp[e]),
+    [especialidadesList, evoEsp],
+  );
+  const evoResolver = useMemo(
+    () =>
+      resolverCumplimientoEvolucionDiaria({
+        correoRequerido: eapbEvoCorreo || !segEnPlataforma,
+        plataformaRequerida: segEnPlataforma === true,
+        canalesRealizados: canalV.canales,
+        plataformaFuncionando:
+          segEnPlataforma && plataformaFuncSeg ? plataformaFuncSeg === "SI" : null,
+        especialidadesRequeridas: especialidadesList,
+        especialidadesEvolucionadas: evoEspEvolucionadas,
+        esNuevaEps: esNuevaEpsCanonica(casoEapbNombre),
+        esRedNoContratada: esRedNoContratadaCanonica(caso?.tipo_tramite ?? ""),
+        motivoPendiente: evoMotivoPend,
+      }),
+    [
+      eapbEvoCorreo,
+      segEnPlataforma,
+      canalV.canales,
+      plataformaFuncSeg,
+      especialidadesList,
+      evoEspEvolucionadas,
+      casoEapbNombre,
+      caso?.tipo_tramite,
+      evoMotivoPend,
+    ],
+  );
+  const evoMetaSal = EVO_ESTADO_META[evoResolver.estado];
+  const evoEspPendientes = evoResolver.especialidades_pendientes;
+  // Motivo libre solo cuando el pendiente NO queda documentado por el selector
+  // de plataforma ni exento por la excepción autorizada.
+  const evoRequiereMotivo =
+    esEvolucionSal &&
+    evoResolver.canales_pendientes.length > 0 &&
+    !evoResolver.plataforma_pendiente_por_falla;
+  const evoEstadoSal: EvolucionEstado =
+    evoResolver.estado === "EVOLUCIONADO"
+      ? "completo"
+      : evoResolver.estado === "EVOLUCION_PARCIAL"
+        ? "parcial"
+        : "sin";
   const canalErrores = useMemo(
     () => erroresCanalGestion(canalV, { dualPermitido }),
     [canalV, dualPermitido],
@@ -1493,25 +1505,13 @@ export function SeguimientoDialog({
       case T.EVOLUCION:
         // Con especialidades tratantes registradas, se deja trazabilidad por
         // especialidad (evolucionadas / pendientes). Sin ellas, plantilla clásica.
-        if (especialidadesList.length > 0) {
-          base = generarPlantillaEvolucionEspecialidades({
-            evolucionadas: evoEspEvolucionadas,
-            pendientes: evoEspPendientes,
-            enviadoCorreo: evoCorreo,
-            enviadoPlataforma: segEnPlataforma ? evoPlataforma : false,
-            observacion: detalle,
-          });
-        } else {
-          base = generarPlantillaEvolucionDiaria({
-            estadoCaso,
-            esTramiteAdministrativo: esAdminCaso,
-            tienePlataforma: segEnPlataforma,
-            plataformaFunciona: segEnPlataforma ? plataformaFuncSeg === "SI" : null,
-            enviadoCorreo: evoCorreo,
-            enviadoPlataforma: evoPlataforma,
-            motivoPendiente: evoMotivoPend,
-          });
-        }
+        base = plantillaEvolucionDesdeResolver(evoResolver, {
+          especialidades: especialidadesList,
+          estadoCaso,
+          esTramiteAdministrativo: esAdminCaso,
+          tienePlataforma: segEnPlataforma,
+          observacion: detalle,
+        });
         break;
       case T.CORREO:
         base = generarPlantillaCorreoSeg(asunto, estadoSolicitud);
@@ -1971,15 +1971,11 @@ export function SeguimientoDialog({
         return { radicado: radicado.trim() };
       case T.EVOLUCION:
         return {
-          plataforma_funcionando: segEnPlataforma ? plataformaFuncSeg : null,
+          // Estructura canónica del resolver único (el servidor la recalcula).
+          ...persistirCumplimiento(evoResolver),
           enviado_correo: evoCorreo,
           enviado_plataforma: segEnPlataforma ? evoPlataforma : null,
           estado_evolucion: evoEstadoSal,
-          motivo_pendiente: evoRequiereMotivo ? evoMotivoPend.trim() : null,
-          // Trazabilidad por especialidades tratantes (Parte 9).
-          especialidades_evolucionadas: especialidadesList.length > 0 ? evoEspEvolucionadas : null,
-          especialidades_pendientes: especialidadesList.length > 0 ? evoEspPendientes : null,
-          estado_evolucion_especialidades: especialidadesList.length > 0 ? evoEspEstado : null,
           medio_evolucion:
             evoCorreo && evoPlataforma
               ? "CORREO Y PLATAFORMA"
@@ -2120,8 +2116,6 @@ export function SeguimientoDialog({
     setNombreContacto("");
     setTelefono("");
     setRadicado("");
-    setEvoCorreo(false);
-    setEvoPlataforma(false);
     setEvoEsp({});
     setEspCierres({});
     setEspNuevas([""]);
@@ -2979,7 +2973,7 @@ export function SeguimientoDialog({
                 </div>
               )}
 
-              {/* EVOLUCIÓN DIARIA (salientes v2) */}
+              {/* EVOLUCIÓN DIARIA — resolver único (FASE 5E · C.3) */}
               {esEvolucionSal && (
                 <div className={sectionCls}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -2988,18 +2982,20 @@ export function SeguimientoDialog({
                       className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${evoMetaSal.chip}`}
                     >
                       <span className={`h-2 w-2 rounded-full ${evoMetaSal.dot}`} />
-                      {evoMetaSal.label.toUpperCase()}
+                      {EVO_ESTADO_LABEL[evoResolver.estado]}
                     </span>
                   </div>
 
                   {segEnPlataforma && (
                     <div className="space-y-1.5">
-                      <Label className={labelCls}>¿Plataforma EAPB funcionando?</Label>
+                      <Label className={labelCls} htmlFor="evo-plataforma-func-sal">
+                        ¿Plataforma EAPB funcionando?
+                      </Label>
                       <Select
                         value={plataformaFuncSeg}
                         onValueChange={(v) => setPlataformaFuncSeg(v as "SI" | "NO")}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger id="evo-plataforma-func-sal">
                           <SelectValue placeholder="Seleccionar…" />
                         </SelectTrigger>
                         <SelectContent>
@@ -3010,27 +3006,12 @@ export function SeguimientoDialog({
                     </div>
                   )}
 
-                  <div className="space-y-1.5">
-                    <label className="flex items-center gap-2 text-sm">
-                      <Checkbox checked={evoCorreo} onCheckedChange={(v) => setEvoCorreo(!!v)} />
-                      EAPB CORREO
-                    </label>
-                    {segEnPlataforma && (
-                      <label className="flex items-center gap-2 text-sm">
-                        <Checkbox
-                          checked={evoPlataforma}
-                          onCheckedChange={(v) => setEvoPlataforma(!!v)}
-                        />
-                        EAPB PLATAFORMA
-                      </label>
-                    )}
-                  </div>
+                  {/* Resumen NO editable: refleja CANAL DE GESTIÓN. */}
+                  <CanalesEvolucionResumen resolver={evoResolver} />
 
                   {evoRequiereMotivo && (
                     <div className="space-y-1.5">
-                      <Label className={labelCls}>
-                        Motivo del pendiente ({evoCorreo ? "falta plataforma" : "falta correo"})
-                      </Label>
+                      <Label className={labelCls}>Motivo del pendiente</Label>
                       <DictationTextarea
                         dictationKey="salientes.seguimiento.motivo_pendiente"
                         value={evoMotivoPend}
@@ -3041,21 +3022,9 @@ export function SeguimientoDialog({
                     </div>
                   )}
 
-                  {/* Especialidades tratantes (Parte 9) */}
+                  {/* Especialidades tratantes */}
                   <div className="space-y-2 rounded-lg border border-border/60 bg-background/40 p-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className={labelCls}>Especialidades tratantes</p>
-                      {especialidadesList.length > 0 && (
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${evoEspMeta[evoEspEstado].chip}`}
-                        >
-                          <span
-                            className={`h-2 w-2 rounded-full ${evoEspMeta[evoEspEstado].dot}`}
-                          />
-                          EVOLUCIÓN {evoEspEstado}
-                        </span>
-                      )}
-                    </div>
+                    <p className={labelCls}>Especialidades tratantes</p>
                     {especialidadesList.length === 0 ? (
                       <p className="text-xs italic text-muted-foreground">
                         No hay especialidades tratantes registradas para este caso. Puedes continuar
@@ -3089,14 +3058,25 @@ export function SeguimientoDialog({
                             </label>
                           ))}
                         </div>
-                        {evoEspEstado === "PARCIAL" && (
-                          <p className="text-[11px] text-status-amber">
-                            Pendiente: {evoEspPendientes.join(", ")}.
-                          </p>
-                        )}
                       </>
                     )}
                   </div>
+
+                  {(evoResolver.canales_pendientes.length > 0 ||
+                    evoEspPendientes.length > 0) && (
+                    <div className="space-y-0.5">
+                      <p className={labelCls}>Pendientes</p>
+                      <p className="text-[11px] text-status-amber">
+                        {[
+                          ...evoResolver.canales_pendientes.map(
+                            (c) => CANAL_LABEL_EVO[c] ?? c,
+                          ),
+                          ...evoEspPendientes,
+                        ].join(", ")}
+                        .
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 

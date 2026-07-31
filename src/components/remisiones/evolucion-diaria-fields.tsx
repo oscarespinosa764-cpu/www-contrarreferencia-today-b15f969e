@@ -1,13 +1,12 @@
 // ---------------------------------------------------------------------------
-// Bloque canónico "EVOLUCIÓN DIARIA".
+// Bloque canónico "EVOLUCIÓN DIARIA" (FASE 5E · Bloque C.3).
 //
-// Replica la implementación de REMISIONES (canales EAPB correo/plataforma,
-// motivo del pendiente, especialidades tratantes) y reutiliza los generadores
-// oficiales de plantilla Índigo. Se usa tanto en salientes como en el modal de
-// PHD / PAD / O2 / Especiales para que exista una sola estructura, validación y
-// plantilla en toda la aplicación.
+// Fuente ÚNICA de cumplimiento: `resolverCumplimientoEvolucionDiaria`.
+// Los canales YA NO se editan aquí: la única selección editable del canal es
+// el campo superior CANAL DE GESTIÓN. Este cuadro solo muestra un resumen
+// informativo (no editable) de los canales, el selector de funcionamiento de
+// plataforma, las especialidades tratantes y UN solo badge de estado.
 // ---------------------------------------------------------------------------
-import { useEffect } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
@@ -18,15 +17,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DictationTextarea } from "@/components/voz/dictation-textarea";
-import { evolucionMeta, type EvolucionEstado } from "@/lib/remisiones-utils";
+import { CANAL_CODES } from "@/lib/canal-gestion";
+import {
+  CANAL_LABEL_EVO,
+  EVO_ESTADO_LABEL,
+  EVO_ESTADO_META,
+  INDIGO_EXCEPCION_CORREO,
+  INDIGO_EXCEPCION_PLATAFORMA,
+  estadoCanalEvolucion,
+  resolverCumplimientoEvolucionDiaria,
+  type CumplimientoEvolucion,
+} from "@/lib/evolucion-diaria";
 import {
   generarPlantillaEvolucionDiaria,
   generarPlantillaEvolucionEspecialidades,
 } from "@/lib/indigo-trazabilidad";
 
 export type EvolucionDiariaValue = {
-  correo: boolean;
-  plataforma: boolean;
   /** ¿La plataforma de la EAPB está funcionando? Solo si la EAPB usa plataforma. */
   plataformaFunc: "" | "SI" | "NO";
   motivoPend: string;
@@ -35,29 +42,32 @@ export type EvolucionDiariaValue = {
 };
 
 export const EVOLUCION_DIARIA_INICIAL: EvolucionDiariaValue = {
-  correo: false,
-  plataforma: false,
   plataformaFunc: "",
   motivoPend: "",
   esp: {},
 };
 
 export type EvolucionDiariaContexto = {
+  /** Catálogo EAPB activo: existe correo de radicación. */
+  correoRequerido?: boolean;
   /** La EAPB del caso hace seguimientos en plataforma. */
   segEnPlataforma: boolean;
+  /** Canales seleccionados en CANAL DE GESTIÓN (única fuente editable). */
+  canalesRealizados: string[];
   especialidades?: string[];
   estadoCaso?: string | null;
   esTramiteAdministrativo?: boolean;
   /** Observación manual (usada en la plantilla por especialidades). */
   observacion?: string;
+  /** Excepción canónica (solo módulos con tipo/motivo de remisión real). */
+  esNuevaEps?: boolean;
+  esRedNoContratada?: boolean;
+  canalesPreviosCiclo?: string[];
+  especialidadesPreviasCiclo?: string[];
 };
 
 export type EvolucionDiariaDerivado = {
-  estado: EvolucionEstado;
-  meta: { label: string; dot: string; chip: string };
-  requiereMotivo: boolean;
-  evolucionadas: string[];
-  pendientes: string[];
+  resolver: CumplimientoEvolucion;
   errores: string[];
   plantilla: string;
 };
@@ -67,64 +77,107 @@ export function derivarEvolucionDiaria(
   ctx: EvolucionDiariaContexto,
 ): EvolucionDiariaDerivado {
   const especialidades = ctx.especialidades ?? [];
-  const estado: EvolucionEstado = ctx.segEnPlataforma
-    ? ((v.correo ? 1 : 0) + (v.plataforma ? 1 : 0) === 0
-        ? "sin"
-        : (v.correo ? 1 : 0) + (v.plataforma ? 1 : 0) === 1
-          ? "parcial"
-          : "completo")
-    : v.correo
-      ? "completo"
-      : "sin";
-
-  const requiereMotivo = ctx.segEnPlataforma && estado === "parcial";
-  const evolucionadas = especialidades.filter((e) => v.esp[e]);
-  const pendientes = especialidades.filter((e) => !v.esp[e]);
-
-  const errores: string[] = [];
-  if (!v.correo && !v.plataforma) errores.push("Seleccione al menos un canal de evolución.");
-  if (ctx.segEnPlataforma && !v.plataformaFunc)
-    errores.push("Indique si la plataforma de la EAPB está funcionando.");
-  if (requiereMotivo && !v.motivoPend.trim())
-    errores.push("Indique el motivo del canal pendiente.");
-
-  const plantilla =
-    especialidades.length > 0
-      ? generarPlantillaEvolucionEspecialidades({
-          evolucionadas,
-          pendientes,
-          enviadoCorreo: v.correo,
-          enviadoPlataforma: ctx.segEnPlataforma ? v.plataforma : false,
-          observacion: ctx.observacion,
-        })
-      : generarPlantillaEvolucionDiaria({
-          estadoCaso: ctx.estadoCaso ?? null,
-          esTramiteAdministrativo: ctx.esTramiteAdministrativo === true,
-          tienePlataforma: ctx.segEnPlataforma,
-          plataformaFunciona: ctx.segEnPlataforma ? v.plataformaFunc === "SI" : null,
-          enviadoCorreo: v.correo,
-          enviadoPlataforma: v.plataforma,
-          motivoPendiente: v.motivoPend,
-        });
+  const resolver = resolverCumplimientoEvolucionDiaria({
+    correoRequerido: ctx.correoRequerido !== false,
+    plataformaRequerida: ctx.segEnPlataforma === true,
+    canalesRealizados: ctx.canalesRealizados ?? [],
+    plataformaFuncionando:
+      ctx.segEnPlataforma && v.plataformaFunc ? v.plataformaFunc === "SI" : null,
+    especialidadesRequeridas: especialidades,
+    especialidadesEvolucionadas: especialidades.filter((e) => v.esp[e]),
+    esNuevaEps: ctx.esNuevaEps === true,
+    esRedNoContratada: ctx.esRedNoContratada === true,
+    canalesPreviosCiclo: ctx.canalesPreviosCiclo,
+    especialidadesPreviasCiclo: ctx.especialidadesPreviasCiclo,
+    motivoPendiente: v.motivoPend,
+  });
 
   return {
-    estado,
-    meta: evolucionMeta[estado],
-    requiereMotivo,
-    evolucionadas,
-    pendientes,
-    errores,
-    plantilla,
+    resolver,
+    errores: resolver.errores,
+    plantilla: plantillaEvolucionDesdeResolver(resolver, {
+      especialidades,
+      estadoCaso: ctx.estadoCaso ?? null,
+      esTramiteAdministrativo: ctx.esTramiteAdministrativo === true,
+      tienePlataforma: ctx.segEnPlataforma,
+      observacion: ctx.observacion,
+    }),
   };
+}
+
+/**
+ * Generador único: la plantilla REPRESENTA el resolver, no recalcula estado.
+ */
+export function plantillaEvolucionDesdeResolver(
+  r: CumplimientoEvolucion,
+  ctx: {
+    especialidades: string[];
+    estadoCaso: string | null;
+    esTramiteAdministrativo: boolean;
+    tienePlataforma: boolean;
+    observacion?: string;
+  },
+): string {
+  if (r.variante_indigo === "EXCEPCION_PLATAFORMA") return INDIGO_EXCEPCION_PLATAFORMA;
+  if (r.variante_indigo === "EXCEPCION_CORREO") return INDIGO_EXCEPCION_CORREO;
+
+  const correo = r.canales_realizados.includes(CANAL_CODES.CORREO);
+  const plataforma = r.canales_realizados.includes(CANAL_CODES.PLATAFORMA);
+
+  if (ctx.especialidades.length > 0) {
+    return generarPlantillaEvolucionEspecialidades({
+      evolucionadas: r.especialidades_evolucionadas,
+      pendientes: r.especialidades_pendientes,
+      enviadoCorreo: correo,
+      enviadoPlataforma: plataforma,
+      observacion: ctx.observacion,
+    });
+  }
+  return generarPlantillaEvolucionDiaria({
+    estadoCaso: ctx.estadoCaso,
+    esTramiteAdministrativo: ctx.esTramiteAdministrativo,
+    tienePlataforma: ctx.tienePlataforma,
+    plataformaFunciona: r.plataforma_funcionando,
+    enviadoCorreo: correo,
+    enviadoPlataforma: plataforma,
+    motivoPendiente: r.motivo_pendiente ?? "",
+  });
 }
 
 const labelCls = "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
 
-const espMeta: Record<string, { chip: string; dot: string }> = {
-  COMPLETA: { chip: "bg-status-green/15 text-status-green", dot: "bg-status-green" },
-  PARCIAL: { chip: "bg-status-amber/15 text-status-amber", dot: "bg-status-amber" },
-  PENDIENTE: { chip: "bg-muted text-muted-foreground", dot: "bg-muted-foreground" },
+const canalEstadoCls: Record<string, string> = {
+  REALIZADO: "text-status-green",
+  EXENTO: "text-muted-foreground",
+  PENDIENTE: "text-status-amber",
+  "PENDIENTE POR FALLA": "text-status-amber",
 };
+
+/** Resumen informativo de canales (NO editable): refleja CANAL DE GESTIÓN. */
+export function CanalesEvolucionResumen({ resolver }: { resolver: CumplimientoEvolucion }) {
+  return (
+    <div className="space-y-1.5 rounded-lg border border-border/60 bg-background/40 p-3">
+      <p className={labelCls}>Canales de evolución</p>
+      <ul className="space-y-1">
+        {resolver.canales_requeridos.map((c) => {
+          const est = estadoCanalEvolucion(resolver, c);
+          return (
+            <li key={c} className="flex items-center justify-between gap-2 text-sm">
+              <span className="flex items-center gap-2">
+                <span aria-hidden="true">{est === "REALIZADO" ? "✓" : "○"}</span>
+                {CANAL_LABEL_EVO[c] ?? c}
+              </span>
+              <span className={`text-[10px] font-bold ${canalEstadoCls[est] ?? ""}`}>{est}</span>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="text-[10px] text-muted-foreground">
+        Los canales se seleccionan únicamente en CANAL DE GESTIÓN.
+      </p>
+    </div>
+  );
+}
 
 export function EvolucionDiariaFields({
   value,
@@ -139,44 +192,36 @@ export function EvolucionDiariaFields({
 }) {
   const especialidades = ctx.especialidades ?? [];
   const set = (patch: Partial<EvolucionDiariaValue>) => onChange({ ...value, ...patch });
+  const r = derivado.resolver;
+  const meta = EVO_ESTADO_META[r.estado];
 
-  // Autollenado del motivo "PLATAFORMA NO FUNCIONAL" (Caso B canónico).
-  useEffect(() => {
-    const casoB = value.correo && !value.plataforma && value.plataformaFunc === "NO";
-    if (casoB && !value.motivoPend.trim()) set({ motivoPend: "PLATAFORMA NO FUNCIONAL" });
-    else if (!casoB && value.motivoPend === "PLATAFORMA NO FUNCIONAL") set({ motivoPend: "" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value.correo, value.plataforma, value.plataformaFunc]);
-
-  const espEstado: "COMPLETA" | "PARCIAL" | "PENDIENTE" =
-    especialidades.length === 0
-      ? "PENDIENTE"
-      : derivado.evolucionadas.length === especialidades.length
-        ? "COMPLETA"
-        : derivado.evolucionadas.length > 0
-          ? "PARCIAL"
-          : "PENDIENTE";
+  // Motivo libre solo cuando queda un canal pendiente que NO está documentado
+  // por el selector de plataforma ni exento por la excepción autorizada.
+  const requiereMotivo =
+    r.canales_pendientes.length > 0 && !r.plataforma_pendiente_por_falla;
 
   return (
     <div className="space-y-3 rounded-lg border border-border bg-muted/20 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className={labelCls}>Evolución diaria</p>
         <span
-          className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${derivado.meta.chip}`}
+          className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${meta.chip}`}
         >
-          <span className={`h-2 w-2 rounded-full ${derivado.meta.dot}`} />
-          {derivado.meta.label.toUpperCase()}
+          <span className={`h-2 w-2 rounded-full ${meta.dot}`} />
+          {EVO_ESTADO_LABEL[r.estado]}
         </span>
       </div>
 
       {ctx.segEnPlataforma && (
         <div className="space-y-1.5">
-          <Label className={labelCls}>¿Plataforma EAPB funcionando?</Label>
+          <Label className={labelCls} htmlFor="evo-plataforma-func">
+            ¿Plataforma EAPB funcionando?
+          </Label>
           <Select
             value={value.plataformaFunc}
             onValueChange={(v) => set({ plataformaFunc: v as "SI" | "NO" })}
           >
-            <SelectTrigger>
+            <SelectTrigger id="evo-plataforma-func">
               <SelectValue placeholder="Seleccionar…" />
             </SelectTrigger>
             <SelectContent>
@@ -187,23 +232,13 @@ export function EvolucionDiariaFields({
         </div>
       )}
 
-      <div className="space-y-1.5">
-        <label className="flex items-center gap-2 text-sm">
-          <Checkbox checked={value.correo} onCheckedChange={(v) => set({ correo: !!v })} />
-          EAPB CORREO
-        </label>
-        {ctx.segEnPlataforma && (
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={value.plataforma} onCheckedChange={(v) => set({ plataforma: !!v })} />
-            EAPB PLATAFORMA
-          </label>
-        )}
-      </div>
+      <CanalesEvolucionResumen resolver={r} />
 
-      {derivado.requiereMotivo && (
+      {requiereMotivo && (
         <div className="space-y-1.5">
           <Label className={labelCls}>
-            Motivo del pendiente ({value.correo ? "falta plataforma" : "falta correo"})
+            Motivo del pendiente (
+            {r.canales_pendientes.map((c) => CANAL_LABEL_EVO[c] ?? c).join(", ")})
           </Label>
           <DictationTextarea
             dictationKey="salientes.seguimiento.motivo_pendiente"
@@ -216,17 +251,7 @@ export function EvolucionDiariaFields({
       )}
 
       <div className="space-y-2 rounded-lg border border-border/60 bg-background/40 p-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className={labelCls}>Especialidades tratantes</p>
-          {especialidades.length > 0 && (
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${espMeta[espEstado].chip}`}
-            >
-              <span className={`h-2 w-2 rounded-full ${espMeta[espEstado].dot}`} />
-              EVOLUCIÓN {espEstado}
-            </span>
-          )}
-        </div>
+        <p className={labelCls}>Especialidades tratantes</p>
         {especialidades.length === 0 ? (
           <p className="text-xs italic text-muted-foreground">
             No hay especialidades tratantes registradas para este caso. Puedes continuar con la
@@ -262,14 +287,22 @@ export function EvolucionDiariaFields({
                 </label>
               ))}
             </div>
-            {espEstado === "PARCIAL" && (
-              <p className="text-[11px] text-status-amber">
-                Pendiente: {derivado.pendientes.join(", ")}.
-              </p>
-            )}
           </>
         )}
       </div>
+
+      {(r.canales_pendientes.length > 0 || r.especialidades_pendientes.length > 0) && (
+        <div className="space-y-0.5">
+          <p className={labelCls}>Pendientes</p>
+          <p className="text-[11px] text-status-amber">
+            {[
+              ...r.canales_pendientes.map((c) => CANAL_LABEL_EVO[c] ?? c),
+              ...r.especialidades_pendientes,
+            ].join(", ")}
+            .
+          </p>
+        </div>
+      )}
 
       <div className="space-y-1">
         <p className={labelCls}>Plantilla Índigo (automática)</p>
