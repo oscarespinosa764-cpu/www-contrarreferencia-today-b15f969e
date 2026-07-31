@@ -579,6 +579,7 @@ export function SeguimientoDialog({
         extra2: string | null;
         extra3: string | null;
         seguimientos_en_plataforma: boolean | null;
+        eapb_correo_radicacion: string | null;
       }[];
     },
   });
