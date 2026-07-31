@@ -96,11 +96,17 @@ import {
   InformacionTramiteFields,
   INFORMACION_TRAMITE_INICIAL,
   SeguimientoHeaderCard,
-  canalFinalDe,
   erroresInformacionTramite,
   plantillaInformacionTramite,
   type InformacionTramiteValue,
 } from "@/components/remisiones/seguimiento-shell";
+import {
+  CANAL_GESTION_INICIAL,
+  canalGestionPersist,
+  erroresCanalGestion,
+  plantillaCanalGestion,
+  type CanalGestionValue,
+} from "@/lib/canal-gestion";
 
 type Props = {
   open: boolean;
@@ -321,8 +327,7 @@ export function SeguimientoDialog({
   // --- Estados base ---
   const [tipoSeg, setTipoSeg] = useState("");
   // FASE 5E · Bloque A — canal de gestión global (todos los módulos).
-  const [canal, setCanal] = useState("");
-  const [canalOtro, setCanalOtro] = useState("");
+  const [canalV, setCanalV] = useState<CanalGestionValue>(CANAL_GESTION_INICIAL);
   const [infoTramite, setInfoTramite] = useState<InformacionTramiteValue>(
     INFORMACION_TRAMITE_INICIAL,
   );
@@ -562,7 +567,9 @@ export function SeguimientoDialog({
     queryFn: async () => {
       const { data } = await supabase
         .from("catalogos")
-        .select("valor, extra1, extra2, extra3, seguimientos_en_plataforma")
+        .select(
+          "valor, extra1, extra2, extra3, seguimientos_en_plataforma, eapb_correo_radicacion",
+        )
         .eq("tipo", "EAPB")
         .eq("activo", true)
         .order("valor");
@@ -572,6 +579,7 @@ export function SeguimientoDialog({
         extra2: string | null;
         extra3: string | null;
         seguimientos_en_plataforma: boolean | null;
+        eapb_correo_radicacion: string | null;
       }[];
     },
   });
@@ -1029,8 +1037,7 @@ export function SeguimientoDialog({
     setIndigoEditada(false);
     setEntregaPreparada(false);
     setTipoSeg("");
-    setCanal("");
-    setCanalOtro("");
+    setCanalV(CANAL_GESTION_INICIAL);
     setInfoTramite(INFORMACION_TRAMITE_INICIAL);
     setEvoEsp({});
     setEspCierres({});
@@ -1273,13 +1280,30 @@ export function SeguimientoDialog({
     return arr;
   }, [negGrupos, negMotivoResuelto, negIpsCurrent]);
 
+  // FASE 5E · Bloque C — canal de gestión estructurado (fuente única).
+  // La combinación dual CORREO + PLATAFORMA solo se habilita en EVOLUCIÓN
+  // DIARIA cuando el catálogo de la EAPB del caso declara ambas capacidades.
+  const eapbCasoCat = useMemo(
+    () => eapbCat.find((e) => e.valor === casoEapbNombre) ?? null,
+    [eapbCat, casoEapbNombre],
+  );
+  const eapbEvoCorreo = !!(eapbCasoCat?.eapb_correo_radicacion ?? "").trim();
+  const dualPermitido =
+    tipoSeg === T.EVOLUCION && segEnPlataforma === true && eapbEvoCorreo;
+  const canalPersist = useMemo(() => canalGestionPersist(canalV), [canalV]);
+  const canalFinal = canalPersist.canal_gestion ?? "";
+  const canalErrores = useMemo(
+    () => erroresCanalGestion(canalV, { dualPermitido }),
+    [canalV, dualPermitido],
+  );
+
   // --- Plantilla Índigo generada según el tipo ---
-  const plantillaGenerada = useMemo(() => {
+  const plantillaGeneradaBase = useMemo(() => {
     // FASE 5E · Bloque A — Información del trámite (transversal, no cambia estado).
     if (!esPendiente && tipoSeg === T.INFO_TRAMITE) {
       return plantillaInformacionTramite(
         infoTramite,
-        canalFinalDe(canal, canalOtro),
+        canalFinal,
         detalle,
       );
     }
@@ -1689,10 +1713,17 @@ export function SeguimientoDialog({
     nuevaUnidadNorm,
     nuevaCamaNorm,
     infoTramite,
-    canal,
-    canalOtro,
+    canalFinal,
     esPendiente,
   ]);
+
+  // El bloque CANAL DE GESTIÓN lo redacta el generador compartido.
+  const plantillaGenerada = useMemo(() => {
+    if (!plantillaGeneradaBase) return "";
+    if (!esPendiente && tipoSeg === T.INFO_TRAMITE) return plantillaGeneradaBase;
+    const bloque = plantillaCanalGestion(canalPersist);
+    return bloque ? `${plantillaGeneradaBase}\n\n${bloque}` : plantillaGeneradaBase;
+  }, [plantillaGeneradaBase, canalPersist, esPendiente, tipoSeg]);
 
   useEffect(() => {
     // Nunca sobrescribir cuando la plantilla proviene de la entrega documental
@@ -2078,8 +2109,7 @@ export function SeguimientoDialog({
   const resetCampos = () => {
     setDetalle("");
     setTipoSeg("");
-    setCanal("");
-    setCanalOtro("");
+    setCanalV(CANAL_GESTION_INICIAL);
     setInfoTramite(INFORMACION_TRAMITE_INICIAL);
     setEstadoSolicitud("");
     setNombreContacto("");
@@ -2179,7 +2209,7 @@ export function SeguimientoDialog({
         return toast.error("Indica las observaciones que justifican el nuevo radicado");
     } else {
       if (!tipoSeg) return toast.error("Selecciona el tipo de seguimiento");
-      if (!canalFinalDe(canal, canalOtro)) return toast.error("Selecciona el canal de gestión");
+      if (canalErrores.length) return toast.error(canalErrores[0]);
       if (!esPendiente && tipoSeg === T.INFO_TRAMITE) {
         const errs = erroresInformacionTramite(infoTramite);
         if (errs.length) return toast.error(errs[0]);
@@ -2457,7 +2487,7 @@ export function SeguimientoDialog({
         plantilla_indigo: indigoTexto.trim() || null,
         detalles: {
           ...(construirDetalles() ?? {}),
-          canal_gestion: canalFinalDe(canal, canalOtro) || null,
+          ...canalPersist,
           ...(!esPendiente && tipoSeg === T.INFO_TRAMITE
             ? {
                 evento: "INFORMACION_TRAMITE",
@@ -2910,13 +2940,13 @@ export function SeguimientoDialog({
                     </SelectContent>
                   </Select>
                 </div>
-                <CanalGestionField
-                  value={canal}
-                  onChange={setCanal}
-                  otro={canalOtro}
-                  onOtroChange={setCanalOtro}
-                />
               </div>
+
+              <CanalGestionField
+                value={canalV}
+                onChange={setCanalV}
+                dualPermitido={dualPermitido}
+              />
 
               {/* INFORMACIÓN DEL TRÁMITE (no aplica a PENDIENTES) */}
               {!esPendiente && tipoSeg === T.INFO_TRAMITE && (
@@ -4776,13 +4806,7 @@ export function SeguimientoDialog({
             <SeguimientoValidationSummary
               errores={[
                 ...(tipoSeg ? [] : ["Seleccione el tipo de seguimiento."]),
-                ...(tipoSeg && !canalFinalDe(canal, canalOtro)
-                  ? [
-                      canal === "OTRO"
-                        ? "Especifique el canal de gestión."
-                        : "Seleccione un canal de gestión.",
-                    ]
-                  : []),
+                ...(tipoSeg ? canalErrores : []),
                 ...(!esPendiente && tipoSeg === T.INFO_TRAMITE
                   ? erroresInformacionTramite(infoTramite)
                   : []),

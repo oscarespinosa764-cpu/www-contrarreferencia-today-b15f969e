@@ -63,13 +63,19 @@ import {
 import {
   CanalGestionField,
   SeguimientoHeaderCard,
-  canalFinalDe,
   InformacionTramiteFields,
   INFORMACION_TRAMITE_INICIAL,
   erroresInformacionTramite,
   plantillaInformacionTramite,
   type InformacionTramiteValue,
 } from "./seguimiento-shell";
+import {
+  CANAL_GESTION_INICIAL,
+  canalGestionPersist,
+  erroresCanalGestion,
+  plantillaCanalGestion,
+  type CanalGestionValue,
+} from "@/lib/canal-gestion";
 import {
   SeguimientoHistoricos,
   SeguimientoValidationSummary,
@@ -212,8 +218,7 @@ export function PhdSeguimientoDialog({
 
   // --- Formulario -------------------------------------------------------------
   const [evento, setEvento] = useState("");
-  const [canal, setCanal] = useState("");
-  const [canalOtro, setCanalOtro] = useState("");
+  const [canalV, setCanalV] = useState<CanalGestionValue>(CANAL_GESTION_INICIAL);
   const [observaciones, setObservaciones] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [fecha, setFecha] = useState("");
@@ -237,8 +242,7 @@ export function PhdSeguimientoDialog({
   useEffect(() => {
     if (!open) return;
     setEvento("");
-    setCanal("");
-    setCanalOtro("");
+    setCanalV(CANAL_GESTION_INICIAL);
     setObservaciones("");
     setDescripcion("");
     setFecha("");
@@ -278,7 +282,8 @@ export function PhdSeguimientoDialog({
     },
   });
 
-  const canalFinal = canalFinalDe(canal, canalOtro);
+  const canalPersist = canalGestionPersist(canalV);
+  const canalFinal = canalPersist.canal_gestion ?? "";
   const esInfoTramite = evento === "INFORMACION_TRAMITE";
   const requiereServicio = evento === "ACEPTACION_PROVEEDOR";
   const requiereDescripcion = CON_DESCRIPCION.includes(evento);
@@ -321,7 +326,7 @@ export function PhdSeguimientoDialog({
 
   const errores: string[] = [];
   if (!evento) errores.push("Seleccione el tipo de seguimiento.");
-  if (evento && !canalFinal) errores.push("Seleccione un canal de gestión.");
+  if (evento) errores.push(...erroresCanalGestion(canalV, { dualPermitido: esEvolucionDiaria && segEnPlataforma === true }));
   if (requiereServicio && !servicio) errores.push("Seleccione el servicio al que aplica.");
   if (requiereDescripcion && descripcion.trim().length < 3)
     errores.push("Escriba la descripción del seguimiento.");
@@ -356,7 +361,8 @@ export function PhdSeguimientoDialog({
 
   const detalleLegible = () => {
     const p: string[] = [`TIPO: ${EVENTO_LABEL[evento] ?? evento}`];
-    if (canalFinal) p.push(`CANAL: ${canalFinal}`);
+    const bloqueCanal = plantillaCanalGestion(canalPersist);
+    if (bloqueCanal) p.push(bloqueCanal.replace(/\n/g, " · "));
     if (servicio) p.push(`SERVICIO: ${SERVICIO_LABEL[servicio]}`);
     if (proveedor.trim()) p.push(`PROVEEDOR: ${proveedor.trim().toUpperCase()}`);
     if (evento === "RADICACION")
@@ -482,10 +488,9 @@ export function PhdSeguimientoDialog({
               </div>
 
               <CanalGestionField
-                value={canal}
-                onChange={setCanal}
-                otro={canalOtro}
-                onOtroChange={setCanalOtro}
+                value={canalV}
+                onChange={setCanalV}
+                dualPermitido={esEvolucionDiaria && segEnPlataforma === true}
               />
 
             </div>
