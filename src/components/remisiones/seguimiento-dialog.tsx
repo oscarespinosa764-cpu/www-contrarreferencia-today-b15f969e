@@ -2499,23 +2499,45 @@ export function SeguimientoDialog({
           return toast.error("Selecciona el código de la novedad externa.");
       }
 
-      // Cambio en especialidad: exige cambio real, conservar una activa y motivo.
+      // FASE 5K · C.2 (D-1) — CAMBIO DE ESPECIALIDAD: operación atómica
+      // server-authoritative. El cliente solo envía intención (agregar/cerrar);
+      // el servidor lee las especialidades reales, valida catálogo, calcula
+      // antes/después, registra seguimiento, historial y auditoría.
       if (esCambioEsp) {
         if (!espHayCambio)
           return toast.error(
             "No se ha registrado ningún cambio en las especialidades del caso.",
           );
-        const activasNorm = new Set(especialidadesList.map(normEsp));
-        const yaActiva = espNuevasLimpias.find((e) => activasNorm.has(normEsp(e)));
-        if (yaActiva)
-          return toast.error(`La especialidad ${yaActiva.toUpperCase()} ya está activa en el caso.`);
-        if (espActivasFinal.length === 0)
-          return toast.error(
-            "El caso debe conservar al menos una especialidad activa mientras continúe en trámite.",
-          );
-        if ((espCierreList.length > 0 || espReactivadas.length > 0) && !detalle.trim())
-          return toast.error("Registra las observaciones del cambio.");
+        setBusy(true);
+        let res: { ok?: boolean; error?: string } = {};
+        try {
+          res = await novedadCambioEspecialidad({
+            data: {
+              casoId,
+              agregar: espNuevasLimpias,
+              cerrar: espCierreList,
+              observaciones: detalle.trim() || null,
+              plantilla: indigoTexto.trim() || null,
+            },
+          });
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "Error de red");
+          setBusy(false);
+          return;
+        }
+        if (!res.ok) {
+          toast.error(res.error || "No fue posible registrar el cambio de especialidad.");
+          setBusy(false);
+          return;
+        }
+        toast.success("Novedad registrada: cambio de especialidad");
+        resetCampos();
+        setBusy(false);
+        await refetchEspHist();
+        refrescar();
+        return;
       }
+
       if (esCambioUnidad) {
         if (!nuevaUnidadNorm) return toast.error("Selecciona la nueva unidad.");
         if (!nuevaCamaNorm) return toast.error("Indica la nueva cama del paciente.");
