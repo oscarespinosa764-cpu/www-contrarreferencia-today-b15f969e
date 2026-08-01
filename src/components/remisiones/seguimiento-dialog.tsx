@@ -108,6 +108,17 @@ import { resolverAceptacionVigente } from "@/lib/salientes-aceptacion.functions"
 import { limpiarNombreAcepta, limpiarCargoAcepta, NOMBRE_ACEPTA_MAX, CARGO_ACEPTA_MAX } from "@/lib/salientes-aceptacion";
 import { registrarCambioUnidadRI } from "@/lib/ri-cambio-unidad.functions";
 import {
+  novedadCambioUnidad,
+  novedadCambioMotivoRemision,
+} from "@/lib/novedades.functions";
+import {
+  NovedadSubtipoSelector,
+  CambioMotivoFields,
+  CAMBIO_MOTIVO_INICIAL,
+  type NovedadSubtipo,
+  type CambioMotivoValue,
+} from "./novedades-fields";
+import {
   SeguimientoHistoricos,
   SeguimientoValidationSummary,
   type SeguimientoRow,
