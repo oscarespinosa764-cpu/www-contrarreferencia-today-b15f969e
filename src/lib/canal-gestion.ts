@@ -149,7 +149,11 @@ export type ContactoDetalle = {
   cargo?: string;
   cargoOtro?: string;
   telefono?: string;
+  /** FUNCIONARIO_SERVICIO */
+  servicioCodigo?: string;
+  servicioOtro?: string;
 };
+
 
 export type PresencialDetalle = {
   acercamiento: string;
