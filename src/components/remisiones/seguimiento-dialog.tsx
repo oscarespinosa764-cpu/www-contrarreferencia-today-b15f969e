@@ -435,6 +435,9 @@ export function SeguimientoDialog({
   const [otroCual, setOtroCual] = useState("");
 
   // Novedades (Parte 12)
+  // FASE 5K · C — Subtipo estructurado de NOVEDADES (canónico y compartido).
+  const [novSubtipo, setNovSubtipo] = useState<NovedadSubtipo>("");
+  const [cambioMotivo, setCambioMotivo] = useState<CambioMotivoValue>(CAMBIO_MOTIVO_INICIAL);
   const [novPaciente, setNovPaciente] = useState(false);
   const [novIps, setNovIps] = useState(false);
   const [novAmbulancia, setNovAmbulancia] = useState(false);
