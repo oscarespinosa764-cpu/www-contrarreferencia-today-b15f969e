@@ -1232,6 +1232,8 @@ export function SeguimientoDialog({
     estadoActual,
     estadoCaso,
     tipoSeg,
+    novSubtipo,
+    cambioMotivo,
     cancelTipo,
     cierreEgreso,
     novPaciente,
@@ -1465,7 +1467,7 @@ export function SeguimientoDialog({
       );
     }
     if (esInterna) {
-      switch (tipoSeg) {
+      switch (tipoKey) {
         case TI.PENDIENTE:
           return appendNota(
             generarPlantillaRefInternaCoordinacionExamen({
@@ -1640,7 +1642,7 @@ export function SeguimientoDialog({
     }
     if (!tipoSeg) return "";
     let base = "";
-    switch (tipoSeg) {
+    switch (tipoKey) {
       case T.RADICADO:
         base = generarPlantillaRadicado(radicado);
         break;
@@ -1790,6 +1792,8 @@ export function SeguimientoDialog({
   }, [
     esSaliente,
     tipoSeg,
+    novSubtipo,
+    cambioMotivo,
     nuevoRadicadoMode,
     nuevoRadicado,
     ultimoRadicado,
@@ -2003,7 +2007,7 @@ export function SeguimientoDialog({
   // Detalle JSON específico por tipo (estructura flexible).
   const construirDetalles = (): Record<string, unknown> | null => {
     if (esInterna) {
-      switch (tipoSeg) {
+      switch (tipoKey) {
         case TI.PENDIENTE:
           return {
             funcionario: riFuncionario.trim() || null,
@@ -2116,7 +2120,7 @@ export function SeguimientoDialog({
     if (nuevoRadicadoMode) {
       return { radicado_anterior: ultimoRadicado || null, nuevo_radicado: nuevoRadicado.trim() };
     }
-    switch (tipoSeg) {
+    switch (tipoKey) {
       case T.RADICADO:
         return { radicado: radicado.trim() };
       case T.EVOLUCION:
