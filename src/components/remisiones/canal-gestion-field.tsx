@@ -377,7 +377,7 @@ export function CanalGestionField({
         />
       )}
 
-      {activo(CANAL_CODES.TELEFONO) && (
+      {value.canales.some(canalUsaContactos) && (
         <div className="space-y-3 rounded-lg border border-border/60 bg-muted/30 p-3">
           <p className={labelCls}>Contacto realizado con *</p>
           <div
