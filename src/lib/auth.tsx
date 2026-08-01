@@ -22,7 +22,9 @@ interface AuthContextValue {
   activo: boolean;
   isActiveMember: boolean;
   turnoSesion: TurnoSesion | null;
-  setTurnoSesion: (codigo: TurnoCodigo) => void;
+  /** `uid` explícito para el instante posterior al login, cuando el contexto
+   *  todavía no ha recibido el usuario desde onAuthStateChange. */
+  setTurnoSesion: (codigo: TurnoCodigo, uid?: string) => void;
   clearTurnoSesion: () => void;
   signOut: () => Promise<void>;
 }
@@ -147,10 +149,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isActiveMember = activo && roles.length > 0;
 
   const setTurnoSesion = useCallback(
-    (codigo: TurnoCodigo) => {
-      if (!user?.id) return;
+    (codigo: TurnoCodigo, uid?: string) => {
+      const id = uid ?? user?.id;
+      if (!id) return;
       const sesion = construirTurnoSesion(codigo);
-      writeTurnoDeSesion(user.id, sesion);
+      writeTurnoDeSesion(id, sesion);
       setTurnoSesionState(sesion);
     },
     [user?.id],

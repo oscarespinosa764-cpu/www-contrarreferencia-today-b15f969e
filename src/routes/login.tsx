@@ -85,8 +85,9 @@ function LoginPage() {
       return;
     }
     // Persistir el turno únicamente después de una autenticación válida,
-    // asociado al user.id real devuelto por Supabase (no al cliente).
-    setTurnoSesion(turnoCodigo);
+    // asociado al user.id real devuelto por Supabase. Se pasa explícitamente
+    // porque el contexto de auth aún no ha recibido el usuario en este tick.
+    setTurnoSesion(turnoCodigo, data.user.id);
     navigate({ to: "/dashboard", replace: true });
   };
 
