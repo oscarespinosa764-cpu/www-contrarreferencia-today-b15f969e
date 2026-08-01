@@ -3455,6 +3455,70 @@ export function SeguimientoDialog({
                       La fecha y hora quedan incluidas en la plantilla para Índigo.
                     </p>
                   </div>
+
+                  {/* FASE 5J · A — Lugar donde se realizará el examen. */}
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>¿Dónde se realizará el examen? *</Label>
+                    <select
+                      className={inputCls}
+                      value={riDestinoTipo}
+                      onChange={(e) => {
+                        const v = e.target.value as "" | "SEDE_IPS" | "IPS_EXTERNA";
+                        setRiDestinoTipo(v);
+                        // Limpieza condicional: nunca se persisten ambos destinos.
+                        setRiSedeCodigo("");
+                        setRiIpsExterna("");
+                        setRiIpsExternaOrigen("MANUAL");
+                      }}
+                    >
+                      <option value="">Seleccione…</option>
+                      <option value="SEDE_IPS">SEDE IPS</option>
+                      <option value="IPS_EXTERNA">IPS EXTERNA</option>
+                    </select>
+                  </div>
+
+                  {riDestinoTipo === "SEDE_IPS" && (
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Sede *</Label>
+                      <select
+                        className={inputCls}
+                        value={riSedeCodigo}
+                        onChange={(e) => setRiSedeCodigo(e.target.value)}
+                      >
+                        <option value="">Seleccione…</option>
+                        {RI_SEDES_EXAMEN.map((sd) => (
+                          <option key={sd.codigo} value={sd.codigo}>
+                            {sd.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {riDestinoTipo === "IPS_EXTERNA" && (
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>IPS externa *</Label>
+                      <AutoComplete
+                        value={riIpsExterna}
+                        options={ipsLabels}
+                        placeholder="Escribe para buscar IPS…"
+                        minChars={3}
+                        onChange={(v) => {
+                          setRiIpsExterna(v);
+                          setRiIpsExternaOrigen("MANUAL");
+                        }}
+                        onPick={(label) => {
+                          const opt = ipsOptions.find((o) => o.label === label);
+                          setRiIpsExterna(opt ? opt.ips : label);
+                          setRiIpsExternaOrigen("CATALOGO");
+                        }}
+                      />
+                      <p className="text-[11px] italic text-muted-foreground">
+                        Puedes conservar un nombre escrito manualmente si la IPS aún no está en
+                        Catálogos. No se crea ningún registro nuevo.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
