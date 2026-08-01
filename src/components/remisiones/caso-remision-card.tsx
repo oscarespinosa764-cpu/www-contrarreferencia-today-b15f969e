@@ -483,9 +483,29 @@ export function CasoRemisionCard({
                 defaultValue={r.tipo_ambulancia ?? ""}
               />
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <SpecialtyList label="Especialidad tratante" items={tratantes} onChange={setTratantes} suggestions={especialidades} />
-              <SpecialtyList label="Especialidad destino" items={receptoras} onChange={setReceptoras} suggestions={especialidades} />
+            {/* Especialidades: SOLO LECTURA. Se gestionan por el flujo canónico. */}
+            <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Dato label="Especialidad tratante" value={r.especialidades_tratantes} />
+                <Dato label="Especialidad destino" value={r.especialidades_receptoras} />
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Para modificar las especialidades registre: NOVEDADES → CAMBIO DE ESPECIALIDAD.
+              </p>
+              {canEdit && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => {
+                    setEditar(false);
+                    setSeg(true);
+                  }}
+                >
+                  <ClipboardCheck className="mr-1 h-3.5 w-3.5" /> Gestionar especialidades en Seguimientos
+                </Button>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="especificacion" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
