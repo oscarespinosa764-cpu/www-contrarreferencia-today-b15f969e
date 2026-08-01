@@ -228,7 +228,7 @@ export function erroresCanalGestion(
     else if (t.length > CANAL_OTRO_MAX) e.push("El canal de gestión indicado es demasiado largo.");
   }
 
-  if (canales.includes(CANAL_CODES.TELEFONO)) {
+  if (canales.some(canalUsaContactos)) {
     const tipos = v.contactos.filter((t) => CONTACTO_TIPOS.includes(t));
     if (tipos.length === 0) e.push("Seleccione con quién se realizó el contacto.");
     if (new Set(tipos).size !== tipos.length) e.push("Hay tipos de contacto duplicados.");
@@ -244,6 +244,21 @@ export function erroresCanalGestion(
         if (!limpio(d.nombre)) e.push(`${et}: indique NOMBRE Y APELLIDO.`);
         if (com && com !== "PACIENTE" && !limpio(d.parentesco))
           e.push(`${et}: indique PARENTESCO.`);
+      } else if (tipo === "FUNCIONARIO_SERVICIO") {
+        const nom = limpio(d.nombre);
+        if (nom.length < 3) e.push(`${et}: indique el NOMBRE DEL FUNCIONARIO.`);
+        else if (nom.length > 160) e.push(`${et}: el nombre es demasiado largo.`);
+        const car = limpio(d.cargo);
+        if (car.length < 2) e.push(`${et}: indique el CARGO DEL FUNCIONARIO.`);
+        else if (car.length > 160) e.push(`${et}: el cargo es demasiado largo.`);
+        const serv = limpio(d.servicioCodigo);
+        if (!serv || !SERVICIOS_FUNCIONARIO_CODIGOS.includes(serv))
+          e.push(`${et}: seleccione el SERVICIO.`);
+        if (serv === "OTRO") {
+          const otro = limpio(d.servicioOtro);
+          if (otro.length < 2) e.push(`${et}: indique ¿CUÁL SERVICIO?`);
+          else if (otro.length > 100) e.push(`${et}: el servicio indicado es demasiado largo.`);
+        }
       } else {
         if (tipo === "IPS" && !limpio(d.nombreIps)) e.push("IPS: indique NOMBRE DE IPS.");
         if (!limpio(d.nombre)) e.push(`${et}: indique NOMBRE Y APELLIDO.`);
@@ -254,6 +269,7 @@ export function erroresCanalGestion(
       }
     }
   }
+
 
   if (canales.includes(CANAL_CODES.PRESENCIAL)) {
     const p = v.presencial;
