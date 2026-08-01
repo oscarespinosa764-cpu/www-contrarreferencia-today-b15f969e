@@ -2560,6 +2560,71 @@ export function SeguimientoDialog({
           refrescar();
           return;
         }
+        // FASE 5K · C — Salientes y Atención Domiciliaria: misma transacción
+        // atómica server-side (seguimiento NOVEDADES + unidad/cama + auditoría).
+        if (esSaliente) {
+          setBusy(true);
+          let res: { ok?: boolean; error?: string } = {};
+          try {
+            res = await novedadCambioUnidad({
+              data: {
+                tipoCaso: "remision",
+                casoId,
+                nuevoServicio: nuevaUnidadNorm,
+                nuevaCama: nuevaCamaNorm,
+                observaciones: detalle.trim() || null,
+                plantilla: indigoTexto.trim() || null,
+              },
+            });
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Error de red");
+            setBusy(false);
+            return;
+          }
+          if (!res.ok) {
+            toast.error(res.error || "No fue posible registrar el cambio de unidad.");
+            setBusy(false);
+            return;
+          }
+          toast.success("Novedad registrada: cambio de unidad");
+          resetCampos();
+          setBusy(false);
+          refrescar();
+          return;
+        }
+      }
+      // FASE 5K · C — CAMBIO MOTIVO DE REMISIÓN (novedad, nunca caso nuevo).
+      if (esCambioMotivo) {
+        if (!cambioMotivo.nuevoMotivo) return toast.error("Selecciona el nuevo motivo de remisión.");
+        if (cambioMotivo.justificacion.trim().length < 3)
+          return toast.error("Registra la justificación del cambio de motivo.");
+        setBusy(true);
+        let res: { ok?: boolean; error?: string } = {};
+        try {
+          res = await novedadCambioMotivoRemision({
+            data: {
+              casoId,
+              nuevoMotivo: cambioMotivo.nuevoMotivo,
+              justificacion: cambioMotivo.justificacion.trim(),
+              observaciones: detalle.trim() || null,
+              plantilla: indigoTexto.trim() || null,
+            },
+          });
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "Error de red");
+          setBusy(false);
+          return;
+        }
+        if (!res.ok) {
+          toast.error(res.error || "No fue posible registrar el cambio de motivo.");
+          setBusy(false);
+          return;
+        }
+        toast.success("Novedad registrada: cambio de motivo de remisión");
+        resetCampos();
+        setBusy(false);
+        refrescar();
+        return;
       }
       if (evoRequiereMotivo && !evoMotivoPend.trim())
         return toast.error("Indica el motivo del pendiente");
