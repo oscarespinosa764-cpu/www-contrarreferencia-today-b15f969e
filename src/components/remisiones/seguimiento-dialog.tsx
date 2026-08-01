@@ -2791,15 +2791,12 @@ export function SeguimientoDialog({
         plataforma_funcionando?: boolean | null;
         prestador_traslado?: string;
         tipo_ambulancia?: string;
-        especialidades_tratantes?: string;
         servicio?: string;
         cama?: string;
       } = {};
-      // Cambio en especialidad: actualiza la lista de especialidades activas del
-      // caso (sin tocar el estado). El historial completo queda en la tabla aparte.
-      if (esCambioEsp) {
-        update.especialidades_tratantes = espActivasFinal.join(", ");
-      }
+      // D-1: las especialidades canónicas las actualiza exclusivamente la RPC
+      // server-side de la novedad CAMBIO DE ESPECIALIDAD.
+
       // Cambio de unidad: actualiza servicio (unidad) y cama sin tocar estado / aceptación.
       // En Referencia Interna la tabla no tiene columna `cama`; la nueva cama queda
       // persistida estructurada dentro de `seguimientos.detalles` para trazabilidad.
