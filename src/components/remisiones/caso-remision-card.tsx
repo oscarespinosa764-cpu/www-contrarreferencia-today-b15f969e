@@ -139,30 +139,9 @@ export function CasoRemisionCard({
   const [ver, setVer] = useState(false);
   const [editar, setEditar] = useState(false);
   const [seg, setSeg] = useState(false);
-  const [tratantes, setTratantes] = useState<string[]>([]);
-  const [receptoras, setReceptoras] = useState<string[]>([]);
   useTick(true);
 
-  const { data: especialidades = [] } = useQuery({
-    queryKey: ["cat-especialidad"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("catalogos")
-        .select("valor")
-        .eq("tipo", "ESPECIALIDAD")
-        .eq("activo", true)
-        .order("valor");
-      return (data ?? []).map((d) => d.valor as string);
-    },
-  });
 
-  // Al abrir el editor, precargar las especialidades actuales.
-  useEffect(() => {
-    if (editar) {
-      setTratantes(splitEspecialidades(r.especialidades_tratantes));
-      setReceptoras(splitEspecialidades(r.especialidades_receptoras));
-    }
-  }, [editar, r.especialidades_tratantes, r.especialidades_receptoras]);
 
   const evoRes = resumenEvolucion(r.evolucion_detalle, splitEspecialidades(r.especialidades_tratantes));
   const evo = evolucionMeta[evoRes.estado];
