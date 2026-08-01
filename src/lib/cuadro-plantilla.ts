@@ -80,9 +80,14 @@ export async function construirCuadroTHFR10(p: BuildParams): Promise<string> {
     ws.getRow(rTurno).hidden = false;
     ws.getRow(rHoras).hidden = false;
 
-    ws.getCell(`B${rTurno}`).value = fila.nombre.toUpperCase();
+    const celdaNombre = ws.getCell(`B${rTurno}`);
+    celdaNombre.value = fila.nombre.toUpperCase();
+    celdaNombre.alignment = { horizontal: "center", vertical: "middle", shrinkToFit: true };
     const detalle = [fila.cargo?.trim(), fila.sede?.trim()].filter(Boolean).join(" · ");
-    ws.getCell(`B${rHoras}`).value = detalle || null;
+    const celdaDetalle = ws.getCell(`B${rHoras}`);
+    celdaDetalle.value = detalle || null;
+    celdaDetalle.alignment = { horizontal: "center", vertical: "middle", shrinkToFit: true };
+    celdaDetalle.font = { ...(celdaDetalle.font ?? {}), size: 7, bold: false };
 
     for (let d = 1; d <= MAX_DIAS; d++) {
       const col = COL_DIA_1 + d - 1;
