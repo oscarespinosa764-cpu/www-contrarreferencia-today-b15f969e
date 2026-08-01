@@ -119,7 +119,60 @@ function BloqueContacto({
         {CONTACTO_TIPO_LABEL[tipo]}
       </legend>
 
-      {tipo === "FAMILIAR_PACIENTE" ? (
+      {tipo === "FUNCIONARIO_SERVICIO" ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Campo
+            id={`${pre}_nombre`}
+            label="Nombre del funcionario *"
+            value={value.nombre ?? ""}
+            onChange={(v) => set({ nombre: v })}
+            max={160}
+          />
+          <Campo
+            id={`${pre}_cargo`}
+            label="Cargo del funcionario *"
+            value={value.cargo ?? ""}
+            onChange={(v) => set({ cargo: v })}
+            max={160}
+          />
+          <div className="space-y-1.5">
+            <Label htmlFor={`${pre}_servicio`} className={labelCls}>
+              Servicio *
+            </Label>
+            <Select
+              value={value.servicioCodigo ?? ""}
+              onValueChange={(v) =>
+                set({ servicioCodigo: v, servicioOtro: v === "OTRO" ? value.servicioOtro : "" })
+              }
+            >
+              <SelectTrigger id={`${pre}_servicio`} className="w-full">
+                <SelectValue placeholder="Seleccionar…" />
+              </SelectTrigger>
+              <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
+                {SERVICIOS_FUNCIONARIO.map((s) => (
+                  <SelectItem
+                    key={s.codigo}
+                    value={s.codigo}
+                    className="whitespace-normal [overflow-wrap:anywhere]"
+                  >
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {value.servicioCodigo === "OTRO" && (
+            <Campo
+              id={`${pre}_servicio_otro`}
+              label="¿Cuál servicio? *"
+              value={value.servicioOtro ?? ""}
+              onChange={(v) => set({ servicioOtro: v })}
+              max={100}
+            />
+          )}
+        </div>
+      ) : tipo === "FAMILIAR_PACIENTE" ? (
+
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Selector
             id={`${pre}_comunicacion`}
