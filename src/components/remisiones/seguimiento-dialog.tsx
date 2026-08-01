@@ -1747,6 +1747,12 @@ export function SeguimientoDialog({
           : `SE REALIZA CAMBIO DE UBICACIÓN DEL PACIENTE, QUIEN PASA DE LA UNIDAD DE ${uAnt}, SIN CAMA PREVIAMENTE REGISTRADA, A LA UNIDAD DE ${uNue}, CAMA ${cNue}. SE ACTUALIZA LA INFORMACIÓN DEL CASO Y SE DEJA TRAZABILIDAD PARA LA CONTINUIDAD DEL PROCESO DE REMISIÓN.`;
         break;
       }
+      case CLAVE_CAMBIO_MOTIVO: {
+        const mAnt = (caso?.remision_por ?? "").trim().toUpperCase() || "[MOTIVO ANTERIOR]";
+        const mNue = cambioMotivo.nuevoMotivo || "[NUEVO MOTIVO]";
+        base = `SE REGISTRA NOVEDAD DE CAMBIO EN EL MOTIVO DE REMISIÓN. MOTIVO ANTERIOR: ${mAnt}. NUEVO MOTIVO: ${mNue}. JUSTIFICACIÓN: ${cambioMotivo.justificacion.trim() || "[JUSTIFICACIÓN]"}. SE CONSERVA EL CASO, SU HISTORIAL Y LA TRAZABILIDAD DE LA GESTIÓN.`;
+        break;
+      }
       case T.ENTREGA_DOC:
         base = "";
         break;
