@@ -718,6 +718,67 @@ export function PhdSeguimientoDialog({
               />
             )}
 
+            {evento === "NOVEDADES" && (
+              <div className="space-y-3">
+                <NovedadSubtipoSelector
+                  modulo="DOMICILIARIA"
+                  value={novSubtipo}
+                  onChange={(v) => {
+                    setNovSubtipo(v);
+                    setModalidadV(GESTION_MODALIDAD_INICIAL);
+                    setNuevaUnidad("");
+                    setNuevaCama("");
+                  }}
+                />
+                {novSubtipo === "CAMBIO_UNIDAD" && (
+                  <div className="space-y-3 rounded-md border p-3">
+                    <p className="text-xs text-muted-foreground">
+                      UBICACIÓN ACTUAL:{" "}
+                      <span className="font-medium">
+                        {ubicacion.servicio || "SIN UNIDAD"} · CAMA {ubicacion.cama || "—"}
+                      </span>
+                    </p>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Nueva unidad *</Label>
+                        <Select value={nuevaUnidad} onValueChange={setNuevaUnidad}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar…" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {unidades.map((u) => (
+                              <SelectItem key={u} value={u}>
+                                {u}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Nueva cama *</Label>
+                        <Input
+                          value={nuevaCama}
+                          maxLength={30}
+                          onChange={(e) => setNuevaCama(e.target.value.toUpperCase())}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      El cambio de unidad no modifica las modalidades ni el estado del ciclo.
+                    </p>
+                  </div>
+                )}
+                {novSubtipo === "GESTION_MODALIDAD" && (
+                  <GestionModalidadFields
+                    modalidadesActivas={req.tipos as string[]}
+                    value={modalidadV}
+                    onChange={setModalidadV}
+                    bloqueoAmbulancia={req.ambulanciaCoordinada}
+                  />
+                )}
+              </div>
+            )}
+
             {requiereDescripcion && (
               <div className="space-y-1.5">
                 <Label className="text-xs">Descripción *</Label>
