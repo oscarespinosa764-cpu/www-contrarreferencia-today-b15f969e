@@ -25,12 +25,15 @@ import {
   COMUNICACION_CON,
   MAX_CONTACTOS,
   MSG_MAX_CONTACTOS,
+  SERVICIOS_FUNCIONARIO,
   SERVICIOS_PRESENCIAL,
+  canalUsaContactos,
   cargosDe,
   type CanalGestionValue,
   type ContactoDetalle,
   type ContactoTipo,
 } from "@/lib/canal-gestion";
+
 
 const labelCls = "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
 
@@ -116,7 +119,60 @@ function BloqueContacto({
         {CONTACTO_TIPO_LABEL[tipo]}
       </legend>
 
-      {tipo === "FAMILIAR_PACIENTE" ? (
+      {tipo === "FUNCIONARIO_SERVICIO" ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Campo
+            id={`${pre}_nombre`}
+            label="Nombre del funcionario *"
+            value={value.nombre ?? ""}
+            onChange={(v) => set({ nombre: v })}
+            max={160}
+          />
+          <Campo
+            id={`${pre}_cargo`}
+            label="Cargo del funcionario *"
+            value={value.cargo ?? ""}
+            onChange={(v) => set({ cargo: v })}
+            max={160}
+          />
+          <div className="space-y-1.5">
+            <Label htmlFor={`${pre}_servicio`} className={labelCls}>
+              Servicio *
+            </Label>
+            <Select
+              value={value.servicioCodigo ?? ""}
+              onValueChange={(v) =>
+                set({ servicioCodigo: v, servicioOtro: v === "OTRO" ? value.servicioOtro : "" })
+              }
+            >
+              <SelectTrigger id={`${pre}_servicio`} className="w-full">
+                <SelectValue placeholder="Seleccionar…" />
+              </SelectTrigger>
+              <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
+                {SERVICIOS_FUNCIONARIO.map((s) => (
+                  <SelectItem
+                    key={s.codigo}
+                    value={s.codigo}
+                    className="whitespace-normal [overflow-wrap:anywhere]"
+                  >
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {value.servicioCodigo === "OTRO" && (
+            <Campo
+              id={`${pre}_servicio_otro`}
+              label="¿Cuál servicio? *"
+              value={value.servicioOtro ?? ""}
+              onChange={(v) => set({ servicioOtro: v })}
+              max={100}
+            />
+          )}
+        </div>
+      ) : tipo === "FAMILIAR_PACIENTE" ? (
+
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Selector
             id={`${pre}_comunicacion`}
@@ -240,8 +296,10 @@ export function CanalGestionField({
     set({
       canales: [codigo],
       otroCual: codigo === CANAL_CODES.OTRO ? value.otroCual : "",
-      contactos: codigo === CANAL_CODES.TELEFONO ? value.contactos : [],
-      detalleContactos: codigo === CANAL_CODES.TELEFONO ? value.detalleContactos : {},
+      // TELEFÓNICO ↔ WHATSAPP comparten formulario: se conservan los datos.
+      contactos: canalUsaContactos(codigo) ? value.contactos : [],
+      detalleContactos: canalUsaContactos(codigo) ? value.detalleContactos : {},
+
       presencial:
         codigo === CANAL_CODES.PRESENCIAL
           ? value.presencial
@@ -319,7 +377,7 @@ export function CanalGestionField({
         />
       )}
 
-      {activo(CANAL_CODES.TELEFONO) && (
+      {value.canales.some(canalUsaContactos) && (
         <div className="space-y-3 rounded-lg border border-border/60 bg-muted/30 p-3">
           <p className={labelCls}>Contacto realizado con *</p>
           <div

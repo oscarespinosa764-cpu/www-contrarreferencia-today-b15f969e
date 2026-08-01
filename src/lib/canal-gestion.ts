@@ -50,7 +50,13 @@ export const CANAL_OTRO_MAX = 200;
 
 // --- Allowlists de subformularios -------------------------------------------
 
-export const CONTACTO_TIPOS = ["FAMILIAR_PACIENTE", "EAPB", "CRUE", "IPS"] as const;
+export const CONTACTO_TIPOS = [
+  "FAMILIAR_PACIENTE",
+  "EAPB",
+  "CRUE",
+  "IPS",
+  "FUNCIONARIO_SERVICIO",
+] as const;
 export type ContactoTipo = (typeof CONTACTO_TIPOS)[number];
 
 export const CONTACTO_TIPO_LABEL: Record<ContactoTipo, string> = {
@@ -58,10 +64,37 @@ export const CONTACTO_TIPO_LABEL: Record<ContactoTipo, string> = {
   EAPB: "EAPB",
   CRUE: "CRUE",
   IPS: "IPS",
+  FUNCIONARIO_SERVICIO: "FUNCIONARIO Y/O SERVICIO",
 };
+
+/** FASE 5J · Bloque B — servicios del bloque FUNCIONARIO Y/O SERVICIO. */
+export const SERVICIOS_FUNCIONARIO = [
+  { codigo: "URGENCIAS", label: "URGENCIAS" },
+  { codigo: "HOSPITALIZACION", label: "HOSPITALIZACIÓN" },
+  { codigo: "QUIROFANO", label: "QUIRÓFANO" },
+  { codigo: "UCI", label: "UCI" },
+  { codigo: "ADMISIONES_FACTURACION", label: "ADMISIONES / FACTURACIÓN" },
+  { codigo: "RESONANCIAS", label: "RESONANCIAS" },
+  { codigo: "TOMOGRAFIA", label: "TOMOGRAFÍA" },
+  { codigo: "RAYOS_X", label: "RAYOS X" },
+  { codigo: "AGENDAMIENTO", label: "AGENDAMIENTO" },
+  { codigo: "OTRO", label: "OTRO" },
+] as const;
+
+export const SERVICIOS_FUNCIONARIO_CODIGOS: string[] = SERVICIOS_FUNCIONARIO.map((s) => s.codigo);
+
+export function labelServicioFuncionario(codigo: string): string {
+  return SERVICIOS_FUNCIONARIO.find((s) => s.codigo === codigo)?.label ?? codigo;
+}
+
+/** Canales que comparten el formulario CONTACTO REALIZADO CON. */
+export function canalUsaContactos(codigo: string): boolean {
+  return codigo === CANAL_CODES.TELEFONO || codigo === CANAL_CODES.WHATSAPP;
+}
 
 export const MAX_CONTACTOS = 3;
 export const MSG_MAX_CONTACTOS = "Puede seleccionar máximo 3 tipos de contacto.";
+
 
 export const COMUNICACION_CON = [
   "PACIENTE",
@@ -116,7 +149,11 @@ export type ContactoDetalle = {
   cargo?: string;
   cargoOtro?: string;
   telefono?: string;
+  /** FUNCIONARIO_SERVICIO */
+  servicioCodigo?: string;
+  servicioOtro?: string;
 };
+
 
 export type PresencialDetalle = {
   acercamiento: string;
@@ -191,7 +228,7 @@ export function erroresCanalGestion(
     else if (t.length > CANAL_OTRO_MAX) e.push("El canal de gestión indicado es demasiado largo.");
   }
 
-  if (canales.includes(CANAL_CODES.TELEFONO)) {
+  if (canales.some(canalUsaContactos)) {
     const tipos = v.contactos.filter((t) => CONTACTO_TIPOS.includes(t));
     if (tipos.length === 0) e.push("Seleccione con quién se realizó el contacto.");
     if (new Set(tipos).size !== tipos.length) e.push("Hay tipos de contacto duplicados.");
@@ -207,6 +244,21 @@ export function erroresCanalGestion(
         if (!limpio(d.nombre)) e.push(`${et}: indique NOMBRE Y APELLIDO.`);
         if (com && com !== "PACIENTE" && !limpio(d.parentesco))
           e.push(`${et}: indique PARENTESCO.`);
+      } else if (tipo === "FUNCIONARIO_SERVICIO") {
+        const nom = limpio(d.nombre);
+        if (nom.length < 3) e.push(`${et}: indique el NOMBRE DEL FUNCIONARIO.`);
+        else if (nom.length > 160) e.push(`${et}: el nombre es demasiado largo.`);
+        const car = limpio(d.cargo);
+        if (car.length < 2) e.push(`${et}: indique el CARGO DEL FUNCIONARIO.`);
+        else if (car.length > 160) e.push(`${et}: el cargo es demasiado largo.`);
+        const serv = limpio(d.servicioCodigo);
+        if (!serv || !SERVICIOS_FUNCIONARIO_CODIGOS.includes(serv))
+          e.push(`${et}: seleccione el SERVICIO.`);
+        if (serv === "OTRO") {
+          const otro = limpio(d.servicioOtro);
+          if (otro.length < 2) e.push(`${et}: indique ¿CUÁL SERVICIO?`);
+          else if (otro.length > 100) e.push(`${et}: el servicio indicado es demasiado largo.`);
+        }
       } else {
         if (tipo === "IPS" && !limpio(d.nombreIps)) e.push("IPS: indique NOMBRE DE IPS.");
         if (!limpio(d.nombre)) e.push(`${et}: indique NOMBRE Y APELLIDO.`);
@@ -217,6 +269,7 @@ export function erroresCanalGestion(
       }
     }
   }
+
 
   if (canales.includes(CANAL_CODES.PRESENCIAL)) {
     const p = v.presencial;
@@ -272,6 +325,18 @@ function contactoLimpio(tipo: ContactoTipo, d: ContactoDetalle) {
     if (limpio(d.comunicacion) === "OTRO") put("comunicacion_otro", d.comunicacionOtro);
     put("nombre_apellido", d.nombre);
     if (limpio(d.comunicacion) !== "PACIENTE") put("parentesco", d.parentesco);
+  } else if (tipo === "FUNCIONARIO_SERVICIO") {
+    put("nombre_apellido", d.nombre);
+    put("cargo", d.cargo);
+    const cod = limpio(d.servicioCodigo).toUpperCase();
+    if (SERVICIOS_FUNCIONARIO_CODIGOS.includes(cod)) {
+      base.servicio_codigo = cod;
+      base.servicio_nombre = labelServicioFuncionario(cod);
+      if (cod === "OTRO") {
+        const otro = limpio(d.servicioOtro).slice(0, 100).toUpperCase();
+        if (otro) base.servicio_otro = otro;
+      }
+    }
   } else {
     if (tipo === "IPS") put("nombre_ips", d.nombreIps);
     put("nombre_apellido", d.nombre);
@@ -290,12 +355,15 @@ export function canalGestionPersist(v: CanalGestionValue) {
   const canales = v.canales.filter((c) => CANALES_GESTION_CODIGOS.includes(c));
   const detalle: Record<string, unknown> = {};
 
-  if (canales.includes(CANAL_CODES.TELEFONO)) {
+  if (canales.some(canalUsaContactos)) {
     const orden = CONTACTO_TIPOS.filter((t) => v.contactos.includes(t));
-    detalle.contacto_telefonico = {
+    const bloque = {
       contactos: orden.map((t) => contactoLimpio(t, v.detalleContactos[t] ?? {})),
     };
+    if (canales.includes(CANAL_CODES.TELEFONO)) detalle.contacto_telefonico = bloque;
+    if (canales.includes(CANAL_CODES.WHATSAPP)) detalle.mensajeria_whatsapp = bloque;
   }
+
   if (canales.includes(CANAL_CODES.PRESENCIAL)) {
     const p = v.presencial;
     const ac = limpio(p.acercamiento).toUpperCase();
@@ -371,7 +439,7 @@ export function leerCanalGestion(detalles: unknown, canalLegacy?: unknown): Cana
 
 const LABEL_COMUNICACION = "Comunicación con";
 
-function lineasContacto(c: Record<string, unknown>): string[] {
+function lineasContacto(c: Record<string, unknown>, canal: string): string[] {
   const g = (k: string) => {
     const val = c[k];
     return typeof val === "string" && val.trim() ? val.trim() : "";
@@ -383,6 +451,18 @@ function lineasContacto(c: Record<string, unknown>): string[] {
     if (com) out.push(`${LABEL_COMUNICACION}: ${com}.`);
     if (g("nombre_apellido")) out.push(`Nombre y apellido: ${g("nombre_apellido")}.`);
     if (g("parentesco")) out.push(`Parentesco: ${g("parentesco")}.`);
+  } else if (tipo === "FUNCIONARIO_SERVICIO") {
+    const serv = g("servicio_codigo") === "OTRO" ? g("servicio_otro") : g("servicio_nombre");
+    const accion =
+      canal === CANAL_CODES.WHATSAPP
+        ? "SE REALIZA GESTIÓN MEDIANTE MENSAJERÍA INSTANTÁNEA (WHATSAPP) CON"
+        : "SE REALIZA CONTACTO TELEFÓNICO CON";
+    out.push(
+      `${accion} ${g("nombre_apellido")}, QUIEN SE DESEMPEÑA COMO ${g("cargo")} EN EL SERVICIO DE ${serv}.`,
+    );
+    out.push(`Nombre del funcionario: ${g("nombre_apellido")}.`);
+    out.push(`Cargo del funcionario: ${g("cargo")}.`);
+    if (serv) out.push(`Servicio: ${serv}.`);
   } else {
     if (g("nombre_ips")) out.push(`Nombre de IPS: ${g("nombre_ips")}.`);
     if (g("nombre_apellido")) out.push(`Nombre y apellido: ${g("nombre_apellido")}.`);
@@ -420,9 +500,14 @@ export function plantillaCanalGestion(
       : `CANAL DE GESTIÓN: ${labels[0]}.`,
   ];
 
-  const tel = det.contacto_telefonico as { contactos?: Record<string, unknown>[] } | undefined;
-  if (tel?.contactos?.length) {
-    const orden = CONTACTO_TIPOS.map((t) => tel.contactos!.find((c) => c.tipo === t)).filter(
+  const bloques: Array<[string, unknown]> = [
+    [CANAL_CODES.TELEFONO, det.contacto_telefonico],
+    [CANAL_CODES.WHATSAPP, det.mensajeria_whatsapp],
+  ];
+  for (const [canal, raw] of bloques) {
+    const blk = raw as { contactos?: Record<string, unknown>[] } | undefined;
+    if (!blk?.contactos?.length) continue;
+    const orden = CONTACTO_TIPOS.map((t) => blk.contactos!.find((c) => c.tipo === t)).filter(
       Boolean,
     ) as Record<string, unknown>[];
     out.push(
@@ -431,10 +516,11 @@ export function plantillaCanalGestion(
       )}.`,
     );
     for (const c of orden) {
-      const l = lineasContacto(c);
+      const l = lineasContacto(c, canal);
       if (l.length) out.push("", ...l);
     }
   }
+
 
   const pres = det.presencial as Record<string, unknown> | undefined;
   if (pres) {
