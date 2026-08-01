@@ -296,8 +296,10 @@ export function CanalGestionField({
     set({
       canales: [codigo],
       otroCual: codigo === CANAL_CODES.OTRO ? value.otroCual : "",
-      contactos: codigo === CANAL_CODES.TELEFONO ? value.contactos : [],
-      detalleContactos: codigo === CANAL_CODES.TELEFONO ? value.detalleContactos : {},
+      // TELEFÓNICO ↔ WHATSAPP comparten formulario: se conservan los datos.
+      contactos: canalUsaContactos(codigo) ? value.contactos : [],
+      detalleContactos: canalUsaContactos(codigo) ? value.detalleContactos : {},
+
       presencial:
         codigo === CANAL_CODES.PRESENCIAL
           ? value.presencial
