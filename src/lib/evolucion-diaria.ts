@@ -229,9 +229,10 @@ export function resolverCumplimientoEvolucionDiaria(
   const especialidades_evolucionadas = requeridasEsp.filter((e) => evolucionadasSet.has(e));
   const especialidades_pendientes = requeridasEsp.filter((e) => !evolucionadasSet.has(e));
 
-  // --- Excepción canónica NUEVA EPS + RED NO CONTRATADA (Fase 5E · C.6) -----
+  // --- Excepción canónica NUEVA EPS + RED NO CONTRATADA (Fase 5E · C.7) -----
   // La excepción NO depende de lo que el usuario ya seleccionó: depende solo
-  // del contexto canónico y de ¿PLATAFORMA EAPB FUNCIONANDO?
+  // del contexto canónico, de ¿PLATAFORMA EAPB FUNCIONANDO? y de la regla
+  // configurable por especialidad (catálogo, nunca hardcodeada).
   const excepcionElegible =
     i.esNuevaEps === true &&
     i.esRedNoContratada === true &&
@@ -246,19 +247,31 @@ export function resolverCumplimientoEvolucionDiaria(
   let requeridos_final = requeridos;
 
   if (excepcionElegible && i.plataformaFuncionando === true) {
-    // Solo PLATAFORMA WEB es válida; CORREO queda exento y deshabilitado.
     excepcion_aplicada = "NUEVA_EPS_RED_NO_CONTRATADA";
-    variante_excepcion = "PLATAFORMA_FUNCIONANDO";
-    variante_indigo = "EXCEPCION_PLATAFORMA";
-    canales_exentos.push(C);
-    canales_bloqueados.push(C);
-    requeridos_final = [P];
+    if (i.especialidadRequiereCorreoAdicional === true) {
+      // Regla especial por especialidad: se exigen AMBOS canales.
+      variante_excepcion = "DOBLE_CANAL_POR_ESPECIALIDAD";
+      requeridos_final = [C, P];
+    } else {
+      // Solo PLATAFORMA WEB es válida; CORREO queda exento y deshabilitado.
+      variante_excepcion = "SOLO_PLATAFORMA";
+      variante_indigo = "EXCEPCION_PLATAFORMA";
+      canales_exentos.push(C);
+      canales_bloqueados.push(C);
+      requeridos_final = [P];
+    }
   } else if (excepcionElegible && i.plataformaFuncionando === false) {
-    // Solo CORREO es válido; PLATAFORMA queda exenta pero pendiente por falla.
+    // Solo CORREO puede registrarse; PLATAFORMA queda PENDIENTE POR FALLA
+    // (nunca exenta): el cumplimiento no puede quedar completo.
     excepcion_aplicada = "NUEVA_EPS_RED_NO_CONTRATADA";
     variante_excepcion = "PLATAFORMA_CAIDA";
     variante_indigo = "EXCEPCION_CORREO";
-    canales_exentos.push(P);
+    canales_bloqueados.push(P);
+  }
+
+  // Regla global (con o sin excepción): plataforma declarada como no funcional
+  // se bloquea para selección y permanece pendiente.
+  if (i.plataformaRequerida && i.plataformaFuncionando === false && !canales_bloqueados.includes(P)) {
     canales_bloqueados.push(P);
   }
 
@@ -273,11 +286,13 @@ export function resolverCumplimientoEvolucionDiaria(
       "No puede registrar PLATAFORMA WEB como realizada cuando indicó que la plataforma no está funcionando.",
     );
   }
-  if (excepcion_aplicada && canales_bloqueados.some((c) => realizadosSet.has(c))) {
+  if (
+    excepcion_aplicada === "NUEVA_EPS_RED_NO_CONTRATADA" &&
+    variante_excepcion === "SOLO_PLATAFORMA" &&
+    realizadosSet.has(C)
+  ) {
     errores.push(
-      variante_excepcion === "PLATAFORMA_FUNCIONANDO"
-        ? "En este caso (NUEVA EPS · RED NO CONTRATADA) con plataforma funcionando solo aplica PLATAFORMA WEB."
-        : "En este caso (NUEVA EPS · RED NO CONTRATADA) con plataforma en falla solo aplica CORREO ELECTRÓNICO.",
+      "En este caso (NUEVA EPS · RED NO CONTRATADA) con plataforma funcionando solo aplica PLATAFORMA WEB.",
     );
   }
   if (i.plataformaRequerida && i.plataformaFuncionando == null) {
@@ -288,7 +303,11 @@ export function resolverCumplimientoEvolucionDiaria(
   }
 
   const plataforma_pendiente_por_falla =
-    i.plataformaRequerida === true && i.plataformaFuncionando === false && !realizadosSet.has(P);
+    i.plataformaRequerida === true &&
+    i.plataformaFuncionando === false &&
+    !realizadosSet.has(P) &&
+    requeridos_final.includes(P);
+
 
   let motivo_pendiente: string | null =
     (i.motivoPendiente ?? "").trim().toUpperCase() || null;
