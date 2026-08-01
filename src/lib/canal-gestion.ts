@@ -325,6 +325,18 @@ function contactoLimpio(tipo: ContactoTipo, d: ContactoDetalle) {
     if (limpio(d.comunicacion) === "OTRO") put("comunicacion_otro", d.comunicacionOtro);
     put("nombre_apellido", d.nombre);
     if (limpio(d.comunicacion) !== "PACIENTE") put("parentesco", d.parentesco);
+  } else if (tipo === "FUNCIONARIO_SERVICIO") {
+    put("nombre_apellido", d.nombre);
+    put("cargo", d.cargo);
+    const cod = limpio(d.servicioCodigo).toUpperCase();
+    if (SERVICIOS_FUNCIONARIO_CODIGOS.includes(cod)) {
+      base.servicio_codigo = cod;
+      base.servicio_nombre = labelServicioFuncionario(cod);
+      if (cod === "OTRO") {
+        const otro = limpio(d.servicioOtro).slice(0, 100).toUpperCase();
+        if (otro) base.servicio_otro = otro;
+      }
+    }
   } else {
     if (tipo === "IPS") put("nombre_ips", d.nombreIps);
     put("nombre_apellido", d.nombre);
@@ -343,12 +355,15 @@ export function canalGestionPersist(v: CanalGestionValue) {
   const canales = v.canales.filter((c) => CANALES_GESTION_CODIGOS.includes(c));
   const detalle: Record<string, unknown> = {};
 
-  if (canales.includes(CANAL_CODES.TELEFONO)) {
+  if (canales.some(canalUsaContactos)) {
     const orden = CONTACTO_TIPOS.filter((t) => v.contactos.includes(t));
-    detalle.contacto_telefonico = {
+    const bloque = {
       contactos: orden.map((t) => contactoLimpio(t, v.detalleContactos[t] ?? {})),
     };
+    if (canales.includes(CANAL_CODES.TELEFONO)) detalle.contacto_telefonico = bloque;
+    if (canales.includes(CANAL_CODES.WHATSAPP)) detalle.mensajeria_whatsapp = bloque;
   }
+
   if (canales.includes(CANAL_CODES.PRESENCIAL)) {
     const p = v.presencial;
     const ac = limpio(p.acercamiento).toUpperCase();
