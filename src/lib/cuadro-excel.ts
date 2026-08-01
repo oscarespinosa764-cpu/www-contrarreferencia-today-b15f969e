@@ -91,8 +91,27 @@ function construirLibro(p: BuildParams): XLSX.WorkBook {
   return wb;
 }
 
-/** Descarga la PLANTILLA oficial TH-FR-10 del mes/año (vacía). */
-export function exportarPlantillaCuadro(params: {
+// ---------------------------------------------------------------------------
+// Formato OFICIAL TH-FR-10 (plantilla institucional real con logos y estilos)
+// ---------------------------------------------------------------------------
+
+function descargarBase64(b64: string, nombre: string) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const url = URL.createObjectURL(
+    new Blob([bytes], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }),
+  );
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nombre;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+interface OficialParams {
   anio: number;
   mes: number;
   members: ShiftMember[];
@@ -100,23 +119,65 @@ export function exportarPlantillaCuadro(params: {
   tipos: ShiftType[];
   baseHoras?: number;
   responsable?: string;
-}) {
-  const wb = construirLibro({ ...params, incluirDatos: false });
-  XLSX.writeFile(wb, `TH-FR-10_Plantilla_${MESES[params.mes - 1]}_${params.anio}.xlsx`);
+  elaboradoNombre?: string;
+  elaboradoCargo?: string;
+}
+
+async function generarOficial(p: OficialParams, incluirDatos: boolean) {
+  const { construirCuadroTHFR10, MAX_COLABORADORES } = await import("@/lib/cuadro-plantilla");
+  const dayMap = new Map<string, ShiftDay>();
+  for (const d of p.days) dayMap.set(`${d.member_id}:${d.day_number}`, d);
+
+  const activos = p.members.filter((m) => m.active !== false);
+  if (activos.length > MAX_COLABORADORES) {
+    throw new Error(
+      `El formato TH-FR-10 admite hasta ${MAX_COLABORADORES} colaboradores por hoja.`,
+    );
+  }
+
+  const filas = activos.map((m) => {
+    const turnos: Record<number, { code: string; hours: number | null }> = {};
+    if (incluirDatos) {
+      for (let d = 1; d <= 31; d++) {
+        const cd = dayMap.get(`${m.id}:${d}`);
+        if (cd?.shift_code) turnos[d] = { code: cd.shift_code, hours: cd.hours ?? null };
+      }
+    }
+    return { nombre: m.full_name || "", cargo: m.role_name, sede: m.sede, turnos };
+  });
+
+  return construirCuadroTHFR10({
+    anio: p.anio,
+    mes: p.mes,
+    nombreMes: MESES[p.mes - 1],
+    letraDia: (d) => letraDiaSemana(p.anio, p.mes, d),
+    baseHoras: p.baseHoras ?? 176,
+    responsable: p.responsable ?? null,
+    elaboradoNombre: p.elaboradoNombre ?? null,
+    elaboradoCargo: p.elaboradoCargo ?? null,
+    filas,
+    convenciones: p.tipos
+      .filter((t) => t.active !== false)
+      .map((t) => ({
+        code: t.code,
+        name: t.name,
+        inicio: t.start_time,
+        fin: t.end_time,
+        horas: t.hours ?? null,
+      })),
+  });
+}
+
+/** Descarga la PLANTILLA oficial TH-FR-10 con el personal real (sin turnos). */
+export async function exportarPlantillaCuadro(params: OficialParams) {
+  const b64 = await generarOficial(params, false);
+  descargarBase64(b64, `TH-FR-10_Plantilla_${MESES[params.mes - 1]}_${params.anio}.xlsx`);
 }
 
 /** Descarga el CUADRO MENSUAL diligenciado en el formato oficial TH-FR-10. */
-export function exportarCuadroMensual(params: {
-  anio: number;
-  mes: number;
-  members: ShiftMember[];
-  days: ShiftDay[];
-  tipos: ShiftType[];
-  baseHoras?: number;
-  responsable?: string;
-}) {
-  const wb = construirLibro({ ...params, incluirDatos: true });
-  XLSX.writeFile(wb, `TH-FR-10_Cuadro_${MESES[params.mes - 1]}_${params.anio}.xlsx`);
+export async function exportarCuadroMensual(params: OficialParams) {
+  const b64 = await generarOficial(params, true);
+  descargarBase64(b64, `TH-FR-10_Cuadro_${MESES[params.mes - 1]}_${params.anio}.xlsx`);
 }
 
 export interface ImportResultado {
