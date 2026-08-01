@@ -55,6 +55,19 @@ const modalidadSchema = z.object({
   canales: canalesSchema,
 });
 
+// D-1 · CAMBIO DE ESPECIALIDAD: el cliente solo envía intención (qué agregar y
+// qué cerrar). El servidor lee las especialidades reales, valida contra el
+// catálogo y calcula antes/después. Nunca acepta snapshots del navegador.
+const especialidadSchema = z.object({
+  casoId: z.string().uuid(),
+  agregar: z.array(z.string().trim().min(2).max(120)).max(20).default([]),
+  cerrar: z.array(z.string().trim().min(2).max(120)).max(20).default([]),
+  observaciones: z.string().trim().max(1000).nullable().optional(),
+  plantilla: z.string().trim().max(20000).nullable().optional(),
+  canales: canalesSchema,
+});
+
+
 type RpcFn = (
   name: string,
   args: Record<string, unknown>,
