@@ -84,6 +84,18 @@ import {
 } from "./seguimiento-historicos";
 
 
+import {
+  NovedadSubtipoSelector,
+  GestionModalidadFields,
+  GESTION_MODALIDAD_INICIAL,
+  type NovedadSubtipo,
+  type GestionModalidadValue,
+} from "./novedades-fields";
+import {
+  novedadCambioUnidad,
+  novedadGestionModalidad,
+} from "@/lib/novedades.functions";
+
 const CON_DESCRIPCION = ["NOVEDADES", "OTRO"];
 
 type Props = {
