@@ -1086,10 +1086,15 @@ export function UsuariosPanel() {
                           <Input
                             id="cm-pass"
                             type={mostrarPass ? "text" : "password"}
+                            uppercase={false}
+                            autoComplete="new-password"
+                            autoCapitalize="none"
+                            autoCorrect="off"
+                            spellCheck={false}
                             value={nuevoPass}
                             onChange={(e) => setNuevoPass(e.target.value)}
                             placeholder="Mín. 10, Mayús/minús/número/símbolo"
-                            className="pr-9"
+                            className="pr-9 normal-case"
                           />
                           <button
                             type="button"
@@ -1106,6 +1111,12 @@ export function UsuariosPanel() {
                         <Input
                           id="cm-pass2"
                           type={mostrarPass ? "text" : "password"}
+                          uppercase={false}
+                          autoComplete="new-password"
+                          autoCapitalize="none"
+                          autoCorrect="off"
+                          spellCheck={false}
+                          className="normal-case"
                           value={confirmarPass}
                           onChange={(e) => setConfirmarPass(e.target.value)}
                         />
