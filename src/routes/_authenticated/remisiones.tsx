@@ -768,7 +768,19 @@ function RemisionesPage() {
           </TabsContent>
 
           <TabsContent value="internas" className="pt-4">
+            {canEdit && (
+              <div className="mb-3 flex justify-end">
+                <Button
+                  variant="outline"
+                  className="rounded-full"
+                  onClick={() => setMultipleOpen(true)}
+                >
+                  <QrCode className="mr-1.5 h-4 w-4" /> Traslado múltiple TAB
+                </Button>
+              </div>
+            )}
             <ListaInternas items={internas ?? []} canEdit={canEdit} ultGestiones={ultGestiones} />
+
           </TabsContent>
 
 
