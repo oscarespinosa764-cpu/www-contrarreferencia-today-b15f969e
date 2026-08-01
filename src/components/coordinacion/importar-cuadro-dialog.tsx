@@ -1,5 +1,4 @@
 import { useRef, useState } from "react";
-import * as XLSX from "xlsx";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
@@ -44,6 +43,27 @@ export function ImportarCuadroDialog({
     },
   });
 
+  // Personal real del periodo seleccionado (para prellenar la plantilla oficial).
+  const { data: personal = [] } = useQuery({
+    queryKey: ["cuadro-personal", anio, mes],
+    queryFn: async () => {
+      const { data: sch } = await supabase
+        .from("shift_schedules")
+        .select("id")
+        .eq("year", anio).eq("month", mes).eq("dependency", DEPENDENCY)
+        .maybeSingle();
+      if (!sch) return [] as ShiftMember[];
+      const { data } = await supabase
+        .from("shift_schedule_members")
+        .select(
+          "id, schedule_id, user_id, full_name, role_name, sede, active, base_hours, pending_hours, notes, sort_order",
+        )
+        .eq("schedule_id", sch.id)
+        .order("sort_order");
+      return (data ?? []) as unknown as ShiftMember[];
+    },
+  });
+
   const reset = () => {
     setArchivo(null);
     if (inputRef.current) inputRef.current.value = "";
@@ -53,8 +73,12 @@ export function ImportarCuadroDialog({
     onOpenChange(v);
   };
 
-  const descargarPlantilla = () => {
-    exportarPlantillaCuadro({ anio, mes, members: [], days: [], tipos });
+  const descargarPlantilla = async () => {
+    try {
+      await exportarPlantillaCuadro({ anio, mes, members: personal, days: [], tipos });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo generar la plantilla.");
+    }
   };
 
   const importar = async () => {

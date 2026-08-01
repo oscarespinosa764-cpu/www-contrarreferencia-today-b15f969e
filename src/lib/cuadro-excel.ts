@@ -1,12 +1,11 @@
-// Importación / exportación BAJO DEMANDA del Cuadro de Turno TH-FR-10 (SheetJS).
+// Importación / exportación BAJO DEMANDA del Cuadro de Turno TH-FR-10.
 //
-// El layout replica el formato REAL "TH-FR-10 Cuadro de Turnos":
-//   - Bloque institucional (código / versión / periodo).
-//   - Encabezado: Colaborador | Cargo | Sede | días 1..N.
-//   - Una fila por colaborador con el código de convención por día.
-//   - Hoja "Convenciones" (Código | Nombre | Horas).
+// La descarga usa la PLANTILLA INSTITUCIONAL REAL (ver cuadro-plantilla.ts):
+// conserva logos, encabezado, bordes, convenciones y configuración de impresión
+// del formato oficial, y solo escribe los datos del periodo.
+// La importación acepta ese mismo archivo (round-trip).
 //
-// Los archivos se generan/parsean 100% en memoria en el navegador.
+// Todo se genera/parsea 100% en memoria en el navegador.
 
 import * as XLSX from "xlsx";
 import { supabase } from "@/lib/backend-client";
@@ -15,84 +14,28 @@ import {
   type ShiftType, type ShiftMember, type ShiftDay,
 } from "@/lib/cuadro-turno-utils";
 
-const INSTITUCION = "CENTRO DE IMAGENES DIAGNOSTICAS CEDIM I.P.S S.A.S";
 
-interface BuildParams {
-  anio: number;
-  mes: number;
-  members: ShiftMember[];
-  days: ShiftDay[];
-  tipos: ShiftType[];
-  incluirDatos: boolean; // true = cuadro lleno; false = plantilla vacía
+// ---------------------------------------------------------------------------
+// Formato OFICIAL TH-FR-10 (plantilla institucional real con logos y estilos)
+// ---------------------------------------------------------------------------
+
+function descargarBase64(b64: string, nombre: string) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const url = URL.createObjectURL(
+    new Blob([bytes], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }),
+  );
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nombre;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
-function construirLibro(p: BuildParams): XLSX.WorkBook {
-  const { anio, mes, members, days, tipos, incluirDatos } = p;
-  const ndias = diasDelMes(anio, mes);
-
-  const dayMap = new Map<string, ShiftDay>();
-  for (const d of days) dayMap.set(`${d.member_id}:${d.day_number}`, d);
-
-  const aoa: (string | number)[][] = [];
-  aoa.push(["SISTEMA DE GESTIÓN — TALENTO HUMANO"]);
-  aoa.push([INSTITUCION]);
-  aoa.push(["Formato — Cuadro de turno mensual"]);
-  aoa.push(["Código: TH-FR-10   Versión: 2"]);
-  aoa.push([`Periodo: ${MESES[mes - 1]} ${anio}`]);
-  aoa.push([
-    "Instrucciones: escriba el código de convención en la celda del día. Deje vacío para descanso/sin turno.",
-  ]);
-  aoa.push([]); // fila 7 en blanco
-
-  // Encabezado (fila 8)
-  const header: (string | number)[] = ["Colaborador", "Cargo", "Sede"];
-  for (let d = 1; d <= ndias; d++) header.push(d);
-  aoa.push(header);
-
-  // Sub-encabezado: letra del día de la semana (fila 9)
-  const dow: (string | number)[] = ["", "", ""];
-  for (let d = 1; d <= ndias; d++) dow.push(letraDiaSemana(anio, mes, d));
-  aoa.push(dow);
-
-  // Una fila por colaborador
-  const lista = members.length > 0 ? members : [];
-  for (const m of lista) {
-    const row: (string | number)[] = [m.full_name || "", m.role_name || "", m.sede || ""];
-    for (let d = 1; d <= ndias; d++) {
-      if (incluirDatos) {
-        const cd = dayMap.get(`${m.id}:${d}`);
-        row.push(cd?.shift_code ?? "");
-      } else {
-        row.push("");
-      }
-    }
-    aoa.push(row);
-  }
-
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws["!cols"] = [
-    { wch: 28 }, // Colaborador
-    { wch: 22 }, // Cargo
-    { wch: 14 }, // Sede
-    ...Array.from({ length: ndias }, () => ({ wch: 4 })),
-  ];
-
-  // Hoja de convenciones
-  const conv: (string | number)[][] = [["CONVENCIONES"], ["Código", "Nombre", "Horas"]];
-  for (const t of tipos.filter((x) => x.active !== false)) {
-    conv.push([t.code, t.name, t.hours ?? 0]);
-  }
-  const wsConv = XLSX.utils.aoa_to_sheet(conv);
-  wsConv["!cols"] = [{ wch: 10 }, { wch: 26 }, { wch: 8 }];
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "TH-FR-10");
-  XLSX.utils.book_append_sheet(wb, wsConv, "Convenciones");
-  return wb;
-}
-
-/** Descarga la PLANTILLA oficial TH-FR-10 del mes/año (vacía). */
-export function exportarPlantillaCuadro(params: {
+interface OficialParams {
   anio: number;
   mes: number;
   members: ShiftMember[];
@@ -100,23 +43,65 @@ export function exportarPlantillaCuadro(params: {
   tipos: ShiftType[];
   baseHoras?: number;
   responsable?: string;
-}) {
-  const wb = construirLibro({ ...params, incluirDatos: false });
-  XLSX.writeFile(wb, `TH-FR-10_Plantilla_${MESES[params.mes - 1]}_${params.anio}.xlsx`);
+  elaboradoNombre?: string;
+  elaboradoCargo?: string;
+}
+
+async function generarOficial(p: OficialParams, incluirDatos: boolean) {
+  const { construirCuadroTHFR10, MAX_COLABORADORES } = await import("@/lib/cuadro-plantilla");
+  const dayMap = new Map<string, ShiftDay>();
+  for (const d of p.days) dayMap.set(`${d.member_id}:${d.day_number}`, d);
+
+  const activos = p.members.filter((m) => m.active !== false);
+  if (activos.length > MAX_COLABORADORES) {
+    throw new Error(
+      `El formato TH-FR-10 admite hasta ${MAX_COLABORADORES} colaboradores por hoja.`,
+    );
+  }
+
+  const filas = activos.map((m) => {
+    const turnos: Record<number, { code: string; hours: number | null }> = {};
+    if (incluirDatos) {
+      for (let d = 1; d <= 31; d++) {
+        const cd = dayMap.get(`${m.id}:${d}`);
+        if (cd?.shift_code) turnos[d] = { code: cd.shift_code, hours: cd.hours ?? null };
+      }
+    }
+    return { nombre: m.full_name || "", cargo: m.role_name, sede: m.sede, turnos };
+  });
+
+  return construirCuadroTHFR10({
+    anio: p.anio,
+    mes: p.mes,
+    nombreMes: MESES[p.mes - 1],
+    letraDia: (d) => letraDiaSemana(p.anio, p.mes, d),
+    baseHoras: p.baseHoras ?? 176,
+    responsable: p.responsable ?? null,
+    elaboradoNombre: p.elaboradoNombre ?? null,
+    elaboradoCargo: p.elaboradoCargo ?? null,
+    filas,
+    convenciones: p.tipos
+      .filter((t) => t.active !== false)
+      .map((t) => ({
+        code: t.code,
+        name: t.name,
+        inicio: t.start_time,
+        fin: t.end_time,
+        horas: t.hours ?? null,
+      })),
+  });
+}
+
+/** Descarga la PLANTILLA oficial TH-FR-10 con el personal real (sin turnos). */
+export async function exportarPlantillaCuadro(params: OficialParams) {
+  const b64 = await generarOficial(params, false);
+  descargarBase64(b64, `TH-FR-10_Plantilla_${MESES[params.mes - 1]}_${params.anio}.xlsx`);
 }
 
 /** Descarga el CUADRO MENSUAL diligenciado en el formato oficial TH-FR-10. */
-export function exportarCuadroMensual(params: {
-  anio: number;
-  mes: number;
-  members: ShiftMember[];
-  days: ShiftDay[];
-  tipos: ShiftType[];
-  baseHoras?: number;
-  responsable?: string;
-}) {
-  const wb = construirLibro({ ...params, incluirDatos: true });
-  XLSX.writeFile(wb, `TH-FR-10_Cuadro_${MESES[params.mes - 1]}_${params.anio}.xlsx`);
+export async function exportarCuadroMensual(params: OficialParams) {
+  const b64 = await generarOficial(params, true);
+  descargarBase64(b64, `TH-FR-10_Cuadro_${MESES[params.mes - 1]}_${params.anio}.xlsx`);
 }
 
 export interface ImportResultado {
@@ -171,7 +156,7 @@ export async function importarCuadroExcel(params: {
     : 0;
   const cargoCol = header.findIndex((h) => h.toLowerCase() === "cargo");
   const sedeCol = header.findIndex((h) => h.toLowerCase() === "sede");
-  const depCol = header.findIndex((h) => h.toLowerCase() === "dependencia / dia");
+  void header.findIndex((h) => h.toLowerCase() === "dependencia / dia");
 
   // Mapear índice de columna -> número de día
   const dayCols: { col: number; day: number }[] = [];
@@ -197,17 +182,32 @@ export async function importarCuadroExcel(params: {
   const sub = aoa[startData];
   if (sub && String(sub[nameCol] ?? "").trim() === "") startData += 1;
 
+  const saltar = new Set<number>();
   for (let i = startData; i < aoa.length; i++) {
+    if (saltar.has(i)) continue;
     const row = aoa[i];
     const nombre = String(row?.[nameCol] ?? "").trim();
     if (!nombre) { res.filasOmitidas++; continue; }
     // Cortar al llegar a bloques posteriores.
-    if (/^(conversiones|convenciones|novedades|elaborado|aprobado|festivos)/i.test(nombre)) break;
+    if (/^(conversiones|convenciones|novedades|elaborado|aprobado|festivos|continuidad|gestion traslados)/i.test(nombre)) break;
 
     let member = memberByName.get(norm(nombre));
-    const cargo = cargoCol >= 0 ? (String(row?.[cargoCol] ?? "").trim() || null) : null;
-    const sede = sedeCol >= 0 ? (String(row?.[sedeCol] ?? "").trim() || null)
-      : depCol >= 0 ? null : null;
+    let cargo = cargoCol >= 0 ? (String(row?.[cargoCol] ?? "").trim() || null) : null;
+    let sede = sedeCol >= 0 ? (String(row?.[sedeCol] ?? "").trim() || null) : null;
+
+    // Formato oficial TH-FR-10: la fila siguiente lleva "Cargo · Sede" y las horas.
+    if (oficial && cargoCol < 0) {
+      const detalle = String(aoa[i + 1]?.[nameCol] ?? "").trim();
+      if (detalle && detalle.includes("·")) {
+        const [c, s] = detalle.split("·").map((x) => x.trim());
+        cargo = cargo ?? (c || null);
+        sede = sede ?? (s || null);
+        saltar.add(i + 1);
+      } else if (detalle === "") {
+        saltar.add(i + 1);
+      }
+    }
+
 
     if (!member) {
       const { data, error } = await supabase
