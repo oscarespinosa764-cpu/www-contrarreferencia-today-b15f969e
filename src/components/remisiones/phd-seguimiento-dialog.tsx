@@ -289,8 +289,45 @@ export function PhdSeguimientoDialog({
   const canalFinal = canalPersist.canal_gestion ?? "";
   const esInfoTramite = evento === "INFORMACION_TRAMITE";
   const requiereServicio = evento === "ACEPTACION_PROVEEDOR";
-  const requiereDescripcion = CON_DESCRIPCION.includes(evento);
+  // FASE 5K · C — NOVEDADES con subtipo estructurado usa su propio formulario.
+  const esNovedadSubtipo = evento === "NOVEDADES" && !!novSubtipo;
+  const requiereDescripcion = CON_DESCRIPCION.includes(evento) && !esNovedadSubtipo;
   const esEvolucionDiaria = evento === "EVOLUCION_DIARIA";
+
+  // Ubicación institucional actual del caso domiciliario.
+  const { data: ubicacion = { servicio: "", cama: "" } } = useQuery({
+    queryKey: ["phd-ubicacion", casoId],
+    enabled: open && !!casoId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("domiciliarios")
+        .select("servicio, cama")
+        .eq("id", casoId)
+        .maybeSingle();
+      const r = (data ?? {}) as { servicio?: string | null; cama?: string | null };
+      return {
+        servicio: String(r.servicio ?? "").trim().toUpperCase(),
+        cama: String(r.cama ?? "").trim().toUpperCase(),
+      };
+    },
+  });
+
+  // Catálogo de unidades activas (misma fuente que Remisiones y RI).
+  const { data: unidades = [] } = useQuery({
+    queryKey: ["cat-unidad-phd"],
+    enabled: open && evento === "NOVEDADES",
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor")
+        .eq("tipo", "UNIDAD")
+        .eq("activo", true)
+        .order("valor");
+      return [...new Set((data ?? []).map((r) => String(r.valor ?? "").trim().toUpperCase()))].filter(
+        Boolean,
+      );
+    },
+  });
 
   // Configuración canónica de la EAPB del caso (catálogo EAPB activo).
   const { data: eapbCfg = { plataforma: false, correo: false, existe: false } } = useQuery({
