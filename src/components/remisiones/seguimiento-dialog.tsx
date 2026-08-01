@@ -1249,7 +1249,20 @@ export function SeguimientoDialog({
   const esTraslado = usaIndigo && tipoSeg === T.TRASLADO;
   const esCambioEapb = usaIndigo && tipoSeg === T.CAMBIO_EAPB;
   const esCancelacion = usaIndigo && tipoSeg === T.CANCELACION;
-  const esNovedades = usaIndigo && tipoSeg === T.NOVEDADES;
+  // NOVEDADES "operativa" (formulario histórico) solo cuando no hay subtipo.
+  const esNovedades = usaIndigo && tipoSeg === T.NOVEDADES && !novSubtipo;
+
+  // FASE 5K · C — Clave efectiva para plantillas/detalles: los subtipos de
+  // NOVEDADES reutilizan ÍNTEGRAMENTE la lógica ya existente de cada acción.
+  const CLAVE_CAMBIO_MOTIVO = "__CAMBIO_MOTIVO_REMISION__";
+  const tipoKey =
+    tipoSeg === T.NOVEDADES && novSubtipo === "CAMBIO_UNIDAD"
+      ? T.CAMBIO_UNIDAD
+      : tipoSeg === T.NOVEDADES && novSubtipo === "CAMBIO_ESPECIALIDAD"
+        ? T.CAMBIO_ESPECIALIDAD
+        : tipoSeg === T.NOVEDADES && novSubtipo === "CAMBIO_MOTIVO_REMISION"
+          ? CLAVE_CAMBIO_MOTIVO
+          : tipoSeg;
 
   // --- Cambio de asegurador: EAPB seleccionada y sus flags (extra1=plataforma, extra2=código, extra3=tipo). ---
   const eapbOptions = useMemo(() => eapbCat.map((e) => e.valor), [eapbCat]);
