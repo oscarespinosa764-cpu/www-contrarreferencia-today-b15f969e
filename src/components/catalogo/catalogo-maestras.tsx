@@ -779,6 +779,28 @@ export function CatalogoMaestras({ moduloFijo }: { moduloFijo?: string } = {}) {
                     <option value="PARTICULAR">PARTICULAR</option>
                   </select>
                 </div>
+              ) : editing.tipo === "ESPECIALIDAD" ? (
+                <div className="space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                  <Label
+                    htmlFor="nueva_eps_rnc_correo_adicional"
+                    className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                  >
+                    Requiere correo adicional (NUEVA EPS · RED NO CONTRATADA)
+                  </Label>
+                  <select
+                    id="nueva_eps_rnc_correo_adicional"
+                    name="nueva_eps_rnc_correo_adicional"
+                    defaultValue={editing.nueva_eps_rnc_correo_adicional ? "SI" : "NO"}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                  >
+                    <option value="SI">Sí</option>
+                    <option value="NO">No</option>
+                  </select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Si está en Sí, la Evolución Diaria de casos NUEVA EPS con RED NO CONTRATADA
+                    exigirá CORREO ELECTRÓNICO además de PLATAFORMA WEB.
+                  </p>
+                </div>
               ) : (
                 <>
                   <div className="space-y-2">
