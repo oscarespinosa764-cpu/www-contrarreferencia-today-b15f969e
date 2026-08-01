@@ -73,7 +73,6 @@ import {
   generarPlantillaPendienteCumplimiento,
   generarPlantillaRefInternaCoordinado,
   generarPlantillaRefInternaCulminacion,
-  generarPlantillaRefInternaPendiente,
   generarPlantillaPlataformaSeg,
   generarPlantillaRadicado,
   generarPlantillaRevisionAutorizacion,
