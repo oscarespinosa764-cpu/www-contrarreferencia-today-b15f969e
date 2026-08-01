@@ -37,6 +37,8 @@ type CatRow = {
   eapb_correo_radicacion?: string | null;
   eapb_sla_horas?: number | null;
   eapb_requisitos_radicacion?: string | null;
+  /** Regla configurable por especialidad (Fase 5E C.7). */
+  nueva_eps_rnc_correo_adicional?: boolean | null;
 };
 
 // Etiqueta legible + dónde se usa + módulo agrupador
@@ -222,7 +224,7 @@ export function CatalogoMaestras({ moduloFijo }: { moduloFijo?: string } = {}) {
       const { data, error } = await supabase
         .from("catalogos")
         .select(
-          "id, tipo, valor, extra1, extra2, extra3, activo, radica_phd, radica_pad, radica_oxigeno, radica_unidad_especial, seguimientos_en_plataforma, evolucion_por_correo, eapb_correo_radicacion, eapb_sla_horas, eapb_requisitos_radicacion",
+          "id, tipo, valor, extra1, extra2, extra3, activo, radica_phd, radica_pad, radica_oxigeno, radica_unidad_especial, seguimientos_en_plataforma, evolucion_por_correo, eapb_correo_radicacion, eapb_sla_horas, eapb_requisitos_radicacion, nueva_eps_rnc_correo_adicional",
         )
         .neq("tipo", "plantilla")
         .order("tipo")
@@ -322,6 +324,13 @@ export function CatalogoMaestras({ moduloFijo }: { moduloFijo?: string } = {}) {
             (String(f.get("eapb_requisitos_radicacion") ?? "").trim() || null) as string | null,
         }
       : {};
+    const espPatch =
+      editing.tipo === "ESPECIALIDAD"
+        ? {
+            nueva_eps_rnc_correo_adicional:
+              String(f.get("nueva_eps_rnc_correo_adicional")) === "SI",
+          }
+        : {};
     const { error } = await supabase
       .from("catalogos")
       .update({
