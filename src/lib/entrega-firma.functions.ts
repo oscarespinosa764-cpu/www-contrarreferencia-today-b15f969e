@@ -82,9 +82,13 @@ function snapshotPublicoDesde(raw: EntregaSnapshotInterno): SnapshotPublico {
     .filter((d) => d && d.marcado !== false)
     .map((d) => d.label)
     .filter((l): l is string => typeof l === "string" && l.length > 0);
+  // Traslado múltiple TAB: se muestra un resumen agregado (sin PHI) en vez de
+  // las iniciales de un único paciente.
+  const resumen = (raw['multiple_resumen'] as string | undefined) || "";
   return {
-    paciente_iniciales: inicialesNombre(raw.paciente),
-    documento_enmascarado: enmascararDocumento(raw.documento),
+    paciente_iniciales: resumen || inicialesNombre(raw.paciente),
+    documento_enmascarado: resumen ? "—" : enmascararDocumento(raw.documento),
+
     ips_receptora: raw.ips_receptora || undefined,
     empresa_traslado: raw.empresa_traslado || undefined,
     tipo_ambulancia: (raw.tipo_ambulancia as string | undefined) || undefined,
