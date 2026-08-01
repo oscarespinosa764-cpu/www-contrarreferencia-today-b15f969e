@@ -2722,6 +2722,7 @@ export function SeguimientoDialog({
         detalles: {
           ...(construirDetalles() ?? {}),
           ...canalPersist,
+          ...(tipoSeg === T.NOVEDADES && novSubtipo ? { novedad_tipo: novSubtipo } : {}),
           ...(!esPendiente && tipoSeg === T.INFO_TRAMITE
             ? {
                 evento: "INFORMACION_TRAMITE",
