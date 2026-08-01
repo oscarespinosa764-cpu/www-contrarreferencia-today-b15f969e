@@ -22,6 +22,9 @@ import {
 } from "@/lib/cuadro-turno-utils";
 import { exportarCuadroMensual } from "@/lib/cuadro-excel";
 import { FiltersBar, countActiveFilters } from "@/components/filters/filters-bar";
+import { EliminarTurnosDialog } from "@/components/cuadro-turno/eliminar-turnos-dialog";
+import { eliminarTurnosProgramadosLote } from "@/lib/cuadro-turnos.functions";
+
 
 const CUADRO_ROUTE = "/_authenticated/cuadro-turno" as const;
 const VISTAS = ["calendario", "matriz", "lista"] as const;
