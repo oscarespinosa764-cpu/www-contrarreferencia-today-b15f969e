@@ -3820,7 +3820,7 @@ export function SeguimientoDialog({
               )}
 
               {/* B3 · NOVEDADES (RI) */}
-              {esInterna && tipoSeg === TI.NOVEDADES && (
+              {esInterna && tipoSeg === TI.NOVEDADES && !novSubtipo && (
                 <div className={sectionCls}>
                   <p className={labelCls}>Novedades (INTERNA / EXTERNA)</p>
 
