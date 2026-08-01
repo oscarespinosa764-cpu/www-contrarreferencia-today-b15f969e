@@ -1165,6 +1165,8 @@ export function SeguimientoDialog({
     setEntregaPreparada(false);
     // Reset de novedades al cambiar de tipo.
     if (tipoSeg !== T.NOVEDADES) {
+      setNovSubtipo("");
+      setCambioMotivo(CAMBIO_MOTIVO_INICIAL);
       setNovPaciente(false);
       setNovIps(false);
       setNovAmbulancia(false);
