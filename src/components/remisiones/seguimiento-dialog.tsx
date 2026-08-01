@@ -3460,7 +3460,7 @@ export function SeguimientoDialog({
                   <div className="space-y-1.5">
                     <Label className={labelCls}>¿Dónde se realizará el examen? *</Label>
                     <select
-                      className={inputCls}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                       value={riDestinoTipo}
                       onChange={(e) => {
                         const v = e.target.value as "" | "SEDE_IPS" | "IPS_EXTERNA";
@@ -3481,7 +3481,7 @@ export function SeguimientoDialog({
                     <div className="space-y-1.5">
                       <Label className={labelCls}>Sede *</Label>
                       <select
-                        className={inputCls}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                         value={riSedeCodigo}
                         onChange={(e) => setRiSedeCodigo(e.target.value)}
                       >
