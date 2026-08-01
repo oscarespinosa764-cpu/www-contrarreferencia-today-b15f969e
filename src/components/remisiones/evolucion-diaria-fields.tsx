@@ -122,11 +122,16 @@ export function plantillaEvolucionDesdeResolver(
     observacion?: string;
   },
 ): string {
+  // FASE 5E · C.7.1 — La plantilla especial de capacidad técnico-científica
+  // pertenece EXCLUSIVAMENTE a la variante SOLO_PLATAFORMA; la de falla, a
+  // PLATAFORMA_CAIDA. DOBLE_CANAL_POR_ESPECIALIDAD reutiliza la plantilla
+  // normal canónica de Evolución Diaria (Correo + Plataforma).
   if (r.variante_indigo === "EXCEPCION_PLATAFORMA") return INDIGO_EXCEPCION_PLATAFORMA;
   if (r.variante_indigo === "EXCEPCION_CORREO") return INDIGO_EXCEPCION_CORREO;
 
   const correo = r.canales_realizados.includes(CANAL_CODES.CORREO);
   const plataforma = r.canales_realizados.includes(CANAL_CODES.PLATAFORMA);
+  const dobleCanalEsp = r.variante_excepcion === "DOBLE_CANAL_POR_ESPECIALIDAD";
 
   if (ctx.especialidades.length > 0) {
     return generarPlantillaEvolucionEspecialidades({
@@ -139,13 +144,16 @@ export function plantillaEvolucionDesdeResolver(
   }
   return generarPlantillaEvolucionDiaria({
     estadoCaso: ctx.estadoCaso,
-    esTramiteAdministrativo: ctx.esTramiteAdministrativo,
+    // En DOBLE_CANAL_POR_ESPECIALIDAD nunca se emite el texto de capacidad
+    // técnico-científica / probable autorización de estancia.
+    esTramiteAdministrativo: dobleCanalEsp ? false : ctx.esTramiteAdministrativo,
     tienePlataforma: ctx.tienePlataforma,
     plataformaFunciona: r.plataforma_funcionando,
     enviadoCorreo: correo,
     enviadoPlataforma: plataforma,
     motivoPendiente: r.motivo_pendiente ?? "",
   });
+
 }
 
 const labelCls = "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
