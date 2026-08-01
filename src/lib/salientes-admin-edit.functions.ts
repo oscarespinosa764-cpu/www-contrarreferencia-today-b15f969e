@@ -21,7 +21,7 @@ const ALLOW: Record<Tabla, readonly string[]> = {
     "servicio", "cama", "asegurador", "eapb", "regimen",
     "remision_por", "alcance_red", "tipo_ambulancia", "prioridad", "estado",
     "tipo_tramite", "fecha_inicio", "fecha_radicado",
-    "especialidades_tratantes", "especialidades_receptoras",
+    // especialidades_*: fuera de la allowlist — ciclo canónico Novedades → Cambio de Especialidad.
     "codigo_radicacion", "eapb_genera_codigo",
     "contacto_nombre", "contacto_parentesco", "contacto_telefono",
     "observaciones", "especificacion", "evolucion", "evolucion_detalle",
@@ -90,6 +90,21 @@ export const editarCasoSalienteAdmin = createServerFn({ method: "POST" })
     }
 
     const allow = ALLOW[data.tabla];
+
+    // 1.b) Rechazo estricto: las especialidades canónicas (Remisiones) no se
+    // editan por la vía general; deben pasar por Novedades → Cambio de Especialidad.
+    if (data.tabla === "remisiones") {
+      const bloqueadas = ["especialidades_tratantes", "especialidades_receptoras"];
+      if (bloqueadas.some((k) => k in data.cambios)) {
+        return {
+          ok: false,
+          error:
+            "Las especialidades deben modificarse desde Seguimientos → Novedades → Cambio de Especialidad." as
+              | string
+              | null,
+        };
+      }
+    }
 
     // 2) Filtrado por allowlist + normalización.
     const cambios: Record<string, unknown> = {};
