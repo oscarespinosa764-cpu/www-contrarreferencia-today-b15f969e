@@ -205,14 +205,9 @@ const TI = {
   NOVEDADES: "NOVEDADES",
 } as const;
 
-// Labels visibles (Fase 5C · B1). No modifican el código persistido.
-const TI_LABEL: Record<string, string> = {
-  [TI.PENDIENTE]: labelTipoSeguimientoRI(TI.PENDIENTE),
-  [TI.LLEGADA_AMB]: "CONFIRMACIÓN LLEGADA DE AMBULANCIA",
-};
-function labelTipoSeg(t: string): string {
-  return TI_LABEL[t] ?? t;
-}
+// FASE 5K · B — Los labels visibles provienen ahora del adaptador canónico
+// `labelCanonicoTipoSeguimiento` (src/lib/seguimiento-orden.ts), única fuente
+// compartida por los cuatro módulos e Históricos.
 
 // Estados terminales de referencia_interna que resultan de estas acciones.
 const RI_ESTADO_CIERRE = "CERRADO POR CULMINACION DE SOLICITUD";
