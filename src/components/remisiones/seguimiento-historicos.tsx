@@ -18,7 +18,6 @@ import {
 import { Copy, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { fmtFechaHora } from "@/lib/cuadro-turno-utils";
-import { labelTipoSeguimientoRI } from "@/lib/ri-estados";
 import { labelCanonicoTipoSeguimiento } from "@/lib/seguimiento-orden";
 
 export type SeguimientoRow = Record<string, unknown> & { id?: unknown };
