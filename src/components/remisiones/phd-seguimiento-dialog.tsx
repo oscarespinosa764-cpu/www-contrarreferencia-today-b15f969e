@@ -84,6 +84,18 @@ import {
 } from "./seguimiento-historicos";
 
 
+import {
+  NovedadSubtipoSelector,
+  GestionModalidadFields,
+  GESTION_MODALIDAD_INICIAL,
+  type NovedadSubtipo,
+  type GestionModalidadValue,
+} from "./novedades-fields";
+import {
+  novedadCambioUnidad,
+  novedadGestionModalidad,
+} from "@/lib/novedades.functions";
+
 const CON_DESCRIPCION = ["NOVEDADES", "OTRO"];
 
 type Props = {
@@ -221,6 +233,11 @@ export function PhdSeguimientoDialog({
 
   // --- Formulario -------------------------------------------------------------
   const [evento, setEvento] = useState("");
+  // FASE 5K · C — Subtipos canónicos de NOVEDADES en Atención Domiciliaria.
+  const [novSubtipo, setNovSubtipo] = useState<NovedadSubtipo>("");
+  const [modalidadV, setModalidadV] = useState<GestionModalidadValue>(GESTION_MODALIDAD_INICIAL);
+  const [nuevaUnidad, setNuevaUnidad] = useState("");
+  const [nuevaCama, setNuevaCama] = useState("");
   const [canalV, setCanalV] = useState<CanalGestionValue>(CANAL_GESTION_INICIAL);
   const [observaciones, setObservaciones] = useState("");
   const [descripcion, setDescripcion] = useState("");
@@ -289,8 +306,45 @@ export function PhdSeguimientoDialog({
   const canalFinal = canalPersist.canal_gestion ?? "";
   const esInfoTramite = evento === "INFORMACION_TRAMITE";
   const requiereServicio = evento === "ACEPTACION_PROVEEDOR";
-  const requiereDescripcion = CON_DESCRIPCION.includes(evento);
+  // FASE 5K · C — NOVEDADES con subtipo estructurado usa su propio formulario.
+  const esNovedadSubtipo = evento === "NOVEDADES" && !!novSubtipo;
+  const requiereDescripcion = CON_DESCRIPCION.includes(evento) && !esNovedadSubtipo;
   const esEvolucionDiaria = evento === "EVOLUCION_DIARIA";
+
+  // Ubicación institucional actual del caso domiciliario.
+  const { data: ubicacion = { servicio: "", cama: "" } } = useQuery({
+    queryKey: ["phd-ubicacion", casoId],
+    enabled: open && !!casoId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("domiciliarios")
+        .select("servicio, cama")
+        .eq("id", casoId)
+        .maybeSingle();
+      const r = (data ?? {}) as { servicio?: string | null; cama?: string | null };
+      return {
+        servicio: String(r.servicio ?? "").trim().toUpperCase(),
+        cama: String(r.cama ?? "").trim().toUpperCase(),
+      };
+    },
+  });
+
+  // Catálogo de unidades activas (misma fuente que Remisiones y RI).
+  const { data: unidades = [] } = useQuery({
+    queryKey: ["cat-unidad-phd"],
+    enabled: open && evento === "NOVEDADES",
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor")
+        .eq("tipo", "UNIDAD")
+        .eq("activo", true)
+        .order("valor");
+      return [...new Set((data ?? []).map((r) => String(r.valor ?? "").trim().toUpperCase()))].filter(
+        Boolean,
+      );
+    },
+  });
 
   // Configuración canónica de la EAPB del caso (catálogo EAPB activo).
   const { data: eapbCfg = { plataforma: false, correo: false, existe: false } } = useQuery({
@@ -370,6 +424,24 @@ export function PhdSeguimientoDialog({
   if (evento === "CANCELACION_TRAMITE" && !motivo.trim())
     errores.push("Indique el motivo de la cancelación del trámite.");
 
+  if (esNovedadSubtipo && novSubtipo === "CAMBIO_UNIDAD") {
+    if (!nuevaUnidad) errores.push("Seleccione la nueva unidad.");
+    if (!nuevaCama.trim()) errores.push("Indique la nueva cama del paciente.");
+    if (
+      nuevaUnidad === ubicacion.servicio &&
+      nuevaCama.trim().toUpperCase() === ubicacion.cama
+    )
+      errores.push("La nueva ubicación debe ser diferente de la actual.");
+  }
+  if (esNovedadSubtipo && novSubtipo === "GESTION_MODALIDAD") {
+    if (!modalidadV.gestion) errores.push("Seleccione el tipo de gestión de modalidad.");
+    if (modalidadV.gestion === "CAMBIAR_MODALIDAD" && !modalidadV.origen)
+      errores.push("Seleccione la modalidad de origen.");
+    if (!modalidadV.nueva) errores.push("Seleccione la nueva modalidad.");
+    if (modalidadV.justificacion.trim().length < 3)
+      errores.push("Registre la justificación de la gestión de modalidad.");
+  }
+
   const invalid = errores.length > 0 || terminal;
 
   // Para EVOLUCIÓN DIARIA la descripción es la plantilla Índigo canónica.
@@ -409,6 +481,39 @@ export function PhdSeguimientoDialog({
 
   const mGuardar = useMutation({
     mutationFn: async () => {
+      // FASE 5K · C — Novedades estructuradas: transacción atómica server-side.
+      if (esNovedadSubtipo) {
+        const canales = canalPersist.canales_gestion.length
+          ? (canalPersist.canales_gestion as unknown as Record<string, unknown>[])
+          : null;
+        const r =
+          novSubtipo === "CAMBIO_UNIDAD"
+            ? await novedadCambioUnidad({
+                data: {
+                  tipoCaso: "domiciliario",
+                  casoId,
+                  nuevoServicio: nuevaUnidad,
+                  nuevaCama: nuevaCama.trim().toUpperCase(),
+                  observaciones: observaciones.trim() || null,
+                  plantilla: null,
+                  canales,
+                },
+              })
+            : await novedadGestionModalidad({
+                data: {
+                  casoId,
+                  gestion: modalidadV.gestion as "AGREGAR_MODALIDAD" | "CAMBIAR_MODALIDAD",
+                  modalidadOrigen: modalidadV.origen || null,
+                  modalidadNueva: modalidadV.nueva,
+                  justificacion: modalidadV.justificacion.trim(),
+                  observaciones: observaciones.trim() || null,
+                  plantilla: null,
+                  canales,
+                },
+              });
+        if (!r.ok) throw new Error(r.error ?? "No fue posible registrar la novedad.");
+        return { ok: true, estadoCiclo: r.estado_ciclo } as { ok: boolean; estadoCiclo?: string };
+      }
       const res = await registrarEvento({
         data: {
           casoId,
@@ -611,6 +716,67 @@ export function PhdSeguimientoDialog({
                 ctx={evoCtx}
                 derivado={evoDeriv}
               />
+            )}
+
+            {evento === "NOVEDADES" && (
+              <div className="space-y-3">
+                <NovedadSubtipoSelector
+                  modulo="DOMICILIARIA"
+                  value={novSubtipo}
+                  onChange={(v) => {
+                    setNovSubtipo(v);
+                    setModalidadV(GESTION_MODALIDAD_INICIAL);
+                    setNuevaUnidad("");
+                    setNuevaCama("");
+                  }}
+                />
+                {novSubtipo === "CAMBIO_UNIDAD" && (
+                  <div className="space-y-3 rounded-md border p-3">
+                    <p className="text-xs text-muted-foreground">
+                      UBICACIÓN ACTUAL:{" "}
+                      <span className="font-medium">
+                        {ubicacion.servicio || "SIN UNIDAD"} · CAMA {ubicacion.cama || "—"}
+                      </span>
+                    </p>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Nueva unidad *</Label>
+                        <Select value={nuevaUnidad} onValueChange={setNuevaUnidad}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar…" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {unidades.map((u) => (
+                              <SelectItem key={u} value={u}>
+                                {u}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Nueva cama *</Label>
+                        <Input
+                          value={nuevaCama}
+                          maxLength={30}
+                          onChange={(e) => setNuevaCama(e.target.value.toUpperCase())}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      El cambio de unidad no modifica las modalidades ni el estado del ciclo.
+                    </p>
+                  </div>
+                )}
+                {novSubtipo === "GESTION_MODALIDAD" && (
+                  <GestionModalidadFields
+                    modalidadesActivas={req.tipos as string[]}
+                    value={modalidadV}
+                    onChange={setModalidadV}
+                    bloqueoAmbulancia={req.ambulanciaCoordinada}
+                  />
+                )}
+              </div>
             )}
 
             {requiereDescripcion && (

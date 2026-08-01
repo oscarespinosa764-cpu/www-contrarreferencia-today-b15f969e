@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
+import { MOTIVOS_REMISION } from "@/lib/motivos-remision";
 import {
   SERVICIOS_CODIGOS,
   SERVICIO_LABEL,
@@ -782,16 +783,8 @@ export function NuevoRegistroDialog({
                     className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
                   >
                     <option value="">Selecciona…</option>
-                    {[
-                      "RED NO CONTRATADA",
-                      "NO RECURSO HUMANO",
-                      "NO DISPONIBILIDAD DE INSUMO O TECNOLOGIA",
-                      "NO DISPONIBILIDAD DE UNIDAD",
-                      "NO DISPONIBILIDAD DE CAMAS",
-                      "NIVEL DE COMPETENCIA",
-                      "PETICION VOLUNTARIA",
-                      "EN TRAMITE",
-                    ].map((o) => (
+                    {MOTIVOS_REMISION.map((o) => (
+
                       <option key={o} value={o}>
                         {o}
                       </option>

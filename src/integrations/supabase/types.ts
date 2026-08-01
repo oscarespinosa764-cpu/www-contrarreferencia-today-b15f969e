@@ -4047,6 +4047,45 @@ export type Database = {
         }
         Returns: number
       }
+      novedad_cambio_motivo_remision: {
+        Args: {
+          _actor: string
+          _canales?: Json
+          _caso_id: string
+          _justificacion: string
+          _nuevo_motivo: string
+          _observaciones?: string
+          _plantilla?: string
+        }
+        Returns: Json
+      }
+      novedad_cambio_unidad: {
+        Args: {
+          _actor: string
+          _canales?: Json
+          _caso_id: string
+          _nueva_cama: string
+          _nuevo_servicio: string
+          _observaciones?: string
+          _plantilla?: string
+          _tipo_caso: string
+        }
+        Returns: Json
+      }
+      novedad_gestion_modalidad: {
+        Args: {
+          _actor: string
+          _canales?: Json
+          _caso_id: string
+          _gestion: string
+          _justificacion: string
+          _nueva: string
+          _observaciones?: string
+          _origen: string
+          _plantilla?: string
+        }
+        Returns: Json
+      }
       reactivar_caso_cancelado_admin: {
         Args: {
           _caso_id: string

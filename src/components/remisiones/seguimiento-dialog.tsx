@@ -108,6 +108,17 @@ import { resolverAceptacionVigente } from "@/lib/salientes-aceptacion.functions"
 import { limpiarNombreAcepta, limpiarCargoAcepta, NOMBRE_ACEPTA_MAX, CARGO_ACEPTA_MAX } from "@/lib/salientes-aceptacion";
 import { registrarCambioUnidadRI } from "@/lib/ri-cambio-unidad.functions";
 import {
+  novedadCambioUnidad,
+  novedadCambioMotivoRemision,
+} from "@/lib/novedades.functions";
+import {
+  NovedadSubtipoSelector,
+  CambioMotivoFields,
+  CAMBIO_MOTIVO_INICIAL,
+  type NovedadSubtipo,
+  type CambioMotivoValue,
+} from "./novedades-fields";
+import {
   SeguimientoHistoricos,
   SeguimientoValidationSummary,
   type SeguimientoRow,
@@ -435,6 +446,9 @@ export function SeguimientoDialog({
   const [otroCual, setOtroCual] = useState("");
 
   // Novedades (Parte 12)
+  // FASE 5K · C — Subtipo estructurado de NOVEDADES (canónico y compartido).
+  const [novSubtipo, setNovSubtipo] = useState<NovedadSubtipo>("");
+  const [cambioMotivo, setCambioMotivo] = useState<CambioMotivoValue>(CAMBIO_MOTIVO_INICIAL);
   const [novPaciente, setNovPaciente] = useState(false);
   const [novIps, setNovIps] = useState(false);
   const [novAmbulancia, setNovAmbulancia] = useState(false);
@@ -836,8 +850,13 @@ export function SeguimientoDialog({
     [especialidadesList, espCierreList],
   );
   const espHayCambio = espCierreList.length > 0 || espNuevasLimpias.length > 0;
-  const esCambioEsp = esSaliente && tipoSeg === T.CAMBIO_ESPECIALIDAD;
-  const esCambioUnidad = (esSaliente || esInterna) && tipoSeg === T.CAMBIO_UNIDAD;
+  // FASE 5K · C — Cambio de especialidad / unidad / motivo dejan de ser tipos
+  // principales y viven como SUBTIPOS de NOVEDADES (mismos formularios).
+  const esCambioEsp = esSaliente && tipoSeg === T.NOVEDADES && novSubtipo === "CAMBIO_ESPECIALIDAD";
+  const esCambioUnidad =
+    (esSaliente || esInterna) && tipoSeg === T.NOVEDADES && novSubtipo === "CAMBIO_UNIDAD";
+  const esCambioMotivo =
+    esSaliente && tipoSeg === T.NOVEDADES && novSubtipo === "CAMBIO_MOTIVO_REMISION";
   const esTepActivacion = esInterna && tipoSeg === TI.TEP_ACTIVACION;
   // Proveedor SEM (predeterminado en flujos de ambulancia/TEP).
   const SEM_MATCH = "SERVICIOS DE EMERGENCIAS MEDICAS DEL CAQUETA";
@@ -1146,6 +1165,8 @@ export function SeguimientoDialog({
     setEntregaPreparada(false);
     // Reset de novedades al cambiar de tipo.
     if (tipoSeg !== T.NOVEDADES) {
+      setNovSubtipo("");
+      setCambioMotivo(CAMBIO_MOTIVO_INICIAL);
       setNovPaciente(false);
       setNovIps(false);
       setNovAmbulancia(false);
@@ -1211,6 +1232,8 @@ export function SeguimientoDialog({
     estadoActual,
     estadoCaso,
     tipoSeg,
+    novSubtipo,
+    cambioMotivo,
     cancelTipo,
     cierreEgreso,
     novPaciente,
@@ -1228,7 +1251,20 @@ export function SeguimientoDialog({
   const esTraslado = usaIndigo && tipoSeg === T.TRASLADO;
   const esCambioEapb = usaIndigo && tipoSeg === T.CAMBIO_EAPB;
   const esCancelacion = usaIndigo && tipoSeg === T.CANCELACION;
-  const esNovedades = usaIndigo && tipoSeg === T.NOVEDADES;
+  // NOVEDADES "operativa" (formulario histórico) solo cuando no hay subtipo.
+  const esNovedades = usaIndigo && tipoSeg === T.NOVEDADES && !novSubtipo;
+
+  // FASE 5K · C — Clave efectiva para plantillas/detalles: los subtipos de
+  // NOVEDADES reutilizan ÍNTEGRAMENTE la lógica ya existente de cada acción.
+  const CLAVE_CAMBIO_MOTIVO = "__CAMBIO_MOTIVO_REMISION__";
+  const tipoKey =
+    tipoSeg === T.NOVEDADES && novSubtipo === "CAMBIO_UNIDAD"
+      ? T.CAMBIO_UNIDAD
+      : tipoSeg === T.NOVEDADES && novSubtipo === "CAMBIO_ESPECIALIDAD"
+        ? T.CAMBIO_ESPECIALIDAD
+        : tipoSeg === T.NOVEDADES && novSubtipo === "CAMBIO_MOTIVO_REMISION"
+          ? CLAVE_CAMBIO_MOTIVO
+          : tipoSeg;
 
   // --- Cambio de asegurador: EAPB seleccionada y sus flags (extra1=plataforma, extra2=código, extra3=tipo). ---
   const eapbOptions = useMemo(() => eapbCat.map((e) => e.valor), [eapbCat]);
@@ -1431,7 +1467,7 @@ export function SeguimientoDialog({
       );
     }
     if (esInterna) {
-      switch (tipoSeg) {
+      switch (tipoKey) {
         case TI.PENDIENTE:
           return appendNota(
             generarPlantillaRefInternaCoordinacionExamen({
@@ -1606,7 +1642,7 @@ export function SeguimientoDialog({
     }
     if (!tipoSeg) return "";
     let base = "";
-    switch (tipoSeg) {
+    switch (tipoKey) {
       case T.RADICADO:
         base = generarPlantillaRadicado(radicado);
         break;
@@ -1711,6 +1747,12 @@ export function SeguimientoDialog({
           : `SE REALIZA CAMBIO DE UBICACIÓN DEL PACIENTE, QUIEN PASA DE LA UNIDAD DE ${uAnt}, SIN CAMA PREVIAMENTE REGISTRADA, A LA UNIDAD DE ${uNue}, CAMA ${cNue}. SE ACTUALIZA LA INFORMACIÓN DEL CASO Y SE DEJA TRAZABILIDAD PARA LA CONTINUIDAD DEL PROCESO DE REMISIÓN.`;
         break;
       }
+      case CLAVE_CAMBIO_MOTIVO: {
+        const mAnt = (caso?.remision_por ?? "").trim().toUpperCase() || "[MOTIVO ANTERIOR]";
+        const mNue = cambioMotivo.nuevoMotivo || "[NUEVO MOTIVO]";
+        base = `SE REGISTRA NOVEDAD DE CAMBIO EN EL MOTIVO DE REMISIÓN. MOTIVO ANTERIOR: ${mAnt}. NUEVO MOTIVO: ${mNue}. JUSTIFICACIÓN: ${cambioMotivo.justificacion.trim() || "[JUSTIFICACIÓN]"}. SE CONSERVA EL CASO, SU HISTORIAL Y LA TRAZABILIDAD DE LA GESTIÓN.`;
+        break;
+      }
       case T.ENTREGA_DOC:
         base = "";
         break;
@@ -1756,6 +1798,8 @@ export function SeguimientoDialog({
   }, [
     esSaliente,
     tipoSeg,
+    novSubtipo,
+    cambioMotivo,
     nuevoRadicadoMode,
     nuevoRadicado,
     ultimoRadicado,
@@ -1969,7 +2013,7 @@ export function SeguimientoDialog({
   // Detalle JSON específico por tipo (estructura flexible).
   const construirDetalles = (): Record<string, unknown> | null => {
     if (esInterna) {
-      switch (tipoSeg) {
+      switch (tipoKey) {
         case TI.PENDIENTE:
           return {
             funcionario: riFuncionario.trim() || null,
@@ -2082,7 +2126,7 @@ export function SeguimientoDialog({
     if (nuevoRadicadoMode) {
       return { radicado_anterior: ultimoRadicado || null, nuevo_radicado: nuevoRadicado.trim() };
     }
-    switch (tipoSeg) {
+    switch (tipoKey) {
       case T.RADICADO:
         return { radicado: radicado.trim() };
       case T.EVOLUCION:
@@ -2438,7 +2482,7 @@ export function SeguimientoDialog({
           return toast.error("¿CUÁL? debe tener entre 3 y 200 caracteres.");
       }
       // B1.2 · NOVEDADES (RI): validación estructurada.
-      if (esInterna && tipoSeg === TI.NOVEDADES) {
+      if (esInterna && tipoSeg === TI.NOVEDADES && !novSubtipo) {
         if (!riNovInterna && !riNovExterna)
           return toast.error("Selecciona INTERNA, EXTERNA o ambas.");
         if (riNovInterna && !riNovInternaCod)
@@ -2516,6 +2560,71 @@ export function SeguimientoDialog({
           refrescar();
           return;
         }
+        // FASE 5K · C — Salientes y Atención Domiciliaria: misma transacción
+        // atómica server-side (seguimiento NOVEDADES + unidad/cama + auditoría).
+        if (esSaliente) {
+          setBusy(true);
+          let res: { ok?: boolean; error?: string } = {};
+          try {
+            res = await novedadCambioUnidad({
+              data: {
+                tipoCaso: "remision",
+                casoId,
+                nuevoServicio: nuevaUnidadNorm,
+                nuevaCama: nuevaCamaNorm,
+                observaciones: detalle.trim() || null,
+                plantilla: indigoTexto.trim() || null,
+              },
+            });
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Error de red");
+            setBusy(false);
+            return;
+          }
+          if (!res.ok) {
+            toast.error(res.error || "No fue posible registrar el cambio de unidad.");
+            setBusy(false);
+            return;
+          }
+          toast.success("Novedad registrada: cambio de unidad");
+          resetCampos();
+          setBusy(false);
+          refrescar();
+          return;
+        }
+      }
+      // FASE 5K · C — CAMBIO MOTIVO DE REMISIÓN (novedad, nunca caso nuevo).
+      if (esCambioMotivo) {
+        if (!cambioMotivo.nuevoMotivo) return toast.error("Selecciona el nuevo motivo de remisión.");
+        if (cambioMotivo.justificacion.trim().length < 3)
+          return toast.error("Registra la justificación del cambio de motivo.");
+        setBusy(true);
+        let res: { ok?: boolean; error?: string } = {};
+        try {
+          res = await novedadCambioMotivoRemision({
+            data: {
+              casoId,
+              nuevoMotivo: cambioMotivo.nuevoMotivo,
+              justificacion: cambioMotivo.justificacion.trim(),
+              observaciones: detalle.trim() || null,
+              plantilla: indigoTexto.trim() || null,
+            },
+          });
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "Error de red");
+          setBusy(false);
+          return;
+        }
+        if (!res.ok) {
+          toast.error(res.error || "No fue posible registrar el cambio de motivo.");
+          setBusy(false);
+          return;
+        }
+        toast.success("Novedad registrada: cambio de motivo de remisión");
+        resetCampos();
+        setBusy(false);
+        refrescar();
+        return;
       }
       if (evoRequiereMotivo && !evoMotivoPend.trim())
         return toast.error("Indica el motivo del pendiente");
@@ -2613,6 +2722,7 @@ export function SeguimientoDialog({
         detalles: {
           ...(construirDetalles() ?? {}),
           ...canalPersist,
+          ...(tipoSeg === T.NOVEDADES && novSubtipo ? { novedad_tipo: novSubtipo } : {}),
           ...(!esPendiente && tipoSeg === T.INFO_TRAMITE
             ? {
                 evento: "INFORMACION_TRAMITE",
@@ -3214,6 +3324,26 @@ export function SeguimientoDialog({
                 </div>
               )}
 
+              {/* FASE 5K · C — Subtipo canónico de NOVEDADES */}
+              {(esSaliente || esInterna) && tipoSeg === T.NOVEDADES && (
+                <div className={sectionCls}>
+                  <NovedadSubtipoSelector
+                    modulo={esInterna ? "REFERENCIA_INTERNA" : "REMISIONES"}
+                    value={novSubtipo}
+                    onChange={setNovSubtipo}
+                  />
+                  {esCambioMotivo && (
+                    <div className="mt-3">
+                      <CambioMotivoFields
+                        motivoActual={caso?.remision_por ?? ""}
+                        value={cambioMotivo}
+                        onChange={setCambioMotivo}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* CAMBIO EN ESPECIALIDAD */}
               {esCambioEsp && (
                 <div className={sectionCls}>
@@ -3691,7 +3821,7 @@ export function SeguimientoDialog({
               )}
 
               {/* B3 · NOVEDADES (RI) */}
-              {esInterna && tipoSeg === TI.NOVEDADES && (
+              {esInterna && tipoSeg === TI.NOVEDADES && !novSubtipo && (
                 <div className={sectionCls}>
                   <p className={labelCls}>Novedades (INTERNA / EXTERNA)</p>
 
