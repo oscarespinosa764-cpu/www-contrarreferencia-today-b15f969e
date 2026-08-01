@@ -58,6 +58,9 @@ function RemisionesPage() {
   const initialEstado =
     search.f === "pendientes" ? "pendiente" : search.f === "aceptadas" ? "aceptad" : "todos";
   const [open, setOpen] = useState(false);
+  // FASE 5I — Traslado múltiple TAB (Referencias Internas).
+  const [multipleOpen, setMultipleOpen] = useState(false);
+
   // Contexto de apertura del modal canónico (un único modal, parametrizado).
   const [nuevoCtx, setNuevoCtx] = useState<{ initialTab: NuevoRegistroTab; allowedTabs: NuevoRegistroTab[] }>({
     initialTab: "remision",
