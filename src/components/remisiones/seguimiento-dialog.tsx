@@ -110,6 +110,8 @@ import { registrarCambioUnidadRI } from "@/lib/ri-cambio-unidad.functions";
 import {
   novedadCambioUnidad,
   novedadCambioMotivoRemision,
+  novedadCambioEspecialidad,
+
 } from "@/lib/novedades.functions";
 import {
   NovedadSubtipoSelector,
