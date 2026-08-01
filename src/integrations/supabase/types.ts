@@ -4004,6 +4004,15 @@ export type Database = {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
       }
+      eliminar_turnos_programados_lote: {
+        Args: {
+          _actor: string
+          _ids: string[]
+          _member_id: string
+          _schedule_id: string
+        }
+        Returns: Json
+      }
       email_queue_dispatch: { Args: never; Returns: undefined }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
