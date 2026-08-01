@@ -1,12 +1,11 @@
-// Importación / exportación BAJO DEMANDA del Cuadro de Turno TH-FR-10 (SheetJS).
+// Importación / exportación BAJO DEMANDA del Cuadro de Turno TH-FR-10.
 //
-// El layout replica el formato REAL "TH-FR-10 Cuadro de Turnos":
-//   - Bloque institucional (código / versión / periodo).
-//   - Encabezado: Colaborador | Cargo | Sede | días 1..N.
-//   - Una fila por colaborador con el código de convención por día.
-//   - Hoja "Convenciones" (Código | Nombre | Horas).
+// La descarga usa la PLANTILLA INSTITUCIONAL REAL (ver cuadro-plantilla.ts):
+// conserva logos, encabezado, bordes, convenciones y configuración de impresión
+// del formato oficial, y solo escribe los datos del periodo.
+// La importación acepta ese mismo archivo (round-trip).
 //
-// Los archivos se generan/parsean 100% en memoria en el navegador.
+// Todo se genera/parsea 100% en memoria en el navegador.
 
 import * as XLSX from "xlsx";
 import { supabase } from "@/lib/backend-client";
@@ -15,81 +14,6 @@ import {
   type ShiftType, type ShiftMember, type ShiftDay,
 } from "@/lib/cuadro-turno-utils";
 
-const INSTITUCION = "CENTRO DE IMAGENES DIAGNOSTICAS CEDIM I.P.S S.A.S";
-
-interface BuildParams {
-  anio: number;
-  mes: number;
-  members: ShiftMember[];
-  days: ShiftDay[];
-  tipos: ShiftType[];
-  incluirDatos: boolean; // true = cuadro lleno; false = plantilla vacía
-}
-
-function construirLibro(p: BuildParams): XLSX.WorkBook {
-  const { anio, mes, members, days, tipos, incluirDatos } = p;
-  const ndias = diasDelMes(anio, mes);
-
-  const dayMap = new Map<string, ShiftDay>();
-  for (const d of days) dayMap.set(`${d.member_id}:${d.day_number}`, d);
-
-  const aoa: (string | number)[][] = [];
-  aoa.push(["SISTEMA DE GESTIÓN — TALENTO HUMANO"]);
-  aoa.push([INSTITUCION]);
-  aoa.push(["Formato — Cuadro de turno mensual"]);
-  aoa.push(["Código: TH-FR-10   Versión: 2"]);
-  aoa.push([`Periodo: ${MESES[mes - 1]} ${anio}`]);
-  aoa.push([
-    "Instrucciones: escriba el código de convención en la celda del día. Deje vacío para descanso/sin turno.",
-  ]);
-  aoa.push([]); // fila 7 en blanco
-
-  // Encabezado (fila 8)
-  const header: (string | number)[] = ["Colaborador", "Cargo", "Sede"];
-  for (let d = 1; d <= ndias; d++) header.push(d);
-  aoa.push(header);
-
-  // Sub-encabezado: letra del día de la semana (fila 9)
-  const dow: (string | number)[] = ["", "", ""];
-  for (let d = 1; d <= ndias; d++) dow.push(letraDiaSemana(anio, mes, d));
-  aoa.push(dow);
-
-  // Una fila por colaborador
-  const lista = members.length > 0 ? members : [];
-  for (const m of lista) {
-    const row: (string | number)[] = [m.full_name || "", m.role_name || "", m.sede || ""];
-    for (let d = 1; d <= ndias; d++) {
-      if (incluirDatos) {
-        const cd = dayMap.get(`${m.id}:${d}`);
-        row.push(cd?.shift_code ?? "");
-      } else {
-        row.push("");
-      }
-    }
-    aoa.push(row);
-  }
-
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws["!cols"] = [
-    { wch: 28 }, // Colaborador
-    { wch: 22 }, // Cargo
-    { wch: 14 }, // Sede
-    ...Array.from({ length: ndias }, () => ({ wch: 4 })),
-  ];
-
-  // Hoja de convenciones
-  const conv: (string | number)[][] = [["CONVENCIONES"], ["Código", "Nombre", "Horas"]];
-  for (const t of tipos.filter((x) => x.active !== false)) {
-    conv.push([t.code, t.name, t.hours ?? 0]);
-  }
-  const wsConv = XLSX.utils.aoa_to_sheet(conv);
-  wsConv["!cols"] = [{ wch: 10 }, { wch: 26 }, { wch: 8 }];
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "TH-FR-10");
-  XLSX.utils.book_append_sheet(wb, wsConv, "Convenciones");
-  return wb;
-}
 
 // ---------------------------------------------------------------------------
 // Formato OFICIAL TH-FR-10 (plantilla institucional real con logos y estilos)
