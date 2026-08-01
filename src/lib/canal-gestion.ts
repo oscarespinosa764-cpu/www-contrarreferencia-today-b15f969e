@@ -50,7 +50,13 @@ export const CANAL_OTRO_MAX = 200;
 
 // --- Allowlists de subformularios -------------------------------------------
 
-export const CONTACTO_TIPOS = ["FAMILIAR_PACIENTE", "EAPB", "CRUE", "IPS"] as const;
+export const CONTACTO_TIPOS = [
+  "FAMILIAR_PACIENTE",
+  "EAPB",
+  "CRUE",
+  "IPS",
+  "FUNCIONARIO_SERVICIO",
+] as const;
 export type ContactoTipo = (typeof CONTACTO_TIPOS)[number];
 
 export const CONTACTO_TIPO_LABEL: Record<ContactoTipo, string> = {
@@ -58,10 +64,37 @@ export const CONTACTO_TIPO_LABEL: Record<ContactoTipo, string> = {
   EAPB: "EAPB",
   CRUE: "CRUE",
   IPS: "IPS",
+  FUNCIONARIO_SERVICIO: "FUNCIONARIO Y/O SERVICIO",
 };
+
+/** FASE 5J · Bloque B — servicios del bloque FUNCIONARIO Y/O SERVICIO. */
+export const SERVICIOS_FUNCIONARIO = [
+  { codigo: "URGENCIAS", label: "URGENCIAS" },
+  { codigo: "HOSPITALIZACION", label: "HOSPITALIZACIÓN" },
+  { codigo: "QUIROFANO", label: "QUIRÓFANO" },
+  { codigo: "UCI", label: "UCI" },
+  { codigo: "ADMISIONES_FACTURACION", label: "ADMISIONES / FACTURACIÓN" },
+  { codigo: "RESONANCIAS", label: "RESONANCIAS" },
+  { codigo: "TOMOGRAFIA", label: "TOMOGRAFÍA" },
+  { codigo: "RAYOS_X", label: "RAYOS X" },
+  { codigo: "AGENDAMIENTO", label: "AGENDAMIENTO" },
+  { codigo: "OTRO", label: "OTRO" },
+] as const;
+
+export const SERVICIOS_FUNCIONARIO_CODIGOS: string[] = SERVICIOS_FUNCIONARIO.map((s) => s.codigo);
+
+export function labelServicioFuncionario(codigo: string): string {
+  return SERVICIOS_FUNCIONARIO.find((s) => s.codigo === codigo)?.label ?? codigo;
+}
+
+/** Canales que comparten el formulario CONTACTO REALIZADO CON. */
+export function canalUsaContactos(codigo: string): boolean {
+  return codigo === CANAL_CODES.TELEFONO || codigo === CANAL_CODES.WHATSAPP;
+}
 
 export const MAX_CONTACTOS = 3;
 export const MSG_MAX_CONTACTOS = "Puede seleccionar máximo 3 tipos de contacto.";
+
 
 export const COMUNICACION_CON = [
   "PACIENTE",
