@@ -196,8 +196,7 @@ export function CasoRemisionCard({
         remision_por: f.get("remision_por"),
         alcance_red: f.get("alcance_red") || null,
         tipo_ambulancia: f.get("tipo_ambulancia"),
-        especialidades_tratantes: tratantes.join(", "),
-        especialidades_receptoras: receptoras.join(", "),
+        // especialidades_*: excluidas — flujo canónico Novedades → Cambio de Especialidad.
         especificacion: f.get("especificacion"),
         contacto_nombre: f.get("contacto_nombre"),
         contacto_parentesco: f.get("contacto_parentesco"),
