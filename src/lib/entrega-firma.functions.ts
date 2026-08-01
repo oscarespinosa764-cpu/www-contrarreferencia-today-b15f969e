@@ -167,9 +167,10 @@ export const firmarEntrega = createServerFn({ method: "POST" })
 
     const { data: row } = await supabaseAdmin
       .from("entrega_firmas")
-      .select("id, estado, expira_at, snapshot, usuario_genero, caso_id")
+      .select("id, estado, expira_at, snapshot, usuario_genero, caso_id, es_multiple")
       .eq("token_hash", tokenHash)
       .maybeSingle();
+
 
     if (!row) return { ok: false, error: "NO_EXISTE" };
     if (row.estado === "FIRMADA") return { ok: false, error: "FIRMADA" };
