@@ -22,6 +22,9 @@ import {
 } from "@/lib/cuadro-turno-utils";
 import { exportarCuadroMensual } from "@/lib/cuadro-excel";
 import { FiltersBar, countActiveFilters } from "@/components/filters/filters-bar";
+import { EliminarTurnosDialog } from "@/components/cuadro-turno/eliminar-turnos-dialog";
+import { eliminarTurnosProgramadosLote } from "@/lib/cuadro-turnos.functions";
+
 
 const CUADRO_ROUTE = "/_authenticated/cuadro-turno" as const;
 const VISTAS = ["calendario", "matriz", "lista"] as const;
@@ -144,6 +147,8 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
   const [cell, setCell] = useState<{ member: ShiftMember; day: number } | null>(null);
   const [asignar, setAsignar] = useState<ShiftMember | null>(null);
   const [asignarOpen, setAsignarOpen] = useState(false);
+  const [eliminarOpen, setEliminarOpen] = useState(false);
+
 
   const cargos = useMemo(() => {
     const s = new Set<string>();
@@ -254,11 +259,22 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
           }
           extraActions={
             isAdmin && schedule ? (
-              <Button size="sm" className="ml-auto" onClick={() => abrirAsignacion(null)} disabled={members.length === 0}>
-                <Plus className="mr-1.5 h-4 w-4" /> Agregar
-              </Button>
+              <div className="ml-auto flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setEliminarOpen(true)}
+                  disabled={members.length === 0}
+                >
+                  <Trash2 className="mr-1.5 h-4 w-4" /> Eliminar turnos
+                </Button>
+                <Button size="sm" onClick={() => abrirAsignacion(null)} disabled={members.length === 0}>
+                  <Plus className="mr-1.5 h-4 w-4" /> Agregar
+                </Button>
+              </div>
             ) : null
           }
+
         />
 
       </Card>
@@ -455,6 +471,20 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
           onSaved={() => { setAsignarOpen(false); setAsignar(null); qc.invalidateQueries({ queryKey: ["schedule-days"] }); }}
         />
       )}
+
+      {isAdmin && schedule && eliminarOpen && (
+        <EliminarTurnosDialog
+          open={eliminarOpen}
+          onOpenChange={setEliminarOpen}
+          schedule={schedule}
+          members={members}
+          days={days}
+          tipos={tipos}
+          preselectMemberId={membersFiltrados.length === 1 ? membersFiltrados[0].id : null}
+        />
+      )}
+
+
 
     </div>
   );
@@ -904,16 +934,20 @@ function EditCellDialog({
     } catch (e) { console.error(e); toast.error("No se pudo guardar."); } finally { setSaving(false); }
   };
 
+  // El borrado individual usa el MISMO núcleo server-side que el borrado en
+  // lote: la auditoría es transaccional en el servidor (no best-effort aquí).
   const borrar = async () => {
     if (!current) return onClose();
     setSaving(true);
     try {
-      const { error } = await supabase.from("shift_schedule_days").delete().eq("id", current.id);
-      if (error) throw error;
-      registrarAuditoria({ data: { accion: "TURNO_BORRADO", modulo: "cuadro_turno", tabla: "shift_schedule_days", registroId: current.id, resultado: "exito", detalles: { colaborador: member.full_name, dia: day } } }).catch(() => {});
+      const res = await eliminarTurnosProgramadosLote({
+        data: { ids: [current.id], scheduleId, memberId: member.id },
+      });
+      if (!res.ok) { toast.error(res.error || "No se pudo borrar."); return; }
       onSaved();
     } catch (e) { console.error(e); toast.error("No se pudo borrar."); } finally { setSaving(false); }
   };
+
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>

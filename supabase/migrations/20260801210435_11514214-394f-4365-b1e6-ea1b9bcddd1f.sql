@@ -1,0 +1,2 @@
+REVOKE ALL ON FUNCTION private.eliminar_turnos_programados_lote(uuid, uuid, uuid, uuid[]) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION private.eliminar_turnos_programados_lote(uuid, uuid, uuid, uuid[]) TO service_role;
