@@ -6,7 +6,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   resolverEstadoRI,
   siguienteTipoSeguimientoRI,
-  labelTipoSeguimientoRI,
   RI_SEDES_EXAMEN,
   labelSedeExamen,
 } from "@/lib/ri-estados";

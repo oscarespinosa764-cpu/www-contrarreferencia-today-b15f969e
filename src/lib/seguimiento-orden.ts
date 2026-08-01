@@ -115,11 +115,7 @@ export type GrupoTipoSeguimiento =
   | "CANCELACION"
   | "OTRO";
 
-export type ModuloSeguimiento =
-  | "REMISIONES"
-  | "DOMICILIARIA"
-  | "REFERENCIA_INTERNA"
-  | "PENDIENTES";
+export type ModuloSeguimiento = "REMISIONES" | "DOMICILIARIA" | "REFERENCIA_INTERNA" | "PENDIENTES";
 
 export type TipoSeguimientoItem = {
   codigo: string;
