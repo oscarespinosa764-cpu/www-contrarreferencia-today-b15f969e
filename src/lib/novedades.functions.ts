@@ -16,7 +16,13 @@ export type NovedadResultado = {
   nueva_cama?: string;
   motivo_nuevo?: string;
   modalidades_activas?: string[];
+  especialidades_antes?: string[];
+  especialidades_agregadas?: string[];
+  especialidades_cerradas?: string[];
+  especialidades_reactivadas?: string[];
+  especialidades_despues?: string[];
   estado_ciclo?: string;
+
 };
 
 const canalesSchema = z
@@ -54,6 +60,19 @@ const modalidadSchema = z.object({
   plantilla: z.string().trim().max(20000).nullable().optional(),
   canales: canalesSchema,
 });
+
+// D-1 · CAMBIO DE ESPECIALIDAD: el cliente solo envía intención (qué agregar y
+// qué cerrar). El servidor lee las especialidades reales, valida contra el
+// catálogo y calcula antes/después. Nunca acepta snapshots del navegador.
+const especialidadSchema = z.object({
+  casoId: z.string().uuid(),
+  agregar: z.array(z.string().trim().min(2).max(120)).max(20).default([]),
+  cerrar: z.array(z.string().trim().min(2).max(120)).max(20).default([]),
+  observaciones: z.string().trim().max(1000).nullable().optional(),
+  plantilla: z.string().trim().max(20000).nullable().optional(),
+  canales: canalesSchema,
+});
+
 
 type RpcFn = (
   name: string,
@@ -118,6 +137,21 @@ export const novedadGestionModalidad = createServerFn({ method: "POST" })
       _origen: data.modalidadOrigen ?? null,
       _nueva: data.modalidadNueva,
       _justificacion: data.justificacion,
+      _observaciones: data.observaciones ?? null,
+      _plantilla: data.plantilla ?? null,
+      _canales: data.canales ?? null,
+    }),
+  );
+
+export const novedadCambioEspecialidad = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => especialidadSchema.parse(input))
+  .handler(async ({ data, context }) =>
+    ejecutarRpc(context.supabase, context.userId, "novedad_cambio_especialidad", {
+      _actor: context.userId,
+      _caso_id: data.casoId,
+      _agregar: data.agregar,
+      _cerrar: data.cerrar,
       _observaciones: data.observaciones ?? null,
       _plantilla: data.plantilla ?? null,
       _canales: data.canales ?? null,

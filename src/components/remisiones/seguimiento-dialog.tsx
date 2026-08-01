@@ -110,6 +110,8 @@ import { registrarCambioUnidadRI } from "@/lib/ri-cambio-unidad.functions";
 import {
   novedadCambioUnidad,
   novedadCambioMotivoRemision,
+  novedadCambioEspecialidad,
+
 } from "@/lib/novedades.functions";
 import {
   NovedadSubtipoSelector,
@@ -2499,23 +2501,45 @@ export function SeguimientoDialog({
           return toast.error("Selecciona el código de la novedad externa.");
       }
 
-      // Cambio en especialidad: exige cambio real, conservar una activa y motivo.
+      // FASE 5K · C.2 (D-1) — CAMBIO DE ESPECIALIDAD: operación atómica
+      // server-authoritative. El cliente solo envía intención (agregar/cerrar);
+      // el servidor lee las especialidades reales, valida catálogo, calcula
+      // antes/después, registra seguimiento, historial y auditoría.
       if (esCambioEsp) {
         if (!espHayCambio)
           return toast.error(
             "No se ha registrado ningún cambio en las especialidades del caso.",
           );
-        const activasNorm = new Set(especialidadesList.map(normEsp));
-        const yaActiva = espNuevasLimpias.find((e) => activasNorm.has(normEsp(e)));
-        if (yaActiva)
-          return toast.error(`La especialidad ${yaActiva.toUpperCase()} ya está activa en el caso.`);
-        if (espActivasFinal.length === 0)
-          return toast.error(
-            "El caso debe conservar al menos una especialidad activa mientras continúe en trámite.",
-          );
-        if ((espCierreList.length > 0 || espReactivadas.length > 0) && !detalle.trim())
-          return toast.error("Registra las observaciones del cambio.");
+        setBusy(true);
+        let res: { ok?: boolean; error?: string } = {};
+        try {
+          res = await novedadCambioEspecialidad({
+            data: {
+              casoId,
+              agregar: espNuevasLimpias,
+              cerrar: espCierreList,
+              observaciones: detalle.trim() || null,
+              plantilla: indigoTexto.trim() || null,
+            },
+          });
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "Error de red");
+          setBusy(false);
+          return;
+        }
+        if (!res.ok) {
+          toast.error(res.error || "No fue posible registrar el cambio de especialidad.");
+          setBusy(false);
+          return;
+        }
+        toast.success("Novedad registrada: cambio de especialidad");
+        resetCampos();
+        setBusy(false);
+        await refetchEspHist();
+        refrescar();
+        return;
       }
+
       if (esCambioUnidad) {
         if (!nuevaUnidadNorm) return toast.error("Selecciona la nueva unidad.");
         if (!nuevaCamaNorm) return toast.error("Indica la nueva cama del paciente.");
@@ -2743,42 +2767,11 @@ export function SeguimientoDialog({
       return;
     }
 
-    // Cambio en especialidad: registra el historial inmutable de cambios.
-    if (esCambioEsp && segInsertada?.id) {
-      const nombreUsuario = perfil?.nombre || u.user?.email || null;
-      const filas = [
-        ...espCierreList.map((esp) => ({
-          action: "CLOSED" as const,
-          especialidad: esp,
-          previous_status: "ACTIVA",
-          new_status: "CERRADA POR FINALIZACIÓN DE MANEJO",
-        })),
-        ...espReactivadas.map((esp) => ({
-          action: "REACTIVATED" as const,
-          especialidad: esp,
-          previous_status: "CERRADA POR FINALIZACIÓN DE MANEJO",
-          new_status: "ACTIVA",
-        })),
-        ...espAgregadas.map((esp) => ({
-          action: "ADDED" as const,
-          especialidad: esp,
-          previous_status: null,
-          new_status: "ACTIVA",
-        })),
-      ].map((f) => ({
-        ...f,
-        caso_id: casoId,
-        tabla: tabla ?? "remisiones",
-        tipo_caso: tipoCaso,
-        motivo: detalle.trim() || null,
-        seguimiento_id: segInsertada.id,
-        changed_by: u.user?.id ?? null,
-        changed_by_name: nombreUsuario,
-      }));
-      if (filas.length > 0) {
-        await supabase.from("especialidades_historial").insert(filas);
-      }
-    }
+    // D-1: el historial de especialidades ya NO se escribe desde el navegador.
+    // La novedad CAMBIO DE ESPECIALIDAD se resuelve íntegramente server-side
+    // (RPC transaccional) y retorna antes de llegar a este punto.
+
+
 
 
     if (tabla) {
@@ -2798,15 +2791,12 @@ export function SeguimientoDialog({
         plataforma_funcionando?: boolean | null;
         prestador_traslado?: string;
         tipo_ambulancia?: string;
-        especialidades_tratantes?: string;
         servicio?: string;
         cama?: string;
       } = {};
-      // Cambio en especialidad: actualiza la lista de especialidades activas del
-      // caso (sin tocar el estado). El historial completo queda en la tabla aparte.
-      if (esCambioEsp) {
-        update.especialidades_tratantes = espActivasFinal.join(", ");
-      }
+      // D-1: las especialidades canónicas las actualiza exclusivamente la RPC
+      // server-side de la novedad CAMBIO DE ESPECIALIDAD.
+
       // Cambio de unidad: actualiza servicio (unidad) y cama sin tocar estado / aceptación.
       // En Referencia Interna la tabla no tiene columna `cama`; la nueva cama queda
       // persistida estructurada dentro de `seguimientos.detalles` para trazabilidad.
