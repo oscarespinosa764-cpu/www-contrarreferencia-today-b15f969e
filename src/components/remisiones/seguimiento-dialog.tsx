@@ -1,6 +1,12 @@
 import { ordenarTiposSeguimiento } from "@/lib/seguimiento-orden";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { resolverEstadoRI, siguienteTipoSeguimientoRI } from "@/lib/ri-estados";
+import {
+  resolverEstadoRI,
+  siguienteTipoSeguimientoRI,
+  labelTipoSeguimientoRI,
+  RI_SEDES_EXAMEN,
+  labelSedeExamen,
+} from "@/lib/ri-estados";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
@@ -78,6 +84,7 @@ import {
   type CancelacionTipo,
   type ContactoDestino,
   type NegacionGrupo,
+  generarPlantillaRefInternaCoordinacionExamen,
 } from "@/lib/indigo-trazabilidad";
 import {
   CANAL_LABEL_EVO,
@@ -197,7 +204,7 @@ const TI = {
 
 // Labels visibles (Fase 5C · B1). No modifican el código persistido.
 const TI_LABEL: Record<string, string> = {
-  [TI.PENDIENTE]: "TRÁMITE COORDINADO",
+  [TI.PENDIENTE]: labelTipoSeguimientoRI(TI.PENDIENTE),
   [TI.LLEGADA_AMB]: "CONFIRMACIÓN LLEGADA DE AMBULANCIA",
 };
 function labelTipoSeg(t: string): string {
@@ -448,6 +455,11 @@ export function SeguimientoDialog({
   const [riCargo, setRiCargo] = useState("");
   const [riFecha, setRiFecha] = useState("");
   const [riHora, setRiHora] = useState("");
+  // FASE 5J · A — Lugar donde se realizará el examen.
+  const [riDestinoTipo, setRiDestinoTipo] = useState<"" | "SEDE_IPS" | "IPS_EXTERNA">("");
+  const [riSedeCodigo, setRiSedeCodigo] = useState("");
+  const [riIpsExterna, setRiIpsExterna] = useState("");
+  const [riIpsExternaOrigen, setRiIpsExternaOrigen] = useState<"CATALOGO" | "MANUAL">("MANUAL");
   const [riInformoAmb, setRiInformoAmb] = useState(false);
   const [riInformoServ, setRiInformoServ] = useState(false);
   // Referencia interna — pasos 3/4 (recogida y llegada de ambulancia).
@@ -567,7 +579,7 @@ export function SeguimientoDialog({
   // Catálogo IPS con sede (autocompletado inteligente).
   const { data: ipsCat = [] } = useQuery({
     queryKey: ["cat-ips-sedes"],
-    enabled: open && usaIndigo,
+    enabled: open && (usaIndigo || esInterna),
     queryFn: async () => {
       const { data } = await supabase
         .from("catalogos")
@@ -1407,11 +1419,13 @@ export function SeguimientoDialog({
       switch (tipoSeg) {
         case TI.PENDIENTE:
           return appendNota(
-            generarPlantillaRefInternaPendiente({
-              funcionario: riFuncionario,
-              cargo: riCargo,
+            generarPlantillaRefInternaCoordinacionExamen({
               fecha: riFecha,
               hora: riHora,
+              lugar:
+                riDestinoTipo === "SEDE_IPS"
+                  ? labelSedeExamen(riSedeCodigo)
+                  : riIpsExterna.trim(),
             }),
             detalle,
           );
@@ -1947,6 +1961,14 @@ export function SeguimientoDialog({
             cargo: riCargo.trim() || null,
             fecha: riFecha.trim() || null,
             hora: riHora.trim() || null,
+            // FASE 5J · A — Lugar del examen (persistencia estructurada).
+            destino_examen_tipo: riDestinoTipo || null,
+            sede_ips_codigo: riDestinoTipo === "SEDE_IPS" ? riSedeCodigo || null : null,
+            sede_ips_nombre:
+              riDestinoTipo === "SEDE_IPS" ? labelSedeExamen(riSedeCodigo) || null : null,
+            ips_externa_nombre:
+              riDestinoTipo === "IPS_EXTERNA" ? riIpsExterna.trim() || null : null,
+            ips_externa_origen: riDestinoTipo === "IPS_EXTERNA" ? riIpsExternaOrigen : null,
           };
         case TI.COORDINADO:
           return {
@@ -2347,6 +2369,16 @@ export function SeguimientoDialog({
           return toast.error("Fecha del examen requerida (DD/MM/AAAA)");
         if (!riHora.trim() || !isHoraValida(riHora))
           return toast.error("Hora del examen requerida (HH:MM)");
+        if (riDestinoTipo !== "SEDE_IPS" && riDestinoTipo !== "IPS_EXTERNA")
+          return toast.error("Indica dónde se realizará el examen");
+        if (riDestinoTipo === "SEDE_IPS" && !labelSedeExamen(riSedeCodigo))
+          return toast.error("Selecciona la sede donde se realizará el examen");
+        if (riDestinoTipo === "IPS_EXTERNA") {
+          const nom = riIpsExterna.trim();
+          if (nom.length < 3 || nom.length > 160 || /[<>]/.test(nom) ||
+              ["null", "undefined"].includes(nom.toLowerCase()))
+            return toast.error("Indica la IPS externa (3-160 caracteres).");
+        }
       }
       if (esInterna && tipoSeg === TI.COORDINADO) {
         if (riFecha.trim() && !isFechaValida(riFecha))
