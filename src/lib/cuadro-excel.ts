@@ -182,17 +182,32 @@ export async function importarCuadroExcel(params: {
   const sub = aoa[startData];
   if (sub && String(sub[nameCol] ?? "").trim() === "") startData += 1;
 
+  const saltar = new Set<number>();
   for (let i = startData; i < aoa.length; i++) {
+    if (saltar.has(i)) continue;
     const row = aoa[i];
     const nombre = String(row?.[nameCol] ?? "").trim();
     if (!nombre) { res.filasOmitidas++; continue; }
     // Cortar al llegar a bloques posteriores.
-    if (/^(conversiones|convenciones|novedades|elaborado|aprobado|festivos)/i.test(nombre)) break;
+    if (/^(conversiones|convenciones|novedades|elaborado|aprobado|festivos|continuidad|gestion traslados)/i.test(nombre)) break;
 
     let member = memberByName.get(norm(nombre));
-    const cargo = cargoCol >= 0 ? (String(row?.[cargoCol] ?? "").trim() || null) : null;
-    const sede = sedeCol >= 0 ? (String(row?.[sedeCol] ?? "").trim() || null)
-      : depCol >= 0 ? null : null;
+    let cargo = cargoCol >= 0 ? (String(row?.[cargoCol] ?? "").trim() || null) : null;
+    let sede = sedeCol >= 0 ? (String(row?.[sedeCol] ?? "").trim() || null) : null;
+
+    // Formato oficial TH-FR-10: la fila siguiente lleva "Cargo · Sede" y las horas.
+    if (oficial && cargoCol < 0) {
+      const detalle = String(aoa[i + 1]?.[nameCol] ?? "").trim();
+      if (detalle && detalle.includes("·")) {
+        const [c, s] = detalle.split("·").map((x) => x.trim());
+        cargo = cargo ?? (c || null);
+        sede = sede ?? (s || null);
+        saltar.add(i + 1);
+      } else if (detalle === "") {
+        saltar.add(i + 1);
+      }
+    }
+
 
     if (!member) {
       const { data, error } = await supabase
