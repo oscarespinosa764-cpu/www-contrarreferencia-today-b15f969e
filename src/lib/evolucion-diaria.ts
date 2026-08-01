@@ -170,6 +170,12 @@ export type CumplimientoEvolucionInput = {
   /** Excepción: resueltos desde datos reales del caso, nunca desde labels. */
   esNuevaEps?: boolean;
   esRedNoContratada?: boolean;
+  /**
+   * Regla configurable en Catálogos (tipo ESPECIALIDAD): alguna especialidad
+   * tratante exige CORREO adicional dentro de la excepción NUEVA EPS + RED NO
+   * CONTRATADA. Nunca se deduce de nombres hardcodeados.
+   */
+  especialidadRequiereCorreoAdicional?: boolean;
   /** Evidencia estructurada válida acumulada dentro del mismo ciclo. */
   canalesPreviosCiclo?: string[];
   especialidadesPreviasCiclo?: string[];
