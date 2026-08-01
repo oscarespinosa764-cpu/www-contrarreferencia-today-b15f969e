@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/lib/backend-client";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Eye, Pencil, ClipboardCheck, MapPin } from "lucide-react";
-import { Field, SelectField, SpecialtyList } from "./form-bits";
+import { Field, SelectField } from "./form-bits";
 import { Cie10Field } from "./cie10-field";
 import { SeguimientoDialog } from "./seguimiento-dialog";
 import { useAuth } from "@/lib/auth";
@@ -139,30 +139,9 @@ export function CasoRemisionCard({
   const [ver, setVer] = useState(false);
   const [editar, setEditar] = useState(false);
   const [seg, setSeg] = useState(false);
-  const [tratantes, setTratantes] = useState<string[]>([]);
-  const [receptoras, setReceptoras] = useState<string[]>([]);
   useTick(true);
 
-  const { data: especialidades = [] } = useQuery({
-    queryKey: ["cat-especialidad"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("catalogos")
-        .select("valor")
-        .eq("tipo", "ESPECIALIDAD")
-        .eq("activo", true)
-        .order("valor");
-      return (data ?? []).map((d) => d.valor as string);
-    },
-  });
 
-  // Al abrir el editor, precargar las especialidades actuales.
-  useEffect(() => {
-    if (editar) {
-      setTratantes(splitEspecialidades(r.especialidades_tratantes));
-      setReceptoras(splitEspecialidades(r.especialidades_receptoras));
-    }
-  }, [editar, r.especialidades_tratantes, r.especialidades_receptoras]);
 
   const evoRes = resumenEvolucion(r.evolucion_detalle, splitEspecialidades(r.especialidades_tratantes));
   const evo = evolucionMeta[evoRes.estado];
@@ -196,8 +175,7 @@ export function CasoRemisionCard({
         remision_por: f.get("remision_por"),
         alcance_red: f.get("alcance_red") || null,
         tipo_ambulancia: f.get("tipo_ambulancia"),
-        especialidades_tratantes: tratantes.join(", "),
-        especialidades_receptoras: receptoras.join(", "),
+        // especialidades_*: excluidas — flujo canónico Novedades → Cambio de Especialidad.
         especificacion: f.get("especificacion"),
         contacto_nombre: f.get("contacto_nombre"),
         contacto_parentesco: f.get("contacto_parentesco"),
@@ -225,8 +203,7 @@ export function CasoRemisionCard({
         prioridad: String(f.get("prioridad")),
         remision_por: String(f.get("remision_por")),
         tipo_ambulancia: String(f.get("tipo_ambulancia")),
-        especialidades_tratantes: tratantes.join(", "),
-        especialidades_receptoras: receptoras.join(", "),
+        // especialidades_*: excluidas — flujo canónico Novedades → Cambio de Especialidad.
         especificacion: String(f.get("especificacion")),
         contacto_nombre: String(f.get("contacto_nombre")),
         contacto_parentesco: String(f.get("contacto_parentesco")),
@@ -483,9 +460,29 @@ export function CasoRemisionCard({
                 defaultValue={r.tipo_ambulancia ?? ""}
               />
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <SpecialtyList label="Especialidad tratante" items={tratantes} onChange={setTratantes} suggestions={especialidades} />
-              <SpecialtyList label="Especialidad destino" items={receptoras} onChange={setReceptoras} suggestions={especialidades} />
+            {/* Especialidades: SOLO LECTURA. Se gestionan por el flujo canónico. */}
+            <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Dato label="Especialidad tratante" value={r.especialidades_tratantes} />
+                <Dato label="Especialidad destino" value={r.especialidades_receptoras} />
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Para modificar las especialidades registre: NOVEDADES → CAMBIO DE ESPECIALIDAD.
+              </p>
+              {canEdit && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => {
+                    setEditar(false);
+                    setSeg(true);
+                  }}
+                >
+                  <ClipboardCheck className="mr-1 h-3.5 w-3.5" /> Gestionar especialidades en Seguimientos
+                </Button>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="especificacion" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
