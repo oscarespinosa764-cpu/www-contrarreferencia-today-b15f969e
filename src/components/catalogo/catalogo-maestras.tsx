@@ -37,6 +37,8 @@ type CatRow = {
   eapb_correo_radicacion?: string | null;
   eapb_sla_horas?: number | null;
   eapb_requisitos_radicacion?: string | null;
+  /** Regla configurable por especialidad (Fase 5E C.7). */
+  nueva_eps_rnc_correo_adicional?: boolean | null;
 };
 
 // Etiqueta legible + dónde se usa + módulo agrupador
@@ -222,7 +224,7 @@ export function CatalogoMaestras({ moduloFijo }: { moduloFijo?: string } = {}) {
       const { data, error } = await supabase
         .from("catalogos")
         .select(
-          "id, tipo, valor, extra1, extra2, extra3, activo, radica_phd, radica_pad, radica_oxigeno, radica_unidad_especial, seguimientos_en_plataforma, evolucion_por_correo, eapb_correo_radicacion, eapb_sla_horas, eapb_requisitos_radicacion",
+          "id, tipo, valor, extra1, extra2, extra3, activo, radica_phd, radica_pad, radica_oxigeno, radica_unidad_especial, seguimientos_en_plataforma, evolucion_por_correo, eapb_correo_radicacion, eapb_sla_horas, eapb_requisitos_radicacion, nueva_eps_rnc_correo_adicional",
         )
         .neq("tipo", "plantilla")
         .order("tipo")
@@ -322,6 +324,13 @@ export function CatalogoMaestras({ moduloFijo }: { moduloFijo?: string } = {}) {
             (String(f.get("eapb_requisitos_radicacion") ?? "").trim() || null) as string | null,
         }
       : {};
+    const espPatch =
+      editing.tipo === "ESPECIALIDAD"
+        ? {
+            nueva_eps_rnc_correo_adicional:
+              String(f.get("nueva_eps_rnc_correo_adicional")) === "SI",
+          }
+        : {};
     const { error } = await supabase
       .from("catalogos")
       .update({
@@ -330,6 +339,7 @@ export function CatalogoMaestras({ moduloFijo }: { moduloFijo?: string } = {}) {
         extra2,
         extra3,
         ...radicaPatch,
+        ...espPatch,
       })
       .eq("id", editing.id);
     if (error) return toast.error(error.message);
@@ -778,6 +788,28 @@ export function CatalogoMaestras({ moduloFijo }: { moduloFijo?: string } = {}) {
                     <option value="SOAT">SOAT</option>
                     <option value="PARTICULAR">PARTICULAR</option>
                   </select>
+                </div>
+              ) : editing.tipo === "ESPECIALIDAD" ? (
+                <div className="space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                  <Label
+                    htmlFor="nueva_eps_rnc_correo_adicional"
+                    className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                  >
+                    Requiere correo adicional (NUEVA EPS · RED NO CONTRATADA)
+                  </Label>
+                  <select
+                    id="nueva_eps_rnc_correo_adicional"
+                    name="nueva_eps_rnc_correo_adicional"
+                    defaultValue={editing.nueva_eps_rnc_correo_adicional ? "SI" : "NO"}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                  >
+                    <option value="SI">Sí</option>
+                    <option value="NO">No</option>
+                  </select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Si está en Sí, la Evolución Diaria de casos NUEVA EPS con RED NO CONTRATADA
+                    exigirá CORREO ELECTRÓNICO además de PLATAFORMA WEB.
+                  </p>
                 </div>
               ) : (
                 <>

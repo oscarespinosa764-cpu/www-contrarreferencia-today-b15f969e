@@ -508,7 +508,12 @@ export function PhdSeguimientoDialog({
                 value={canalV}
                 onChange={setCanalV}
                 dualPermitido={dualPermitido}
+                canalesBloqueados={
+                  evento === "EVOLUCION_DIARIA" ? evoDeriv.resolver.canales_bloqueados : []
+                }
+                motivoBloqueo="La plataforma de la EAPB está declarada como no funcional: queda PENDIENTE POR FALLA."
               />
+
 
             </div>
 

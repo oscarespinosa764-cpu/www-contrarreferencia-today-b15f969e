@@ -587,6 +587,7 @@ export type Database = {
           extra3: string | null
           id: string
           metadata: Json
+          nueva_eps_rnc_correo_adicional: boolean
           orden: number
           radica_oxigeno: boolean
           radica_pad: boolean
@@ -612,6 +613,7 @@ export type Database = {
           extra3?: string | null
           id?: string
           metadata?: Json
+          nueva_eps_rnc_correo_adicional?: boolean
           orden?: number
           radica_oxigeno?: boolean
           radica_pad?: boolean
@@ -637,6 +639,7 @@ export type Database = {
           extra3?: string | null
           id?: string
           metadata?: Json
+          nueva_eps_rnc_correo_adicional?: boolean
           orden?: number
           radica_oxigeno?: boolean
           radica_pad?: boolean
