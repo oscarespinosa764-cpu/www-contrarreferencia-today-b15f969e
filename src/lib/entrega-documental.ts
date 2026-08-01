@@ -222,7 +222,56 @@ export async function crearSesionFirma(params: {
   return { id: data.id, token, expira_at };
 }
 
+/**
+ * FASE 5I — Crea UNA sesión de firma por QR compartida por varios casos de
+ * Referencia Interna (traslado múltiple TAB). Reutiliza exactamente la misma
+ * infraestructura de `entrega_firmas` y añade los casos vinculados en
+ * `entrega_firmas_casos`. Al firmar, el servidor registra la CONFIRMACIÓN DE
+ * LLEGADA DE AMBULANCIA en cada caso vinculado.
+ */
+export async function crearSesionFirmaMultipleRI(params: {
+  casoIds: string[];
+  snapshot: SnapshotEntrega;
+  userId: string;
+  nombreUsuario: string;
+}): Promise<{ id: string; token: string; expira_at: string }> {
+  const casos = Array.from(new Set(params.casoIds.filter(Boolean)));
+  if (casos.length < 2) throw new Error("Selecciona al menos dos pacientes.");
+
+  const token = generarToken();
+  const token_hash = await sha256Hex(token);
+  const expira_at = new Date(Date.now() + TTL_FIRMA_MS).toISOString();
+
+  const { data, error } = await supabase
+    .from("entrega_firmas")
+    .insert({
+      caso_id: casos[0],
+      tipo_caso: "referencia_interna",
+      token_hash,
+      estado: "PENDIENTE",
+      expira_at,
+      usuario_genero: params.userId,
+      nombre_usuario: params.nombreUsuario,
+      snapshot: params.snapshot as never,
+      es_multiple: true,
+    } as never)
+    .select("id")
+    .single();
+  if (error) throw error;
+
+  const { error: linkErr } = await supabase
+    .from("entrega_firmas_casos")
+    .insert(casos.map((caso_id) => ({ firma_id: data.id, caso_id, tipo_caso: "referencia_interna" })));
+  if (linkErr) {
+    await supabase.from("entrega_firmas").update({ estado: "ANULADA" }).eq("id", data.id);
+    throw linkErr;
+  }
+
+  return { id: data.id, token, expira_at };
+}
+
 /** Anula una sesión activa (no podrá usarse). */
+
 export async function anularSesion(id: string): Promise<void> {
   const { error } = await supabase
     .from("entrega_firmas")
