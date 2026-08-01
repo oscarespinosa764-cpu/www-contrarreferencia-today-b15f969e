@@ -836,8 +836,13 @@ export function SeguimientoDialog({
     [especialidadesList, espCierreList],
   );
   const espHayCambio = espCierreList.length > 0 || espNuevasLimpias.length > 0;
-  const esCambioEsp = esSaliente && tipoSeg === T.CAMBIO_ESPECIALIDAD;
-  const esCambioUnidad = (esSaliente || esInterna) && tipoSeg === T.CAMBIO_UNIDAD;
+  // FASE 5K · C — Cambio de especialidad / unidad / motivo dejan de ser tipos
+  // principales y viven como SUBTIPOS de NOVEDADES (mismos formularios).
+  const esCambioEsp = esSaliente && tipoSeg === T.NOVEDADES && novSubtipo === "CAMBIO_ESPECIALIDAD";
+  const esCambioUnidad =
+    (esSaliente || esInterna) && tipoSeg === T.NOVEDADES && novSubtipo === "CAMBIO_UNIDAD";
+  const esCambioMotivo =
+    esSaliente && tipoSeg === T.NOVEDADES && novSubtipo === "CAMBIO_MOTIVO_REMISION";
   const esTepActivacion = esInterna && tipoSeg === TI.TEP_ACTIVACION;
   // Proveedor SEM (predeterminado en flujos de ambulancia/TEP).
   const SEM_MATCH = "SERVICIOS DE EMERGENCIAS MEDICAS DEL CAQUETA";
