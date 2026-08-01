@@ -339,6 +339,7 @@ export function CatalogoMaestras({ moduloFijo }: { moduloFijo?: string } = {}) {
         extra2,
         extra3,
         ...radicaPatch,
+        ...espPatch,
       })
       .eq("id", editing.id);
     if (error) return toast.error(error.message);
