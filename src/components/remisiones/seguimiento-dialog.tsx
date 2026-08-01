@@ -1007,15 +1007,20 @@ export function SeguimientoDialog({
   ]);
 
 
-  // Tipos para PHD/PAD/O2/Especiales (subconjunto saliente).
+  // Tipos para PHD/PAD/O2/Especiales — CONSUMIDOR LEGADO (huérfano): la tarjeta
+  // domiciliaria renderiza siempre `PhdSeguimientoDialog`. Se conserva el código
+  // pero deja de ser una fuente contradictoria: usa el resolver canónico y no
+  // expone canales (Correo/Plataforma/Físico) como Tipo de Seguimiento.
   const TIPOS_PHD = useMemo(() => {
-    return ordenarTiposSeguimiento([
-      ...(mostrarOpcionRadicado ? [T.RADICADO] : []),
-      ...TIPOS_PHD_BASE,
-    ]);
+    return resolverTiposSeguimientoDisponibles({
+      modulo: "DOMICILIARIA",
+      codigos: [...(mostrarOpcionRadicado ? [T.RADICADO] : []), ...TIPOS_PHD_BASE],
+    });
   }, [mostrarOpcionRadicado]);
 
-  // Referencia Interna: opciones dinámicas según secuencia + CAMBIO DE UNIDAD (mientras esté activo).
+  // Referencia Interna: opciones dinámicas según la máquina de estados canónica.
+  // FASE 5K · B — CAMBIO DE UNIDAD se retira del nivel principal (migra a
+  // NOVEDADES en el Bloque C); la RPC, allowlist y formulario se conservan.
   const TIPOS_INTERNA_DYN = useMemo(() => {
     const proximo = siguientePasoRI(
       historial as { tipo_seguimiento: string; detalles?: unknown }[] | undefined,
@@ -1025,24 +1030,36 @@ export function SeguimientoDialog({
     const activo = !casoInterna?.archivado;
     const arr: string[] = [];
     if (proximo) arr.push(proximo);
-    if (activo) arr.push(T.CAMBIO_UNIDAD);
     // Acción terminal de cancelación siempre disponible mientras esté activo.
     if (activo && proximo !== TI.CANCELACION_RI) arr.push(TI.CANCELACION_RI);
     // B3: OTRO y NOVEDADES son trazabilidad permanente mientras el caso esté activo.
     if (activo) arr.push(TI.OTRO, TI.NOVEDADES, T.INFO_TRAMITE);
-    // A.1: la acción principal del ciclo va primero; luego las transversales.
-    return ordenarTiposSeguimiento(arr, { principal: proximo });
+    return resolverTiposSeguimientoDisponibles({
+      modulo: "REFERENCIA_INTERNA",
+      codigos: arr,
+      principal: proximo,
+    });
   }, [historial, casoInterna, estadoActual]);
 
-  const TIPOS_SEG: string[] = esSaliente
+  const TIPOS_PENDIENTE_ITEMS = useMemo(
+    () =>
+      resolverTiposSeguimientoDisponibles({
+        modulo: "PENDIENTES",
+        codigos: TIPOS_PENDIENTE,
+      }),
+    [],
+  );
+
+  const TIPOS_SEG: TipoSeguimientoItem[] = esSaliente
     ? TIPOS_SALIENTES
     : esPhd
       ? TIPOS_PHD
       : esInterna
         ? TIPOS_INTERNA_DYN
         : esPendiente
-          ? TIPOS_PENDIENTE
+          ? TIPOS_PENDIENTE_ITEMS
           : [];
+
 
   // FASE 5G · A — Programación de ambulancia: el tipo proviene EXCLUSIVAMENTE
   // de la creación del caso (solo lectura) y la empresa se precarga con SEM
