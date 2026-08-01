@@ -156,7 +156,7 @@ export async function importarCuadroExcel(params: {
     : 0;
   const cargoCol = header.findIndex((h) => h.toLowerCase() === "cargo");
   const sedeCol = header.findIndex((h) => h.toLowerCase() === "sede");
-  const depCol = header.findIndex((h) => h.toLowerCase() === "dependencia / dia");
+  void header.findIndex((h) => h.toLowerCase() === "dependencia / dia");
 
   // Mapear índice de columna -> número de día
   const dayCols: { col: number; day: number }[] = [];
