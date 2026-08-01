@@ -152,3 +152,34 @@ export function siguienteTipoSeguimientoRI(
       return null;
   }
 }
+
+// ============================================================================
+// FASE 5J · Bloque A — Coordinación de fecha, hora y LUGAR del examen (RI).
+// El código técnico persistido no cambia (para no alterar la máquina de
+// estados server-authoritative); solo se normaliza el LABEL CANÓNICO visible.
+// ============================================================================
+export const RI_LABEL_COORDINACION_EXAMEN = "COORDINACIÓN FECHA Y HORA DEL EXAMEN";
+
+/** Label canónico visible para un tipo de seguimiento de Referencia Interna. */
+export function labelTipoSeguimientoRI(tipo: string | null | undefined): string {
+  const t = (tipo ?? "").trim();
+  if (t.toUpperCase() === RI_TIPO_TRAMITE_COORDINADO) return RI_LABEL_COORDINACION_EXAMEN;
+  return t;
+}
+
+/** Destinos permitidos para la realización del examen. */
+export const RI_DESTINO_EXAMEN = ["SEDE_IPS", "IPS_EXTERNA"] as const;
+export type RiDestinoExamen = (typeof RI_DESTINO_EXAMEN)[number];
+
+/** Allowlist estricta de sedes institucionales autorizadas para el examen. */
+export const RI_SEDES_EXAMEN: ReadonlyArray<{ codigo: string; label: string }> = [
+  { codigo: "SEDE_PRINCIPAL", label: "SEDE PRINCIPAL" },
+  { codigo: "SEDE_CONSULTA_ESPECIALIZADA", label: "SEDE CONSULTA ESPECIALIZADA" },
+  { codigo: "SEDE_SALA_ROSA", label: "SEDE SALA ROSA" },
+  { codigo: "SEDE_CLINICA_GLORIA_PATRICIA_PINZON", label: "SEDE CLÍNICA GLORIA PATRICIA PINZÓN" },
+  { codigo: "SEDE_SAN_VICENTE_DEL_CAGUAN", label: "SEDE SAN VICENTE DEL CAGUÁN" },
+];
+
+export function labelSedeExamen(codigo: string | null | undefined): string {
+  return RI_SEDES_EXAMEN.find((s) => s.codigo === codigo)?.label ?? "";
+}
