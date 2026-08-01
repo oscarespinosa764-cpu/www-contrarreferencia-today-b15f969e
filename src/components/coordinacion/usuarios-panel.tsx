@@ -1111,6 +1111,12 @@ export function UsuariosPanel() {
                         <Input
                           id="cm-pass2"
                           type={mostrarPass ? "text" : "password"}
+                          uppercase={false}
+                          autoComplete="new-password"
+                          autoCapitalize="none"
+                          autoCorrect="off"
+                          spellCheck={false}
+                          className="normal-case"
                           value={confirmarPass}
                           onChange={(e) => setConfirmarPass(e.target.value)}
                         />
