@@ -136,3 +136,18 @@ export const novedadGestionModalidad = createServerFn({ method: "POST" })
       _canales: data.canales ?? null,
     }),
   );
+
+export const novedadCambioEspecialidad = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => especialidadSchema.parse(input))
+  .handler(async ({ data, context }) =>
+    ejecutarRpc(context.supabase, context.userId, "novedad_cambio_especialidad", {
+      _actor: context.userId,
+      _caso_id: data.casoId,
+      _agregar: data.agregar,
+      _cerrar: data.cerrar,
+      _observaciones: data.observaciones ?? null,
+      _plantilla: data.plantilla ?? null,
+      _canales: data.canales ?? null,
+    }),
+  );
