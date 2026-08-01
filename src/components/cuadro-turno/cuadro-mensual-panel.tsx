@@ -144,6 +144,8 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
   const [cell, setCell] = useState<{ member: ShiftMember; day: number } | null>(null);
   const [asignar, setAsignar] = useState<ShiftMember | null>(null);
   const [asignarOpen, setAsignarOpen] = useState(false);
+  const [eliminarOpen, setEliminarOpen] = useState(false);
+
 
   const cargos = useMemo(() => {
     const s = new Set<string>();
@@ -915,16 +917,20 @@ function EditCellDialog({
     } catch (e) { console.error(e); toast.error("No se pudo guardar."); } finally { setSaving(false); }
   };
 
+  // El borrado individual usa el MISMO núcleo server-side que el borrado en
+  // lote: la auditoría es transaccional en el servidor (no best-effort aquí).
   const borrar = async () => {
     if (!current) return onClose();
     setSaving(true);
     try {
-      const { error } = await supabase.from("shift_schedule_days").delete().eq("id", current.id);
-      if (error) throw error;
-      registrarAuditoria({ data: { accion: "TURNO_BORRADO", modulo: "cuadro_turno", tabla: "shift_schedule_days", registroId: current.id, resultado: "exito", detalles: { colaborador: member.full_name, dia: day } } }).catch(() => {});
+      const res = await eliminarTurnosProgramadosLote({
+        data: { ids: [current.id], scheduleId, memberId: member.id },
+      });
+      if (!res.ok) { toast.error(res.error || "No se pudo borrar."); return; }
       onSaved();
     } catch (e) { console.error(e); toast.error("No se pudo borrar."); } finally { setSaving(false); }
   };
+
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
