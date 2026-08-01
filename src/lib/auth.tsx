@@ -149,10 +149,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isActiveMember = activo && roles.length > 0;
 
   const setTurnoSesion = useCallback(
-    (codigo: TurnoCodigo) => {
-      if (!user?.id) return;
+    (codigo: TurnoCodigo, uid?: string) => {
+      const id = uid ?? user?.id;
+      if (!id) return;
       const sesion = construirTurnoSesion(codigo);
-      writeTurnoDeSesion(user.id, sesion);
+      writeTurnoDeSesion(id, sesion);
       setTurnoSesionState(sesion);
     },
     [user?.id],
