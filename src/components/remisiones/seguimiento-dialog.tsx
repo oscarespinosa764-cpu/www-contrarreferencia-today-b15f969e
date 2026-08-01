@@ -3323,6 +3323,26 @@ export function SeguimientoDialog({
                 </div>
               )}
 
+              {/* FASE 5K · C — Subtipo canónico de NOVEDADES */}
+              {(esSaliente || esInterna) && tipoSeg === T.NOVEDADES && (
+                <div className={sectionCls}>
+                  <NovedadSubtipoSelector
+                    modulo={esInterna ? "REFERENCIA_INTERNA" : "REMISIONES"}
+                    value={novSubtipo}
+                    onChange={setNovSubtipo}
+                  />
+                  {esCambioMotivo && (
+                    <div className="mt-3">
+                      <CambioMotivoFields
+                        motivoActual={caso?.remision_por ?? ""}
+                        value={cambioMotivo}
+                        onChange={setCambioMotivo}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* CAMBIO EN ESPECIALIDAD */}
               {esCambioEsp && (
                 <div className={sectionCls}>
