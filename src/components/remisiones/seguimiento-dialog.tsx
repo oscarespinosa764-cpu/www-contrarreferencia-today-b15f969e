@@ -3427,7 +3427,7 @@ export function SeguimientoDialog({
               {/* PENDIENTE COORDINACIÓN FECHA Y HORA EXAMEN (RI) */}
               {esInterna && tipoSeg === TI.PENDIENTE && (
                 <div className={sectionCls}>
-                  <p className={labelCls}>Coordinación de fecha y hora del examen</p>
+                  <p className={labelCls}>Coordinación fecha y hora del examen</p>
                   <div className="space-y-1.5">
                     <Label className={labelCls}>Fecha y hora programada del examen *</Label>
                     <AppDateTimeInput
