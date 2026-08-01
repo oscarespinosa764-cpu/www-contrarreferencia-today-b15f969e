@@ -2482,7 +2482,7 @@ export function SeguimientoDialog({
           return toast.error("¿CUÁL? debe tener entre 3 y 200 caracteres.");
       }
       // B1.2 · NOVEDADES (RI): validación estructurada.
-      if (esInterna && tipoSeg === TI.NOVEDADES) {
+      if (esInterna && tipoSeg === TI.NOVEDADES && !novSubtipo) {
         if (!riNovInterna && !riNovExterna)
           return toast.error("Selecciona INTERNA, EXTERNA o ambas.");
         if (riNovInterna && !riNovInternaCod)
