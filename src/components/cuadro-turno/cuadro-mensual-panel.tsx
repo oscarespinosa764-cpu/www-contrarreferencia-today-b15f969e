@@ -183,8 +183,13 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
   }, [membersFiltrados, days, requests, anio, mes]);
 
 
-  const exportarCuadro = () => {
-    exportarCuadroMensual({ anio, mes, members, days, tipos, baseHoras: schedule?.base_hours });
+  const exportarCuadro = async () => {
+    try {
+      await exportarCuadroMensual({ anio, mes, members, days, tipos, baseHoras: schedule?.base_hours });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo generar el archivo.");
+      return;
+    }
     registrarAuditoria({ data: { accion: "CUADRO_EXPORTADO", modulo: "cuadro_turno", tabla: "shift_schedules", registroId: schedule?.id ?? "", resultado: "exito", detalles: { anio, mes } } }).catch(() => {});
   };
 
