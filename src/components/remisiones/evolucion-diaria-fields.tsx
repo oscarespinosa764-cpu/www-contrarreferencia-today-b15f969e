@@ -63,6 +63,8 @@ export type EvolucionDiariaContexto = {
   /** Excepción canónica (solo módulos con tipo/motivo de remisión real). */
   esNuevaEps?: boolean;
   esRedNoContratada?: boolean;
+  /** Alguna especialidad tratante exige CORREO adicional (Catálogos). */
+  especialidadRequiereCorreoAdicional?: boolean;
   canalesPreviosCiclo?: string[];
   especialidadesPreviasCiclo?: string[];
 };
@@ -88,6 +90,7 @@ export function derivarEvolucionDiaria(
     especialidadesEvolucionadas: especialidades.filter((e) => v.esp[e]),
     esNuevaEps: ctx.esNuevaEps === true,
     esRedNoContratada: ctx.esRedNoContratada === true,
+    especialidadRequiereCorreoAdicional: ctx.especialidadRequiereCorreoAdicional === true,
     canalesPreviosCiclo: ctx.canalesPreviosCiclo,
     especialidadesPreviasCiclo: ctx.especialidadesPreviasCiclo,
     motivoPendiente: v.motivoPend,
