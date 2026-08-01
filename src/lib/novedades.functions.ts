@@ -16,7 +16,13 @@ export type NovedadResultado = {
   nueva_cama?: string;
   motivo_nuevo?: string;
   modalidades_activas?: string[];
+  especialidades_antes?: string[];
+  especialidades_agregadas?: string[];
+  especialidades_cerradas?: string[];
+  especialidades_reactivadas?: string[];
+  especialidades_despues?: string[];
   estado_ciclo?: string;
+
 };
 
 const canalesSchema = z
