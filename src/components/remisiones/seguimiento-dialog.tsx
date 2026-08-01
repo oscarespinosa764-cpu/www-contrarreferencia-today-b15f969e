@@ -967,14 +967,19 @@ export function SeguimientoDialog({
     ) && !/\beps\b|\beapb\b/i.test(responsableTxt);
   const mostrarCambioEapb = usaIndigo && esAseguradoraNoEapb;
 
+  // FASE 5K · B — REVISIÓN AUTORIZACIÓN ESTANCIA solo cuando el motivo canónico
+  // del caso (`remision_por`) es exactamente RED NO CONTRATADA (equivalencia
+  // normalizada, sin coincidencias parciales). Validación server-side: Bloque C.
+  const mostrarRevisionAutorizacion = esRedNoContratadaCanonica(caso?.remision_por ?? "");
+
   const TIPOS_SALIENTES = useMemo(() => {
+    // FASE 5K · B — Retirados del nivel principal (siguen existiendo en código y
+    // en Históricos): CORREO / PLATAFORMA / FÍSICO / TELÉFONO (viven en CANAL DE
+    // GESTIÓN) y CAMBIO EN ESPECIALIDAD / CAMBIO DE UNIDAD (migran a NOVEDADES
+    // en el Bloque C).
     const arr = [
       ...(mostrarOpcionRadicado ? [T.RADICADO] : []),
       T.EVOLUCION,
-      T.CORREO,
-      T.PLATAFORMA,
-      T.FISICO,
-      T.TELEFONO,
       ...(mostrarAceptacion ? [T.ACEPTACION] : []),
       T.NEGACIONES,
       ...(mostrarAmbulancia ? [T.AMBULANCIA] : []),
@@ -983,18 +988,13 @@ export function SeguimientoDialog({
       // CIERRE POR TRASLADO EFECTIVO: oculto hasta completar la entrega documental.
       ...(mostrarTrasladoOpt ? [T.TRASLADO] : []),
       ...(mostrarCambioEapb ? [T.CAMBIO_EAPB] : []),
-      // CAMBIO EN ESPECIALIDAD: solo disponible mientras el caso siga activo.
-      ...(casoActivo ? [T.CAMBIO_ESPECIALIDAD] : []),
-      // CAMBIO DE UNIDAD: mientras el caso siga activo, actualiza la ubicación institucional.
-      ...(casoActivo ? [T.CAMBIO_UNIDAD] : []),
+      ...(mostrarRevisionAutorizacion ? [T.PERTINENCIA] : []),
       T.CANCELACION,
-      T.PERTINENCIA,
       T.NOVEDADES,
       T.INFO_TRAMITE,
       T.OTRO,
     ];
-    // A.1: orden canónico (propias → información → novedades → cancelación → otro).
-    return ordenarTiposSeguimiento(arr);
+    return resolverTiposSeguimientoDisponibles({ modulo: "REMISIONES", codigos: arr });
   }, [
     mostrarOpcionRadicado,
     mostrarAceptacion,
@@ -1003,8 +1003,9 @@ export function SeguimientoDialog({
     mostrarCierreOpt,
     mostrarTrasladoOpt,
     mostrarCambioEapb,
-    casoActivo,
+    mostrarRevisionAutorizacion,
   ]);
+
 
   // Tipos para PHD/PAD/O2/Especiales (subconjunto saliente).
   const TIPOS_PHD = useMemo(() => {
