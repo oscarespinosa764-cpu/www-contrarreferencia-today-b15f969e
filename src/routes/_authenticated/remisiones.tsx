@@ -798,6 +798,15 @@ function RemisionesPage() {
         allowedTabs={nuevoCtx.allowedTabs}
       />
 
+      {/* Traslado múltiple TAB (Referencias Internas) */}
+      <RiMultipleDialog
+        open={multipleOpen}
+        onOpenChange={setMultipleOpen}
+        casos={(internas ?? []) as Record<string, unknown>[]}
+      />
+
+
+
       {/* Confirmación entrega de turno */}
       <Dialog open={confirmEntrega} onOpenChange={setConfirmEntrega}>
         <DialogContent className="sm:max-w-md">
