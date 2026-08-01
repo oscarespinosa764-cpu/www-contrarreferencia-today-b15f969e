@@ -224,6 +224,19 @@ export const firmarEntrega = createServerFn({ method: "POST" })
 
     if (upErr) return { ok: false, error: "DATOS" };
 
+    // FASE 5I — Traslado múltiple TAB: registra la CONFIRMACIÓN DE LLEGADA DE
+    // AMBULANCIA en cada caso vinculado a esta misma firma (idempotente).
+    if ((row as { es_multiple?: boolean }).es_multiple) {
+      try {
+        await supabaseAdmin.rpc("ri_confirmar_llegada_multiple" as never, {
+          _firma_id: row.id,
+        } as never);
+      } catch {
+        /* la firma queda registrada; el seguimiento puede reintentarse */
+      }
+    }
+
+
     // Auditoría atribuida al usuario interno que generó el QR.
     // No se guarda PHI (ni nombre del firmante ni IP en texto plano); la IP
     // queda solo en la columna técnica firma_ip de la fila, de acceso admin.
