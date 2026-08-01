@@ -224,8 +224,7 @@ export function CasoRemisionCard({
         prioridad: String(f.get("prioridad")),
         remision_por: String(f.get("remision_por")),
         tipo_ambulancia: String(f.get("tipo_ambulancia")),
-        especialidades_tratantes: tratantes.join(", "),
-        especialidades_receptoras: receptoras.join(", "),
+        // especialidades_*: excluidas — flujo canónico Novedades → Cambio de Especialidad.
         especificacion: String(f.get("especificacion")),
         contacto_nombre: String(f.get("contacto_nombre")),
         contacto_parentesco: String(f.get("contacto_parentesco")),
