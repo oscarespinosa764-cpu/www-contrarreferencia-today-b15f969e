@@ -12,7 +12,11 @@ export type NovedadResultado = {
   ok: boolean;
   error?: string;
   seguimiento_id?: string;
-  [k: string]: unknown;
+  nueva_unidad?: string;
+  nueva_cama?: string;
+  motivo_nuevo?: string;
+  modalidades_activas?: string[];
+  estado_ciclo?: string;
 };
 
 const canalesSchema = z
