@@ -14,9 +14,9 @@ for(let r=12;r<=last;r++){
   for(let c=1;c<=COLS;c++){ const cell=row.getCell(c); cell.style=JSON.parse(JSON.stringify(tpl.st[c-1])); }
 }
 // limpiar merges de la zona y rehacerlos
-for(const key of Object.keys(ws._merges||{})){
-  const m=ws._merges[key]; const {top,bottom}=m.model||m;
-  if(top>=12 && bottom<=last){ try{ws.unMergeCells(m.model?m.model.tl+':'+m.model.br:key);}catch(e){} }
+for(const key of [...new Set(Object.values(ws._merges||{}).map(m=>m.range))]){
+  const m=Object.values(ws._merges).find(x=>x.range===key);
+  if(m.top>=12 && m.bottom<=last){ try{ws.unMergeCells(key);}catch(e){console.log('unm',key,e.message);} }
 }
 for(let i=0;i<BLOCKS;i++){
   const r=12+i*2;
