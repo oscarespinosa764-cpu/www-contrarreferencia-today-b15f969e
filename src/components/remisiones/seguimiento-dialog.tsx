@@ -2767,42 +2767,11 @@ export function SeguimientoDialog({
       return;
     }
 
-    // Cambio en especialidad: registra el historial inmutable de cambios.
-    if (esCambioEsp && segInsertada?.id) {
-      const nombreUsuario = perfil?.nombre || u.user?.email || null;
-      const filas = [
-        ...espCierreList.map((esp) => ({
-          action: "CLOSED" as const,
-          especialidad: esp,
-          previous_status: "ACTIVA",
-          new_status: "CERRADA POR FINALIZACIÓN DE MANEJO",
-        })),
-        ...espReactivadas.map((esp) => ({
-          action: "REACTIVATED" as const,
-          especialidad: esp,
-          previous_status: "CERRADA POR FINALIZACIÓN DE MANEJO",
-          new_status: "ACTIVA",
-        })),
-        ...espAgregadas.map((esp) => ({
-          action: "ADDED" as const,
-          especialidad: esp,
-          previous_status: null,
-          new_status: "ACTIVA",
-        })),
-      ].map((f) => ({
-        ...f,
-        caso_id: casoId,
-        tabla: tabla ?? "remisiones",
-        tipo_caso: tipoCaso,
-        motivo: detalle.trim() || null,
-        seguimiento_id: segInsertada.id,
-        changed_by: u.user?.id ?? null,
-        changed_by_name: nombreUsuario,
-      }));
-      if (filas.length > 0) {
-        await supabase.from("especialidades_historial").insert(filas);
-      }
-    }
+    // D-1: el historial de especialidades ya NO se escribe desde el navegador.
+    // La novedad CAMBIO DE ESPECIALIDAD se resuelve íntegramente server-side
+    // (RPC transaccional) y retorna antes de llegar a este punto.
+
+
 
 
     if (tabla) {
