@@ -254,11 +254,22 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
           }
           extraActions={
             isAdmin && schedule ? (
-              <Button size="sm" className="ml-auto" onClick={() => abrirAsignacion(null)} disabled={members.length === 0}>
-                <Plus className="mr-1.5 h-4 w-4" /> Agregar
-              </Button>
+              <div className="ml-auto flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setEliminarOpen(true)}
+                  disabled={members.length === 0}
+                >
+                  <Trash2 className="mr-1.5 h-4 w-4" /> Eliminar turnos
+                </Button>
+                <Button size="sm" onClick={() => abrirAsignacion(null)} disabled={members.length === 0}>
+                  <Plus className="mr-1.5 h-4 w-4" /> Agregar
+                </Button>
+              </div>
             ) : null
           }
+
         />
 
       </Card>
