@@ -33,6 +33,8 @@ import { agruparPorEtapa, type EtapaMeta } from "@/lib/salientes-grupos";
 import { agruparPhdPorSegmento } from "@/lib/phd-requisitos";
 import { GrupoEtapa } from "@/components/remisiones/grupo-etapa";
 import { agruparInternasPorEstado } from "@/lib/ri-estados";
+import { RiMultipleDialog } from "@/components/remisiones/ri-multiple-dialog";
+
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { getDirectorioActivos } from "@/lib/directorio.functions";
