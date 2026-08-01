@@ -1,6 +1,12 @@
 import { ordenarTiposSeguimiento } from "@/lib/seguimiento-orden";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { resolverEstadoRI, siguienteTipoSeguimientoRI } from "@/lib/ri-estados";
+import {
+  resolverEstadoRI,
+  siguienteTipoSeguimientoRI,
+  labelTipoSeguimientoRI,
+  RI_SEDES_EXAMEN,
+  labelSedeExamen,
+} from "@/lib/ri-estados";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
@@ -67,7 +73,6 @@ import {
   generarPlantillaPendienteCumplimiento,
   generarPlantillaRefInternaCoordinado,
   generarPlantillaRefInternaCulminacion,
-  generarPlantillaRefInternaPendiente,
   generarPlantillaPlataformaSeg,
   generarPlantillaRadicado,
   generarPlantillaRevisionAutorizacion,
@@ -78,6 +83,7 @@ import {
   type CancelacionTipo,
   type ContactoDestino,
   type NegacionGrupo,
+  generarPlantillaRefInternaCoordinacionExamen,
 } from "@/lib/indigo-trazabilidad";
 import {
   CANAL_LABEL_EVO,
@@ -197,7 +203,7 @@ const TI = {
 
 // Labels visibles (Fase 5C · B1). No modifican el código persistido.
 const TI_LABEL: Record<string, string> = {
-  [TI.PENDIENTE]: "TRÁMITE COORDINADO",
+  [TI.PENDIENTE]: labelTipoSeguimientoRI(TI.PENDIENTE),
   [TI.LLEGADA_AMB]: "CONFIRMACIÓN LLEGADA DE AMBULANCIA",
 };
 function labelTipoSeg(t: string): string {
@@ -448,6 +454,11 @@ export function SeguimientoDialog({
   const [riCargo, setRiCargo] = useState("");
   const [riFecha, setRiFecha] = useState("");
   const [riHora, setRiHora] = useState("");
+  // FASE 5J · A — Lugar donde se realizará el examen.
+  const [riDestinoTipo, setRiDestinoTipo] = useState<"" | "SEDE_IPS" | "IPS_EXTERNA">("");
+  const [riSedeCodigo, setRiSedeCodigo] = useState("");
+  const [riIpsExterna, setRiIpsExterna] = useState("");
+  const [riIpsExternaOrigen, setRiIpsExternaOrigen] = useState<"CATALOGO" | "MANUAL">("MANUAL");
   const [riInformoAmb, setRiInformoAmb] = useState(false);
   const [riInformoServ, setRiInformoServ] = useState(false);
   // Referencia interna — pasos 3/4 (recogida y llegada de ambulancia).
@@ -567,7 +578,7 @@ export function SeguimientoDialog({
   // Catálogo IPS con sede (autocompletado inteligente).
   const { data: ipsCat = [] } = useQuery({
     queryKey: ["cat-ips-sedes"],
-    enabled: open && usaIndigo,
+    enabled: open && (usaIndigo || esInterna),
     queryFn: async () => {
       const { data } = await supabase
         .from("catalogos")
@@ -1407,11 +1418,13 @@ export function SeguimientoDialog({
       switch (tipoSeg) {
         case TI.PENDIENTE:
           return appendNota(
-            generarPlantillaRefInternaPendiente({
-              funcionario: riFuncionario,
-              cargo: riCargo,
+            generarPlantillaRefInternaCoordinacionExamen({
               fecha: riFecha,
               hora: riHora,
+              lugar:
+                riDestinoTipo === "SEDE_IPS"
+                  ? labelSedeExamen(riSedeCodigo)
+                  : riIpsExterna.trim(),
             }),
             detalle,
           );
@@ -1947,6 +1960,14 @@ export function SeguimientoDialog({
             cargo: riCargo.trim() || null,
             fecha: riFecha.trim() || null,
             hora: riHora.trim() || null,
+            // FASE 5J · A — Lugar del examen (persistencia estructurada).
+            destino_examen_tipo: riDestinoTipo || null,
+            sede_ips_codigo: riDestinoTipo === "SEDE_IPS" ? riSedeCodigo || null : null,
+            sede_ips_nombre:
+              riDestinoTipo === "SEDE_IPS" ? labelSedeExamen(riSedeCodigo) || null : null,
+            ips_externa_nombre:
+              riDestinoTipo === "IPS_EXTERNA" ? riIpsExterna.trim() || null : null,
+            ips_externa_origen: riDestinoTipo === "IPS_EXTERNA" ? riIpsExternaOrigen : null,
           };
         case TI.COORDINADO:
           return {
@@ -2347,6 +2368,16 @@ export function SeguimientoDialog({
           return toast.error("Fecha del examen requerida (DD/MM/AAAA)");
         if (!riHora.trim() || !isHoraValida(riHora))
           return toast.error("Hora del examen requerida (HH:MM)");
+        if (riDestinoTipo !== "SEDE_IPS" && riDestinoTipo !== "IPS_EXTERNA")
+          return toast.error("Indica dónde se realizará el examen");
+        if (riDestinoTipo === "SEDE_IPS" && !labelSedeExamen(riSedeCodigo))
+          return toast.error("Selecciona la sede donde se realizará el examen");
+        if (riDestinoTipo === "IPS_EXTERNA") {
+          const nom = riIpsExterna.trim();
+          if (nom.length < 3 || nom.length > 160 || /[<>]/.test(nom) ||
+              ["null", "undefined"].includes(nom.toLowerCase()))
+            return toast.error("Indica la IPS externa (3-160 caracteres).");
+        }
       }
       if (esInterna && tipoSeg === TI.COORDINADO) {
         if (riFecha.trim() && !isFechaValida(riFecha))
@@ -3395,7 +3426,7 @@ export function SeguimientoDialog({
               {/* PENDIENTE COORDINACIÓN FECHA Y HORA EXAMEN (RI) */}
               {esInterna && tipoSeg === TI.PENDIENTE && (
                 <div className={sectionCls}>
-                  <p className={labelCls}>Coordinación de fecha y hora del examen</p>
+                  <p className={labelCls}>Coordinación fecha y hora del examen</p>
                   <div className="space-y-1.5">
                     <Label className={labelCls}>Fecha y hora programada del examen *</Label>
                     <AppDateTimeInput
@@ -3423,6 +3454,70 @@ export function SeguimientoDialog({
                       La fecha y hora quedan incluidas en la plantilla para Índigo.
                     </p>
                   </div>
+
+                  {/* FASE 5J · A — Lugar donde se realizará el examen. */}
+                  <div className="space-y-1.5">
+                    <Label className={labelCls}>¿Dónde se realizará el examen? *</Label>
+                    <select
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={riDestinoTipo}
+                      onChange={(e) => {
+                        const v = e.target.value as "" | "SEDE_IPS" | "IPS_EXTERNA";
+                        setRiDestinoTipo(v);
+                        // Limpieza condicional: nunca se persisten ambos destinos.
+                        setRiSedeCodigo("");
+                        setRiIpsExterna("");
+                        setRiIpsExternaOrigen("MANUAL");
+                      }}
+                    >
+                      <option value="">Seleccione…</option>
+                      <option value="SEDE_IPS">SEDE IPS</option>
+                      <option value="IPS_EXTERNA">IPS EXTERNA</option>
+                    </select>
+                  </div>
+
+                  {riDestinoTipo === "SEDE_IPS" && (
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>Sede *</Label>
+                      <select
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        value={riSedeCodigo}
+                        onChange={(e) => setRiSedeCodigo(e.target.value)}
+                      >
+                        <option value="">Seleccione…</option>
+                        {RI_SEDES_EXAMEN.map((sd) => (
+                          <option key={sd.codigo} value={sd.codigo}>
+                            {sd.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {riDestinoTipo === "IPS_EXTERNA" && (
+                    <div className="space-y-1.5">
+                      <Label className={labelCls}>IPS externa *</Label>
+                      <AutoComplete
+                        value={riIpsExterna}
+                        options={ipsLabels}
+                        placeholder="Escribe para buscar IPS…"
+                        minChars={3}
+                        onChange={(v) => {
+                          setRiIpsExterna(v);
+                          setRiIpsExternaOrigen("MANUAL");
+                        }}
+                        onPick={(label) => {
+                          const opt = ipsOptions.find((o) => o.label === label);
+                          setRiIpsExterna(opt ? opt.ips : label);
+                          setRiIpsExternaOrigen("CATALOGO");
+                        }}
+                      />
+                      <p className="text-[11px] italic text-muted-foreground">
+                        Puedes conservar un nombre escrito manualmente si la IPS aún no está en
+                        Catálogos. No se crea ningún registro nuevo.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 

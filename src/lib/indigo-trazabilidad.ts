@@ -1132,3 +1132,22 @@ export function generarPlantillaPendienteCumplimiento(
   if (obs) t += `\n\nOBSERVACIONES: ${obs}`;
   return t;
 }
+
+/**
+ * FASE 5J · Bloque A — Coordinación REALIZADA de fecha, hora y lugar del examen
+ * en Referencias Internas. Expresa la acción cumplida (no un pendiente).
+ */
+export function generarPlantillaRefInternaCoordinacionExamen(i: {
+  fecha?: string;
+  hora?: string;
+  lugar?: string;
+}): string {
+  const fx = (i.fecha || "").trim();
+  const hx = (i.hora || "").trim();
+  const lg = (i.lugar || "").trim();
+  return [
+    "SE DEJA TRAZABILIDAD DE LA GESTIÓN DE REFERENCIA INTERNA, MEDIANTE LA CUAL SE COORDINA LA FECHA Y HORA DEL EXAMEN.",
+    `FECHA/HORA DEL EXAMEN: ${`${fx || "[FECHA]"} ${hx || "[HORA]"}`.trim()}`,
+    `LUGAR DEL EXAMEN: ${lg ? lg.toUpperCase() : "[LUGAR]"}`,
+  ].join("\n");
+}

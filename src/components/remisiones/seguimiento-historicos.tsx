@@ -18,6 +18,7 @@ import {
 import { Copy, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { fmtFechaHora } from "@/lib/cuadro-turno-utils";
+import { labelTipoSeguimientoRI } from "@/lib/ri-estados";
 
 export type SeguimientoRow = Record<string, unknown> & { id?: unknown };
 
@@ -103,7 +104,7 @@ export function getSeguimientoDisplayText(seg: SeguimientoRow | null | undefined
     const det = parseDetalles(seg.detalles);
     const lineas: string[] = [];
     const tipo = typeof seg.tipo_seguimiento === "string" ? seg.tipo_seguimiento.trim() : "";
-    if (tipo) lineas.push(`TIPO DE SEGUIMIENTO: ${tipo.toUpperCase()}`);
+    if (tipo) lineas.push(`TIPO DE SEGUIMIENTO: ${labelTipoSeguimientoRI(tipo).toUpperCase()}`);
     const estadoSol =
       typeof seg.estado_solicitud === "string" ? seg.estado_solicitud.trim() : "";
     if (estadoSol) lineas.push(`ESTADO DE SOLICITUD: ${estadoSol.toUpperCase()}`);
@@ -152,7 +153,8 @@ export function SeguimientoDetalleDialog({
       <DialogContent className="max-h-[90vh] w-[calc(100vw-1.5rem)] overflow-auto p-4 sm:max-w-lg sm:p-6">
         <DialogHeader>
           <DialogTitle className="break-words text-base uppercase tracking-wide">
-            {(seguimiento?.tipo_seguimiento as string) || "Detalle del seguimiento"}
+            {labelTipoSeguimientoRI(seguimiento?.tipo_seguimiento as string) ||
+              "Detalle del seguimiento"}
           </DialogTitle>
         </DialogHeader>
         {seguimiento && (
@@ -220,7 +222,7 @@ export function SeguimientoHistoricos({
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
                   <div className="min-w-0">
                     <p className="truncate text-xs font-semibold uppercase text-foreground">
-                      {(h.tipo_seguimiento as string) || "Seguimiento"}
+                      {labelTipoSeguimientoRI(h.tipo_seguimiento as string) || "Seguimiento"}
                     </p>
                     <p className="truncate text-[11px] text-muted-foreground">
                       {(h.nombre_usuario as string) || "—"}
