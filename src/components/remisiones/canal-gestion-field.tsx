@@ -25,12 +25,15 @@ import {
   COMUNICACION_CON,
   MAX_CONTACTOS,
   MSG_MAX_CONTACTOS,
+  SERVICIOS_FUNCIONARIO,
   SERVICIOS_PRESENCIAL,
+  canalUsaContactos,
   cargosDe,
   type CanalGestionValue,
   type ContactoDetalle,
   type ContactoTipo,
 } from "@/lib/canal-gestion";
+
 
 const labelCls = "text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
 
