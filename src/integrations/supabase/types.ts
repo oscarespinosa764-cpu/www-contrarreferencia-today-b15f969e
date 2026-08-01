@@ -1309,6 +1309,7 @@ export type Database = {
           created_at: string
           empresa_declarada: string | null
           empresa_declarada_motivo: string | null
+          es_multiple: boolean
           estado: string
           expira_at: string
           firma_data: string | null
@@ -1341,6 +1342,7 @@ export type Database = {
           created_at?: string
           empresa_declarada?: string | null
           empresa_declarada_motivo?: string | null
+          es_multiple?: boolean
           estado?: string
           expira_at: string
           firma_data?: string | null
@@ -1373,6 +1375,7 @@ export type Database = {
           created_at?: string
           empresa_declarada?: string | null
           empresa_declarada_motivo?: string | null
+          es_multiple?: boolean
           estado?: string
           expira_at?: string
           firma_data?: string | null
@@ -1399,6 +1402,38 @@ export type Database = {
           usuario_genero?: string | null
         }
         Relationships: []
+      }
+      entrega_firmas_casos: {
+        Row: {
+          caso_id: string
+          created_at: string
+          firma_id: string
+          id: string
+          tipo_caso: string
+        }
+        Insert: {
+          caso_id: string
+          created_at?: string
+          firma_id: string
+          id?: string
+          tipo_caso?: string
+        }
+        Update: {
+          caso_id?: string
+          created_at?: string
+          firma_id?: string
+          id?: string
+          tipo_caso?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entrega_firmas_casos_firma_id_fkey"
+            columns: ["firma_id"]
+            isOneToOne: false
+            referencedRelation: "entrega_firmas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       entregas_turno: {
         Row: {
@@ -4071,6 +4106,10 @@ export type Database = {
       registrar_evento_phd: {
         Args: { _actor: string; _caso_id: string; _payload: Json }
         Returns: Json
+      }
+      ri_confirmar_llegada_multiple: {
+        Args: { _firma_id: string }
+        Returns: number
       }
       shift_monthly_usage: {
         Args: { _month: number; _user_id: string; _year: number }
