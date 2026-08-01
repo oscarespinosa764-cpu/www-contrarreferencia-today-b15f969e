@@ -472,6 +472,20 @@ export function CuadroMensualPanel({ isAdmin }: { isAdmin: boolean }) {
         />
       )}
 
+      {isAdmin && schedule && eliminarOpen && (
+        <EliminarTurnosDialog
+          open={eliminarOpen}
+          onOpenChange={setEliminarOpen}
+          schedule={schedule}
+          members={members}
+          days={days}
+          tipos={tipos}
+          preselectMemberId={membersFiltrados.length === 1 ? membersFiltrados[0].id : null}
+        />
+      )}
+
+
+
     </div>
   );
 }
