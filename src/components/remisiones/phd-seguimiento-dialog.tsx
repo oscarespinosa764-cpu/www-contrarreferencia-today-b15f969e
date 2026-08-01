@@ -221,6 +221,11 @@ export function PhdSeguimientoDialog({
 
   // --- Formulario -------------------------------------------------------------
   const [evento, setEvento] = useState("");
+  // FASE 5K · C — Subtipos canónicos de NOVEDADES en Atención Domiciliaria.
+  const [novSubtipo, setNovSubtipo] = useState<NovedadSubtipo>("");
+  const [modalidadV, setModalidadV] = useState<GestionModalidadValue>(GESTION_MODALIDAD_INICIAL);
+  const [nuevaUnidad, setNuevaUnidad] = useState("");
+  const [nuevaCama, setNuevaCama] = useState("");
   const [canalV, setCanalV] = useState<CanalGestionValue>(CANAL_GESTION_INICIAL);
   const [observaciones, setObservaciones] = useState("");
   const [descripcion, setDescripcion] = useState("");
