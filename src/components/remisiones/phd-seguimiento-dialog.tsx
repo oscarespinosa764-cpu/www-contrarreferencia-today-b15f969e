@@ -1,4 +1,4 @@
-import { ordenarTiposSeguimiento } from "@/lib/seguimiento-orden";
+import { resolverTiposSeguimientoDisponibles } from "@/lib/seguimiento-orden";
 // ---------------------------------------------------------------------------
 // FASE 5D · Bloque C — Modal de seguimiento PHD / PAD / PAD CRÓNICO / O2 /
 // UNIDADES ESPECIALES / AMBULANCIA PARA EGRESO.
@@ -211,9 +211,11 @@ export function PhdSeguimientoDialog({
     () =>
       terminal
         ? []
-        : ordenarTiposSeguimiento(
-            calcularEventos(req, { exigeRadicacion, radicacionRegistrada }),
-          ),
+        : resolverTiposSeguimientoDisponibles({
+            modulo: "DOMICILIARIA",
+            codigos: calcularEventos(req, { exigeRadicacion, radicacionRegistrada }),
+            labels: EVENTO_LABEL,
+          }),
     [req, terminal, exigeRadicacion, radicacionRegistrada],
   );
 
@@ -495,9 +497,14 @@ export function PhdSeguimientoDialog({
                     <SelectValue placeholder="Seleccionar tipo…" />
                   </SelectTrigger>
                   <SelectContent>
-                    {eventosDisponibles.map((code) => (
-                      <SelectItem key={code} value={code}>
-                        {EVENTO_LABEL[code] ?? code}
+                    {eventosDisponibles.map((item) => (
+                      <SelectItem
+                        key={item.codigo}
+                        value={item.codigo}
+                        disabled={!item.habilitado}
+                        title={item.motivoBloqueo ?? item.label}
+                      >
+                        {item.label}
                       </SelectItem>
                     ))}
                   </SelectContent>

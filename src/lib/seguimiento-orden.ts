@@ -98,3 +98,101 @@ export function ordenarTiposSeguimiento(
     .sort((a, b) => a.p - b.p || a.i - b.i)
     .map((x) => x.codigo);
 }
+
+// ============================================================================
+// FASE 5K · BLOQUE B — Resolver canónico ÚNICO del selector TIPO DE SEGUIMIENTO
+// compartido por Remisiones, Atención Domiciliaria, Referencias Internas y
+// Pendientes. No autoriza: recibe la allowlist ya calculada por la máquina de
+// estados / requisitos de cada módulo y devuelve elementos estructurados
+// (código técnico intacto + label canónico + grupo + orden).
+// ============================================================================
+
+export type GrupoTipoSeguimiento =
+  | "RADICADO"
+  | "PROPIO"
+  | "INFORMACION_TRAMITE"
+  | "NOVEDADES"
+  | "CANCELACION"
+  | "OTRO";
+
+export type ModuloSeguimiento = "REMISIONES" | "DOMICILIARIA" | "REFERENCIA_INTERNA" | "PENDIENTES";
+
+export type TipoSeguimientoItem = {
+  codigo: string;
+  label: string;
+  grupo: GrupoTipoSeguimiento;
+  orden: number;
+  visible: boolean;
+  habilitado: boolean;
+  motivoBloqueo: string | null;
+};
+
+/** Label visible canónico de la cancelación (los códigos internos no cambian). */
+export const LABEL_CANCELACION_TRAMITE = "CANCELACIÓN DEL TRÁMITE";
+/** Label visible canónico de la revisión de autorización de estancia. */
+export const LABEL_REVISION_AUTORIZACION = "REVISIÓN AUTORIZACIÓN ESTANCIA";
+/** Label visible canónico del cumplimiento total en Pendientes. */
+export const LABEL_CUMPLIMIENTO_TOTAL = "CUMPLIMIENTO TOTAL";
+/** Label visible canónico de la coordinación de examen en Referencias Internas. */
+export const LABEL_COORDINACION_EXAMEN_RI = "COORDINACIÓN FECHA Y HORA DEL EXAMEN";
+
+export function grupoTipoSeguimiento(codigo: string): GrupoTipoSeguimiento {
+  const n = norm(codigo);
+  if (n.startsWith("RADICAD") || n.startsWith("RADICACION")) return "RADICADO";
+  if (n.includes("INFORMACION DEL TRAMITE")) return "INFORMACION_TRAMITE";
+  if (n === "NOVEDADES" || n.startsWith("NOVEDADES")) return "NOVEDADES";
+  if (n === "OTRO" || n.startsWith("OTRO ")) return "OTRO";
+  if (n.includes("CANCELACION") && !n.includes("REVISION AUTORIZACION")) return "CANCELACION";
+  return "PROPIO";
+}
+
+/**
+ * Adaptador de labels: garantiza que los códigos técnicos actuales E HISTÓRICOS
+ * (canales antiguos, cambio de unidad/especialidad, cancelaciones por módulo,
+ * cumplimiento completo) se lean correctamente. NO reescribe datos.
+ */
+export function labelCanonicoTipoSeguimiento(codigo: string | null | undefined): string {
+  const raw = (codigo ?? "").trim();
+  if (!raw) return "";
+  const n = norm(raw);
+  if (n === "CUMPLIMIENTO COMPLETO") return LABEL_CUMPLIMIENTO_TOTAL;
+  if (n === "PENDIENTE COORDINACION FECHA Y HORA EXAMEN") return LABEL_COORDINACION_EXAMEN_RI;
+  if (n === "CONFIRMACION DE LLEGADA DE AMBULANCIA") return "CONFIRMACIÓN LLEGADA DE AMBULANCIA";
+  if (n.includes("REVISION AUTORIZACION ESTANCIA")) return LABEL_REVISION_AUTORIZACION;
+  if (n.includes("CANCELACION") && !n.includes("REVISION AUTORIZACION")) {
+    return LABEL_CANCELACION_TRAMITE;
+  }
+  return raw;
+}
+
+/**
+ * Resolver canónico del selector. `codigos` es la allowlist YA autorizada por
+ * el módulo (estado/ciclo/requisitos/permisos). Este resolver solo agrupa,
+ * ordena y etiqueta; `deshabilitados` permite mostrar un ítem bloqueado con
+ * motivo visible sin crear una segunda fuente de verdad.
+ */
+export function resolverTiposSeguimientoDisponibles(input: {
+  modulo: ModuloSeguimiento;
+  codigos: readonly string[];
+  principal?: string | null;
+  deshabilitados?: Record<string, string>;
+  labels?: Record<string, string>;
+}): TipoSeguimientoItem[] {
+  const { modulo, codigos, principal, deshabilitados, labels } = input;
+  const unicos = Array.from(new Set(codigos.filter((c) => typeof c === "string" && c.trim())));
+  // PENDIENTES no tiene grupos transversales: orden literal recibido.
+  const ordenados =
+    modulo === "PENDIENTES" ? unicos : ordenarTiposSeguimiento(unicos, { principal });
+  return ordenados.map((codigo, i) => {
+    const motivo = deshabilitados?.[codigo] ?? null;
+    return {
+      codigo,
+      label: labels?.[codigo] ?? labelCanonicoTipoSeguimiento(codigo),
+      grupo: modulo === "PENDIENTES" ? "PROPIO" : grupoTipoSeguimiento(codigo),
+      orden: i,
+      visible: true,
+      habilitado: !motivo,
+      motivoBloqueo: motivo,
+    };
+  });
+}

@@ -1,9 +1,11 @@
-import { ordenarTiposSeguimiento } from "@/lib/seguimiento-orden";
+import {
+  resolverTiposSeguimientoDisponibles,
+  type TipoSeguimientoItem,
+} from "@/lib/seguimiento-orden";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   resolverEstadoRI,
   siguienteTipoSeguimientoRI,
-  labelTipoSeguimientoRI,
   RI_SEDES_EXAMEN,
   labelSedeExamen,
 } from "@/lib/ri-estados";
@@ -182,7 +184,8 @@ const EST = {
 } as const;
 
 // --- Tipos de seguimiento PHD/PAD/O2/Especiales (reutiliza lógica saliente) ---
-const TIPOS_PHD_BASE = [T.EVOLUCION, T.CORREO, T.PLATAFORMA, T.FISICO, T.OTRO] as const;
+// FASE 5K · B — sin canales (Correo/Plataforma/Físico viven en CANAL DE GESTIÓN).
+const TIPOS_PHD_BASE = [T.EVOLUCION, T.INFO_TRAMITE, T.NOVEDADES, T.OTRO] as const;
 
 // --- Referencia interna ---
 // Nota: los VALORES son códigos técnicos persistidos (compatibilidad histórica).
@@ -201,14 +204,9 @@ const TI = {
   NOVEDADES: "NOVEDADES",
 } as const;
 
-// Labels visibles (Fase 5C · B1). No modifican el código persistido.
-const TI_LABEL: Record<string, string> = {
-  [TI.PENDIENTE]: labelTipoSeguimientoRI(TI.PENDIENTE),
-  [TI.LLEGADA_AMB]: "CONFIRMACIÓN LLEGADA DE AMBULANCIA",
-};
-function labelTipoSeg(t: string): string {
-  return TI_LABEL[t] ?? t;
-}
+// FASE 5K · B — Los labels visibles provienen ahora del adaptador canónico
+// `labelCanonicoTipoSeguimiento` (src/lib/seguimiento-orden.ts), única fuente
+// compartida por los cuatro módulos e Históricos.
 
 // Estados terminales de referencia_interna que resultan de estas acciones.
 const RI_ESTADO_CIERRE = "CERRADO POR CULMINACION DE SOLICITUD";
@@ -967,14 +965,19 @@ export function SeguimientoDialog({
     ) && !/\beps\b|\beapb\b/i.test(responsableTxt);
   const mostrarCambioEapb = usaIndigo && esAseguradoraNoEapb;
 
+  // FASE 5K · B — REVISIÓN AUTORIZACIÓN ESTANCIA solo cuando el motivo canónico
+  // del caso (`remision_por`) es exactamente RED NO CONTRATADA (equivalencia
+  // normalizada, sin coincidencias parciales). Validación server-side: Bloque C.
+  const mostrarRevisionAutorizacion = esRedNoContratadaCanonica(caso?.remision_por ?? "");
+
   const TIPOS_SALIENTES = useMemo(() => {
+    // FASE 5K · B — Retirados del nivel principal (siguen existiendo en código y
+    // en Históricos): CORREO / PLATAFORMA / FÍSICO / TELÉFONO (viven en CANAL DE
+    // GESTIÓN) y CAMBIO EN ESPECIALIDAD / CAMBIO DE UNIDAD (migran a NOVEDADES
+    // en el Bloque C).
     const arr = [
       ...(mostrarOpcionRadicado ? [T.RADICADO] : []),
       T.EVOLUCION,
-      T.CORREO,
-      T.PLATAFORMA,
-      T.FISICO,
-      T.TELEFONO,
       ...(mostrarAceptacion ? [T.ACEPTACION] : []),
       T.NEGACIONES,
       ...(mostrarAmbulancia ? [T.AMBULANCIA] : []),
@@ -983,18 +986,13 @@ export function SeguimientoDialog({
       // CIERRE POR TRASLADO EFECTIVO: oculto hasta completar la entrega documental.
       ...(mostrarTrasladoOpt ? [T.TRASLADO] : []),
       ...(mostrarCambioEapb ? [T.CAMBIO_EAPB] : []),
-      // CAMBIO EN ESPECIALIDAD: solo disponible mientras el caso siga activo.
-      ...(casoActivo ? [T.CAMBIO_ESPECIALIDAD] : []),
-      // CAMBIO DE UNIDAD: mientras el caso siga activo, actualiza la ubicación institucional.
-      ...(casoActivo ? [T.CAMBIO_UNIDAD] : []),
+      ...(mostrarRevisionAutorizacion ? [T.PERTINENCIA] : []),
       T.CANCELACION,
-      T.PERTINENCIA,
       T.NOVEDADES,
       T.INFO_TRAMITE,
       T.OTRO,
     ];
-    // A.1: orden canónico (propias → información → novedades → cancelación → otro).
-    return ordenarTiposSeguimiento(arr);
+    return resolverTiposSeguimientoDisponibles({ modulo: "REMISIONES", codigos: arr });
   }, [
     mostrarOpcionRadicado,
     mostrarAceptacion,
@@ -1003,18 +1001,24 @@ export function SeguimientoDialog({
     mostrarCierreOpt,
     mostrarTrasladoOpt,
     mostrarCambioEapb,
-    casoActivo,
+    mostrarRevisionAutorizacion,
   ]);
 
-  // Tipos para PHD/PAD/O2/Especiales (subconjunto saliente).
+
+  // Tipos para PHD/PAD/O2/Especiales — CONSUMIDOR LEGADO (huérfano): la tarjeta
+  // domiciliaria renderiza siempre `PhdSeguimientoDialog`. Se conserva el código
+  // pero deja de ser una fuente contradictoria: usa el resolver canónico y no
+  // expone canales (Correo/Plataforma/Físico) como Tipo de Seguimiento.
   const TIPOS_PHD = useMemo(() => {
-    return ordenarTiposSeguimiento([
-      ...(mostrarOpcionRadicado ? [T.RADICADO] : []),
-      ...TIPOS_PHD_BASE,
-    ]);
+    return resolverTiposSeguimientoDisponibles({
+      modulo: "DOMICILIARIA",
+      codigos: [...(mostrarOpcionRadicado ? [T.RADICADO] : []), ...TIPOS_PHD_BASE],
+    });
   }, [mostrarOpcionRadicado]);
 
-  // Referencia Interna: opciones dinámicas según secuencia + CAMBIO DE UNIDAD (mientras esté activo).
+  // Referencia Interna: opciones dinámicas según la máquina de estados canónica.
+  // FASE 5K · B — CAMBIO DE UNIDAD se retira del nivel principal (migra a
+  // NOVEDADES en el Bloque C); la RPC, allowlist y formulario se conservan.
   const TIPOS_INTERNA_DYN = useMemo(() => {
     const proximo = siguientePasoRI(
       historial as { tipo_seguimiento: string; detalles?: unknown }[] | undefined,
@@ -1024,24 +1028,36 @@ export function SeguimientoDialog({
     const activo = !casoInterna?.archivado;
     const arr: string[] = [];
     if (proximo) arr.push(proximo);
-    if (activo) arr.push(T.CAMBIO_UNIDAD);
     // Acción terminal de cancelación siempre disponible mientras esté activo.
     if (activo && proximo !== TI.CANCELACION_RI) arr.push(TI.CANCELACION_RI);
     // B3: OTRO y NOVEDADES son trazabilidad permanente mientras el caso esté activo.
     if (activo) arr.push(TI.OTRO, TI.NOVEDADES, T.INFO_TRAMITE);
-    // A.1: la acción principal del ciclo va primero; luego las transversales.
-    return ordenarTiposSeguimiento(arr, { principal: proximo });
+    return resolverTiposSeguimientoDisponibles({
+      modulo: "REFERENCIA_INTERNA",
+      codigos: arr,
+      principal: proximo,
+    });
   }, [historial, casoInterna, estadoActual]);
 
-  const TIPOS_SEG: string[] = esSaliente
+  const TIPOS_PENDIENTE_ITEMS = useMemo(
+    () =>
+      resolverTiposSeguimientoDisponibles({
+        modulo: "PENDIENTES",
+        codigos: TIPOS_PENDIENTE,
+      }),
+    [],
+  );
+
+  const TIPOS_SEG: TipoSeguimientoItem[] = esSaliente
     ? TIPOS_SALIENTES
     : esPhd
       ? TIPOS_PHD
       : esInterna
         ? TIPOS_INTERNA_DYN
         : esPendiente
-          ? TIPOS_PENDIENTE
+          ? TIPOS_PENDIENTE_ITEMS
           : [];
+
 
   // FASE 5G · A — Programación de ambulancia: el tipo proviene EXCLUSIVAMENTE
   // de la creación del caso (solo lectura) y la empresa se precarga con SEM
@@ -3034,16 +3050,20 @@ export function SeguimientoDialog({
                       <SelectValue placeholder="Seleccionar…" />
                     </SelectTrigger>
                     <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
-                      {TIPOS_SEG.map((t) => (
+                      {TIPOS_SEG.map((item) => (
                         <SelectItem
-                          key={t}
-                          value={t}
+                          key={item.codigo}
+                          value={item.codigo}
+                          disabled={!item.habilitado}
                           className="whitespace-normal [overflow-wrap:anywhere]"
                           title={
-                            t === T.PERTINENCIA ? REVISION_AUT_LABEL_COMPLETO : labelTipoSeg(t)
+                            item.motivoBloqueo ??
+                            (item.codigo === T.PERTINENCIA
+                              ? REVISION_AUT_LABEL_COMPLETO
+                              : item.label)
                           }
                         >
-                          {labelTipoSeg(t)}
+                          {item.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
