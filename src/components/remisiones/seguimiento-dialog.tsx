@@ -548,6 +548,22 @@ export function SeguimientoDialog({
     },
   });
 
+  // Especialidades que exigen CORREO adicional dentro de la excepción
+  // NUEVA EPS + RED NO CONTRATADA (regla configurable en Catálogos).
+  const { data: espCorreoAdicional = [] } = useQuery({
+    queryKey: ["cat-esp-correo-adicional"],
+    enabled: open && usaIndigo,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("catalogos")
+        .select("valor")
+        .eq("tipo", "ESPECIALIDAD")
+        .eq("activo", true)
+        .eq("nueva_eps_rnc_correo_adicional", true);
+      return (data ?? []).map((d) => (d.valor as string));
+    },
+  });
+
   // Catálogo IPS con sede (autocompletado inteligente).
   const { data: ipsCat = [] } = useQuery({
     queryKey: ["cat-ips-sedes"],
