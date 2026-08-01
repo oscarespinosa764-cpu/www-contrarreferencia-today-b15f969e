@@ -1,0 +1,12 @@
+import ExcelJS from 'exceljs';
+import fs from 'fs';
+const wb=new ExcelJS.Workbook();
+await wb.xlsx.load(fs.readFileSync('/tmp/th-fr-10-base.xlsx'));
+console.log(wb.worksheets.map(w=>w.name));
+const ws=wb.getWorksheet('BASE');
+ws.name='AGO';
+ws.getCell('B12').value='PRUEBA UNO';
+ws.getCell('B13').value='Cargo: X · Sede: Y';
+const buf=await wb.xlsx.writeBuffer();
+fs.writeFileSync('/tmp/out.xlsx',Buffer.from(buf));
+console.log('written',buf.byteLength);
