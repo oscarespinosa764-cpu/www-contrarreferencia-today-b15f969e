@@ -481,6 +481,39 @@ export function PhdSeguimientoDialog({
 
   const mGuardar = useMutation({
     mutationFn: async () => {
+      // FASE 5K · C — Novedades estructuradas: transacción atómica server-side.
+      if (esNovedadSubtipo) {
+        const canales = canalPersist.canales_gestion.length
+          ? (canalPersist.canales_gestion as unknown as Record<string, unknown>[])
+          : null;
+        const r =
+          novSubtipo === "CAMBIO_UNIDAD"
+            ? await novedadCambioUnidad({
+                data: {
+                  tipoCaso: "domiciliario",
+                  casoId,
+                  nuevoServicio: nuevaUnidad,
+                  nuevaCama: nuevaCama.trim().toUpperCase(),
+                  observaciones: observaciones.trim() || null,
+                  plantilla: null,
+                  canales,
+                },
+              })
+            : await novedadGestionModalidad({
+                data: {
+                  casoId,
+                  gestion: modalidadV.gestion as "AGREGAR_MODALIDAD" | "CAMBIAR_MODALIDAD",
+                  modalidadOrigen: modalidadV.origen || null,
+                  modalidadNueva: modalidadV.nueva,
+                  justificacion: modalidadV.justificacion.trim(),
+                  observaciones: observaciones.trim() || null,
+                  plantilla: null,
+                  canales,
+                },
+              });
+        if (!r.ok) throw new Error(r.error ?? "No fue posible registrar la novedad.");
+        return { ok: true, estadoCiclo: r.estado_ciclo } as { ok: boolean; estadoCiclo?: string };
+      }
       const res = await registrarEvento({
         data: {
           casoId,
