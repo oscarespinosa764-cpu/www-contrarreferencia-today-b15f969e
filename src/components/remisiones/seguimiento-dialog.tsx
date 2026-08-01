@@ -1313,8 +1313,8 @@ export function SeguimientoDialog({
   );
   const espExigeCorreoAdicional = useMemo(() => {
     if (espCorreoAdicional.length === 0) return false;
-    const flags = new Set(espCorreoAdicional.map((e) => normEapb(e)));
-    return especialidadesList.some((e) => flags.has(normEapb(e)));
+    const flags = new Set(espCorreoAdicional.map((e) => normEsp(e)));
+    return especialidadesList.some((e) => flags.has(normEsp(e)));
   }, [espCorreoAdicional, especialidadesList]);
   const evoResolver = useMemo(
     () =>
