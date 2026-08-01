@@ -4047,6 +4047,18 @@ export type Database = {
         }
         Returns: number
       }
+      novedad_cambio_especialidad: {
+        Args: {
+          _actor: string
+          _agregar: string[]
+          _canales?: Json
+          _caso_id: string
+          _cerrar: string[]
+          _observaciones?: string
+          _plantilla?: string
+        }
+        Returns: Json
+      }
       novedad_cambio_motivo_remision: {
         Args: {
           _actor: string
