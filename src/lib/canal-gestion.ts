@@ -439,7 +439,7 @@ export function leerCanalGestion(detalles: unknown, canalLegacy?: unknown): Cana
 
 const LABEL_COMUNICACION = "Comunicación con";
 
-function lineasContacto(c: Record<string, unknown>): string[] {
+function lineasContacto(c: Record<string, unknown>, canal: string): string[] {
   const g = (k: string) => {
     const val = c[k];
     return typeof val === "string" && val.trim() ? val.trim() : "";
@@ -451,6 +451,18 @@ function lineasContacto(c: Record<string, unknown>): string[] {
     if (com) out.push(`${LABEL_COMUNICACION}: ${com}.`);
     if (g("nombre_apellido")) out.push(`Nombre y apellido: ${g("nombre_apellido")}.`);
     if (g("parentesco")) out.push(`Parentesco: ${g("parentesco")}.`);
+  } else if (tipo === "FUNCIONARIO_SERVICIO") {
+    const serv = g("servicio_codigo") === "OTRO" ? g("servicio_otro") : g("servicio_nombre");
+    const accion =
+      canal === CANAL_CODES.WHATSAPP
+        ? "SE REALIZA GESTIÓN MEDIANTE MENSAJERÍA INSTANTÁNEA (WHATSAPP) CON"
+        : "SE REALIZA CONTACTO TELEFÓNICO CON";
+    out.push(
+      `${accion} ${g("nombre_apellido")}, QUIEN SE DESEMPEÑA COMO ${g("cargo")} EN EL SERVICIO DE ${serv}.`,
+    );
+    out.push(`Nombre del funcionario: ${g("nombre_apellido")}.`);
+    out.push(`Cargo del funcionario: ${g("cargo")}.`);
+    if (serv) out.push(`Servicio: ${serv}.`);
   } else {
     if (g("nombre_ips")) out.push(`Nombre de IPS: ${g("nombre_ips")}.`);
     if (g("nombre_apellido")) out.push(`Nombre y apellido: ${g("nombre_apellido")}.`);
@@ -488,9 +500,14 @@ export function plantillaCanalGestion(
       : `CANAL DE GESTIÓN: ${labels[0]}.`,
   ];
 
-  const tel = det.contacto_telefonico as { contactos?: Record<string, unknown>[] } | undefined;
-  if (tel?.contactos?.length) {
-    const orden = CONTACTO_TIPOS.map((t) => tel.contactos!.find((c) => c.tipo === t)).filter(
+  const bloques: Array<[string, unknown]> = [
+    [CANAL_CODES.TELEFONO, det.contacto_telefonico],
+    [CANAL_CODES.WHATSAPP, det.mensajeria_whatsapp],
+  ];
+  for (const [canal, raw] of bloques) {
+    const blk = raw as { contactos?: Record<string, unknown>[] } | undefined;
+    if (!blk?.contactos?.length) continue;
+    const orden = CONTACTO_TIPOS.map((t) => blk.contactos!.find((c) => c.tipo === t)).filter(
       Boolean,
     ) as Record<string, unknown>[];
     out.push(
@@ -499,10 +516,11 @@ export function plantillaCanalGestion(
       )}.`,
     );
     for (const c of orden) {
-      const l = lineasContacto(c);
+      const l = lineasContacto(c, canal);
       if (l.length) out.push("", ...l);
     }
   }
+
 
   const pres = det.presencial as Record<string, unknown> | undefined;
   if (pres) {
