@@ -1,4 +1,7 @@
-import { ordenarTiposSeguimiento } from "@/lib/seguimiento-orden";
+import {
+  resolverTiposSeguimientoDisponibles,
+  type TipoSeguimientoItem,
+} from "@/lib/seguimiento-orden";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   resolverEstadoRI,
@@ -182,7 +185,8 @@ const EST = {
 } as const;
 
 // --- Tipos de seguimiento PHD/PAD/O2/Especiales (reutiliza lógica saliente) ---
-const TIPOS_PHD_BASE = [T.EVOLUCION, T.CORREO, T.PLATAFORMA, T.FISICO, T.OTRO] as const;
+// FASE 5K · B — sin canales (Correo/Plataforma/Físico viven en CANAL DE GESTIÓN).
+const TIPOS_PHD_BASE = [T.EVOLUCION, T.INFO_TRAMITE, T.NOVEDADES, T.OTRO] as const;
 
 // --- Referencia interna ---
 // Nota: los VALORES son códigos técnicos persistidos (compatibilidad histórica).
@@ -3052,16 +3056,20 @@ export function SeguimientoDialog({
                       <SelectValue placeholder="Seleccionar…" />
                     </SelectTrigger>
                     <SelectContent className="max-w-[calc(100vw-2rem)] scrollbar-invisible">
-                      {TIPOS_SEG.map((t) => (
+                      {TIPOS_SEG.map((item) => (
                         <SelectItem
-                          key={t}
-                          value={t}
+                          key={item.codigo}
+                          value={item.codigo}
+                          disabled={!item.habilitado}
                           className="whitespace-normal [overflow-wrap:anywhere]"
                           title={
-                            t === T.PERTINENCIA ? REVISION_AUT_LABEL_COMPLETO : labelTipoSeg(t)
+                            item.motivoBloqueo ??
+                            (item.codigo === T.PERTINENCIA
+                              ? REVISION_AUT_LABEL_COMPLETO
+                              : item.label)
                           }
                         >
-                          {labelTipoSeg(t)}
+                          {item.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
