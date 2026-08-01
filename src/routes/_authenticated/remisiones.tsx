@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Search, RotateCw, FileText, FileDown, Loader2 } from "lucide-react";
+import { Plus, Search, RotateCw, FileText, FileDown, Loader2, QrCode } from "lucide-react";
 import { FiltersBar, countActiveFilters } from "@/components/filters/filters-bar";
 import { TURNOS_CANONICOS, TURNOS_CODIGOS } from "@/lib/turno";
 import { CasoRemisionCard, type Remision } from "@/components/remisiones/caso-remision-card";
@@ -33,6 +33,8 @@ import { agruparPorEtapa, type EtapaMeta } from "@/lib/salientes-grupos";
 import { agruparPhdPorSegmento } from "@/lib/phd-requisitos";
 import { GrupoEtapa } from "@/components/remisiones/grupo-etapa";
 import { agruparInternasPorEstado } from "@/lib/ri-estados";
+import { RiMultipleDialog } from "@/components/remisiones/ri-multiple-dialog";
+
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { getDirectorioActivos } from "@/lib/directorio.functions";
@@ -58,6 +60,9 @@ function RemisionesPage() {
   const initialEstado =
     search.f === "pendientes" ? "pendiente" : search.f === "aceptadas" ? "aceptad" : "todos";
   const [open, setOpen] = useState(false);
+  // FASE 5I — Traslado múltiple TAB (Referencias Internas).
+  const [multipleOpen, setMultipleOpen] = useState(false);
+
   // Contexto de apertura del modal canónico (un único modal, parametrizado).
   const [nuevoCtx, setNuevoCtx] = useState<{ initialTab: NuevoRegistroTab; allowedTabs: NuevoRegistroTab[] }>({
     initialTab: "remision",
@@ -768,7 +773,19 @@ function RemisionesPage() {
           </TabsContent>
 
           <TabsContent value="internas" className="pt-4">
+            {canEdit && (
+              <div className="mb-3 flex justify-end">
+                <Button
+                  variant="outline"
+                  className="rounded-full"
+                  onClick={() => setMultipleOpen(true)}
+                >
+                  <QrCode className="mr-1.5 h-4 w-4" /> Traslado múltiple TAB
+                </Button>
+              </div>
+            )}
             <ListaInternas items={internas ?? []} canEdit={canEdit} ultGestiones={ultGestiones} />
+
           </TabsContent>
 
 
@@ -782,6 +799,15 @@ function RemisionesPage() {
         initialTab={nuevoCtx.initialTab}
         allowedTabs={nuevoCtx.allowedTabs}
       />
+
+      {/* Traslado múltiple TAB (Referencias Internas) */}
+      <RiMultipleDialog
+        open={multipleOpen}
+        onOpenChange={setMultipleOpen}
+        casos={(internas ?? []) as Record<string, unknown>[]}
+      />
+
+
 
       {/* Confirmación entrega de turno */}
       <Dialog open={confirmEntrega} onOpenChange={setConfirmEntrega}>

@@ -82,9 +82,13 @@ function snapshotPublicoDesde(raw: EntregaSnapshotInterno): SnapshotPublico {
     .filter((d) => d && d.marcado !== false)
     .map((d) => d.label)
     .filter((l): l is string => typeof l === "string" && l.length > 0);
+  // Traslado múltiple TAB: se muestra un resumen agregado (sin PHI) en vez de
+  // las iniciales de un único paciente.
+  const resumen = (raw['multiple_resumen'] as string | undefined) || "";
   return {
-    paciente_iniciales: inicialesNombre(raw.paciente),
-    documento_enmascarado: enmascararDocumento(raw.documento),
+    paciente_iniciales: resumen || inicialesNombre(raw.paciente),
+    documento_enmascarado: resumen ? "—" : enmascararDocumento(raw.documento),
+
     ips_receptora: raw.ips_receptora || undefined,
     empresa_traslado: raw.empresa_traslado || undefined,
     tipo_ambulancia: (raw.tipo_ambulancia as string | undefined) || undefined,
@@ -167,9 +171,10 @@ export const firmarEntrega = createServerFn({ method: "POST" })
 
     const { data: row } = await supabaseAdmin
       .from("entrega_firmas")
-      .select("id, estado, expira_at, snapshot, usuario_genero, caso_id")
+      .select("id, estado, expira_at, snapshot, usuario_genero, caso_id, es_multiple")
       .eq("token_hash", tokenHash)
       .maybeSingle();
+
 
     if (!row) return { ok: false, error: "NO_EXISTE" };
     if (row.estado === "FIRMADA") return { ok: false, error: "FIRMADA" };
@@ -222,6 +227,19 @@ export const firmarEntrega = createServerFn({ method: "POST" })
       .eq("estado", "PENDIENTE"); // condición de uso único (carrera)
 
     if (upErr) return { ok: false, error: "DATOS" };
+
+    // FASE 5I — Traslado múltiple TAB: registra la CONFIRMACIÓN DE LLEGADA DE
+    // AMBULANCIA en cada caso vinculado a esta misma firma (idempotente).
+    if ((row as { es_multiple?: boolean }).es_multiple) {
+      try {
+        await supabaseAdmin.rpc("ri_confirmar_llegada_multiple" as never, {
+          _firma_id: row.id,
+        } as never);
+      } catch {
+        /* la firma queda registrada; el seguimiento puede reintentarse */
+      }
+    }
+
 
     // Auditoría atribuida al usuario interno que generó el QR.
     // No se guarda PHI (ni nombre del firmante ni IP en texto plano); la IP
