@@ -424,6 +424,24 @@ export function PhdSeguimientoDialog({
   if (evento === "CANCELACION_TRAMITE" && !motivo.trim())
     errores.push("Indique el motivo de la cancelación del trámite.");
 
+  if (esNovedadSubtipo && novSubtipo === "CAMBIO_UNIDAD") {
+    if (!nuevaUnidad) errores.push("Seleccione la nueva unidad.");
+    if (!nuevaCama.trim()) errores.push("Indique la nueva cama del paciente.");
+    if (
+      nuevaUnidad === ubicacion.servicio &&
+      nuevaCama.trim().toUpperCase() === ubicacion.cama
+    )
+      errores.push("La nueva ubicación debe ser diferente de la actual.");
+  }
+  if (esNovedadSubtipo && novSubtipo === "GESTION_MODALIDAD") {
+    if (!modalidadV.gestion) errores.push("Seleccione el tipo de gestión de modalidad.");
+    if (modalidadV.gestion === "CAMBIAR_MODALIDAD" && !modalidadV.origen)
+      errores.push("Seleccione la modalidad de origen.");
+    if (!modalidadV.nueva) errores.push("Seleccione la nueva modalidad.");
+    if (modalidadV.justificacion.trim().length < 3)
+      errores.push("Registre la justificación de la gestión de modalidad.");
+  }
+
   const invalid = errores.length > 0 || terminal;
 
   // Para EVOLUCIÓN DIARIA la descripción es la plantilla Índigo canónica.
