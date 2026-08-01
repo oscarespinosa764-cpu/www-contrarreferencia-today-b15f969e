@@ -3,7 +3,7 @@
 // y solo escribe datos: periodo, colaboradores, cargos, sedes, turnos, horas,
 // convenciones y firmas. No crea un formato paralelo.
 import ExcelJS from "exceljs";
-import { TH_FR_10_BASE_B64 } from "./cuadro-plantilla-base.server";
+import { TH_FR_10_BASE_B64 } from "./cuadro-plantilla-base";
 
 const HOJA = "BASE";
 const FILA_INICIO = 12; // primer bloque (fila turno; la siguiente es horas)
