@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Search, RotateCw, FileText, FileDown, Loader2 } from "lucide-react";
+import { Plus, Search, RotateCw, FileText, FileDown, Loader2, QrCode } from "lucide-react";
 import { FiltersBar, countActiveFilters } from "@/components/filters/filters-bar";
 import { TURNOS_CANONICOS, TURNOS_CODIGOS } from "@/lib/turno";
 import { CasoRemisionCard, type Remision } from "@/components/remisiones/caso-remision-card";
