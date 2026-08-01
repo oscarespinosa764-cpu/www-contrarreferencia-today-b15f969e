@@ -43,7 +43,9 @@ export interface BuildParams {
 /** Devuelve el XLSX oficial TH-FR-10 diligenciado, en base64. */
 export async function construirCuadroTHFR10(p: BuildParams): Promise<string> {
   const wb = new ExcelJS.Workbook();
-  await wb.xlsx.load(Buffer.from(TH_FR_10_BASE_B64, "base64"));
+  await wb.xlsx.load(
+    Buffer.from(TH_FR_10_BASE_B64, "base64") as unknown as Parameters<typeof wb.xlsx.load>[0],
+  );
   const ws = wb.getWorksheet(HOJA);
   if (!ws) throw new Error("PLANTILLA_INVALIDA");
   ws.name = `${p.nombreMes.slice(0, 3).toUpperCase()}`;
