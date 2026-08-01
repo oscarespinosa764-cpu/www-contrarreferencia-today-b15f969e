@@ -1311,6 +1311,11 @@ export function SeguimientoDialog({
     () => especialidadesList.filter((e) => evoEsp[e]),
     [especialidadesList, evoEsp],
   );
+  const espExigeCorreoAdicional = useMemo(() => {
+    if (espCorreoAdicional.length === 0) return false;
+    const flags = new Set(espCorreoAdicional.map((e) => normEapb(e)));
+    return especialidadesList.some((e) => flags.has(normEapb(e)));
+  }, [espCorreoAdicional, especialidadesList]);
   const evoResolver = useMemo(
     () =>
       resolverCumplimientoEvolucionDiaria({
@@ -1323,6 +1328,7 @@ export function SeguimientoDialog({
         especialidadesEvolucionadas: evoEspEvolucionadas,
         esNuevaEps: esNuevaEpsCanonica(casoEapbNombre),
         esRedNoContratada: esRedNoContratadaCanonica(caso?.remision_por ?? ""),
+        especialidadRequiereCorreoAdicional: espExigeCorreoAdicional,
         motivoPendiente: evoMotivoPend,
       }),
     [
@@ -1334,6 +1340,7 @@ export function SeguimientoDialog({
       evoEspEvolucionadas,
       casoEapbNombre,
       caso?.remision_por,
+      espExigeCorreoAdicional,
       evoMotivoPend,
     ],
   );
@@ -1347,17 +1354,23 @@ export function SeguimientoDialog({
     !evoResolver.plataforma_pendiente_por_falla &&
     !evoResolver.excepcion_aplicada;
 
-  // --- FASE 5E · C.6 — excepción NUEVA EPS + RED NO CONTRATADA -------------
-  // La excepción define un ÚNICO canal válido según ¿plataforma funcionando?
-  // y bloquea el otro (no hay selección dual en este escenario).
+  // --- FASE 5E · C.7 — bloqueos canónicos de canal --------------------------
+  // Se bloquea PLATAFORMA WEB siempre que se declare caída, y CORREO cuando la
+  // excepción NUEVA EPS · RED NO CONTRATADA impone canal único.
   const evoExcepcion = esEvolucionSal && evoResolver.excepcion_aplicada !== null;
-  const canalesBloqueadosEvo = evoExcepcion ? evoResolver.canales_bloqueados : [];
-  const motivoBloqueoEvo = !evoExcepcion
-    ? null
-    : evoResolver.variante_excepcion === "PLATAFORMA_FUNCIONANDO"
-      ? "NUEVA EPS · RED NO CONTRATADA con plataforma funcionando: la evolución se registra únicamente por PLATAFORMA WEB."
-      : "NUEVA EPS · RED NO CONTRATADA con plataforma no funcional: la evolución se registra únicamente por CORREO ELECTRÓNICO.";
-  const dualEfectivo = dualPermitido && !evoExcepcion;
+  const canalesBloqueadosEvo = esEvolucionSal ? evoResolver.canales_bloqueados : [];
+  const motivoBloqueoEvo =
+    canalesBloqueadosEvo.length === 0
+      ? null
+      : evoResolver.variante_excepcion === "SOLO_PLATAFORMA"
+        ? "NUEVA EPS · RED NO CONTRATADA con plataforma funcionando: la evolución se registra únicamente por PLATAFORMA WEB."
+        : evoResolver.variante_excepcion === "DOBLE_CANAL_POR_ESPECIALIDAD"
+          ? "La especialidad tratante exige CORREO ELECTRÓNICO además de PLATAFORMA WEB."
+          : "La plataforma de la EAPB está declarada como no funcional: queda PENDIENTE POR FALLA y no puede registrarse como realizada.";
+  const dualEfectivo =
+    (dualPermitido && !evoExcepcion) ||
+    evoResolver.variante_excepcion === "DOBLE_CANAL_POR_ESPECIALIDAD";
+
 
   // Limpia automáticamente el canal que dejó de ser válido al cambiar el
   // estado de la plataforma dentro de la excepción.
