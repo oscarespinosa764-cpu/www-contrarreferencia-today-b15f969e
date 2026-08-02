@@ -1548,46 +1548,60 @@ function IndicadorDetalleModal({
                 </div>
               )}
             </div>
-            {historial.length === 0 ? (
+            {historialDesc.length === 0 ? (
               <p className="py-4 text-center text-xs italic text-muted-foreground">Sin mediciones registradas.</p>
             ) : (
               <div className="overflow-x-auto scrollbar-invisible">
-                <table className="w-full min-w-[520px] text-xs">
+                <table className="w-full min-w-[640px] text-xs">
                   <thead>
                     <tr className="border-b border-border/60 text-left uppercase text-muted-foreground">
                       <th className="py-1.5 pr-2">Periodo</th>
+                      <th className="py-1.5 pr-2">Num / Den</th>
                       <th className="py-1.5 pr-2">Resultado</th>
                       <th className="py-1.5 pr-2">Meta</th>
                       <th className="py-1.5 pr-2">Cumplimiento</th>
                       <th className="py-1.5 pr-2">Estado</th>
-                      <th className="py-1.5 pr-2">Registro</th>
+                      <th className="py-1.5 pr-2">Fuente</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {pagRows.map((m) => {
-                      const c = cumplimientoIndividual(ind, m);
-                      const s = (m.semaforo as Semaforo) || "GRIS";
-                      return (
-                        <tr key={m.id} className="border-b border-border/40">
-                          <td className="py-1.5 pr-2">{m.periodo ? formatearPeriodo(m.periodo) : "—"}</td>
-                          <td className="py-1.5 pr-2 font-semibold">{m.resultado ?? "—"} {m.unidad || ""}</td>
-                          <td className="py-1.5 pr-2">{m.meta ?? ind.meta ?? "—"}</td>
-                          <td className="py-1.5 pr-2">{c !== null ? `${Math.round(c)}%` : "—"}</td>
-                          <td className="py-1.5 pr-2">
-                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${pillCls[s]}`}>
-                              {SEMAFORO_LABEL[s]}
-                            </span>
-                          </td>
-                          <td className="py-1.5 pr-2 text-muted-foreground">
-                            {m.created_at ? new Date(m.created_at).toLocaleDateString("es-CO") : "—"}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {pagRows.map((f) => (
+                      <tr
+                        key={f.periodo}
+                        onClick={() => setPeriodoSel(f.periodo)}
+                        className={`cursor-pointer border-b border-border/40 hover:bg-muted/40 ${
+                          f.periodo === periodoSel ? "bg-muted/50" : ""
+                        }`}
+                      >
+                        <td className="py-1.5 pr-2">
+                          {formatearPeriodo(f.periodo)}
+                          {f.esParcial && (
+                            <span className="ml-1 text-[9px] uppercase text-muted-foreground">parcial</span>
+                          )}
+                        </td>
+                        <td className="py-1.5 pr-2 tabular-nums">
+                          {fmtNum(f.numerador)} / {fmtNum(f.denominador)}
+                        </td>
+                        <td className="py-1.5 pr-2 font-semibold tabular-nums">
+                          {f.resultado !== null ? `${f.resultado} ${f.unidad}` : "NO CALCULABLE"}
+                        </td>
+                        <td className="py-1.5 pr-2 tabular-nums">{fmtNum(f.meta)}</td>
+                        <td className="py-1.5 pr-2 tabular-nums">
+                          {f.cumplimiento !== null ? `${Math.round(f.cumplimiento)}%` : "NO APLICA"}
+                        </td>
+                        <td className="py-1.5 pr-2">
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${pillCls[f.semaforo]}`}>
+                            {SEMAFORO_LABEL[f.semaforo]}
+                          </span>
+                        </td>
+                        <td className="py-1.5 pr-2 text-muted-foreground">{f.fuente}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
             )}
+
           </div>
         </div>
 
