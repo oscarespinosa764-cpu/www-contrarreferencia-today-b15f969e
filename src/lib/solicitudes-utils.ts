@@ -7,6 +7,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { minutosEntreHoras } from "@/lib/cuadro-turno-utils";
+import { resolverTurnoProgramadoSeguro } from "@/lib/cuadro-identidad.functions";
+import type { TurnoResuelto } from "@/lib/identidad-turnos";
 
 // ---------------------------------------------------------------------------
 // Tipos
