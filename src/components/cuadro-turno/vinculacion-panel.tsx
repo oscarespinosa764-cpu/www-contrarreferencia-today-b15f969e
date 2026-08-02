@@ -11,6 +11,7 @@ import {
   listarVinculacionMiembros,
   vincularMiembroUsuario,
   desvincularMiembroUsuario,
+  buscarUsuariosVinculables,
   type MiembroVinculo,
 } from "@/lib/cuadro-identidad.functions";
 import { Button } from "@/components/ui/button";
@@ -18,12 +19,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
 
 const MESES = [
   "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
