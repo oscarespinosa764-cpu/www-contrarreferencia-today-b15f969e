@@ -489,6 +489,7 @@ export function SolicitudFormDialog({
     minutosProgramados !== minutosSolicitados;
 
   const turnoSolInfo = describeTurno(turnoSolicitanteCode, shiftTypes);
+  const turnoReempInfo = describeTurno(turnoReempCode, shiftTypes);
 
   // ---- Soporte ----
   const seleccionarSoporte = async (file: File | null) => {
