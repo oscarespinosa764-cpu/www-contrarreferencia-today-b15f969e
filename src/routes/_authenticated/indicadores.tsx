@@ -1422,7 +1422,7 @@ function IndicadorDetalleModal({
             )}
           </div>
 
-          {/* Gráficas */}
+          {/* Gráficas — mismo conjunto canónico que la tabla; clic = selecciona periodo */}
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             <div className="rounded-2xl border border-border bg-card p-3">
               <p className="mb-1 text-[10px] font-bold uppercase text-muted-foreground">
@@ -1435,23 +1435,30 @@ function IndicadorDetalleModal({
                   </p>
                 ) : (
                   <ResponsiveContainer>
-                    <LineChart data={chartData} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+                    <LineChart
+                      data={chartData}
+                      margin={{ top: 8, right: 12, left: -12, bottom: 0 }}
+                      onClick={(e) => {
+                        const p = e?.activeLabel;
+                        if (p) setPeriodoSel(String(p));
+                      }}
+                    >
                       <CartesianGrid strokeDasharray="3 3" stroke={COLOR.border} />
-                      <XAxis dataKey="periodo" tickFormatter={(v) => v.slice(5)} tick={{ fontSize: 10, fill: COLOR.muted }} />
+                      <XAxis dataKey="periodo" tickFormatter={(v) => etiquetaPeriodoCorta(String(v))} tick={{ fontSize: 10, fill: COLOR.muted }} />
                       <YAxis tick={{ fontSize: 10, fill: COLOR.muted }} tickFormatter={(v) => `${v}%`} />
                       <Tooltip
-                        contentStyle={{
-                          background: "hsl(var(--popover))",
-                          border: "1px solid hsl(var(--border))",
-                          fontSize: 12,
-                        }}
-                        formatter={(v: number, name: string) => [
-                          name === "cumplimiento" ? `${Math.round(Number(v))}%` : v,
-                          name,
-                        ]}
+                        contentStyle={tooltipStyle}
+                        formatter={(v: number) => [`${Math.round(Number(v))}%`, "Cumplimiento"]}
                         labelFormatter={(l) => formatearPeriodo(String(l))}
                       />
-                      <Line type="monotone" dataKey="cumplimiento" stroke={COLOR.sky} strokeWidth={2} dot={{ r: 3 }} />
+                      <Line
+                        type="monotone"
+                        dataKey="cumplimiento"
+                        stroke={COLOR.sky}
+                        strokeWidth={2}
+                        dot={{ r: 3 }}
+                        connectNulls
+                      />
                     </LineChart>
                   </ResponsiveContainer>
                 )}
@@ -1468,25 +1475,31 @@ function IndicadorDetalleModal({
                   </p>
                 ) : (
                   <ResponsiveContainer>
-                    <BarChart data={chartData} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+                    <BarChart
+                      data={chartData}
+                      margin={{ top: 8, right: 12, left: -12, bottom: 0 }}
+                      onClick={(e) => {
+                        const p = e?.activeLabel;
+                        if (p) setPeriodoSel(String(p));
+                      }}
+                    >
                       <CartesianGrid strokeDasharray="3 3" stroke={COLOR.border} />
-                      <XAxis dataKey="periodo" tickFormatter={(v) => v.slice(5)} tick={{ fontSize: 10, fill: COLOR.muted }} />
+                      <XAxis dataKey="periodo" tickFormatter={(v) => etiquetaPeriodoCorta(String(v))} tick={{ fontSize: 10, fill: COLOR.muted }} />
                       <YAxis tick={{ fontSize: 10, fill: COLOR.muted }} />
                       <Tooltip
-                        contentStyle={{
-                          background: "hsl(var(--popover))",
-                          border: "1px solid hsl(var(--border))",
-                          fontSize: 12,
-                        }}
+                        contentStyle={tooltipStyle}
+                        formatter={(v: number) => [`${v} ${ind.unidad || ""}`, "Resultado"]}
                         labelFormatter={(l) => formatearPeriodo(String(l))}
                       />
                       <Bar dataKey="resultado" radius={[4, 4, 0, 0]}>
-                        {chartData.map((c, i) => {
-                          const s = calcularSemaforo(c.resultado ?? null, c.meta ?? null, ind.sentido);
-                          const color =
-                            s === "VERDE" ? COLOR.green : s === "AMARILLO" ? COLOR.amber : s === "ROJO" ? COLOR.red : COLOR.muted;
-                          return <Cell key={i} fill={color} />;
-                        })}
+                        {chartData.map((c) => (
+                          <Cell
+                            key={c.periodo}
+                            fill={colorSemaforo(c.semaforo)}
+                            stroke={c.periodo === periodoSel ? COLOR.sky : undefined}
+                            strokeWidth={c.periodo === periodoSel ? 2 : 0}
+                          />
+                        ))}
                       </Bar>
                       {ind.meta != null && (
                         <ReferenceLine
@@ -1502,6 +1515,7 @@ function IndicadorDetalleModal({
               </div>
             </div>
           </div>
+
 
           {/* Detalle técnico */}
           <div className="rounded-2xl border border-border bg-card p-3">
