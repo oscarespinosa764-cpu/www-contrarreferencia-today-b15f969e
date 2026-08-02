@@ -65,12 +65,22 @@ import {
   SENTIDOS_INDICADOR,
   calcularResultado,
   calcularSemaforo,
-  ultimaMedicionPorIndicador,
-  historialIndicador,
-  avanceContraMeta,
   formatearPeriodo,
   SEMAFORO_LABEL,
 } from "@/lib/indicadores-utils";
+import {
+  type ContextoTemporal,
+  type PeriodoCanonico,
+  type ResolucionCanonica,
+  contextoDesdeFecha,
+  serieCanonica,
+  resolverCanonico,
+  calcularCumplimiento,
+  esMenorEsMejor,
+  etiquetaPeriodoCorta,
+  fmtNum,
+} from "@/lib/indicadores-canonico";
+import { obtenerFechaCorteIndicadores } from "@/lib/indicadores.functions";
 
 export const Route = createFileRoute("/_authenticated/indicadores")({
   component: IndicadoresPage,
@@ -80,16 +90,27 @@ export const Route = createFileRoute("/_authenticated/indicadores")({
 const selectCls =
   "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-// Usamos tokens del design system a través de hsl(var(--...)) para las gráficas
-// (Recharts recibe strings CSS; los tokens permiten mantener dark/light mode).
+// Los tokens del design system son valores oklch() completos, NO triples HSL.
+// Envolverlos en hsl(var(--x)) produce un color inválido → series negras.
+// Se usan directamente con fallback explícito.
 const COLOR = {
-  green: "hsl(var(--status-green))",
-  amber: "hsl(var(--status-amber))",
-  red: "hsl(var(--status-red))",
-  sky: "hsl(var(--primary))",
-  muted: "hsl(var(--muted-foreground))",
-  border: "hsl(var(--border))",
+  green: "var(--status-green, oklch(0.7 0.16 152))",
+  amber: "var(--status-amber, oklch(0.78 0.16 75))",
+  red: "var(--status-red, oklch(0.62 0.22 25))",
+  sky: "var(--primary, oklch(0.3538 0.1107 253.47))",
+  accent: "var(--chart-2, oklch(0.62 0.13 230))",
+  muted: "var(--muted-foreground, oklch(0.52 0.03 245))",
+  border: "var(--border, oklch(0.922 0.013 248))",
+  popover: "var(--popover, oklch(1 0 0))",
 };
+
+const tooltipStyle = {
+  background: COLOR.popover,
+  border: `1px solid ${COLOR.border}`,
+  borderRadius: 8,
+  fontSize: 12,
+  color: "var(--foreground, oklch(0.2 0.02 250))",
+} as const;
 
 const pillCls: Record<Semaforo, string> = {
   VERDE: "bg-status-green/15 text-status-green",
@@ -105,26 +126,9 @@ const borderCls: Record<Semaforo, string> = {
   GRIS: "border-l-border",
 };
 
-const norm = (s: unknown) =>
-  String(s ?? "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+const colorSemaforo = (s: Semaforo) =>
+  s === "VERDE" ? COLOR.green : s === "AMARILLO" ? COLOR.amber : s === "ROJO" ? COLOR.red : COLOR.muted;
 
-// Sentido "MENOR_ES_MEJOR" ⇒ una reducción es una mejora.
-function esMenorEsMejor(ind: Indicador) {
-  return String(ind.sentido || "MAYOR_ES_MEJOR").toUpperCase() === "MENOR_ES_MEJOR";
-}
-
-// Cumplimiento porcentual individual respetando el sentido.
-function cumplimientoIndividual(ind: Indicador, med: Medicion | undefined): number | null {
-  if (!med || med.resultado === null || med.resultado === undefined) return null;
-  const meta = Number(med.meta ?? ind.meta ?? 0);
-  const r = Number(med.resultado);
-  if (!meta || Number.isNaN(r)) return null;
-  if (esMenorEsMejor(ind)) return (meta / Math.max(r, 0.0001)) * 100;
-  return (r / meta) * 100;
-}
 
 // ── Filtros ───────────────────────────────────────────────────────────────
 type Filtros = {
@@ -195,6 +199,18 @@ function IndicadoresPage() {
   const inds = useMemo(() => indicadores ?? [], [indicadores]);
   const meds = useMemo(() => mediciones ?? [], [mediciones]);
 
+  // Fecha de corte autoritativa (servidor, America/Bogota). Nunca el navegador.
+  const { data: corte } = useQuery({
+    queryKey: ["indicadores-fecha-corte"],
+    queryFn: () => obtenerFechaCorteIndicadores(),
+    staleTime: 5 * 60_000,
+  });
+
+  const ctx: ContextoTemporal = useMemo(
+    () => contextoDesdeFecha(corte?.fecha ?? "", corte?.hora ?? "00:00"),
+    [corte],
+  );
+
   // Mediciones filtradas por rango de fechas (aplican a tarjetas, tendencia y ranking).
   const medsFiltradas = useMemo(() => {
     const ini = filtros.fechaInicio;
@@ -208,7 +224,19 @@ function IndicadoresPage() {
     });
   }, [meds, filtros.fechaInicio, filtros.fechaFin]);
 
-  const ultimas = useMemo(() => ultimaMedicionPorIndicador(medsFiltradas), [medsFiltradas]);
+  // FUENTE CANÓNICA: una serie por indicador, un registro por periodo.
+  const seriesPorIndicador = useMemo(() => {
+    const out: Record<string, PeriodoCanonico[]> = {};
+    for (const ind of inds) out[ind.id] = serieCanonica(ind, medsFiltradas, ctx);
+    return out;
+  }, [inds, medsFiltradas, ctx]);
+
+  // Resolución canónica visible en tarjetas y ranking.
+  const resoluciones = useMemo(() => {
+    const out: Record<string, ResolucionCanonica> = {};
+    for (const ind of inds) out[ind.id] = resolverCanonico(seriesPorIndicador[ind.id] ?? [], ctx);
+    return out;
+  }, [inds, seriesPorIndicador, ctx]);
 
   // Opciones dinámicas para filtros (derivadas de datos reales).
   const opcionesArea = useMemo(
@@ -230,7 +258,7 @@ function IndicadoresPage() {
       if (filtros.frecuencia && (i.fuente || "").trim() !== filtros.frecuencia) return false;
       if (filtros.tipo && (i.tipo || "").trim() !== filtros.tipo) return false;
       if (filtros.estado) {
-        const sem = (ultimas[i.id]?.semaforo as Semaforo) || "GRIS";
+        const sem = resoluciones[i.id]?.fila?.semaforo ?? "GRIS";
         if (sem !== filtros.estado) return false;
       }
       if (t) {
@@ -242,7 +270,7 @@ function IndicadoresPage() {
       }
       return true;
     });
-  }, [inds, filtros, ultimas, qDebounced]);
+  }, [inds, filtros, resoluciones, qDebounced]);
 
   // ── Resumen ────────────────────────────────────────────────────────────
   const resumen = useMemo(() => {
@@ -251,62 +279,60 @@ function IndicadoresPage() {
       amarillos = 0,
       rojos = 0,
       sinDato = 0;
+    const cumplimientos: number[] = [];
     for (const ind of activos) {
-      const sem = (ultimas[ind.id]?.semaforo as Semaforo) || "GRIS";
+      const fila = resoluciones[ind.id]?.fila ?? null;
+      const sem = fila?.semaforo ?? "GRIS";
       if (sem === "VERDE") verdes++;
       else if (sem === "AMARILLO") amarillos++;
       else if (sem === "ROJO") rojos++;
       else sinDato++;
+      // Cumplimiento general = promedio del cumplimiento individual (capado a
+      // 100) de los indicadores con dato canónico vigente.
+      const c = fila?.cumplimiento ?? null;
+      if (c !== null) cumplimientos.push(Math.min(100, Math.max(0, c)));
     }
     const total = activos.length;
     const pct = (n: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
-    // Cumplimiento general = promedio del cumplimiento individual (capado a 100)
-    // de indicadores con medición vigente. Documentado a nivel de código.
-    const cumplimientos: number[] = [];
-    for (const ind of activos) {
-      const c = cumplimientoIndividual(ind, ultimas[ind.id]);
-      if (c !== null) cumplimientos.push(Math.min(100, Math.max(0, c)));
-    }
     const cumplimientoGeneral =
       cumplimientos.length > 0
         ? Math.round(cumplimientos.reduce((a, b) => a + b, 0) / cumplimientos.length)
-        : 0;
+        : null;
     return {
       total,
       verdes,
       amarillos,
       rojos,
       sinDato,
+      evaluados: cumplimientos.length,
       pctVerdes: pct(verdes),
       pctAmarillos: pct(amarillos),
       pctRojos: pct(rojos),
       pctSin: pct(sinDato),
       cumplimientoGeneral,
     };
-  }, [indsFiltrados, ultimas]);
+  }, [indsFiltrados, resoluciones]);
 
   // ── Tendencia general por periodo (mes) ────────────────────────────────
   const tendenciaGeneral = useMemo(() => {
-    // Agrupa mediciones por periodo (YYYY-MM). Para cada periodo calcula el
-    // cumplimiento promedio y los conteos por semáforo.
+    // Se agregan las series canónicas: un solo registro por indicador y mes.
     const porPeriodo = new Map<
       string,
       { cumplimiento: number[]; v: number; a: number; r: number; s: number }
     >();
-    for (const m of medsFiltradas) {
-      const per = String(m.periodo || m.created_at || "").slice(0, 7);
-      if (!per) continue;
-      const ind = inds.find((i) => i.id === m.indicador_id);
-      if (!ind || !ind.activo) continue;
-      const c = cumplimientoIndividual(ind, m);
-      const entry = porPeriodo.get(per) || { cumplimiento: [], v: 0, a: 0, r: 0, s: 0 };
-      if (c !== null) entry.cumplimiento.push(Math.min(100, Math.max(0, c)));
-      const sem = (m.semaforo as Semaforo) || "GRIS";
-      if (sem === "VERDE") entry.v++;
-      else if (sem === "AMARILLO") entry.a++;
-      else if (sem === "ROJO") entry.r++;
-      else entry.s++;
-      porPeriodo.set(per, entry);
+    for (const ind of indsFiltrados) {
+      for (const fila of seriesPorIndicador[ind.id] ?? []) {
+        const entry =
+          porPeriodo.get(fila.periodo) || { cumplimiento: [], v: 0, a: 0, r: 0, s: 0 };
+        if (fila.cumplimiento !== null) {
+          entry.cumplimiento.push(Math.min(100, Math.max(0, fila.cumplimiento)));
+        }
+        if (fila.semaforo === "VERDE") entry.v++;
+        else if (fila.semaforo === "AMARILLO") entry.a++;
+        else if (fila.semaforo === "ROJO") entry.r++;
+        else entry.s++;
+        porPeriodo.set(fila.periodo, entry);
+      }
     }
     return Array.from(porPeriodo.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
@@ -321,22 +347,26 @@ function IndicadoresPage() {
         critico: v.r,
         sinMedicion: v.s,
       }));
-  }, [medsFiltradas, inds]);
+  }, [indsFiltrados, seriesPorIndicador]);
 
   // ── Ranking ────────────────────────────────────────────────────────────
   const ranking = useMemo(() => {
     const rows = indsFiltrados.map((ind) => {
-      const med = ultimas[ind.id];
-      const sem = (med?.semaforo as Semaforo) || "GRIS";
-      const cumpl = cumplimientoIndividual(ind, med);
-      return { ind, med, sem, cumpl };
+      const res = resoluciones[ind.id] ?? { fila: null, origen: "SIN_DATO" as const, etiquetaPeriodo: "SIN DATO" };
+      return {
+        ind,
+        fila: res.fila,
+        res,
+        sem: res.fila?.semaforo ?? "GRIS",
+        cumpl: res.fila?.cumplimiento ?? null,
+      };
     });
     const rank: Record<Semaforo, number> = { ROJO: 0, AMARILLO: 1, GRIS: 2, VERDE: 3 };
     const cmp = (a: (typeof rows)[number], b: (typeof rows)[number]) => {
       if (orden === "nombre") return String(a.ind.nombre).localeCompare(String(b.ind.nombre));
       if (orden === "cumplimiento") return (b.cumpl ?? -1) - (a.cumpl ?? -1);
       if (orden === "reciente") {
-        return String(b.med?.periodo ?? "").localeCompare(String(a.med?.periodo ?? ""));
+        return String(b.fila?.periodo ?? "").localeCompare(String(a.fila?.periodo ?? ""));
       }
       // "estado" por defecto: Crítico → Alerta → Sin medición → En meta, luego cumplimiento asc
       const dr = rank[a.sem] - rank[b.sem];
@@ -344,7 +374,8 @@ function IndicadoresPage() {
       return (a.cumpl ?? Infinity) - (b.cumpl ?? Infinity);
     };
     return rows.sort(cmp);
-  }, [indsFiltrados, ultimas, orden]);
+  }, [indsFiltrados, resoluciones, orden]);
+
 
   // ── Guardado / edición ────────────────────────────────────────────────
   const onGuardarIndicador = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -570,7 +601,7 @@ function IndicadoresPage() {
               <div className="col-span-2 text-right">Estado</div>
             </div>
             <ul className="divide-y divide-border/60">
-              {ranking.map(({ ind, med, sem, cumpl }) => (
+              {ranking.map(({ ind, fila, res, sem, cumpl }) => (
                 <li key={ind.id}>
                   <button
                     type="button"
@@ -584,14 +615,29 @@ function IndicadoresPage() {
                       </p>
                     </div>
                     <div className="text-sm sm:col-span-2">
-                      {med?.resultado !== null && med?.resultado !== undefined ? (
-                        <span className="font-bold text-foreground">
-                          {med.resultado} {med.unidad || ind.unidad || ""}
-                        </span>
+                      {fila && fila.resultado !== null ? (
+                        <>
+                          <span className="font-bold text-foreground">
+                            {fila.resultado} {fila.unidad}
+                          </span>
+                          <span className="block text-[10px] uppercase text-muted-foreground">
+                            {res.etiquetaPeriodo}
+                          </span>
+                        </>
+                      ) : fila ? (
+                        <>
+                          <span className="text-xs font-semibold text-muted-foreground">
+                            No calculable
+                          </span>
+                          <span className="block text-[10px] uppercase text-muted-foreground">
+                            {etiquetaPeriodoCorta(fila.periodo)}
+                          </span>
+                        </>
                       ) : (
                         <span className="text-xs italic text-muted-foreground">Sin datos</span>
                       )}
                     </div>
+
                     <div className="sm:col-span-3">
                       <div className="flex items-center gap-2">
                         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
@@ -675,8 +721,10 @@ function IndicadoresPage() {
           open={!!detalleId}
           onOpenChange={(v) => !v && setDetalleId(null)}
           ind={indicadorDetalle}
-          historial={historialIndicador(meds, indicadorDetalle.id)}
-          medActual={ultimas[indicadorDetalle.id]}
+          serie={seriesPorIndicador[indicadorDetalle.id] ?? []}
+          resolucion={resoluciones[indicadorDetalle.id] ?? { fila: null, origen: "SIN_DATO", etiquetaPeriodo: "SIN DATO" }}
+          ctx={ctx}
+
           canEdit={canEdit}
           isAdmin={isAdmin}
           onEdit={() => {
@@ -746,7 +794,7 @@ function ResumenCard({
                 stroke="none"
               >
                 <Cell fill={color} />
-                <Cell fill="hsl(var(--muted))" />
+                <Cell fill="var(--muted, oklch(0.95 0.01 250))" />
               </Pie>
             </PieChart>
           </ResponsiveContainer>
@@ -767,21 +815,21 @@ function ResumenCard({
   );
 }
 
-function DonutCumplimiento({
-  resumen,
-}: {
-  resumen: ReturnType<typeof useMemo> extends never ? never : {
-    verdes: number;
-    amarillos: number;
-    rojos: number;
-    sinDato: number;
-    pctVerdes: number;
-    pctAmarillos: number;
-    pctRojos: number;
-    pctSin: number;
-    cumplimientoGeneral: number;
-  };
-}) {
+type ResumenGeneral = {
+  verdes: number;
+  amarillos: number;
+  rojos: number;
+  sinDato: number;
+  evaluados: number;
+  pctVerdes: number;
+  pctAmarillos: number;
+  pctRojos: number;
+  pctSin: number;
+  cumplimientoGeneral: number | null;
+};
+
+function DonutCumplimiento({ resumen }: { resumen: ResumenGeneral }) {
+
   const data = [
     { name: "En meta", value: resumen.verdes, color: COLOR.green },
     { name: "Alerta", value: resumen.amarillos, color: COLOR.amber },
@@ -806,9 +854,12 @@ function DonutCumplimiento({
           </ResponsiveContainer>
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-2 text-center leading-tight">
             <span className="text-lg font-extrabold text-foreground">
-              {resumen.cumplimientoGeneral}%
+              {resumen.cumplimientoGeneral === null ? "NO EVALUABLE" : `${resumen.cumplimientoGeneral}%`}
             </span>
-            <span className="text-[8px] uppercase text-muted-foreground">Cumplimiento</span>
+            <span className="text-[8px] uppercase text-muted-foreground">
+              Cumplimiento · {resumen.evaluados} con dato
+            </span>
+
           </div>
         </div>
         <ul className="space-y-1.5 text-xs">
@@ -919,14 +970,11 @@ function TendenciaCumplimientoChart({
                 tickFormatter={(v) => `${v}%`}
               />
               <Tooltip
-                contentStyle={{
-                  background: "hsl(var(--popover))",
-                  border: "1px solid hsl(var(--border))",
-                  fontSize: 12,
-                }}
+                contentStyle={tooltipStyle}
                 formatter={(v: number) => [`${v}%`, "Cumplimiento"]}
                 labelFormatter={(l) => formatearPeriodo(String(l))}
               />
+
               <Line
                 type="monotone"
                 dataKey="cumplimiento"
@@ -1027,82 +1075,96 @@ function FiltrosPanel({
   );
 }
 
-function NumDenPanel({
-  historial,
-  medActual,
+/**
+ * DETALLE DEL PERIODO SELECCIONADO.
+ * Trazabilidad completa: rango, corte, numerador, denominador, resultado,
+ * meta, cumplimiento, estado, fuente y conciliación oficial vs. automática.
+ */
+function DetallePeriodoPanel({
+  fila,
   ind,
 }: {
-  historial: Medicion[];
-  medActual: Medicion | undefined;
+  fila: PeriodoCanonico | null;
   ind: Indicador;
 }) {
-  // Buscar mediciones del mismo periodo que la actual (oficial + automática).
-  const periodo = medActual?.periodo ?? null;
-  const delPeriodo = useMemo(
-    () => (periodo ? historial.filter((h) => h.periodo === periodo) : []),
-    [historial, periodo],
-  );
-  const oficial = delPeriodo.find(
+  if (!fila) {
+    return (
+      <div className="rounded-lg border border-dashed border-border/60 p-4 text-center text-xs italic text-muted-foreground">
+        SIN REGISTRO PARA EL PERIODO SELECCIONADO.
+      </div>
+    );
+  }
+
+  const oficial = fila.variantes.find(
     (m) => m.tipo_medicion === "MANUAL_HISTORICA_IMPORTADA" || m.tipo_medicion === "MANUAL",
   );
-  const automatica = delPeriodo.find(
+  const automatica = fila.variantes.find(
     (m) => m.tipo_medicion === "AUTOMATICA" || m.tipo_medicion === "AUTOMATICA_CONCILIACION",
   );
-  const principal = medActual ?? oficial ?? automatica;
-  if (!principal) return null;
-
-  const unidad = principal.unidad || ind.unidad || "";
-  const fmt = (v: number | null | undefined) =>
-    v === null || v === undefined ? "—" : String(v);
-  const tipoLabel = (t?: string | null) => {
-    switch (t) {
-      case "MANUAL_HISTORICA_IMPORTADA":
-        return "Oficial (Excel histórico)";
-      case "MANUAL":
-        return "Manual";
-      case "AUTOMATICA":
-        return "Automática";
-      case "AUTOMATICA_CONCILIACION":
-        return "Automática (conciliación)";
-      case "AJUSTE_MANUAL":
-        return "Ajuste manual";
-      default:
-        return t || "—";
-    }
-  };
-
   const diferencia =
     oficial?.resultado != null && automatica?.resultado != null
       ? Number(automatica.resultado) - Number(oficial.resultado)
       : null;
+  const fmt = (v: number | null | undefined) =>
+    v === null || v === undefined ? "NO APLICA" : String(v);
 
   return (
     <div className="rounded-lg border border-border/60 bg-muted/20 p-3 sm:p-4">
-      <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-        Numerador / Denominador — {periodo ? formatearPeriodo(periodo) : "periodo actual"}
-      </p>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+          Detalle del periodo seleccionado — {formatearPeriodo(fila.periodo)}
+        </p>
+        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${pillCls[fila.semaforo]}`}>
+          {fila.estadoDato === "NO_CALCULABLE" ? "NO CALCULABLE" : SEMAFORO_LABEL[fila.semaforo]}
+        </span>
+      </div>
+
+      <div className="mb-2 grid grid-cols-1 gap-2 text-[11px] text-muted-foreground sm:grid-cols-3">
+        <span>Rango: {fila.fechaInicio} → {fila.fechaFin}</span>
+        <span>
+          Corte del dato: {fila.fechaCorte}
+          {fila.esParcial ? " (parcial, mes en curso)" : ""}
+        </span>
+        <span>Actualizado: {fila.updatedAt ? new Date(fila.updatedAt).toLocaleString("es-CO") : "NO APLICA"}</span>
+      </div>
+
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <div>
           <p className="text-[10px] uppercase text-muted-foreground">Numerador</p>
-          <p className="text-lg font-semibold tabular-nums">{fmt(principal.numerador_valor)}</p>
+          <p className="text-lg font-semibold tabular-nums">{fmt(fila.numerador)}</p>
         </div>
         <div>
           <p className="text-[10px] uppercase text-muted-foreground">Denominador</p>
-          <p className="text-lg font-semibold tabular-nums">{fmt(principal.denominador_valor)}</p>
+          <p className="text-lg font-semibold tabular-nums">{fmt(fila.denominador)}</p>
         </div>
         <div>
           <p className="text-[10px] uppercase text-muted-foreground">Resultado</p>
           <p className="text-lg font-semibold tabular-nums">
-            {principal.resultado != null ? `${principal.resultado} ${unidad}` : "—"}
+            {fila.resultado !== null ? `${fila.resultado} ${fila.unidad}` : "NO CALCULABLE"}
           </p>
         </div>
         <div>
-          <p className="text-[10px] uppercase text-muted-foreground">Tipo de medición</p>
-          <p className="text-sm font-medium">{tipoLabel(principal.tipo_medicion)}</p>
-          {principal.fuente_medicion && (
-            <p className="text-[10px] text-muted-foreground">Fuente: {principal.fuente_medicion}</p>
-          )}
+          <p className="text-[10px] uppercase text-muted-foreground">Meta / Cumplimiento</p>
+          <p className="text-sm font-medium tabular-nums">
+            {fmtNum(fila.meta, fila.unidad)} ·{" "}
+            {fila.cumplimiento !== null ? `${Math.round(fila.cumplimiento)}%` : "NO APLICA"}
+          </p>
+          <p className="text-[10px] text-muted-foreground">
+            {esMenorEsMejor(ind) ? "Menor es mejor" : "Mayor es mejor"}
+          </p>
         </div>
+      </div>
+
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+        <span>Fuente: {fila.fuente}</span>
+        {fila.fuenteMedicion && <span>Origen: {fila.fuenteMedicion}</span>}
+        {fila.duplicado && (
+          <span className="text-status-amber">
+            {fila.duplicadoNoResoluble
+              ? "DUPLICIDAD NO RESOLUBLE · se muestra la versión de mayor precedencia"
+              : `Se aplicó precedencia sobre ${fila.variantes.length} registros del periodo`}
+          </span>
+        )}
       </div>
 
       {oficial && automatica && (
@@ -1114,13 +1176,13 @@ function NumDenPanel({
             <div>
               <span className="text-muted-foreground">Oficial: </span>
               <span className="font-semibold tabular-nums">
-                {fmt(oficial.numerador_valor)}/{fmt(oficial.denominador_valor)} · {oficial.resultado} {unidad}
+                {fmt(oficial.numerador_valor)}/{fmt(oficial.denominador_valor)} · {oficial.resultado} {fila.unidad}
               </span>
             </div>
             <div>
               <span className="text-muted-foreground">Automática: </span>
               <span className="font-semibold tabular-nums">
-                {fmt(automatica.numerador_valor)}/{fmt(automatica.denominador_valor)} · {automatica.resultado} {unidad}
+                {fmt(automatica.numerador_valor)}/{fmt(automatica.denominador_valor)} · {automatica.resultado} {fila.unidad}
               </span>
             </div>
             <div>
@@ -1134,7 +1196,7 @@ function NumDenPanel({
                       : "text-status-amber"
                 }`}
               >
-                {diferencia === null ? "—" : `${diferencia > 0 ? "+" : ""}${diferencia.toFixed(2)} ${unidad}`}
+                {diferencia === null ? "—" : `${diferencia > 0 ? "+" : ""}${diferencia.toFixed(2)} ${fila.unidad}`}
               </span>
             </div>
           </div>
@@ -1144,22 +1206,23 @@ function NumDenPanel({
         </div>
       )}
 
-      {principal.nota_metodologica && (
+      {fila.notaMetodologica && (
         <p className="mt-2 text-[10px] italic text-muted-foreground">
-          Nota metodológica: {principal.nota_metodologica}
+          Nota metodológica: {fila.notaMetodologica}
         </p>
       )}
     </div>
   );
 }
 
-function IndicadorDetalleModal({
 
+function IndicadorDetalleModal({
   open,
   onOpenChange,
   ind,
-  historial,
-  medActual,
+  serie,
+  resolucion,
+  ctx,
   canEdit,
   isAdmin,
   onEdit,
@@ -1168,18 +1231,46 @@ function IndicadorDetalleModal({
   open: boolean;
   onOpenChange: (v: boolean) => void;
   ind: Indicador;
-  historial: Medicion[];
-  medActual: Medicion | undefined;
+  /** Serie canónica completa (todos los años cargados), ascendente. */
+  serie: PeriodoCanonico[];
+  resolucion: ResolucionCanonica;
+  ctx: ContextoTemporal;
   canEdit: boolean;
   isAdmin: boolean;
   onEdit: () => void;
   onArchive: () => void;
 }) {
-  const sem = (medActual?.semaforo as Semaforo) || "GRIS";
-  const cumpl = cumplimientoIndividual(ind, medActual);
-  const { ancho } = avanceContraMeta(ind, medActual);
   const menorMejor = esMenorEsMejor(ind);
-  const vals = historial.map((h) => Number(h.resultado)).filter((v) => !Number.isNaN(v));
+
+  // Periodo seleccionado: por defecto el canónico vigente. Sincroniza con el
+  // gráfico, el detalle y el histórico (una sola fuente de selección).
+  const [periodoSel, setPeriodoSel] = useState<string>("");
+  const periodoVigente = resolucion.fila?.periodo ?? serie.at(-1)?.periodo ?? "";
+  useEffect(() => {
+    if (open) setPeriodoSel(periodoVigente);
+  }, [open, periodoVigente, ind.id]);
+
+  const filaSel = useMemo(
+    () => serie.find((f) => f.periodo === periodoSel) ?? resolucion.fila,
+    [serie, periodoSel, resolucion.fila],
+  );
+
+  // Filtro por año sobre el histórico y los gráficos.
+  const anios = useMemo(
+    () => Array.from(new Set(serie.map((f) => f.anio))).sort((a, b) => b - a),
+    [serie],
+  );
+  const [anioSel, setAnioSel] = useState<string>("TODOS");
+  const serieVisible = useMemo(
+    () => (anioSel === "TODOS" ? serie : serie.filter((f) => String(f.anio) === anioSel)),
+    [serie, anioSel],
+  );
+
+  const sem = filaSel?.semaforo ?? "GRIS";
+  const cumpl = filaSel?.cumplimiento ?? null;
+  const ancho = Math.min(100, Math.max(0, cumpl ?? 0));
+
+  const vals = serie.filter((f) => f.resultado !== null).map((f) => Number(f.resultado));
   const last = vals.at(-1);
   const prev = vals.at(-2);
   const tendVariacion =
@@ -1187,24 +1278,23 @@ function IndicadorDetalleModal({
       ? Math.round(((last - prev) / prev) * 100)
       : null;
   const mejora =
-    tendVariacion === null
-      ? null
-      : menorMejor
-        ? tendVariacion < 0
-        : tendVariacion > 0;
+    tendVariacion === null ? null : menorMejor ? tendVariacion < 0 : tendVariacion > 0;
 
   const [pagina, setPagina] = useState(1);
-  const PAGE = 6;
-  const historialDesc = useMemo(() => [...historial].reverse(), [historial]);
+  const PAGE = 12;
+  const historialDesc = useMemo(() => [...serieVisible].reverse(), [serieVisible]);
   const totalPag = Math.max(1, Math.ceil(historialDesc.length / PAGE));
   const pagRows = historialDesc.slice((pagina - 1) * PAGE, pagina * PAGE);
+  useEffect(() => setPagina(1), [anioSel, ind.id]);
 
-  const chartData = historial.map((h) => ({
-    periodo: h.periodo ?? "",
-    resultado: h.resultado ?? null,
-    meta: h.meta ?? ind.meta ?? null,
-    cumplimiento: cumplimientoIndividual(ind, h),
+  const chartData = serieVisible.map((f) => ({
+    periodo: f.periodo,
+    resultado: f.resultado,
+    meta: f.meta,
+    cumplimiento: f.cumplimiento,
+    semaforo: f.semaforo,
   }));
+
 
   const showOr = (v: string | number | null | undefined) =>
     v === null || v === undefined || String(v).trim() === "" ? (
@@ -1222,34 +1312,75 @@ function IndicadorDetalleModal({
           </DialogTitle>
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
             {ind.codigo || "Sin código"} · {ind.responsable || "Coordinación"}
-            {medActual?.created_at
-              ? ` · Última actualización: ${new Date(medActual.created_at).toLocaleString("es-CO")}`
+            {` · Corte ${ctx.fechaCorte} ${ctx.horaCorte} (America/Bogotá)`}
+            {filaSel?.updatedAt
+              ? ` · Última actualización: ${new Date(filaSel.updatedAt).toLocaleString("es-CO")}`
               : ""}
           </p>
         </DialogHeader>
 
         <div className="min-w-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-4 py-4 scrollbar-invisible sm:px-6">
+          {/* Selector de periodo: sincroniza detalle, gráficos e histórico */}
+          <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-border bg-card p-3">
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Periodo</Label>
+              <select
+                className={selectCls + " h-9 w-auto text-xs"}
+                value={periodoSel}
+                onChange={(e) => setPeriodoSel(e.target.value)}
+              >
+                {serie.length === 0 && <option value="">Sin periodos</option>}
+                {[...serie].reverse().map((f) => (
+                  <option key={f.periodo} value={f.periodo}>
+                    {formatearPeriodo(f.periodo)}
+                    {f.esParcial ? " (parcial)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Año (histórico y gráficos)</Label>
+              <select
+                className={selectCls + " h-9 w-auto text-xs"}
+                value={anioSel}
+                onChange={(e) => setAnioSel(e.target.value)}
+              >
+                <option value="TODOS">Todos los años</option>
+                {anios.map((a) => (
+                  <option key={a} value={String(a)}>
+                    {a}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="ml-auto text-[10px] uppercase text-muted-foreground">
+              Dato vigente: {resolucion.etiquetaPeriodo}
+            </p>
+          </div>
+
           {/* KPIs */}
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <KPI
-              label="Cumplimiento actual"
-              value={cumpl !== null ? `${Math.round(cumpl)}%` : "—"}
+              label="Cumplimiento del periodo"
+              value={cumpl !== null ? `${Math.round(cumpl)}%` : "NO APLICA"}
               caption={SEMAFORO_LABEL[sem]}
               tone={sem}
             />
             <KPI
               label="Meta"
-              value={ind.meta != null ? `${ind.meta} ${ind.unidad || ""}` : "—"}
+              value={fmtNum(filaSel?.meta ?? ind.meta, filaSel?.unidad || ind.unidad || "")}
               caption={menorMejor ? "Máximo permitido" : "Objetivo mínimo"}
             />
             <KPI
               label="Resultado"
               value={
-                medActual?.resultado !== null && medActual?.resultado !== undefined
-                  ? `${medActual.resultado} ${medActual.unidad || ind.unidad || ""}`
-                  : "SIN DATOS"
+                filaSel && filaSel.resultado !== null
+                  ? `${filaSel.resultado} ${filaSel.unidad}`
+                  : filaSel
+                    ? "NO CALCULABLE"
+                    : "SIN DATOS"
               }
-              caption={medActual?.periodo ? formatearPeriodo(medActual.periodo) : "Sin periodo"}
+              caption={filaSel ? formatearPeriodo(filaSel.periodo) : "Sin periodo"}
             />
             <KPI
               label="Tendencia"
@@ -1271,8 +1402,9 @@ function IndicadorDetalleModal({
             />
           </div>
 
-          {/* Numerador / Denominador + conciliación oficial vs automático */}
-          <NumDenPanel historial={historial} medActual={medActual} ind={ind} />
+          {/* Detalle del periodo seleccionado + conciliación */}
+          <DetallePeriodoPanel fila={filaSel} ind={ind} />
+
 
 
 
@@ -1292,7 +1424,7 @@ function IndicadorDetalleModal({
             )}
           </div>
 
-          {/* Gráficas */}
+          {/* Gráficas — mismo conjunto canónico que la tabla; clic = selecciona periodo */}
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             <div className="rounded-2xl border border-border bg-card p-3">
               <p className="mb-1 text-[10px] font-bold uppercase text-muted-foreground">
@@ -1305,23 +1437,30 @@ function IndicadorDetalleModal({
                   </p>
                 ) : (
                   <ResponsiveContainer>
-                    <LineChart data={chartData} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+                    <LineChart
+                      data={chartData}
+                      margin={{ top: 8, right: 12, left: -12, bottom: 0 }}
+                      onClick={(e) => {
+                        const p = e?.activeLabel;
+                        if (p) setPeriodoSel(String(p));
+                      }}
+                    >
                       <CartesianGrid strokeDasharray="3 3" stroke={COLOR.border} />
-                      <XAxis dataKey="periodo" tickFormatter={(v) => v.slice(5)} tick={{ fontSize: 10, fill: COLOR.muted }} />
+                      <XAxis dataKey="periodo" tickFormatter={(v) => etiquetaPeriodoCorta(String(v))} tick={{ fontSize: 10, fill: COLOR.muted }} />
                       <YAxis tick={{ fontSize: 10, fill: COLOR.muted }} tickFormatter={(v) => `${v}%`} />
                       <Tooltip
-                        contentStyle={{
-                          background: "hsl(var(--popover))",
-                          border: "1px solid hsl(var(--border))",
-                          fontSize: 12,
-                        }}
-                        formatter={(v: number, name: string) => [
-                          name === "cumplimiento" ? `${Math.round(Number(v))}%` : v,
-                          name,
-                        ]}
+                        contentStyle={tooltipStyle}
+                        formatter={(v: number) => [`${Math.round(Number(v))}%`, "Cumplimiento"]}
                         labelFormatter={(l) => formatearPeriodo(String(l))}
                       />
-                      <Line type="monotone" dataKey="cumplimiento" stroke={COLOR.sky} strokeWidth={2} dot={{ r: 3 }} />
+                      <Line
+                        type="monotone"
+                        dataKey="cumplimiento"
+                        stroke={COLOR.sky}
+                        strokeWidth={2}
+                        dot={{ r: 3 }}
+                        connectNulls
+                      />
                     </LineChart>
                   </ResponsiveContainer>
                 )}
@@ -1338,25 +1477,31 @@ function IndicadorDetalleModal({
                   </p>
                 ) : (
                   <ResponsiveContainer>
-                    <BarChart data={chartData} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+                    <BarChart
+                      data={chartData}
+                      margin={{ top: 8, right: 12, left: -12, bottom: 0 }}
+                      onClick={(e) => {
+                        const p = e?.activeLabel;
+                        if (p) setPeriodoSel(String(p));
+                      }}
+                    >
                       <CartesianGrid strokeDasharray="3 3" stroke={COLOR.border} />
-                      <XAxis dataKey="periodo" tickFormatter={(v) => v.slice(5)} tick={{ fontSize: 10, fill: COLOR.muted }} />
+                      <XAxis dataKey="periodo" tickFormatter={(v) => etiquetaPeriodoCorta(String(v))} tick={{ fontSize: 10, fill: COLOR.muted }} />
                       <YAxis tick={{ fontSize: 10, fill: COLOR.muted }} />
                       <Tooltip
-                        contentStyle={{
-                          background: "hsl(var(--popover))",
-                          border: "1px solid hsl(var(--border))",
-                          fontSize: 12,
-                        }}
+                        contentStyle={tooltipStyle}
+                        formatter={(v: number) => [`${v} ${ind.unidad || ""}`, "Resultado"]}
                         labelFormatter={(l) => formatearPeriodo(String(l))}
                       />
                       <Bar dataKey="resultado" radius={[4, 4, 0, 0]}>
-                        {chartData.map((c, i) => {
-                          const s = calcularSemaforo(c.resultado ?? null, c.meta ?? null, ind.sentido);
-                          const color =
-                            s === "VERDE" ? COLOR.green : s === "AMARILLO" ? COLOR.amber : s === "ROJO" ? COLOR.red : COLOR.muted;
-                          return <Cell key={i} fill={color} />;
-                        })}
+                        {chartData.map((c) => (
+                          <Cell
+                            key={c.periodo}
+                            fill={colorSemaforo(c.semaforo)}
+                            stroke={c.periodo === periodoSel ? COLOR.sky : undefined}
+                            strokeWidth={c.periodo === periodoSel ? 2 : 0}
+                          />
+                        ))}
                       </Bar>
                       {ind.meta != null && (
                         <ReferenceLine
@@ -1372,6 +1517,7 @@ function IndicadorDetalleModal({
               </div>
             </div>
           </div>
+
 
           {/* Detalle técnico */}
           <div className="rounded-2xl border border-border bg-card p-3">
@@ -1404,46 +1550,60 @@ function IndicadorDetalleModal({
                 </div>
               )}
             </div>
-            {historial.length === 0 ? (
+            {historialDesc.length === 0 ? (
               <p className="py-4 text-center text-xs italic text-muted-foreground">Sin mediciones registradas.</p>
             ) : (
               <div className="overflow-x-auto scrollbar-invisible">
-                <table className="w-full min-w-[520px] text-xs">
+                <table className="w-full min-w-[640px] text-xs">
                   <thead>
                     <tr className="border-b border-border/60 text-left uppercase text-muted-foreground">
                       <th className="py-1.5 pr-2">Periodo</th>
+                      <th className="py-1.5 pr-2">Num / Den</th>
                       <th className="py-1.5 pr-2">Resultado</th>
                       <th className="py-1.5 pr-2">Meta</th>
                       <th className="py-1.5 pr-2">Cumplimiento</th>
                       <th className="py-1.5 pr-2">Estado</th>
-                      <th className="py-1.5 pr-2">Registro</th>
+                      <th className="py-1.5 pr-2">Fuente</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {pagRows.map((m) => {
-                      const c = cumplimientoIndividual(ind, m);
-                      const s = (m.semaforo as Semaforo) || "GRIS";
-                      return (
-                        <tr key={m.id} className="border-b border-border/40">
-                          <td className="py-1.5 pr-2">{m.periodo ? formatearPeriodo(m.periodo) : "—"}</td>
-                          <td className="py-1.5 pr-2 font-semibold">{m.resultado ?? "—"} {m.unidad || ""}</td>
-                          <td className="py-1.5 pr-2">{m.meta ?? ind.meta ?? "—"}</td>
-                          <td className="py-1.5 pr-2">{c !== null ? `${Math.round(c)}%` : "—"}</td>
-                          <td className="py-1.5 pr-2">
-                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${pillCls[s]}`}>
-                              {SEMAFORO_LABEL[s]}
-                            </span>
-                          </td>
-                          <td className="py-1.5 pr-2 text-muted-foreground">
-                            {m.created_at ? new Date(m.created_at).toLocaleDateString("es-CO") : "—"}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {pagRows.map((f) => (
+                      <tr
+                        key={f.periodo}
+                        onClick={() => setPeriodoSel(f.periodo)}
+                        className={`cursor-pointer border-b border-border/40 hover:bg-muted/40 ${
+                          f.periodo === periodoSel ? "bg-muted/50" : ""
+                        }`}
+                      >
+                        <td className="py-1.5 pr-2">
+                          {formatearPeriodo(f.periodo)}
+                          {f.esParcial && (
+                            <span className="ml-1 text-[9px] uppercase text-muted-foreground">parcial</span>
+                          )}
+                        </td>
+                        <td className="py-1.5 pr-2 tabular-nums">
+                          {fmtNum(f.numerador)} / {fmtNum(f.denominador)}
+                        </td>
+                        <td className="py-1.5 pr-2 font-semibold tabular-nums">
+                          {f.resultado !== null ? `${f.resultado} ${f.unidad}` : "NO CALCULABLE"}
+                        </td>
+                        <td className="py-1.5 pr-2 tabular-nums">{fmtNum(f.meta)}</td>
+                        <td className="py-1.5 pr-2 tabular-nums">
+                          {f.cumplimiento !== null ? `${Math.round(f.cumplimiento)}%` : "NO APLICA"}
+                        </td>
+                        <td className="py-1.5 pr-2">
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${pillCls[f.semaforo]}`}>
+                            {SEMAFORO_LABEL[f.semaforo]}
+                          </span>
+                        </td>
+                        <td className="py-1.5 pr-2 text-muted-foreground">{f.fuente}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
             )}
+
           </div>
         </div>
 
