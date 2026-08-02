@@ -43,11 +43,19 @@ export interface TurnoResuelto {
   matchCount: number;
   scheduleId: string | null;
   memberId: string | null;
+  /** Usuario vinculado al miembro resuelto (null cuando no hay vínculo). */
+  userId: string | null;
+  /** Fila real de public.shift_schedule_days. */
+  dayId: string | null;
+  dayNumber: number | null;
   /** Datos de la asignación cuando existe. */
   shiftCode: string | null;
   hours: number;
   unidadFuncional: string | null;
   shiftDate: string | null;
+  /** Valores literales de la fila del día (nunca provienen del cliente). */
+  origin: string | null;
+  notes: string | null;
   /** Catálogo (shift_types). */
   shiftName: string | null;
   startTime: string | null;
@@ -58,6 +66,7 @@ export interface TurnoResuelto {
   /** Fecha efectiva de finalización (día siguiente en turnos nocturnos). */
   endDate: string | null;
 }
+
 
 /** Mensaje funcional único por estado. */
 export function mensajeResolver(t: TurnoResuelto): string {
