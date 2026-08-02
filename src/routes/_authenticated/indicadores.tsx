@@ -216,10 +216,11 @@ function IndicadoresPage() {
     const ini = filtros.fechaInicio;
     const fin = filtros.fechaFin;
     if (!ini && !fin) return meds;
+    // El periodo es YYYY-MM: se compara por mes, nunca contra un día.
     return meds.filter((m) => {
-      const p = String(m.periodo || m.created_at || "").slice(0, 10);
-      if (ini && p < ini) return false;
-      if (fin && p > fin) return false;
+      const p = String(m.periodo || m.created_at || "").slice(0, 7);
+      if (ini && p < ini.slice(0, 7)) return false;
+      if (fin && p > fin.slice(0, 7)) return false;
       return true;
     });
   }, [meds, filtros.fechaInicio, filtros.fechaFin]);
