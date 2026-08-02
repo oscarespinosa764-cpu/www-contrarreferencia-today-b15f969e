@@ -481,6 +481,7 @@ function IndicadoresPage() {
     toast.success(`Medición guardada · ${resultado ?? "—"} ${ind.unidad ?? ""}`);
     form.reset();
     qc.invalidateQueries({ queryKey: ["mediciones-ind"] });
+    qc.invalidateQueries({ queryKey: ["indicadores-tiempo-real"] });
   };
 
   const indicadorDetalle = useMemo(
