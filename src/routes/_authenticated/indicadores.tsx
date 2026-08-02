@@ -1215,12 +1215,12 @@ function DetallePeriodoPanel({
 
 
 function IndicadorDetalleModal({
-
   open,
   onOpenChange,
   ind,
-  historial,
-  medActual,
+  serie,
+  resolucion,
+  ctx,
   canEdit,
   isAdmin,
   onEdit,
@@ -1229,18 +1229,46 @@ function IndicadorDetalleModal({
   open: boolean;
   onOpenChange: (v: boolean) => void;
   ind: Indicador;
-  historial: Medicion[];
-  medActual: Medicion | undefined;
+  /** Serie canónica completa (todos los años cargados), ascendente. */
+  serie: PeriodoCanonico[];
+  resolucion: ResolucionCanonica;
+  ctx: ContextoTemporal;
   canEdit: boolean;
   isAdmin: boolean;
   onEdit: () => void;
   onArchive: () => void;
 }) {
-  const sem = (medActual?.semaforo as Semaforo) || "GRIS";
-  const cumpl = cumplimientoIndividual(ind, medActual);
-  const { ancho } = avanceContraMeta(ind, medActual);
   const menorMejor = esMenorEsMejor(ind);
-  const vals = historial.map((h) => Number(h.resultado)).filter((v) => !Number.isNaN(v));
+
+  // Periodo seleccionado: por defecto el canónico vigente. Sincroniza con el
+  // gráfico, el detalle y el histórico (una sola fuente de selección).
+  const [periodoSel, setPeriodoSel] = useState<string>("");
+  const periodoVigente = resolucion.fila?.periodo ?? serie.at(-1)?.periodo ?? "";
+  useEffect(() => {
+    if (open) setPeriodoSel(periodoVigente);
+  }, [open, periodoVigente, ind.id]);
+
+  const filaSel = useMemo(
+    () => serie.find((f) => f.periodo === periodoSel) ?? resolucion.fila,
+    [serie, periodoSel, resolucion.fila],
+  );
+
+  // Filtro por año sobre el histórico y los gráficos.
+  const anios = useMemo(
+    () => Array.from(new Set(serie.map((f) => f.anio))).sort((a, b) => b - a),
+    [serie],
+  );
+  const [anioSel, setAnioSel] = useState<string>("TODOS");
+  const serieVisible = useMemo(
+    () => (anioSel === "TODOS" ? serie : serie.filter((f) => String(f.anio) === anioSel)),
+    [serie, anioSel],
+  );
+
+  const sem = filaSel?.semaforo ?? "GRIS";
+  const cumpl = filaSel?.cumplimiento ?? null;
+  const ancho = Math.min(100, Math.max(0, cumpl ?? 0));
+
+  const vals = serie.filter((f) => f.resultado !== null).map((f) => Number(f.resultado));
   const last = vals.at(-1);
   const prev = vals.at(-2);
   const tendVariacion =
@@ -1248,24 +1276,23 @@ function IndicadorDetalleModal({
       ? Math.round(((last - prev) / prev) * 100)
       : null;
   const mejora =
-    tendVariacion === null
-      ? null
-      : menorMejor
-        ? tendVariacion < 0
-        : tendVariacion > 0;
+    tendVariacion === null ? null : menorMejor ? tendVariacion < 0 : tendVariacion > 0;
 
   const [pagina, setPagina] = useState(1);
-  const PAGE = 6;
-  const historialDesc = useMemo(() => [...historial].reverse(), [historial]);
+  const PAGE = 12;
+  const historialDesc = useMemo(() => [...serieVisible].reverse(), [serieVisible]);
   const totalPag = Math.max(1, Math.ceil(historialDesc.length / PAGE));
   const pagRows = historialDesc.slice((pagina - 1) * PAGE, pagina * PAGE);
+  useEffect(() => setPagina(1), [anioSel, ind.id]);
 
-  const chartData = historial.map((h) => ({
-    periodo: h.periodo ?? "",
-    resultado: h.resultado ?? null,
-    meta: h.meta ?? ind.meta ?? null,
-    cumplimiento: cumplimientoIndividual(ind, h),
+  const chartData = serieVisible.map((f) => ({
+    periodo: f.periodo,
+    resultado: f.resultado,
+    meta: f.meta,
+    cumplimiento: f.cumplimiento,
+    semaforo: f.semaforo,
   }));
+
 
   const showOr = (v: string | number | null | undefined) =>
     v === null || v === undefined || String(v).trim() === "" ? (
