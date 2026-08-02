@@ -18,6 +18,7 @@ const PRECEDENCIA: Record<string, number> = {
   MANUAL_HISTORICA_IMPORTADA: 3,
   AUTOMATICA: 4,
   AUTOMATICA_CONCILIACION: 5,
+  AUTOMATICA_PARCIAL: 6,
 };
 const PRECEDENCIA_DESCONOCIDA = 9;
 
@@ -38,6 +39,8 @@ export function etiquetaFuente(tipo?: string | null): string {
       return "Automática";
     case "AUTOMATICA_CONCILIACION":
       return "Automática (conciliación)";
+    case "AUTOMATICA_PARCIAL":
+      return "Automática (parcial en curso)";
     default:
       return tipo ? String(tipo) : "Sin clasificar";
   }
@@ -264,6 +267,8 @@ export type ResolucionCanonica = {
   fila: PeriodoCanonico | null;
   origen: OrigenCanonico;
   etiquetaPeriodo: string;
+  /** Último periodo cerrado con resultado válido (referencia secundaria). */
+  referencia?: PeriodoCanonico | null;
 };
 
 const MES_CORTO = [
