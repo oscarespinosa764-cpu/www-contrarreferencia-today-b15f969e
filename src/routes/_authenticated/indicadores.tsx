@@ -794,7 +794,7 @@ function ResumenCard({
                 stroke="none"
               >
                 <Cell fill={color} />
-                <Cell fill="hsl(var(--muted))" />
+                <Cell fill="var(--muted, oklch(0.95 0.01 250))" />
               </Pie>
             </PieChart>
           </ResponsiveContainer>
@@ -967,14 +967,11 @@ function TendenciaCumplimientoChart({
                 tickFormatter={(v) => `${v}%`}
               />
               <Tooltip
-                contentStyle={{
-                  background: "hsl(var(--popover))",
-                  border: "1px solid hsl(var(--border))",
-                  fontSize: 12,
-                }}
+                contentStyle={tooltipStyle}
                 formatter={(v: number) => [`${v}%`, "Cumplimiento"]}
                 labelFormatter={(l) => formatearPeriodo(String(l))}
               />
+
               <Line
                 type="monotone"
                 dataKey="cumplimiento"
