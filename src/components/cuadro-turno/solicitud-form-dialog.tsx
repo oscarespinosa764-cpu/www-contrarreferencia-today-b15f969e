@@ -82,7 +82,7 @@ function FraccionEditor({
 
   // Al fijar receptor + fecha, consultar el turno programado del receptor.
   useEffect(() => {
-    if (!frag.receiver_id || !frag.return_date) return;
+    if ((!frag.receiver_id && !frag.receiver_name) || !frag.return_date) return;
     let cancel = false;
     (async () => {
       const t = await buscarTurnoProgramado({
@@ -97,7 +97,7 @@ function FraccionEditor({
       cancel = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frag.receiver_id, frag.return_date]);
+  }, [frag.receiver_id, frag.receiver_name, frag.return_date]);
 
   const setReceiver = (nombre: string) => {
     const f = funcionarios.find((x) => x.nombre === nombre);
@@ -271,6 +271,8 @@ export function SolicitudFormDialog({
   const [reempNombre, setReempNombre] = useState("");
   const [reempCargo, setReempCargo] = useState("");
   const [reempUserId, setReempUserId] = useState<string | null>(null);
+  const [turnoReempCode, setTurnoReempCode] = useState<string | null>(null);
+  const [buscandoTurnoReemp, setBuscandoTurnoReemp] = useState(false);
   const [detalle, setDetalle] = useState("");
   const [observaciones, setObservaciones] = useState("");
   // Turno programado del solicitante en la fecha inicial
