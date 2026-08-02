@@ -247,7 +247,16 @@ function RemisionesPage() {
     desistGeneral: count((r) => /DESIST/i.test(r.estado || "") && /GENERAL/i.test(r.estado || "")),
   };
 
-  const { combinados: avisos } = useAvisosOperativos();
+  const { combinados: avisosTodos } = useAvisosOperativos();
+  // Sectorización canónica: el Dashboard Operativo Salientes solo muestra
+  // avisos con audiencia operativa/compartida de su dominio. Las alertas
+  // exclusivas de coordinación (Cuadro de Turno / recuperación de tiempo)
+  // se conservan íntegras en Alertas de Coordinación.
+  const avisos = useMemo(
+    () => filtrarAvisosPorContexto(avisosTodos, "DASHBOARD_SALIENTES"),
+    [avisosTodos],
+  );
+
 
   const nombreRecibe = recibeOpciones.find((a) => a.user_id === recibe)?.nombre || "el siguiente turno";
 
