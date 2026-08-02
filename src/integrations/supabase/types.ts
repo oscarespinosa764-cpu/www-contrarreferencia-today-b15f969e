@@ -3618,6 +3618,9 @@ export type Database = {
           full_name: string
           id: string
           identification_number: string | null
+          link_source: string | null
+          linked_at: string | null
+          linked_by: string | null
           notes: string | null
           pending_hours: number
           role_name: string | null
@@ -3635,6 +3638,9 @@ export type Database = {
           full_name?: string
           id?: string
           identification_number?: string | null
+          link_source?: string | null
+          linked_at?: string | null
+          linked_by?: string | null
           notes?: string | null
           pending_hours?: number
           role_name?: string | null
@@ -3652,6 +3658,9 @@ export type Database = {
           full_name?: string
           id?: string
           identification_number?: string | null
+          link_source?: string | null
+          linked_at?: string | null
+          linked_by?: string | null
           notes?: string | null
           pending_hours?: number
           role_name?: string | null
@@ -4004,6 +4013,10 @@ export type Database = {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
       }
+      desvincular_miembro_usuario: {
+        Args: { _actor: string; _member_id: string }
+        Returns: Json
+      }
       eliminar_turnos_programados_lote: {
         Args: {
           _actor: string
@@ -4180,6 +4193,15 @@ export type Database = {
           pendientes: number
           solicitudes: number
         }[]
+      }
+      vincular_miembro_usuario: {
+        Args: {
+          _actor: string
+          _link_source: string
+          _member_id: string
+          _target_user_id: string
+        }
+        Returns: Json
       }
     }
     Enums: {
