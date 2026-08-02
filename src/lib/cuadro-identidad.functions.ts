@@ -447,3 +447,164 @@ export const desvincularMiembroUsuario = createServerFn({ method: "POST" })
       };
     return { ok: true };
   });
+
+// ---------------------------------------------------------------------------
+// FASE 9 · BLOQUE C.3 — Fuente canónica ÚNICA de colaboradores seleccionables.
+//
+// Reglas:
+// - Parte SIEMPRE del schedule aplicable (scheduleId validado o año/mes de la
+//   fecha). Nunca lista "todos los perfiles activos".
+// - Deduplica exclusivamente por user_id (nunca por nombre/texto).
+// - El label visible es SIEMPRE profiles.nombre (nunca full_name importado).
+// - No vincula automáticamente: la coincidencia por nombre normalizado único
+//   solo sirve para mostrar la identidad canónica.
+// ---------------------------------------------------------------------------
+export interface ColaboradorSeleccionable {
+  userId: string;
+  nombre: string;
+  cargo: string | null;
+  sede: string | null;
+  /** null cuando dos miembros del mismo schedule resuelven al mismo usuario. */
+  memberId: string | null;
+  resolutionMethod: "MEMBER_USER_ID" | "UNIQUE_NORMALIZED_NAME";
+  /** true cuando existe más de un member_id para el mismo user_id. */
+  duplicado: boolean;
+}
+
+export interface ColaboradoresResultado {
+  estado: "SCHEDULE_ENCONTRADO" | "SCHEDULE_NO_ENCONTRADO" | "SCHEDULE_AMBIGUO" | "SIN_PERMISO";
+  scheduleId: string | null;
+  items: ColaboradorSeleccionable[];
+  /** Miembros que no pudieron resolverse a un usuario canónico. */
+  pendientes: number;
+  duplicados: number;
+}
+
+const colaboradoresSchema = z
+  .object({
+    fecha: FECHA,
+    scheduleId: z.string().uuid().nullable().optional(),
+    tipo: z.enum(["REEMPLAZO", "CAMBIO_TURNO", "RECEPTOR", "COBERTURA"]),
+    /** Solo excluye visualmente; el servidor revalida en la creación. */
+    excluirUserId: z.string().uuid().nullable().optional(),
+  })
+  .strict();
+
+export const listarColaboradoresSeleccionablesTurno = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => colaboradoresSchema.parse(input))
+  .handler(async ({ data, context }): Promise<ColaboradoresResultado> => {
+    const { supabase, userId } = context;
+    const vacia = (estado: ColaboradoresResultado["estado"], scheduleId: string | null = null) => ({
+      estado,
+      scheduleId,
+      items: [],
+      pendientes: 0,
+      duplicados: 0,
+    });
+
+    const { data: isActive } = await (supabase.rpc as unknown as RpcFn)("is_active_member", {
+      _user_id: userId,
+    });
+    if (!isActive) return vacia("SIN_PERMISO");
+
+    const p = partesFecha(data.fecha);
+    if (!p) return vacia("SCHEDULE_NO_ENCONTRADO");
+
+    // ---- Schedule aplicable ------------------------------------------------
+    let scheduleId: string;
+    if (data.scheduleId) {
+      const { data: sch } = await supabase
+        .from("shift_schedules")
+        .select("id, year, month")
+        .eq("id", data.scheduleId)
+        .maybeSingle();
+      if (!sch || sch.year !== p.year || sch.month !== p.month)
+        return vacia("SCHEDULE_NO_ENCONTRADO");
+      scheduleId = sch.id;
+    } else {
+      const { data: rows } = await supabase
+        .from("shift_schedules")
+        .select("id")
+        .eq("year", p.year)
+        .eq("month", p.month);
+      const list = rows ?? [];
+      if (list.length === 0) return vacia("SCHEDULE_NO_ENCONTRADO");
+      if (list.length > 1) return vacia("SCHEDULE_AMBIGUO");
+      scheduleId = list[0].id;
+    }
+
+    // ---- Miembros del schedule y perfiles activos --------------------------
+    const [{ data: miembros }, { data: perfiles }] = await Promise.all([
+      supabase
+        .from("shift_schedule_members")
+        .select("id, full_name, user_id, active")
+        .eq("schedule_id", scheduleId),
+      supabase.from("profiles").select("user_id, nombre, cargo, sede, activo").eq("activo", true),
+    ]);
+
+    const porUserId = new Map<string, { nombre: string; cargo: string | null; sede: string | null }>();
+    const porNombre = new Map<string, string[]>();
+    (perfiles ?? []).forEach((pf) => {
+      const nombre = (pf.nombre || "").trim();
+      if (!pf.user_id || !nombre) return;
+      porUserId.set(pf.user_id, { nombre, cargo: pf.cargo ?? null, sede: pf.sede ?? null });
+      const key = normalizarNombre(nombre);
+      porNombre.set(key, [...(porNombre.get(key) ?? []), pf.user_id]);
+    });
+
+    const acc = new Map<string, ColaboradorSeleccionable>();
+    let pendientes = 0;
+
+    for (const m of miembros ?? []) {
+      if (m.active === false) continue;
+      let uid: string | null = null;
+      let metodo: ColaboradorSeleccionable["resolutionMethod"] = "MEMBER_USER_ID";
+
+      if (m.user_id) {
+        uid = porUserId.has(m.user_id) ? m.user_id : null; // inactivo o inexistente → excluido
+      } else {
+        const cand = porNombre.get(normalizarNombre(m.full_name)) ?? [];
+        if (cand.length === 1) {
+          uid = cand[0];
+          metodo = "UNIQUE_NORMALIZED_NAME";
+        }
+      }
+
+      if (!uid) {
+        pendientes++;
+        continue;
+      }
+
+      const perfil = porUserId.get(uid)!;
+      const prev = acc.get(uid);
+      if (prev) {
+        // Dos miembros distintos del mismo schedule resuelven al mismo usuario.
+        if (prev.memberId !== m.id) {
+          prev.duplicado = true;
+          prev.memberId = null; // identidad de miembro no inequívoca
+        }
+        continue;
+      }
+      acc.set(uid, {
+        userId: uid,
+        nombre: perfil.nombre,
+        cargo: perfil.cargo,
+        sede: perfil.sede,
+        memberId: m.id,
+        resolutionMethod: metodo,
+        duplicado: false,
+      });
+    }
+
+    if (data.excluirUserId) acc.delete(data.excluirUserId);
+
+    const items = Array.from(acc.values()).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+    return {
+      estado: "SCHEDULE_ENCONTRADO",
+      scheduleId,
+      items,
+      pendientes,
+      duplicados: items.filter((i) => i.duplicado).length,
+    };
+  });

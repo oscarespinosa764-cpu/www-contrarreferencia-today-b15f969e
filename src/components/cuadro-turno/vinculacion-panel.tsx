@@ -237,6 +237,7 @@ export function VinculacionPanel() {
     qc.invalidateQueries({ queryKey: ["cuadro-mensual"] });
     qc.invalidateQueries({ queryKey: ["shift-requests"] });
     qc.invalidateQueries({ queryKey: ["turno-programado"] });
+    qc.invalidateQueries({ queryKey: ["colaboradores-seleccionables"] });
   };
 
 
