@@ -45,10 +45,15 @@ function vacio(estado: TurnoResuelto["estado"], extra: Partial<TurnoResuelto> = 
     matchCount: 0,
     scheduleId: null,
     memberId: null,
+    userId: null,
+    dayId: null,
+    dayNumber: null,
     shiftCode: null,
     hours: 0,
     unidadFuncional: null,
     shiftDate: null,
+    origin: null,
+    notes: null,
     shiftName: null,
     startTime: null,
     endTime: null,
@@ -58,6 +63,7 @@ function vacio(estado: TurnoResuelto["estado"], extra: Partial<TurnoResuelto> = 
     ...extra,
   };
 }
+
 
 // ---------------------------------------------------------------------------
 // RESOLVER CANÓNICO
