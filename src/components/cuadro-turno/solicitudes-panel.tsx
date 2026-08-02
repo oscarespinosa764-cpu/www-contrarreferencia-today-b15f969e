@@ -266,55 +266,12 @@ function RevisionDialog({
 
   const responder = async (nuevoEstado: "NEGADA" | "DEVUELTA PARA AJUSTE") => {
     if (!razon.trim()) return toast.error("La razón es obligatoria.");
-    setSaving(true);
-    try {
-      const { data: upd, error } = await supabase
-        .from("shift_requests")
-        .update({
-          status: nuevoEstado,
-          rejected_by: adminId,
-          rejected_at: new Date().toISOString(),
-          rejection_reason: razon.trim().slice(0, 1000),
-          response_observation: obs || null,
-        })
-        .eq("id", request.id)
-        .eq("status", request.status)
-        .select("id");
-      if (error) throw error;
-      if (!upd || upd.length === 0) {
-        toast.error("La solicitud ya fue decidida por otro usuario. Actualiza la lista.");
-        onDone();
-        return;
-      }
-
-      await supabase.from("shift_request_audit").insert({
-        request_id: request.id,
-        action: nuevoEstado === "NEGADA" ? "NEGADA" : "DEVUELTA",
-        previous_status: request.status,
-        new_status: nuevoEstado,
-        user_id: adminId,
-        detail: razon,
-      });
-      registrarAuditoria({
-        data: {
-          accion: nuevoEstado === "NEGADA" ? "SOLICITUD_NEGADA" : "SOLICITUD_DEVUELTA",
-          modulo: "cuadro_turno",
-          tabla: "shift_requests",
-          registroId: request.id,
-          resultado: "exito",
-        },
-      }).catch(() => {});
-      toast.success(
-        nuevoEstado === "NEGADA" ? "Solicitud negada." : "Solicitud devuelta para ajuste.",
-      );
-      onDone();
-    } catch (e) {
-      console.error(e);
-      toast.error("No se pudo procesar.");
-    } finally {
-      setSaving(false);
-    }
+    await decidir(
+      nuevoEstado === "NEGADA" ? "NEGAR" : "DEVOLVER_PARA_AJUSTE",
+      razon.trim().slice(0, 1000),
+    );
   };
+
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
