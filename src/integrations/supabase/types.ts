@@ -4041,6 +4041,18 @@ export type Database = {
           out_tipo: string
         }[]
       }
+      calcular_indicadores_parcial: {
+        Args: { _fin: string; _ini: string }
+        Returns: {
+          out_casos: number
+          out_codigo: string
+          out_den: number
+          out_fuente: string
+          out_num: number
+          out_res: number
+          out_unidad: string
+        }[]
+      }
       can_edit: { Args: { _user_id: string }; Returns: boolean }
       crear_solicitud_turno: {
         Args: { _actor: string; _payload: Json }
