@@ -45,10 +45,15 @@ function vacio(estado: TurnoResuelto["estado"], extra: Partial<TurnoResuelto> = 
     matchCount: 0,
     scheduleId: null,
     memberId: null,
+    userId: null,
+    dayId: null,
+    dayNumber: null,
     shiftCode: null,
     hours: 0,
     unidadFuncional: null,
     shiftDate: null,
+    origin: null,
+    notes: null,
     shiftName: null,
     startTime: null,
     endTime: null,
@@ -58,6 +63,7 @@ function vacio(estado: TurnoResuelto["estado"], extra: Partial<TurnoResuelto> = 
     ...extra,
   };
 }
+
 
 // ---------------------------------------------------------------------------
 // RESOLVER CANÓNICO
@@ -101,18 +107,20 @@ export const resolverTurnoProgramadoSeguro = createServerFn({ method: "POST" })
 
     // ---- 2. Miembro --------------------------------------------------------
     let memberId: string | null = null;
+    let memberUserId: string | null = null;
     let method: TurnoResuelto["resolutionMethod"] = null;
     let matchCount = 0;
 
     if (data.memberId) {
       const { data: m } = await supabase
         .from("shift_schedule_members")
-        .select("id")
+        .select("id, user_id")
         .eq("id", data.memberId)
         .eq("schedule_id", scheduleId)
         .maybeSingle();
       if (!m) return vacio("MIEMBRO_NO_VINCULADO", { scheduleId });
       memberId = m.id;
+      memberUserId = m.user_id ?? null;
       method = "MEMBER_ID";
       matchCount = 1;
     }
@@ -120,7 +128,7 @@ export const resolverTurnoProgramadoSeguro = createServerFn({ method: "POST" })
     if (!memberId && data.targetUserId) {
       const { data: rows } = await supabase
         .from("shift_schedule_members")
-        .select("id")
+        .select("id, user_id")
         .eq("schedule_id", scheduleId)
         .eq("user_id", data.targetUserId);
       const list = rows ?? [];
@@ -128,6 +136,7 @@ export const resolverTurnoProgramadoSeguro = createServerFn({ method: "POST" })
         return vacio("IDENTIDAD_AMBIGUA", { scheduleId, matchCount: list.length });
       if (list.length === 1) {
         memberId = list[0].id;
+        memberUserId = list[0].user_id ?? null;
         method = "USER_ID";
         matchCount = 1;
       }
@@ -151,13 +160,14 @@ export const resolverTurnoProgramadoSeguro = createServerFn({ method: "POST" })
 
       const { data: rows } = await supabase
         .from("shift_schedule_members")
-        .select("id, full_name")
+        .select("id, full_name, user_id")
         .eq("schedule_id", scheduleId);
       const iguales = (rows ?? []).filter((r) => normalizarNombre(r.full_name) === nombre);
       if (iguales.length === 0) return vacio("MIEMBRO_NO_VINCULADO", { scheduleId });
       if (iguales.length > 1)
         return vacio("IDENTIDAD_AMBIGUA", { scheduleId, matchCount: iguales.length });
       memberId = iguales[0].id;
+      memberUserId = iguales[0].user_id ?? null;
       method = "UNIQUE_NORMALIZED_NAME";
       matchCount = 1;
     }
@@ -165,19 +175,34 @@ export const resolverTurnoProgramadoSeguro = createServerFn({ method: "POST" })
     // ---- 3. Día ------------------------------------------------------------
     const { data: dias } = await supabase
       .from("shift_schedule_days")
-      .select("shift_code, hours, unidad_funcional, shift_date")
+      .select("id, day_number, shift_code, hours, unidad_funcional, shift_date, origin, notes")
       .eq("schedule_id", scheduleId)
       .eq("member_id", memberId)
       .eq("day_number", p.day);
     const filas = dias ?? [];
-    const base = { scheduleId, memberId, resolutionMethod: method, matchCount };
+    const base = {
+      scheduleId,
+      memberId,
+      userId: memberUserId,
+      resolutionMethod: method,
+      matchCount,
+    };
     if (filas.length === 0) return vacio("SIN_TURNO", base);
     if (filas.length > 1)
       return vacio("PROGRAMACION_INCONSISTENTE", { ...base, matchCount: filas.length });
 
     const dia = filas[0];
     const shiftDate = dia.shift_date ?? data.fecha;
-    if (!dia.shift_code) return vacio("SIN_TURNO", { ...base, shiftDate });
+    // origin y notes provienen exclusivamente de la fila real; se conservan tal cual.
+    const fila = {
+      ...base,
+      dayId: dia.id,
+      dayNumber: dia.day_number ?? p.day,
+      origin: dia.origin ?? null,
+      notes: dia.notes ?? null,
+      shiftDate,
+    };
+    if (!dia.shift_code) return vacio("SIN_TURNO", fila);
 
     // ---- 4. Catálogo -------------------------------------------------------
     const { data: tipo } = await supabase
@@ -188,26 +213,23 @@ export const resolverTurnoProgramadoSeguro = createServerFn({ method: "POST" })
 
     if (!tipo)
       return vacio("CODIGO_DESCONOCIDO", {
-        ...base,
+        ...fila,
         shiftCode: dia.shift_code,
         hours: Number(dia.hours) || 0,
         unidadFuncional: dia.unidad_funcional,
-        shiftDate,
       });
 
     const crossesMidnight =
       !!tipo.start_time && !!tipo.end_time && String(tipo.end_time) <= String(tipo.start_time);
 
     return {
+      ...fila,
       estado: "TURNO_ENCONTRADO",
       resolutionMethod: method,
       matchCount,
-      scheduleId,
-      memberId,
       shiftCode: tipo.code,
       hours: Number(dia.hours) || Number(tipo.hours) || 0,
       unidadFuncional: dia.unidad_funcional,
-      shiftDate,
       shiftName: tipo.name,
       startTime: tipo.start_time ? String(tipo.start_time).slice(0, 5) : null,
       endTime: tipo.end_time ? String(tipo.end_time).slice(0, 5) : null,
@@ -215,6 +237,7 @@ export const resolverTurnoProgramadoSeguro = createServerFn({ method: "POST" })
       catalogStatus: tipo.active ? "ACTIVE" : "INACTIVE",
       endDate: crossesMidnight ? siguienteDia(shiftDate) : shiftDate,
     };
+
   });
 
 // ---------------------------------------------------------------------------
