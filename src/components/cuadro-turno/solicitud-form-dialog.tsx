@@ -33,6 +33,10 @@ import { SignaturePad, type SignaturePadHandle } from "./signature-pad";
 import { minutosEntreHoras } from "@/lib/cuadro-turno-utils";
 import { crearSolicitudTurno } from "@/lib/cuadro-turnos.functions";
 import {
+  listarColaboradoresSeleccionablesTurno,
+  type ColaboradorSeleccionable,
+} from "@/lib/cuadro-identidad.functions";
+import {
   useShiftTypes,
   describeTurno,
   buscarTurnoProgramado,
@@ -113,6 +117,7 @@ function FraccionEditor({
   frag,
   index,
   funcionarios,
+  pendientes,
   shiftTypes,
   onChange,
   onRemove,
@@ -120,6 +125,7 @@ function FraccionEditor({
   frag: ReturnFragment;
   index: number;
   funcionarios: Funcionario[];
+  pendientes: number;
   shiftTypes: Record<string, ShiftTypeRow> | undefined;
   onChange: (f: ReturnFragment) => void;
   onRemove?: () => void;
@@ -146,12 +152,12 @@ function FraccionEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [frag.receiver_id, frag.receiver_name, frag.return_date]);
 
-  const setReceiver = (nombre: string) => {
-    const f = funcionarios.find((x) => x.nombre === nombre);
+  const setReceiver = (userId: string) => {
+    const f = funcionarios.find((x) => x.userId === userId);
     onChange({
       ...frag,
-      receiver_name: nombre,
       receiver_id: f?.userId ?? null,
+      receiver_name: f?.nombre ?? null,
       receiver_role: f?.cargo ?? null,
     });
   };
@@ -177,24 +183,12 @@ function FraccionEditor({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <Label className="text-xs">Funcionario que recibe el retorno</Label>
-          <Select value={frag.receiver_name || ""} onValueChange={setReceiver}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecciona funcionario" />
-            </SelectTrigger>
-            <SelectContent>
-              {funcionarios.length === 0 ? (
-                <SelectItem value="__none" disabled>
-                  Sin funcionarios
-                </SelectItem>
-              ) : (
-                funcionarios.map((f) => (
-                  <SelectItem key={f.nombre} value={f.nombre}>
-                    {f.nombre}
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
+          <ColaboradorSelect
+            value={frag.receiver_id}
+            items={funcionarios}
+            pendientes={pendientes}
+            onChange={setReceiver}
+          />
         </div>
         <div>
           <Label className="text-xs">Cargo</Label>
@@ -335,6 +329,7 @@ export function SolicitudFormDialog({
   const [nuevaFecha, setNuevaFecha] = useState("");
   const [nuevoTurno, setNuevoTurno] = useState("");
   const [companero, setCompanero] = useState("");
+  const [companeroUserId, setCompaneroUserId] = useState<string | null>(null);
   // Soporte / evidencia
   const [soporte, setSoporte] = useState<SoporteMetadata | null>(null);
   const [subiendoSoporte, setSubiendoSoporte] = useState(false);
@@ -372,33 +367,23 @@ export function SolicitudFormDialog({
     },
   });
 
-  // ---- Funcionarios (todo el personal activo) ----
-  const { data: funcionarios = [] } = useQuery({
-    queryKey: ["funcionarios-personal"],
-    queryFn: async (): Promise<Funcionario[]> => {
-      const [{ data: members }, { data: profs }] = await Promise.all([
-        supabase
-          .from("shift_schedule_members")
-          .select("full_name, role_name, user_id")
-          .eq("active", true),
-        supabase.from("profiles").select("nombre, cargo, user_id").eq("activo", true),
-      ]);
-      const map = new Map<string, Funcionario>();
-      (profs ?? []).forEach((p) => {
-        const nombre = (p.nombre || "").trim();
-        if (!nombre) return;
-        if (!map.has(nombre)) map.set(nombre, { nombre, cargo: p.cargo, userId: p.user_id });
-      });
-      (members ?? []).forEach((m) => {
-        const nombre = (m.full_name || "").trim();
-        if (!nombre) return;
-        const prev = map.get(nombre);
-        if (!prev) map.set(nombre, { nombre, cargo: m.role_name, userId: m.user_id });
-        else if (!prev.cargo && m.role_name) prev.cargo = m.role_name;
-      });
-      return Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
-    },
+  // ---- Colaboradores seleccionables (fuente canónica única, C.3) ----
+  const listarColaboradores = useServerFn(listarColaboradoresSeleccionablesTurno);
+  const fechaContexto = esCambio ? origFecha : startDate;
+  const { data: colaboradores } = useQuery({
+    queryKey: ["colaboradores-seleccionables", fechaContexto, esCambio ? "CAMBIO_TURNO" : "REEMPLAZO"],
+    enabled: !!fechaContexto,
+    queryFn: () =>
+      listarColaboradores({
+        data: {
+          fecha: fechaContexto,
+          tipo: esCambio ? ("CAMBIO_TURNO" as const) : ("REEMPLAZO" as const),
+          excluirUserId: user?.id ?? null,
+        },
+      }),
   });
+  const funcionarios: Funcionario[] = colaboradores?.items ?? [];
+  const pendientesVinculacion = colaboradores?.pendientes ?? 0;
 
   useEffect(() => {
     if (!open || !user) return;
@@ -497,9 +482,9 @@ export function SolicitudFormDialog({
     }
   }, [recupera, esCambio]);
 
-  const handleReemplazo = (nombre: string) => {
-    setReempNombre(nombre);
-    const f = funcionarios.find((x) => x.nombre === nombre);
+  const handleReemplazo = (userId: string) => {
+    const f = funcionarios.find((x) => x.userId === userId);
+    setReempNombre(f?.nombre || "");
     setReempCargo(f?.cargo || "");
     setReempUserId(f?.userId || null);
     // Sugerir el mismo funcionario como receptor de la devolución (editable).
@@ -508,7 +493,7 @@ export function SolicitudFormDialog({
         i === 0 && !fr.receiver_name
           ? {
               ...fr,
-              receiver_name: nombre,
+              receiver_name: f?.nombre ?? null,
               receiver_id: f?.userId ?? null,
               receiver_role: f?.cargo ?? null,
             }
@@ -640,8 +625,8 @@ export function SolicitudFormDialog({
     if (!user) return;
     if (!motivo) return toast.error("Selecciona un motivo.");
     if (motivo === "Otro" && !otro.trim()) return toast.error("Especifica el motivo en '¿Cuál?'.");
-    if (reqReemplazo && (!reempNombre.trim() || !reempCargo.trim()))
-      return toast.error("El reemplazo requiere nombre y cargo.");
+    if (reqReemplazo && !reempUserId)
+      return toast.error("Selecciona el reemplazo desde el Cuadro de Turno.");
     if (esCambio && (!origFecha || !origTurno || !nuevaFecha || !nuevoTurno))
       return toast.error("Completa los datos del cambio de turno.");
     if (!esCambio && !startDate) return toast.error("Indica la fecha inicial.");
@@ -709,9 +694,7 @@ export function SolicitudFormDialog({
       // FASE 9 · BLOQUE C.2 — creación server-authoritative y transaccional.
       // El cliente solo envía intención: identidad, snapshot, turnos, cupo,
       // auditoría y fracciones se resuelven y confirman en el servidor.
-      const swapUserId = esCambio
-        ? (funcionarios.find((x) => x.nombre === companero)?.userId ?? null)
-        : null;
+      const swapUserId = esCambio ? companeroUserId : null;
       const creado = await crearSolicitud({
         data: {
           request_type: esCambio ? "cambio_turno" : "permiso",
@@ -923,7 +906,16 @@ export function SolicitudFormDialog({
                 </div>
                 <div className="col-span-2">
                   <Label className="text-xs">Persona con quien realiza el cambio</Label>
-                  <Input value={companero} onChange={(e) => setCompanero(e.target.value)} />
+                  <ColaboradorSelect
+                    value={companeroUserId}
+                    items={funcionarios}
+                    pendientes={pendientesVinculacion}
+                    onChange={(uid) => {
+                      const f = funcionarios.find((x) => x.userId === uid);
+                      setCompaneroUserId(f?.userId ?? null);
+                      setCompanero(f?.nombre ?? "");
+                    }}
+                  />
                 </div>
               </div>
             </fieldset>
@@ -1055,18 +1047,12 @@ export function SolicitudFormDialog({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs">Nombre del reemplazo</Label>
-                  <Select value={reempNombre} onValueChange={handleReemplazo}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona funcionario" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {funcionarios.map((f) => (
-                        <SelectItem key={f.nombre} value={f.nombre}>
-                          {f.nombre}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <ColaboradorSelect
+                    value={reempUserId}
+                    items={funcionarios}
+                    pendientes={pendientesVinculacion}
+                    onChange={handleReemplazo}
+                  />
                 </div>
                 <div>
                   <Label className="text-xs">Cargo del reemplazo</Label>
