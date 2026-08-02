@@ -245,7 +245,7 @@ export interface MiembroVinculo {
   usuarioNombre: string | null;
   usuarioActivo: boolean | null;
   estado: EstadoVinculo;
-  sugerencias: Array<{ userId: string; nombre: string; cargo: string | null; sede: string | null }>;
+  sugerencias: Array<{ userId: string; nombre: string | null; cargo: string | null; sede: string | null }>;
 }
 
 const listarSchema = z.object({ scheduleId: z.string().uuid() }).strict();
