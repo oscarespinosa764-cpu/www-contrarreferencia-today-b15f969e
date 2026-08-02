@@ -690,9 +690,10 @@ function IndicadoresPage() {
               <div className="space-y-1.5">
                 <Label>Periodo</Label>
                 <Input
+                  key={ctx.periodoActual}
                   name="periodo"
                   type="month"
-                  defaultValue={new Date().toISOString().slice(0, 7)}
+                  defaultValue={ctx.periodoActual}
                   required
                 />
               </div>
