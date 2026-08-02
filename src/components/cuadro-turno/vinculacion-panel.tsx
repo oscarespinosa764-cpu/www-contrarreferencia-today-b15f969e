@@ -216,11 +216,29 @@ export function VinculacionPanel() {
     return q ? list.filter((m) => m.fullName.toLocaleLowerCase().includes(q)) : list;
   }, [data, filtro]);
 
+  const [buscando, setBuscando] = useState<MiembroVinculo | null>(null);
+
+  /** userId ya vinculado en este cuadro → nombre del miembro que lo ocupa. */
+  const vinculadosEnCuadro = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const it of data?.items ?? []) if (it.userId) m.set(it.userId, it.fullName);
+    return m;
+  }, [data]);
+
+  const periodo = useMemo(() => {
+    const s = (schedules ?? []).find((x) => x.id === activeScheduleId);
+    return s ? `${MESES[(s.month ?? 1) - 1]} ${s.year}` : "";
+  }, [schedules, activeScheduleId]);
+
   const invalidar = () => {
     qc.invalidateQueries({ queryKey: ["vinculacion-miembros"] });
+    qc.invalidateQueries({ queryKey: ["schedule-members"] });
+    qc.invalidateQueries({ queryKey: ["schedule-days"] });
     qc.invalidateQueries({ queryKey: ["cuadro-mensual"] });
     qc.invalidateQueries({ queryKey: ["shift-requests"] });
+    qc.invalidateQueries({ queryKey: ["turno-programado"] });
   };
+
 
   const vincular = useMutation({
     mutationFn: (v: { memberId: string; targetUserId: string; sugerencia: boolean }) =>
