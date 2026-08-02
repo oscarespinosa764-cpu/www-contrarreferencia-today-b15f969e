@@ -3335,6 +3335,7 @@ export type Database = {
           return_receiver_id: string | null
           return_shift_code: string | null
           returned_minutes: number
+          schedule_snapshot: Json | null
           start_date: string | null
           start_time: string | null
           status: string
@@ -3398,6 +3399,7 @@ export type Database = {
           return_receiver_id?: string | null
           return_shift_code?: string | null
           returned_minutes?: number
+          schedule_snapshot?: Json | null
           start_date?: string | null
           start_time?: string | null
           status?: string
@@ -3461,6 +3463,7 @@ export type Database = {
           return_receiver_id?: string | null
           return_shift_code?: string | null
           returned_minutes?: number
+          schedule_snapshot?: Json | null
           start_date?: string | null
           start_time?: string | null
           status?: string
@@ -3552,8 +3555,10 @@ export type Database = {
       }
       shift_schedule_days: {
         Row: {
+          absence_request_id: string | null
           changed_at: string
           changed_by: string | null
+          coverage_request_id: string | null
           day_number: number
           hours: number
           id: string
@@ -3561,13 +3566,16 @@ export type Database = {
           notes: string | null
           origin: string
           schedule_id: string
+          shift_change_request_id: string | null
           shift_code: string | null
           shift_date: string | null
           unidad_funcional: string | null
         }
         Insert: {
+          absence_request_id?: string | null
           changed_at?: string
           changed_by?: string | null
+          coverage_request_id?: string | null
           day_number: number
           hours?: number
           id?: string
@@ -3575,13 +3583,16 @@ export type Database = {
           notes?: string | null
           origin?: string
           schedule_id: string
+          shift_change_request_id?: string | null
           shift_code?: string | null
           shift_date?: string | null
           unidad_funcional?: string | null
         }
         Update: {
+          absence_request_id?: string | null
           changed_at?: string
           changed_by?: string | null
+          coverage_request_id?: string | null
           day_number?: number
           hours?: number
           id?: string
@@ -3589,6 +3600,7 @@ export type Database = {
           notes?: string | null
           origin?: string
           schedule_id?: string
+          shift_change_request_id?: string | null
           shift_code?: string | null
           shift_date?: string | null
           unidad_funcional?: string | null
@@ -3606,6 +3618,27 @@ export type Database = {
             columns: ["schedule_id"]
             isOneToOne: false
             referencedRelation: "shift_schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ssd_absence_request_fkey"
+            columns: ["absence_request_id"]
+            isOneToOne: false
+            referencedRelation: "shift_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ssd_coverage_request_fkey"
+            columns: ["coverage_request_id"]
+            isOneToOne: false
+            referencedRelation: "shift_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ssd_shift_change_request_fkey"
+            columns: ["shift_change_request_id"]
+            isOneToOne: false
+            referencedRelation: "shift_requests"
             referencedColumns: ["id"]
           },
         ]
@@ -4009,6 +4042,20 @@ export type Database = {
         }[]
       }
       can_edit: { Args: { _user_id: string }; Returns: boolean }
+      crear_solicitud_turno: {
+        Args: { _actor: string; _payload: Json }
+        Returns: Json
+      }
+      decidir_solicitud_turno: {
+        Args: {
+          _actor: string
+          _decision: string
+          _observacion?: string
+          _registrar_ausentismo?: boolean
+          _request_id: string
+        }
+        Returns: Json
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
