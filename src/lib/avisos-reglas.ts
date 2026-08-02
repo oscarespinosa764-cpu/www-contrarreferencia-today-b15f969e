@@ -454,6 +454,68 @@ function severidadDesdePrioridad(p: string | null): Nivel {
   return "INFO";
 }
 
+// ---- Clasificación canónica (dominio + audiencia) ----
+// Se decide SOLO con metadatos estables (módulo del aviso / módulo de la regla),
+// nunca con el texto visible del mensaje.
+
+const CLASIFICACION_POR_MODULO: Record<string, { dominio: AvisoDominio; audiencia: AvisoAudiencia }> = {
+  REMISIONES: { dominio: "REMISIONES_SALIENTES", audiencia: "OPERATIVA" },
+  "PHD/PAD/O2/ESPECIALES": { dominio: "REMISIONES_SALIENTES", audiencia: "OPERATIVA" },
+  ESPECIALES: { dominio: "REMISIONES_SALIENTES", audiencia: "OPERATIVA" },
+  "REFERENCIA INTERNA": { dominio: "REFERENCIAS_INTERNAS", audiencia: "OPERATIVA" },
+  REFERENCIA_INTERNA: { dominio: "REFERENCIAS_INTERNAS", audiencia: "OPERATIVA" },
+  "REFERENCIA INTERNA CEDIM IPS": { dominio: "REFERENCIAS_INTERNAS", audiencia: "OPERATIVA" },
+  PENDIENTES: { dominio: "PENDIENTES", audiencia: "OPERATIVA" },
+  "PENDIENTES GENERALES": { dominio: "PENDIENTES", audiencia: "OPERATIVA" },
+  ENTRANTES: { dominio: "REMISIONES_ENTRANTES", audiencia: "OPERATIVA" },
+  RED: { dominio: "RED", audiencia: "COMPARTIDO" },
+  GENERAL: { dominio: "OTRO", audiencia: "COMPARTIDO" },
+  TURNO: { dominio: "CUADRO_TURNO", audiencia: "COORDINACION" },
+  "CUADRO DE TURNO": { dominio: "CUADRO_TURNO", audiencia: "COORDINACION" },
+  CUADRO_TURNO: { dominio: "CUADRO_TURNO", audiencia: "COORDINACION" },
+  RECUPERACION_TIEMPO: { dominio: "RECUPERACION_TIEMPO", audiencia: "COORDINACION" },
+  AUSENTISMO: { dominio: "CUADRO_TURNO", audiencia: "COORDINACION" },
+};
+
+/** Clasificación canónica compartida a partir del módulo estable del aviso/regla. */
+export function clasificarAviso(modulo: string | null | undefined): {
+  dominio: AvisoDominio;
+  audiencia: AvisoAudiencia;
+} {
+  return CLASIFICACION_POR_MODULO[norm(modulo)] ?? { dominio: "OTRO", audiencia: "COMPARTIDO" };
+}
+
+/** Única fuente de verdad de visibilidad por consumidor. */
+export function visibleEnContexto(a: AvisoUnificado, contexto: AvisoContexto): boolean {
+  switch (contexto) {
+    case "DASHBOARD_SALIENTES":
+      // Solo acciones operativas del turno; las alertas exclusivas de
+      // coordinación (Cuadro de Turno, recuperación de tiempo) se excluyen.
+      return (
+        a.audiencia !== "COORDINACION" &&
+        a.dominio !== "CUADRO_TURNO" &&
+        a.dominio !== "RECUPERACION_TIEMPO" &&
+        a.dominio !== "REMISIONES_ENTRANTES"
+      );
+    case "DASHBOARD_ENTRANTES":
+      return (
+        a.audiencia !== "COORDINACION" &&
+        (a.dominio === "REMISIONES_ENTRANTES" || a.dominio === "OTRO" || a.dominio === "RED")
+      );
+    case "ALERTAS_COORDINACION":
+    case "MODULO_GLOBAL_AVISOS":
+      return true;
+  }
+}
+
+/** Filtro canónico por contexto (contador y lista deben usar esta función). */
+export function filtrarAvisosPorContexto(
+  lista: AvisoUnificado[],
+  contexto: AvisoContexto,
+): AvisoUnificado[] {
+  return lista.filter((a) => visibleEnContexto(a, contexto));
+}
+
 export function combinarAvisos(avisos: Aviso[], alertas: AlertaIA[]): AvisoUnificado[] {
   const manuales: AvisoUnificado[] = avisos.filter(avisoVisible).map((a) => ({
     key: `M-${a.id}`,
@@ -468,6 +530,7 @@ export function combinarAvisos(avisos: Aviso[], alertas: AlertaIA[]): AvisoUnifi
       .filter(Boolean)
       .join(" · "),
     sourceId: a.id,
+    ...clasificarAviso(a.modulo),
   }));
 
   const ia: AvisoUnificado[] = alertas.map((al) => ({
@@ -478,12 +541,16 @@ export function combinarAvisos(avisos: Aviso[], alertas: AlertaIA[]): AvisoUnifi
     sub: [moduloLabel(al.moduloCode), al.nivel].filter(Boolean).join(" · "),
     detalle: al.accion,
     sourceId: al.registroId,
+    ...clasificarAviso(al.moduloCode),
   }));
 
-  return [...manuales, ...ia].sort(
-    (a, b) => (ORDEN_NIVEL[a.severidad] ?? 9) - (ORDEN_NIVEL[b.severidad] ?? 9),
-  );
+  // Deduplicación por clave canónica (evita doble conteo en la misma sección).
+  const vistos = new Set<string>();
+  return [...manuales, ...ia]
+    .filter((a) => (vistos.has(a.key) ? false : (vistos.add(a.key), true)))
+    .sort((a, b) => (ORDEN_NIVEL[a.severidad] ?? 9) - (ORDEN_NIVEL[b.severidad] ?? 9));
 }
+
 
 // ---- Reglas base automáticas ----
 
