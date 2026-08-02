@@ -813,21 +813,21 @@ function ResumenCard({
   );
 }
 
-function DonutCumplimiento({
-  resumen,
-}: {
-  resumen: ReturnType<typeof useMemo> extends never ? never : {
-    verdes: number;
-    amarillos: number;
-    rojos: number;
-    sinDato: number;
-    pctVerdes: number;
-    pctAmarillos: number;
-    pctRojos: number;
-    pctSin: number;
-    cumplimientoGeneral: number;
-  };
-}) {
+type ResumenGeneral = {
+  verdes: number;
+  amarillos: number;
+  rojos: number;
+  sinDato: number;
+  evaluados: number;
+  pctVerdes: number;
+  pctAmarillos: number;
+  pctRojos: number;
+  pctSin: number;
+  cumplimientoGeneral: number | null;
+};
+
+function DonutCumplimiento({ resumen }: { resumen: ResumenGeneral }) {
+
   const data = [
     { name: "En meta", value: resumen.verdes, color: COLOR.green },
     { name: "Alerta", value: resumen.amarillos, color: COLOR.amber },
