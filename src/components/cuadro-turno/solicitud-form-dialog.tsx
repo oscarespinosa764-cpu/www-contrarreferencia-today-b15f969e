@@ -82,10 +82,14 @@ function FraccionEditor({
 
   // Al fijar receptor + fecha, consultar el turno programado del receptor.
   useEffect(() => {
-    if (!frag.receiver_id || !frag.return_date) return;
+    if ((!frag.receiver_id && !frag.receiver_name) || !frag.return_date) return;
     let cancel = false;
     (async () => {
-      const t = await buscarTurnoProgramado({ userId: frag.receiver_id, fecha: frag.return_date! });
+      const t = await buscarTurnoProgramado({
+        userId: frag.receiver_id,
+        fullName: frag.receiver_name,
+        fecha: frag.return_date!,
+      });
       if (cancel) return;
       onChange({ ...frag, shift_code: t?.shift_code ?? frag.shift_code ?? null });
     })();
@@ -93,7 +97,7 @@ function FraccionEditor({
       cancel = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frag.receiver_id, frag.return_date]);
+  }, [frag.receiver_id, frag.receiver_name, frag.return_date]);
 
   const setReceiver = (nombre: string) => {
     const f = funcionarios.find((x) => x.nombre === nombre);
@@ -267,6 +271,8 @@ export function SolicitudFormDialog({
   const [reempNombre, setReempNombre] = useState("");
   const [reempCargo, setReempCargo] = useState("");
   const [reempUserId, setReempUserId] = useState<string | null>(null);
+  const [turnoReempCode, setTurnoReempCode] = useState<string | null>(null);
+  const [buscandoTurnoReemp, setBuscandoTurnoReemp] = useState(false);
   const [detalle, setDetalle] = useState("");
   const [observaciones, setObservaciones] = useState("");
   // Turno programado del solicitante en la fecha inicial
@@ -391,6 +397,30 @@ export function SolicitudFormDialog({
     };
   }, [esCambio, user, startDate, perfil?.nombre]);
 
+  // Programación real del reemplazo para la misma fecha.
+  useEffect(() => {
+    if (!reqReemplazo || !reempNombre || !startDate) {
+      setTurnoReempCode(null);
+      return;
+    }
+    let cancel = false;
+    (async () => {
+      setBuscandoTurnoReemp(true);
+      const t = await buscarTurnoProgramado({
+        userId: reempUserId,
+        fullName: reempNombre,
+        fecha: startDate,
+      });
+      if (cancel) return;
+      setTurnoReempCode(t?.shift_code ?? null);
+      setBuscandoTurnoReemp(false);
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, [reqReemplazo, reempNombre, reempUserId, startDate]);
+
+
   const handleMotivo = (v: string) => {
     setMotivo(v);
     const cambio = v === CAMBIO_TURNO;
@@ -459,6 +489,7 @@ export function SolicitudFormDialog({
     minutosProgramados !== minutosSolicitados;
 
   const turnoSolInfo = describeTurno(turnoSolicitanteCode, shiftTypes);
+  const turnoReempInfo = describeTurno(turnoReempCode, shiftTypes);
 
   // ---- Soporte ----
   const seleccionarSoporte = async (file: File | null) => {
@@ -1055,6 +1086,34 @@ export function SolicitudFormDialog({
                     placeholder="Automático"
                   />
                 </div>
+                {reempNombre && startDate && (
+                  <div className="col-span-2 rounded-md border border-amber-300/60 bg-amber-50/50 p-2.5 dark:bg-amber-950/10">
+                    <p className="text-[11px] font-semibold uppercase text-amber-700">
+                      Programación actual del reemplazo
+                    </p>
+                    {buscandoTurnoReemp ? (
+                      <p className="text-xs text-muted-foreground">Buscando…</p>
+                    ) : turnoReempInfo ? (
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                        <span className="text-sm font-bold">{turnoReempInfo.name}</span>
+                        <span className="text-muted-foreground">{turnoReempInfo.horario}</span>
+                        {turnoReempInfo.hours ? (
+                          <span className="text-muted-foreground">· {turnoReempInfo.hours} h</span>
+                        ) : null}
+                        <span className="rounded bg-amber-500/15 px-1.5 py-0.5 font-bold text-amber-700">
+                          Código {turnoReempInfo.code}
+                        </span>
+                        <span className="w-full text-amber-700">
+                          El reemplazo seleccionado ya tiene una programación para esta fecha.
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Sin turno programado en esa fecha.
+                      </p>
+                    )}
+                  </div>
+                )}
                 {!esCambio && (
                   <>
                     <div>

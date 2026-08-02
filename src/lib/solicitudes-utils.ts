@@ -115,13 +115,12 @@ export interface TurnoProgramado {
   unidad_funcional: string | null;
 }
 
-export async function buscarTurnoProgramado(params: {
+async function consultarDia(params: {
   userId?: string | null;
   fullName?: string | null;
   fecha: string;
 }): Promise<TurnoProgramado | null> {
   const { userId, fullName, fecha } = params;
-  if (!fecha) return null;
   let query = supabase
     .from("shift_schedule_days")
     .select("shift_code, hours, unidad_funcional, shift_schedule_members!inner(user_id, full_name)")
@@ -143,6 +142,28 @@ export async function buscarTurnoProgramado(params: {
     unidad_funcional: d.unidad_funcional,
   };
 }
+
+/**
+ * Resolver canónico del turno programado.
+ * Muchos miembros del Cuadro de Turno no tienen `user_id` vinculado (se cargan
+ * por importación del formato oficial), por eso la búsqueda por `user_id` cae
+ * de vuelta al nombre canónico del miembro cuando no encuentra la fila.
+ */
+export async function buscarTurnoProgramado(params: {
+  userId?: string | null;
+  fullName?: string | null;
+  fecha: string;
+}): Promise<TurnoProgramado | null> {
+  const { userId, fullName, fecha } = params;
+  if (!fecha) return null;
+  if (userId) {
+    const porUsuario = await consultarDia({ userId, fecha });
+    if (porUsuario) return porUsuario;
+  }
+  if (fullName?.trim()) return consultarDia({ fullName: fullName.trim(), fecha });
+  return null;
+}
+
 
 // ---------------------------------------------------------------------------
 // Cálculo de horas / minutos
