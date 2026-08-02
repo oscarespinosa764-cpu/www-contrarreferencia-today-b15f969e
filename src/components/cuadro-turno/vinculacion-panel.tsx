@@ -357,6 +357,12 @@ export function VinculacionPanel() {
                   </Button>
                 )}
 
+                {!m.userId && (
+                  <Button size="sm" variant="secondary" onClick={() => setBuscando(m)}>
+                    Buscar usuario
+                  </Button>
+                )}
+
                 {m.userId && (
                   <Button
                     size="sm"
@@ -371,7 +377,25 @@ export function VinculacionPanel() {
             </div>
           ))}
         </div>
+
+        {buscando && (
+          <BuscarUsuarioDialog
+            miembro={buscando}
+            periodo={periodo}
+            vinculadosEnCuadro={vinculadosEnCuadro}
+            pendiente={vincular.isPending}
+            onClose={() => setBuscando(null)}
+            onConfirmar={(u) =>
+              vincular.mutate({
+                memberId: buscando.memberId,
+                targetUserId: u.userId,
+                sugerencia: false,
+              })
+            }
+          />
+        )}
       </CardContent>
     </Card>
   );
+
 }
