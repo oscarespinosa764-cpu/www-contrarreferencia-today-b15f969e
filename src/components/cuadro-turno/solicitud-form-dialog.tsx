@@ -1141,6 +1141,8 @@ export function SolicitudFormDialog({
                     frag={f}
                     index={i}
                     funcionarios={funcionarios}
+                    pendientes={pendientesVinculacion}
+
                     shiftTypes={shiftTypes}
                     onChange={(nf) =>
                       setFracciones((prev) => prev.map((x, j) => (j === i ? nf : x)))
