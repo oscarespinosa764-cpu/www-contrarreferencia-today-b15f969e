@@ -721,8 +721,10 @@ function IndicadoresPage() {
           open={!!detalleId}
           onOpenChange={(v) => !v && setDetalleId(null)}
           ind={indicadorDetalle}
-          historial={historialIndicador(meds, indicadorDetalle.id)}
-          medActual={ultimas[indicadorDetalle.id]}
+          serie={seriesPorIndicador[indicadorDetalle.id] ?? []}
+          resolucion={resoluciones[indicadorDetalle.id] ?? { fila: null, origen: "SIN_DATO", etiquetaPeriodo: "SIN DATO" }}
+          ctx={ctx}
+
           canEdit={canEdit}
           isAdmin={isAdmin}
           onEdit={() => {
