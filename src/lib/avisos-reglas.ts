@@ -131,6 +131,25 @@ export type Aviso = {
   created_at?: string;
 };
 
+export type AvisoDominio =
+  | "REMISIONES_SALIENTES"
+  | "REMISIONES_ENTRANTES"
+  | "REFERENCIAS_INTERNAS"
+  | "PENDIENTES"
+  | "RED"
+  | "CUADRO_TURNO"
+  | "RECUPERACION_TIEMPO"
+  | "OTRO";
+
+export type AvisoAudiencia = "OPERATIVA" | "COORDINACION" | "COMPARTIDO";
+
+/** Contextos consumidores de avisos/alertas (allowlist estricta). */
+export type AvisoContexto =
+  | "DASHBOARD_SALIENTES"
+  | "DASHBOARD_ENTRANTES"
+  | "ALERTAS_COORDINACION"
+  | "MODULO_GLOBAL_AVISOS";
+
 export type AvisoUnificado = {
   key: string;
   kind: "M" | "IA";
@@ -139,7 +158,10 @@ export type AvisoUnificado = {
   sub: string;
   detalle: string;
   sourceId: string;
+  dominio: AvisoDominio;
+  audiencia: AvisoAudiencia;
 };
+
 
 type CasoNorm = {
   id: string;
