@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
@@ -38,8 +39,8 @@ import {
   type ShiftRequest,
 } from "@/lib/cuadro-turno-utils";
 import { generarSolicitudPDF } from "@/lib/solicitud-pdf";
+import { decidirSolicitudTurno } from "@/lib/cuadro-turnos.functions";
 import { getFirmaDataUrlById, getFirmaDataUrlByUser } from "@/lib/firmas-utils";
-import { aplicarCoberturaCuadro, crearAlertaVerificacion } from "@/lib/cuadro-aplicar";
 import { getSoporteSignedUrl } from "@/lib/soportes-utils";
 import { minutosAHoras } from "@/lib/solicitudes-utils";
 import { FileDown, Paperclip } from "lucide-react";
@@ -183,6 +184,7 @@ function RevisionDialog({
   const [registrarAus, setRegistrarAus] = useState(defaultRegistrarAusentismo(request.reason_type));
   const [saving, setSaving] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const decidirSolicitud = useServerFn(decidirSolicitudTurno);
   const pendiente = request.status === "PENDIENTE" || request.status === "DEVUELTA PARA AJUSTE";
 
   const descargarPDF = async () => {
