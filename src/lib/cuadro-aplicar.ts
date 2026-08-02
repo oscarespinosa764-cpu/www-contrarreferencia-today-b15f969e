@@ -2,9 +2,17 @@
 // Aplicación efectiva de la cobertura en el Cuadro de Turno al APROBAR.
 // No borra la programación original: registra la cobertura como nota/origen
 // sobre los días existentes (best-effort). Reutiliza shift_schedule_days.
+//
+// FASE 9 · BLOQUE C.1.2 (D3): la localización de la fila usa EXCLUSIVAMENTE el
+// resolver canónico (resolverTurnoProgramadoSeguro), acotado por schedule y
+// miembro. Se elimina la búsqueda global por full_name con limit(1).
+// DEUDA CONOCIDA (BLOQUE C.2): esta aplicación sigue siendo best-effort desde
+// el cliente y no es transaccional; la atomicidad de aprobación se resuelve allí.
 // ============================================================================
 import { supabase } from "@/lib/backend-client";
 import type { ShiftRequest } from "@/lib/cuadro-turno-utils";
+import { resolverTurnoProgramadoSeguro } from "@/lib/cuadro-identidad.functions";
+import type { ResolverEstado } from "@/lib/identidad-turnos";
 
 interface DayMatch {
   id: string;
@@ -12,25 +20,42 @@ interface DayMatch {
   notes: string | null;
 }
 
+/** Estados en los que NO se autoriza ninguna escritura (fail-closed). */
+const ESTADOS_FAIL_CLOSED: ResolverEstado[] = [
+  "IDENTIDAD_AMBIGUA",
+  "MIEMBRO_NO_VINCULADO",
+  "SCHEDULE_AMBIGUO",
+  "SCHEDULE_NO_ENCONTRADO",
+  "PROGRAMACION_INCONSISTENTE",
+  "CODIGO_DESCONOCIDO",
+  "USUARIO_INACTIVO",
+  "SIN_PERMISO",
+];
+
+/**
+ * Localiza la fila real del día mediante el resolver canónico.
+ * Devuelve null cuando no hay fila o cuando el estado es fail-closed
+ * (nunca selecciona una fila alternativa).
+ */
 async function buscarDia(params: {
   userId?: string | null;
   fullName?: string | null;
   fecha: string;
 }): Promise<DayMatch | null> {
   const { userId, fullName, fecha } = params;
-  let q = supabase
-    .from("shift_schedule_days")
-    .select("id, shift_code, notes, shift_schedule_members!inner(user_id, full_name)")
-    .eq("shift_date", fecha)
-    .limit(1);
-  if (userId) q = q.eq("shift_schedule_members.user_id", userId);
-  else if (fullName) q = q.eq("shift_schedule_members.full_name", fullName);
-  else return null;
-  const { data } = await q.maybeSingle();
-  if (!data) return null;
-  const d = data as unknown as DayMatch;
-  return { id: d.id, shift_code: d.shift_code, notes: d.notes };
+  if (!userId && !fullName) return null;
+  const turno = await resolverTurnoProgramadoSeguro({
+    data: {
+      fecha,
+      targetUserId: userId ?? null,
+      fallbackName: fullName ?? null,
+    },
+  });
+  if (ESTADOS_FAIL_CLOSED.includes(turno.estado)) return null;
+  if (!turno.dayId) return null; // SIN_TURNO sin fila real
+  return { id: turno.dayId, shift_code: turno.shiftCode, notes: turno.notes };
 }
+
 
 /**
  * Marca la cobertura en el cuadro conservando el turno original.
