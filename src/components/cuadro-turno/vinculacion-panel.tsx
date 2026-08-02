@@ -251,9 +251,11 @@ export function VinculacionPanel() {
       }),
     onSuccess: (r) => {
       if (!r.ok) return toast.error(r.error ?? "No fue posible vincular.");
-      toast.success("Colaborador vinculado.");
+      toast.success("Colaborador vinculado correctamente.");
+      setBuscando(null);
       invalidar();
     },
+
     onError: () => toast.error("No fue posible vincular."),
   });
 
