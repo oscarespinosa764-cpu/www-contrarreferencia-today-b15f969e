@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
@@ -38,8 +39,8 @@ import {
   type ShiftRequest,
 } from "@/lib/cuadro-turno-utils";
 import { generarSolicitudPDF } from "@/lib/solicitud-pdf";
+import { decidirSolicitudTurno } from "@/lib/cuadro-turnos.functions";
 import { getFirmaDataUrlById, getFirmaDataUrlByUser } from "@/lib/firmas-utils";
-import { aplicarCoberturaCuadro, crearAlertaVerificacion } from "@/lib/cuadro-aplicar";
 import { getSoporteSignedUrl } from "@/lib/soportes-utils";
 import { minutosAHoras } from "@/lib/solicitudes-utils";
 import { FileDown, Paperclip } from "lucide-react";
@@ -151,14 +152,28 @@ export function SolicitudesPanel({ soloPendientes = false }: { soloPendientes?: 
           onClose={() => setSel(null)}
           onDone={() => {
             setSel(null);
-            qc.invalidateQueries({ queryKey: ["shift-requests"] });
-            qc.invalidateQueries({ queryKey: ["absenteeism"] });
-            qc.invalidateQueries({ queryKey: ["audit-aprobados"] });
-            qc.invalidateQueries({ queryKey: ["historial-cambios"] });
-            qc.invalidateQueries({ queryKey: ["frag-pendientes"] });
-            qc.invalidateQueries({ queryKey: ["control-mensual"] });
-            qc.invalidateQueries({ queryKey: ["cuadro-mensual"] });
+            // FASE 9 · BLOQUE C.2 — invalidación de todos los consumidores reales.
+            [
+              "shift-requests",
+              "shift-request-audit",
+              "shift-return-fragments",
+              "absenteeism",
+              "audit-aprobados",
+              "historial-cambios",
+              "frag-pendientes",
+              "control-mensual",
+              "cuadro-mensual",
+              "cuadro-resumen",
+              "schedule-days",
+              "schedule-members",
+              "turno-programado",
+              "vinculacion-miembros",
+              "avisos",
+              "avisos-operativos",
+              "monthly-exceptions",
+            ].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
           }}
+
 
         />
       )}
@@ -183,6 +198,7 @@ function RevisionDialog({
   const [registrarAus, setRegistrarAus] = useState(defaultRegistrarAusentismo(request.reason_type));
   const [saving, setSaving] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const decidirSolicitud = useServerFn(decidirSolicitudTurno);
   const pendiente = request.status === "PENDIENTE" || request.status === "DEVUELTA PARA AJUSTE";
 
   const descargarPDF = async () => {
@@ -221,159 +237,57 @@ function RevisionDialog({
     }
   };
 
-  const aprobar = async () => {
+  // FASE 9 · BLOQUE C.2 — la decisión es server-authoritative y transaccional:
+  // estado, aplicación en el Cuadro, ausentismo, avisos y auditoría ocurren en
+  // una sola transacción. El frontend no escribe estos efectos.
+  const decidir = async (
+    decision: "APROBAR" | "NEGAR" | "DEVOLVER_PARA_AJUSTE",
+    observacion: string,
+  ) => {
+    if (saving) return;
     setSaving(true);
     try {
-      const { data: upd, error } = await supabase
-        .from("shift_requests")
-        .update({
-          status: "APROBADA",
-          approved_by: adminId,
-          approved_at: new Date().toISOString(),
-          approval_observation: obs || null,
-          register_absenteeism: registrarAus,
-          cuadro_applied: true,
-        })
-        .eq("id", request.id)
-        .eq("status", request.status)
-        .select("id");
-      if (error) throw error;
-      if (!upd || upd.length === 0) {
-        toast.error("La solicitud ya fue decidida por otro usuario. Actualiza la lista.");
-        onDone();
+      const res = await decidirSolicitud({
+        data: {
+          requestId: request.id,
+          decision,
+          observacion: observacion || null,
+          registrarAusentismo: decision === "APROBAR" ? registrarAus : null,
+        },
+      });
+      if (!res.ok) {
+        toast.error(res.error ?? "No fue posible procesar la solicitud.");
+        if (res.code === "DOBLE_DECISION" || res.code === "PROGRAMACION_CAMBIADA") onDone();
         return;
       }
-
-
-      // Cambio efectivo del cuadro (best-effort, conserva la programación original)
-      await aplicarCoberturaCuadro(request, adminId);
-
-      // Alerta(s) de verificación por cada fracción de devolución programada
-      if (request.will_recover_time) {
-        const { data: frags } = await supabase
-          .from("shift_return_fragments")
-          .select("return_date, start_time, end_time, minutes, receiver_name")
-          .eq("request_id", request.id)
-          .eq("verification_result", "PENDIENTE");
-        for (const f of frags ?? []) {
-          await crearAlertaVerificacion({
-            requesterName: request.requester_name,
-            receiverName: f.receiver_name,
-            fecha: f.return_date,
-            horaInicial: f.start_time,
-            horaFinal: f.end_time,
-            minutos: f.minutes ?? 0,
-            createdBy: adminId,
-          });
-        }
-      }
-
-      // Alimentar TH-FR-48 si corresponde
-      if (registrarAus) {
-        const minutos = minutosEntreHoras(request.start_time, request.end_time);
-        const dias = diasEntreFechas(request.start_date, request.end_date);
-        const evento = motivoAEvento(request.reason_type);
-        await supabase.from("shift_absenteeism_records").insert({
-          request_id: request.id,
-          user_id: request.requester_id,
-          identification_number: request.requester_identification,
-          worker_name: request.requester_name,
-          role_name: request.requester_role,
-          start_date: request.start_date,
-          end_date: request.end_date,
-          start_time: request.start_time,
-          end_time: request.end_time,
-          minutes_number: minutos,
-          days_number: dias,
-          event_code: evento,
-          event_name: eventoNombre(evento),
-          reason: request.reason_type === "Otro" ? request.other_reason : request.reason_type,
-          origin: "solicitud_aprobada",
-          approved_by: adminId,
-          approved_at: new Date().toISOString(),
-          created_by: adminId,
-          status: request.will_recover_time ? "pendiente_verificacion" : "activo",
-        });
-      }
-
-      await supabase.from("shift_request_audit").insert({
-        request_id: request.id,
-        action: "APROBADA",
-        previous_status: request.status,
-        new_status: "APROBADA",
-        user_id: adminId,
-        detail: obs || null,
-      });
-      registrarAuditoria({
-        data: {
-          accion: "SOLICITUD_APROBADA",
-          modulo: "cuadro_turno",
-          tabla: "shift_requests",
-          registroId: request.id,
-          resultado: "exito",
-        },
-      }).catch(() => {});
-      toast.success("Solicitud aprobada.");
-      onDone();
-    } catch (e) {
-      console.error(e);
-      toast.error("No se pudo aprobar.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const responder = async (nuevoEstado: "NEGADA" | "DEVUELTA PARA AJUSTE") => {
-    if (!razon.trim()) return toast.error("La razón es obligatoria.");
-    setSaving(true);
-    try {
-      const { data: upd, error } = await supabase
-        .from("shift_requests")
-        .update({
-          status: nuevoEstado,
-          rejected_by: adminId,
-          rejected_at: new Date().toISOString(),
-          rejection_reason: razon.trim().slice(0, 1000),
-          response_observation: obs || null,
-        })
-        .eq("id", request.id)
-        .eq("status", request.status)
-        .select("id");
-      if (error) throw error;
-      if (!upd || upd.length === 0) {
-        toast.error("La solicitud ya fue decidida por otro usuario. Actualiza la lista.");
-        onDone();
-        return;
-      }
-
-      await supabase.from("shift_request_audit").insert({
-        request_id: request.id,
-        action: nuevoEstado === "NEGADA" ? "NEGADA" : "DEVUELTA",
-        previous_status: request.status,
-        new_status: nuevoEstado,
-        user_id: adminId,
-        detail: razon,
-      });
-      registrarAuditoria({
-        data: {
-          accion: nuevoEstado === "NEGADA" ? "SOLICITUD_NEGADA" : "SOLICITUD_DEVUELTA",
-          modulo: "cuadro_turno",
-          tabla: "shift_requests",
-          registroId: request.id,
-          resultado: "exito",
-        },
-      }).catch(() => {});
       toast.success(
-        nuevoEstado === "NEGADA" ? "Solicitud negada." : "Solicitud devuelta para ajuste.",
+        decision === "APROBAR"
+          ? "Solicitud aprobada y aplicada en el Cuadro de Turno."
+          : decision === "NEGAR"
+            ? "Solicitud negada."
+            : "Solicitud devuelta para ajuste.",
       );
       onDone();
     } catch (e) {
       console.error(e);
-      toast.error("No se pudo procesar.");
+      toast.error("No fue posible procesar la solicitud.");
     } finally {
       setSaving(false);
     }
   };
+
+  const aprobar = () => decidir("APROBAR", obs);
+
+
+
+  const responder = async (nuevoEstado: "NEGADA" | "DEVUELTA PARA AJUSTE") => {
+    if (!razon.trim()) return toast.error("La razón es obligatoria.");
+    await decidir(
+      nuevoEstado === "NEGADA" ? "NEGAR" : "DEVOLVER_PARA_AJUSTE",
+      razon.trim().slice(0, 1000),
+    );
+  };
+
 
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>

@@ -31,6 +31,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { SignaturePad, type SignaturePadHandle } from "./signature-pad";
 import { minutosEntreHoras } from "@/lib/cuadro-turno-utils";
+import { crearSolicitudTurno } from "@/lib/cuadro-turnos.functions";
 import {
   useShiftTypes,
   describeTurno,
@@ -248,6 +249,7 @@ export function SolicitudFormDialog({
   const qc = useQueryClient();
   const padRef = useRef<SignaturePadHandle>(null);
   const dispatchNotif = useServerFn(dispatchEventNotification);
+  const crearSolicitud = useServerFn(crearSolicitudTurno);
   const { data: shiftTypes } = useShiftTypes();
 
   const [perfil, setPerfil] = useState<{ nombre: string; doc: string; cargo: string } | null>(null);
@@ -658,117 +660,60 @@ export function SolicitudFormDialog({
         signatureHash = saved.hash;
       }
 
-      const primera = fracciones[0];
-      const { data: req, error } = await supabase
-        .from("shift_requests")
-        .insert({
+      // FASE 9 · BLOQUE C.2 — creación server-authoritative y transaccional.
+      // El cliente solo envía intención: identidad, snapshot, turnos, cupo,
+      // auditoría y fracciones se resuelven y confirman en el servidor.
+      const swapUserId = esCambio
+        ? (funcionarios.find((x) => x.nombre === companero)?.userId ?? null)
+        : null;
+      const creado = await crearSolicitud({
+        data: {
           request_type: esCambio ? "cambio_turno" : "permiso",
-          requester_id: user.id,
-          requester_name: perfil?.nombre || null,
-          requester_identification: perfil?.doc || null,
-          requester_role: perfil?.cargo || null,
-          requester_sede: SEDE_FIJA,
-          status: "PENDIENTE",
           reason_type: motivo,
           other_reason: motivo === "Otro" ? otro : null,
           reason_recoverable: !esCambio && motivoRecuperable,
           start_date: !esCambio ? startDate || null : null,
-          end_date: !esCambio ? endDate || null : null,
+          end_date: !esCambio ? endDate || startDate || null : null,
           start_time: !esCambio ? startTime || null : null,
           end_time: !esCambio ? endTime || null : null,
+          paid: remunerado,
           will_recover_time: recupera,
           requires_replacement: reqReemplazo,
-          replacement_name: reqReemplazo ? reempNombre : null,
-          replacement_role: reqReemplazo ? reempCargo : null,
           replacement_user_id: reqReemplazo ? reempUserId : null,
-          paid: remunerado,
-          // Turno original del solicitante (nombre + horario reales)
-          original_shift_code: !esCambio ? (turnoSolInfo?.code ?? null) : origTurno || null,
-          original_shift_name: !esCambio ? (turnoSolInfo?.name ?? null) : null,
-          original_start_time: !esCambio ? (turnoSolInfo?.start ?? null) : null,
-          original_end_time: !esCambio ? (turnoSolInfo?.end ?? null) : null,
-          original_shift_date: esCambio ? origFecha || null : !esCambio ? startDate || null : null,
+          swap_user_id: swapUserId,
+          original_shift_date: esCambio ? origFecha || null : startDate || null,
+          original_shift_code: esCambio ? origTurno || null : null,
           requested_shift_date: esCambio ? nuevaFecha || null : null,
-          requested_shift_code: esCambio ? nuevoTurno || null : null,
-          swap_partner_name: esCambio ? companero || null : null,
-          // Devolución
           return_fractioned: recupera ? fraccionado : false,
-          return_receiver_id: recupera ? (primera?.receiver_id ?? null) : null,
-          return_person_id: recupera ? (primera?.receiver_id ?? null) : null,
-          return_person_name: recupera ? (primera?.receiver_name ?? null) : null,
-          return_person_role: recupera ? (primera?.receiver_role ?? null) : null,
-          return_date: recupera ? (primera?.return_date ?? null) : null,
-          return_shift_code: recupera ? (primera?.shift_code ?? null) : null,
           requested_minutes: minutosSolicitados || null,
-          returned_minutes: 0,
-          pending_minutes: recupera ? minutosProgramados || minutosSolicitados || 0 : null,
-          recovery_status: recupera ? "PENDIENTE_VERIFICACION" : "N_A",
-          is_limit_exempt: motivoExento,
-          monthly_exception_id: usarExcepcionId,
-          support_path: soporte?.path ?? null,
-          support_metadata: soporte ? { ...soporte } : null,
-          out_of_rule_justification: descuadre ? detalle : null,
+          fracciones: recupera
+            ? fracciones.map((f) => ({
+                return_date: f.return_date || null,
+                receiver_id: f.receiver_id || null,
+                receiver_name: f.receiver_name || null,
+                receiver_role: f.receiver_role || null,
+                shift_code: f.shift_code || null,
+                start_time: f.start_time || null,
+                end_time: f.end_time || null,
+                minutes: minutosEntreHoras(f.start_time, f.end_time),
+                notes: f.notes || null,
+              }))
+            : [],
           reason_detail: detalle || null,
           observations: observaciones || null,
+          out_of_rule_justification: descuadre ? detalle : null,
+          support_path: soporte?.path ?? null,
+          support_metadata: soporte ? ({ ...soporte } as Record<string, unknown>) : null,
           requester_signature_id: signatureId,
           requester_signature_hash: signatureHash,
-        })
-        .select("id")
-        .single();
-      if (error) throw error;
-
-      // Fracciones de devolución en tabla hija
-      if (recupera && fracciones.length > 0) {
-        const rows = fracciones.map((f, i) => ({
-          request_id: req.id,
-          fragment_no: i + 1,
-          return_date: f.return_date,
-          receiver_id: f.receiver_id,
-          receiver_name: f.receiver_name,
-          receiver_role: f.receiver_role,
-          shift_code: f.shift_code,
-          start_time: f.start_time,
-          end_time: f.end_time,
-          minutes: minutosEntreHoras(f.start_time, f.end_time),
-          notes: f.notes,
-        }));
-        const { error: fErr } = await supabase.from("shift_return_fragments").insert(rows);
-        if (fErr) throw fErr;
-      }
-
-      // Consumir la excepción de forma atómica (un solo uso, evita doble consumo
-      // por doble clic / dos pestañas / concurrencia): solo pasa DISPONIBLE->UTILIZADA
-      // sobre una excepción APROBADA. La transición está protegida además por trigger.
-      if (usarExcepcionId) {
-        await supabase
-          .from("shift_monthly_exceptions")
-          .update({
-            usage_status: "UTILIZADA",
-            used_request_id: req.id,
-            used_at: new Date().toISOString(),
-          })
-          .eq("id", usarExcepcionId)
-          .eq("status", "APROBADA")
-          .eq("usage_status", "DISPONIBLE");
-      }
-
-
-      await supabase.from("shift_request_audit").insert({
-        request_id: req.id,
-        action: "CREADA",
-        new_status: "PENDIENTE",
-        user_id: user.id,
-        detail: `Solicitud ${esCambio ? "cambio de turno" : motivo}`,
-      });
-      registrarAuditoria({
-        data: {
-          accion: "SOLICITUD_CREADA",
-          modulo: "cuadro_turno",
-          tabla: "shift_requests",
-          registroId: req.id,
-          resultado: "exito",
         },
-      }).catch(() => {});
+      });
+      if (!creado.ok || !creado.id) {
+        toast.error(creado.error ?? "No se pudo enviar la solicitud.");
+        return;
+      }
+      const req = { id: creado.id };
+
 
       dispatchNotif({
         data: {
