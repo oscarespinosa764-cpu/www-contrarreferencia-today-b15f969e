@@ -413,9 +413,12 @@ export function resolverCanonico(
   // El mes en curso manda cuando existe cálculo, incluso sin casos.
   const filaActual = serie.find((f) => f.periodo === ctx.periodoActual);
   if (filaActual && (filaActual.resultado !== null || filaActual.tipoMedicion === TIPO_PARCIAL)) {
+    const referencia =
+      validos.filter((f) => f.periodo < ctx.periodoActual).at(-1) ?? null;
     return {
       fila: filaActual,
       origen: "PARCIAL",
+      referencia,
       etiquetaPeriodo:
         filaActual.resultado === null
           ? `${etiquetaPeriodoCorta(filaActual.periodo)} · SIN CASOS AL ${corte}`
