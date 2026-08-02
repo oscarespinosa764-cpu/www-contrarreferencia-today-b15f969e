@@ -24,7 +24,7 @@ import {
   type NuevoRegistroTab,
 } from "@/components/remisiones/nuevo-registro-dialog";
 import { useAvisosOperativos } from "@/lib/use-avisos-operativos";
-import { NIVEL_BADGE } from "@/lib/avisos-reglas";
+import { NIVEL_BADGE, filtrarAvisosPorContexto } from "@/lib/avisos-reglas";
 import {
   descargarReporteGeneralPDF,
   descargarEntregaTurnoPDF,
