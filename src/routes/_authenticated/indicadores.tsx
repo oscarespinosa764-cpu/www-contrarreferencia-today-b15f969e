@@ -1310,34 +1310,75 @@ function IndicadorDetalleModal({
           </DialogTitle>
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
             {ind.codigo || "Sin código"} · {ind.responsable || "Coordinación"}
-            {medActual?.created_at
-              ? ` · Última actualización: ${new Date(medActual.created_at).toLocaleString("es-CO")}`
+            {` · Corte ${ctx.fechaCorte} ${ctx.horaCorte} (America/Bogotá)`}
+            {filaSel?.updatedAt
+              ? ` · Última actualización: ${new Date(filaSel.updatedAt).toLocaleString("es-CO")}`
               : ""}
           </p>
         </DialogHeader>
 
         <div className="min-w-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-4 py-4 scrollbar-invisible sm:px-6">
+          {/* Selector de periodo: sincroniza detalle, gráficos e histórico */}
+          <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-border bg-card p-3">
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Periodo</Label>
+              <select
+                className={selectCls + " h-9 w-auto text-xs"}
+                value={periodoSel}
+                onChange={(e) => setPeriodoSel(e.target.value)}
+              >
+                {serie.length === 0 && <option value="">Sin periodos</option>}
+                {[...serie].reverse().map((f) => (
+                  <option key={f.periodo} value={f.periodo}>
+                    {formatearPeriodo(f.periodo)}
+                    {f.esParcial ? " (parcial)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Año (histórico y gráficos)</Label>
+              <select
+                className={selectCls + " h-9 w-auto text-xs"}
+                value={anioSel}
+                onChange={(e) => setAnioSel(e.target.value)}
+              >
+                <option value="TODOS">Todos los años</option>
+                {anios.map((a) => (
+                  <option key={a} value={String(a)}>
+                    {a}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="ml-auto text-[10px] uppercase text-muted-foreground">
+              Dato vigente: {resolucion.etiquetaPeriodo}
+            </p>
+          </div>
+
           {/* KPIs */}
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <KPI
-              label="Cumplimiento actual"
-              value={cumpl !== null ? `${Math.round(cumpl)}%` : "—"}
+              label="Cumplimiento del periodo"
+              value={cumpl !== null ? `${Math.round(cumpl)}%` : "NO APLICA"}
               caption={SEMAFORO_LABEL[sem]}
               tone={sem}
             />
             <KPI
               label="Meta"
-              value={ind.meta != null ? `${ind.meta} ${ind.unidad || ""}` : "—"}
+              value={fmtNum(filaSel?.meta ?? ind.meta, filaSel?.unidad || ind.unidad || "")}
               caption={menorMejor ? "Máximo permitido" : "Objetivo mínimo"}
             />
             <KPI
               label="Resultado"
               value={
-                medActual?.resultado !== null && medActual?.resultado !== undefined
-                  ? `${medActual.resultado} ${medActual.unidad || ind.unidad || ""}`
-                  : "SIN DATOS"
+                filaSel && filaSel.resultado !== null
+                  ? `${filaSel.resultado} ${filaSel.unidad}`
+                  : filaSel
+                    ? "NO CALCULABLE"
+                    : "SIN DATOS"
               }
-              caption={medActual?.periodo ? formatearPeriodo(medActual.periodo) : "Sin periodo"}
+              caption={filaSel ? formatearPeriodo(filaSel.periodo) : "Sin periodo"}
             />
             <KPI
               label="Tendencia"
@@ -1359,8 +1400,9 @@ function IndicadorDetalleModal({
             />
           </div>
 
-          {/* Numerador / Denominador + conciliación oficial vs automático */}
-          <NumDenPanel historial={historial} medActual={medActual} ind={ind} />
+          {/* Detalle del periodo seleccionado + conciliación */}
+          <DetallePeriodoPanel fila={filaSel} ind={ind} />
+
 
 
 
