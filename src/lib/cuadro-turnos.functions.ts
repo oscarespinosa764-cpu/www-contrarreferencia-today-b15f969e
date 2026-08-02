@@ -209,7 +209,8 @@ export type DecidirSolicitudResultado = {
   ok: boolean;
   error?: string;
   code?: string;
-  dias?: unknown[];
+  /** Resumen serializado (JSON) del resultado por día. */
+  dias?: string;
   legacy?: boolean;
 };
 
@@ -244,9 +245,13 @@ export const decidirSolicitudTurno = createServerFn({ method: "POST" })
     const out = (res ?? {}) as {
       ok?: boolean;
       error?: string;
-      dias?: unknown[];
+      dias?: unknown;
       legacy?: boolean;
     };
     if (!out.ok) return { ok: false, error: mensajeC2(out.error), code: out.error };
-    return { ok: true, dias: out.dias, legacy: out.legacy };
+    return {
+      ok: true,
+      dias: out.dias ? JSON.stringify(out.dias).slice(0, 4000) : undefined,
+      legacy: !!out.legacy,
+    };
   });

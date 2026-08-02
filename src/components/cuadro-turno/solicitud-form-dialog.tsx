@@ -31,6 +31,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { SignaturePad, type SignaturePadHandle } from "./signature-pad";
 import { minutosEntreHoras } from "@/lib/cuadro-turno-utils";
+import { crearSolicitudTurno } from "@/lib/cuadro-turnos.functions";
 import {
   useShiftTypes,
   describeTurno,
@@ -248,6 +249,7 @@ export function SolicitudFormDialog({
   const qc = useQueryClient();
   const padRef = useRef<SignaturePadHandle>(null);
   const dispatchNotif = useServerFn(dispatchEventNotification);
+  const crearSolicitud = useServerFn(crearSolicitudTurno);
   const { data: shiftTypes } = useShiftTypes();
 
   const [perfil, setPerfil] = useState<{ nombre: string; doc: string; cargo: string } | null>(null);
