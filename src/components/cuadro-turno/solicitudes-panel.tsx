@@ -152,14 +152,28 @@ export function SolicitudesPanel({ soloPendientes = false }: { soloPendientes?: 
           onClose={() => setSel(null)}
           onDone={() => {
             setSel(null);
-            qc.invalidateQueries({ queryKey: ["shift-requests"] });
-            qc.invalidateQueries({ queryKey: ["absenteeism"] });
-            qc.invalidateQueries({ queryKey: ["audit-aprobados"] });
-            qc.invalidateQueries({ queryKey: ["historial-cambios"] });
-            qc.invalidateQueries({ queryKey: ["frag-pendientes"] });
-            qc.invalidateQueries({ queryKey: ["control-mensual"] });
-            qc.invalidateQueries({ queryKey: ["cuadro-mensual"] });
+            // FASE 9 · BLOQUE C.2 — invalidación de todos los consumidores reales.
+            [
+              "shift-requests",
+              "shift-request-audit",
+              "shift-return-fragments",
+              "absenteeism",
+              "audit-aprobados",
+              "historial-cambios",
+              "frag-pendientes",
+              "control-mensual",
+              "cuadro-mensual",
+              "cuadro-resumen",
+              "schedule-days",
+              "schedule-members",
+              "turno-programado",
+              "vinculacion-miembros",
+              "avisos",
+              "avisos-operativos",
+              "monthly-exceptions",
+            ].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
           }}
+
 
         />
       )}
