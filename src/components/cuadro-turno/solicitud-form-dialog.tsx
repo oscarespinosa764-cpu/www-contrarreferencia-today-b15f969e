@@ -53,11 +53,57 @@ interface MotivoOpt {
   recuperable: boolean;
 }
 
-interface Funcionario {
-  nombre: string;
-  cargo: string | null;
-  userId: string | null;
+// FASE 9 · BLOQUE C.3 — la identidad seleccionable proviene EXCLUSIVAMENTE de
+// la fuente canónica server-side (deduplicada por user_id, nombre de perfil).
+type Funcionario = ColaboradorSeleccionable;
+
+/** Selector compartido de colaboradores (value/key = user_id). */
+function ColaboradorSelect({
+  value,
+  items,
+  pendientes,
+  onChange,
+  placeholder = "Selecciona funcionario",
+}: {
+  value: string | null;
+  items: Funcionario[];
+  pendientes: number;
+  onChange: (userId: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <Select value={value ?? ""} onValueChange={onChange}>
+      <SelectTrigger className="whitespace-normal text-left">
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent className="max-h-[45vh] max-w-[calc(100vw-2rem)] overflow-y-auto">
+        {items.length === 0 ? (
+          <div className="px-2 py-3 text-xs text-muted-foreground">
+            No existen colaboradores disponibles para esta fecha.
+            {pendientes > 0 && (
+              <span className="mt-1 block">
+                Hay colaboradores del Cuadro de Turno pendientes de vinculación. Un administrador
+                debe revisarlos.
+              </span>
+            )}
+          </div>
+        ) : (
+          items.map((f) => (
+            <SelectItem key={f.userId} value={f.userId} className="whitespace-normal">
+              <span className="block">{f.nombre}</span>
+              {(f.cargo || f.sede) && (
+                <span className="block text-[11px] text-muted-foreground">
+                  {[f.cargo, f.sede].filter(Boolean).join(" · ")}
+                </span>
+              )}
+            </SelectItem>
+          ))
+        )}
+      </SelectContent>
+    </Select>
+  );
 }
+
 
 // ---------------------------------------------------------------------------
 // Editor de una fracción de devolución (reutilizable para devolución única
