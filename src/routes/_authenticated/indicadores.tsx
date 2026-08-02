@@ -199,6 +199,18 @@ function IndicadoresPage() {
   const inds = useMemo(() => indicadores ?? [], [indicadores]);
   const meds = useMemo(() => mediciones ?? [], [mediciones]);
 
+  // Fecha de corte autoritativa (servidor, America/Bogota). Nunca el navegador.
+  const { data: corte } = useQuery({
+    queryKey: ["indicadores-fecha-corte"],
+    queryFn: () => obtenerFechaCorteIndicadores(),
+    staleTime: 5 * 60_000,
+  });
+
+  const ctx: ContextoTemporal = useMemo(
+    () => contextoDesdeFecha(corte?.fecha ?? "", corte?.hora ?? "00:00"),
+    [corte],
+  );
+
   // Mediciones filtradas por rango de fechas (aplican a tarjetas, tendencia y ranking).
   const medsFiltradas = useMemo(() => {
     const ini = filtros.fechaInicio;
@@ -212,7 +224,19 @@ function IndicadoresPage() {
     });
   }, [meds, filtros.fechaInicio, filtros.fechaFin]);
 
-  const ultimas = useMemo(() => ultimaMedicionPorIndicador(medsFiltradas), [medsFiltradas]);
+  // FUENTE CANÓNICA: una serie por indicador, un registro por periodo.
+  const seriesPorIndicador = useMemo(() => {
+    const out: Record<string, PeriodoCanonico[]> = {};
+    for (const ind of inds) out[ind.id] = serieCanonica(ind, medsFiltradas, ctx);
+    return out;
+  }, [inds, medsFiltradas, ctx]);
+
+  // Resolución canónica visible en tarjetas y ranking.
+  const resoluciones = useMemo(() => {
+    const out: Record<string, ResolucionCanonica> = {};
+    for (const ind of inds) out[ind.id] = resolverCanonico(seriesPorIndicador[ind.id] ?? [], ctx);
+    return out;
+  }, [inds, seriesPorIndicador, ctx]);
 
   // Opciones dinámicas para filtros (derivadas de datos reales).
   const opcionesArea = useMemo(
@@ -234,7 +258,7 @@ function IndicadoresPage() {
       if (filtros.frecuencia && (i.fuente || "").trim() !== filtros.frecuencia) return false;
       if (filtros.tipo && (i.tipo || "").trim() !== filtros.tipo) return false;
       if (filtros.estado) {
-        const sem = (ultimas[i.id]?.semaforo as Semaforo) || "GRIS";
+        const sem = resoluciones[i.id]?.fila?.semaforo ?? "GRIS";
         if (sem !== filtros.estado) return false;
       }
       if (t) {
@@ -246,7 +270,7 @@ function IndicadoresPage() {
       }
       return true;
     });
-  }, [inds, filtros, ultimas, qDebounced]);
+  }, [inds, filtros, resoluciones, qDebounced]);
 
   // ── Resumen ────────────────────────────────────────────────────────────
   const resumen = useMemo(() => {
@@ -255,62 +279,60 @@ function IndicadoresPage() {
       amarillos = 0,
       rojos = 0,
       sinDato = 0;
+    const cumplimientos: number[] = [];
     for (const ind of activos) {
-      const sem = (ultimas[ind.id]?.semaforo as Semaforo) || "GRIS";
+      const fila = resoluciones[ind.id]?.fila ?? null;
+      const sem = fila?.semaforo ?? "GRIS";
       if (sem === "VERDE") verdes++;
       else if (sem === "AMARILLO") amarillos++;
       else if (sem === "ROJO") rojos++;
       else sinDato++;
+      // Cumplimiento general = promedio del cumplimiento individual (capado a
+      // 100) de los indicadores con dato canónico vigente.
+      const c = fila?.cumplimiento ?? null;
+      if (c !== null) cumplimientos.push(Math.min(100, Math.max(0, c)));
     }
     const total = activos.length;
     const pct = (n: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
-    // Cumplimiento general = promedio del cumplimiento individual (capado a 100)
-    // de indicadores con medición vigente. Documentado a nivel de código.
-    const cumplimientos: number[] = [];
-    for (const ind of activos) {
-      const c = cumplimientoIndividual(ind, ultimas[ind.id]);
-      if (c !== null) cumplimientos.push(Math.min(100, Math.max(0, c)));
-    }
     const cumplimientoGeneral =
       cumplimientos.length > 0
         ? Math.round(cumplimientos.reduce((a, b) => a + b, 0) / cumplimientos.length)
-        : 0;
+        : null;
     return {
       total,
       verdes,
       amarillos,
       rojos,
       sinDato,
+      evaluados: cumplimientos.length,
       pctVerdes: pct(verdes),
       pctAmarillos: pct(amarillos),
       pctRojos: pct(rojos),
       pctSin: pct(sinDato),
       cumplimientoGeneral,
     };
-  }, [indsFiltrados, ultimas]);
+  }, [indsFiltrados, resoluciones]);
 
   // ── Tendencia general por periodo (mes) ────────────────────────────────
   const tendenciaGeneral = useMemo(() => {
-    // Agrupa mediciones por periodo (YYYY-MM). Para cada periodo calcula el
-    // cumplimiento promedio y los conteos por semáforo.
+    // Se agregan las series canónicas: un solo registro por indicador y mes.
     const porPeriodo = new Map<
       string,
       { cumplimiento: number[]; v: number; a: number; r: number; s: number }
     >();
-    for (const m of medsFiltradas) {
-      const per = String(m.periodo || m.created_at || "").slice(0, 7);
-      if (!per) continue;
-      const ind = inds.find((i) => i.id === m.indicador_id);
-      if (!ind || !ind.activo) continue;
-      const c = cumplimientoIndividual(ind, m);
-      const entry = porPeriodo.get(per) || { cumplimiento: [], v: 0, a: 0, r: 0, s: 0 };
-      if (c !== null) entry.cumplimiento.push(Math.min(100, Math.max(0, c)));
-      const sem = (m.semaforo as Semaforo) || "GRIS";
-      if (sem === "VERDE") entry.v++;
-      else if (sem === "AMARILLO") entry.a++;
-      else if (sem === "ROJO") entry.r++;
-      else entry.s++;
-      porPeriodo.set(per, entry);
+    for (const ind of indsFiltrados) {
+      for (const fila of seriesPorIndicador[ind.id] ?? []) {
+        const entry =
+          porPeriodo.get(fila.periodo) || { cumplimiento: [], v: 0, a: 0, r: 0, s: 0 };
+        if (fila.cumplimiento !== null) {
+          entry.cumplimiento.push(Math.min(100, Math.max(0, fila.cumplimiento)));
+        }
+        if (fila.semaforo === "VERDE") entry.v++;
+        else if (fila.semaforo === "AMARILLO") entry.a++;
+        else if (fila.semaforo === "ROJO") entry.r++;
+        else entry.s++;
+        porPeriodo.set(fila.periodo, entry);
+      }
     }
     return Array.from(porPeriodo.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
@@ -325,22 +347,26 @@ function IndicadoresPage() {
         critico: v.r,
         sinMedicion: v.s,
       }));
-  }, [medsFiltradas, inds]);
+  }, [indsFiltrados, seriesPorIndicador]);
 
   // ── Ranking ────────────────────────────────────────────────────────────
   const ranking = useMemo(() => {
     const rows = indsFiltrados.map((ind) => {
-      const med = ultimas[ind.id];
-      const sem = (med?.semaforo as Semaforo) || "GRIS";
-      const cumpl = cumplimientoIndividual(ind, med);
-      return { ind, med, sem, cumpl };
+      const res = resoluciones[ind.id] ?? { fila: null, origen: "SIN_DATO" as const, etiquetaPeriodo: "SIN DATO" };
+      return {
+        ind,
+        fila: res.fila,
+        res,
+        sem: res.fila?.semaforo ?? "GRIS",
+        cumpl: res.fila?.cumplimiento ?? null,
+      };
     });
     const rank: Record<Semaforo, number> = { ROJO: 0, AMARILLO: 1, GRIS: 2, VERDE: 3 };
     const cmp = (a: (typeof rows)[number], b: (typeof rows)[number]) => {
       if (orden === "nombre") return String(a.ind.nombre).localeCompare(String(b.ind.nombre));
       if (orden === "cumplimiento") return (b.cumpl ?? -1) - (a.cumpl ?? -1);
       if (orden === "reciente") {
-        return String(b.med?.periodo ?? "").localeCompare(String(a.med?.periodo ?? ""));
+        return String(b.fila?.periodo ?? "").localeCompare(String(a.fila?.periodo ?? ""));
       }
       // "estado" por defecto: Crítico → Alerta → Sin medición → En meta, luego cumplimiento asc
       const dr = rank[a.sem] - rank[b.sem];
@@ -348,7 +374,8 @@ function IndicadoresPage() {
       return (a.cumpl ?? Infinity) - (b.cumpl ?? Infinity);
     };
     return rows.sort(cmp);
-  }, [indsFiltrados, ultimas, orden]);
+  }, [indsFiltrados, resoluciones, orden]);
+
 
   // ── Guardado / edición ────────────────────────────────────────────────
   const onGuardarIndicador = async (e: React.FormEvent<HTMLFormElement>) => {
