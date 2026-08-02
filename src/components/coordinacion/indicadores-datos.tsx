@@ -430,6 +430,7 @@ export function IndicadoresDatosDialog({
         },
       }).catch(() => {});
       qc.invalidateQueries({ queryKey: ["mediciones-ind"] });
+      qc.invalidateQueries({ queryKey: ["indicadores-tiempo-real"] });
       qc.invalidateQueries({ queryKey: ["indicadores-cfg"] });
       cerrar(false);
     } catch (e) {

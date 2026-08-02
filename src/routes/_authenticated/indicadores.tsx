@@ -79,8 +79,16 @@ import {
   esMenorEsMejor,
   etiquetaPeriodoCorta,
   fmtNum,
+  fusionarParcial,
+  admiteParcial,
+  modalidadIndicador,
+  etiquetaModalidad,
+  type SnapshotParcial,
 } from "@/lib/indicadores-canonico";
-import { obtenerFechaCorteIndicadores } from "@/lib/indicadores.functions";
+import {
+  obtenerFechaCorteIndicadores,
+  obtenerIndicadoresPeriodoActual,
+} from "@/lib/indicadores.functions";
 
 export const Route = createFileRoute("/_authenticated/indicadores")({
   component: IndicadoresPage,
@@ -206,6 +214,21 @@ function IndicadoresPage() {
     staleTime: 5 * 60_000,
   });
 
+  // Cálculo parcial del mes en curso (server-side, allowlist de indicadores
+  // automáticos). No persiste mediciones: es un snapshot al leer.
+  const { data: parcial } = useQuery({
+    queryKey: ["indicadores-tiempo-real"],
+    queryFn: () => obtenerIndicadoresPeriodoActual(),
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+    refetchOnWindowFocus: true,
+  });
+
+  const snapshot: SnapshotParcial | null = useMemo(
+    () => (parcial ? (parcial as SnapshotParcial) : null),
+    [parcial],
+  );
+
   const ctx: ContextoTemporal = useMemo(
     () => contextoDesdeFecha(corte?.fecha ?? "", corte?.hora ?? "00:00"),
     [corte],
@@ -228,14 +251,26 @@ function IndicadoresPage() {
   // FUENTE CANÓNICA: una serie por indicador, un registro por periodo.
   const seriesPorIndicador = useMemo(() => {
     const out: Record<string, PeriodoCanonico[]> = {};
-    for (const ind of inds) out[ind.id] = serieCanonica(ind, medsFiltradas, ctx);
+    for (const ind of inds) {
+      out[ind.id] = fusionarParcial(ind, serieCanonica(ind, medsFiltradas, ctx), snapshot, ctx);
+    }
     return out;
-  }, [inds, medsFiltradas, ctx]);
+  }, [inds, medsFiltradas, ctx, snapshot]);
 
   // Resolución canónica visible en tarjetas y ranking.
   const resoluciones = useMemo(() => {
     const out: Record<string, ResolucionCanonica> = {};
-    for (const ind of inds) out[ind.id] = resolverCanonico(seriesPorIndicador[ind.id] ?? [], ctx);
+    for (const ind of inds) {
+      const res = resolverCanonico(seriesPorIndicador[ind.id] ?? [], ctx);
+      // Indicadores de captura manual: nunca se inventa el mes en curso.
+      out[ind.id] =
+        !admiteParcial(ind) && res.fila && res.fila.periodo !== ctx.periodoActual
+          ? {
+              ...res,
+              etiquetaPeriodo: `${res.etiquetaPeriodo} · PENDIENTE CAPTURA ${etiquetaPeriodoCorta(ctx.periodoActual)}`,
+            }
+          : res;
+    }
     return out;
   }, [inds, seriesPorIndicador, ctx]);
 
@@ -446,6 +481,7 @@ function IndicadoresPage() {
     toast.success(`Medición guardada · ${resultado ?? "—"} ${ind.unidad ?? ""}`);
     form.reset();
     qc.invalidateQueries({ queryKey: ["mediciones-ind"] });
+    qc.invalidateQueries({ queryKey: ["indicadores-tiempo-real"] });
   };
 
   const indicadorDetalle = useMemo(
@@ -631,8 +667,13 @@ function IndicadoresPage() {
                             No calculable
                           </span>
                           <span className="block text-[10px] uppercase text-muted-foreground">
-                            {etiquetaPeriodoCorta(fila.periodo)}
+                            {res.etiquetaPeriodo}
                           </span>
+                          {res.referencia && (
+                            <span className="block text-[10px] uppercase text-muted-foreground">
+                              Último dato válido: {etiquetaPeriodoCorta(res.referencia.periodo)}
+                            </span>
+                          )}
                         </>
                       ) : (
                         <span className="text-xs italic text-muted-foreground">Sin datos</span>
@@ -1314,6 +1355,7 @@ function IndicadorDetalleModal({
           </DialogTitle>
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
             {ind.codigo || "Sin código"} · {ind.responsable || "Coordinación"}
+            {` · ${etiquetaModalidad(modalidadIndicador(ind))}`}
             {` · Corte ${ctx.fechaCorte} ${ctx.horaCorte} (America/Bogotá)`}
             {filaSel?.updatedAt
               ? ` · Última actualización: ${new Date(filaSel.updatedAt).toLocaleString("es-CO")}`
