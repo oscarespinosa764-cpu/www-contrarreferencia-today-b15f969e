@@ -85,7 +85,11 @@ function FraccionEditor({
     if (!frag.receiver_id || !frag.return_date) return;
     let cancel = false;
     (async () => {
-      const t = await buscarTurnoProgramado({ userId: frag.receiver_id, fecha: frag.return_date! });
+      const t = await buscarTurnoProgramado({
+        userId: frag.receiver_id,
+        fullName: frag.receiver_name,
+        fecha: frag.return_date!,
+      });
       if (cancel) return;
       onChange({ ...frag, shift_code: t?.shift_code ?? frag.shift_code ?? null });
     })();
