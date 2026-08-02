@@ -601,7 +601,7 @@ function IndicadoresPage() {
               <div className="col-span-2 text-right">Estado</div>
             </div>
             <ul className="divide-y divide-border/60">
-              {ranking.map(({ ind, med, sem, cumpl }) => (
+              {ranking.map(({ ind, fila, res, sem, cumpl }) => (
                 <li key={ind.id}>
                   <button
                     type="button"
@@ -615,14 +615,29 @@ function IndicadoresPage() {
                       </p>
                     </div>
                     <div className="text-sm sm:col-span-2">
-                      {med?.resultado !== null && med?.resultado !== undefined ? (
-                        <span className="font-bold text-foreground">
-                          {med.resultado} {med.unidad || ind.unidad || ""}
-                        </span>
+                      {fila && fila.resultado !== null ? (
+                        <>
+                          <span className="font-bold text-foreground">
+                            {fila.resultado} {fila.unidad}
+                          </span>
+                          <span className="block text-[10px] uppercase text-muted-foreground">
+                            {res.etiquetaPeriodo}
+                          </span>
+                        </>
+                      ) : fila ? (
+                        <>
+                          <span className="text-xs font-semibold text-muted-foreground">
+                            No calculable
+                          </span>
+                          <span className="block text-[10px] uppercase text-muted-foreground">
+                            {etiquetaPeriodoCorta(fila.periodo)}
+                          </span>
+                        </>
                       ) : (
                         <span className="text-xs italic text-muted-foreground">Sin datos</span>
                       )}
                     </div>
+
                     <div className="sm:col-span-3">
                       <div className="flex items-center gap-2">
                         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
