@@ -65,12 +65,22 @@ import {
   SENTIDOS_INDICADOR,
   calcularResultado,
   calcularSemaforo,
-  ultimaMedicionPorIndicador,
-  historialIndicador,
-  avanceContraMeta,
   formatearPeriodo,
   SEMAFORO_LABEL,
 } from "@/lib/indicadores-utils";
+import {
+  type ContextoTemporal,
+  type PeriodoCanonico,
+  type ResolucionCanonica,
+  contextoDesdeFecha,
+  serieCanonica,
+  resolverCanonico,
+  calcularCumplimiento,
+  esMenorEsMejor,
+  etiquetaPeriodoCorta,
+  fmtNum,
+} from "@/lib/indicadores-canonico";
+import { obtenerFechaCorteIndicadores } from "@/lib/indicadores.functions";
 
 export const Route = createFileRoute("/_authenticated/indicadores")({
   component: IndicadoresPage,
@@ -80,16 +90,27 @@ export const Route = createFileRoute("/_authenticated/indicadores")({
 const selectCls =
   "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-// Usamos tokens del design system a través de hsl(var(--...)) para las gráficas
-// (Recharts recibe strings CSS; los tokens permiten mantener dark/light mode).
+// Los tokens del design system son valores oklch() completos, NO triples HSL.
+// Envolverlos en hsl(var(--x)) produce un color inválido → series negras.
+// Se usan directamente con fallback explícito.
 const COLOR = {
-  green: "hsl(var(--status-green))",
-  amber: "hsl(var(--status-amber))",
-  red: "hsl(var(--status-red))",
-  sky: "hsl(var(--primary))",
-  muted: "hsl(var(--muted-foreground))",
-  border: "hsl(var(--border))",
+  green: "var(--status-green, oklch(0.7 0.16 152))",
+  amber: "var(--status-amber, oklch(0.78 0.16 75))",
+  red: "var(--status-red, oklch(0.62 0.22 25))",
+  sky: "var(--primary, oklch(0.3538 0.1107 253.47))",
+  accent: "var(--chart-2, oklch(0.62 0.13 230))",
+  muted: "var(--muted-foreground, oklch(0.52 0.03 245))",
+  border: "var(--border, oklch(0.922 0.013 248))",
+  popover: "var(--popover, oklch(1 0 0))",
 };
+
+const tooltipStyle = {
+  background: COLOR.popover,
+  border: `1px solid ${COLOR.border}`,
+  borderRadius: 8,
+  fontSize: 12,
+  color: "var(--foreground, oklch(0.2 0.02 250))",
+} as const;
 
 const pillCls: Record<Semaforo, string> = {
   VERDE: "bg-status-green/15 text-status-green",
@@ -105,26 +126,9 @@ const borderCls: Record<Semaforo, string> = {
   GRIS: "border-l-border",
 };
 
-const norm = (s: unknown) =>
-  String(s ?? "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+const colorSemaforo = (s: Semaforo) =>
+  s === "VERDE" ? COLOR.green : s === "AMARILLO" ? COLOR.amber : s === "ROJO" ? COLOR.red : COLOR.muted;
 
-// Sentido "MENOR_ES_MEJOR" ⇒ una reducción es una mejora.
-function esMenorEsMejor(ind: Indicador) {
-  return String(ind.sentido || "MAYOR_ES_MEJOR").toUpperCase() === "MENOR_ES_MEJOR";
-}
-
-// Cumplimiento porcentual individual respetando el sentido.
-function cumplimientoIndividual(ind: Indicador, med: Medicion | undefined): number | null {
-  if (!med || med.resultado === null || med.resultado === undefined) return null;
-  const meta = Number(med.meta ?? ind.meta ?? 0);
-  const r = Number(med.resultado);
-  if (!meta || Number.isNaN(r)) return null;
-  if (esMenorEsMejor(ind)) return (meta / Math.max(r, 0.0001)) * 100;
-  return (r / meta) * 100;
-}
 
 // ── Filtros ───────────────────────────────────────────────────────────────
 type Filtros = {
