@@ -7,6 +7,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { minutosEntreHoras } from "@/lib/cuadro-turno-utils";
+import { resolverTurnoProgramadoSeguro } from "@/lib/cuadro-identidad.functions";
+import type { TurnoResuelto } from "@/lib/identidad-turnos";
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -108,60 +110,65 @@ export function describeTurno(
 
 // ---------------------------------------------------------------------------
 // Consulta del turno programado de un funcionario en una fecha
+// FASE 9 · BLOQUE C.1 — se delega en el resolver canónico server-side
+// (`resolverTurnoProgramadoSeguro`): schedule obligatorio, identidad estable,
+// sin `limit(1)` y con estados explícitos. Este wrapper conserva la firma
+// usada por los consumidores actuales.
 // ---------------------------------------------------------------------------
 export interface TurnoProgramado {
   shift_code: string | null;
   hours: number;
   unidad_funcional: string | null;
+  /** Estado explícito del resolver (para mensajes funcionales). */
+  estado: TurnoResuelto["estado"];
+  resolutionMethod: TurnoResuelto["resolutionMethod"];
+  crossesMidnight: boolean;
+  endDate: string | null;
 }
 
-async function consultarDia(params: {
+/** Resolver canónico (único) del turno programado. */
+export async function resolverTurno(params: {
   userId?: string | null;
   fullName?: string | null;
   fecha: string;
-}): Promise<TurnoProgramado | null> {
-  const { userId, fullName, fecha } = params;
-  let query = supabase
-    .from("shift_schedule_days")
-    .select("shift_code, hours, unidad_funcional, shift_schedule_members!inner(user_id, full_name)")
-    .eq("shift_date", fecha)
-    .limit(1);
-  if (userId) query = query.eq("shift_schedule_members.user_id", userId);
-  else if (fullName) query = query.eq("shift_schedule_members.full_name", fullName);
-  else return null;
-  const { data } = await query.maybeSingle();
-  if (!data) return null;
-  const d = data as {
-    shift_code: string | null;
-    hours: number | null;
-    unidad_funcional: string | null;
-  };
-  return {
-    shift_code: d.shift_code,
-    hours: Number(d.hours) || 0,
-    unidad_funcional: d.unidad_funcional,
-  };
+  memberId?: string | null;
+  scheduleId?: string | null;
+}): Promise<TurnoResuelto | null> {
+  if (!params.fecha) return null;
+  try {
+    return await resolverTurnoProgramadoSeguro({
+      data: {
+        fecha: params.fecha,
+        targetUserId: params.userId ?? null,
+        memberId: params.memberId ?? null,
+        scheduleId: params.scheduleId ?? null,
+        fallbackName: params.fullName?.trim() || null,
+      },
+    });
+  } catch (e) {
+    console.error("resolverTurno");
+    return null;
+  }
 }
 
-/**
- * Resolver canónico del turno programado.
- * Muchos miembros del Cuadro de Turno no tienen `user_id` vinculado (se cargan
- * por importación del formato oficial), por eso la búsqueda por `user_id` cae
- * de vuelta al nombre canónico del miembro cuando no encuentra la fila.
- */
 export async function buscarTurnoProgramado(params: {
   userId?: string | null;
   fullName?: string | null;
   fecha: string;
+  memberId?: string | null;
+  scheduleId?: string | null;
 }): Promise<TurnoProgramado | null> {
-  const { userId, fullName, fecha } = params;
-  if (!fecha) return null;
-  if (userId) {
-    const porUsuario = await consultarDia({ userId, fecha });
-    if (porUsuario) return porUsuario;
-  }
-  if (fullName?.trim()) return consultarDia({ fullName: fullName.trim(), fecha });
-  return null;
+  const r = await resolverTurno(params);
+  if (!r) return null;
+  return {
+    shift_code: r.estado === "TURNO_ENCONTRADO" ? r.shiftCode : null,
+    hours: r.hours,
+    unidad_funcional: r.unidadFuncional,
+    estado: r.estado,
+    resolutionMethod: r.resolutionMethod,
+    crossesMidnight: r.crossesMidnight,
+    endDate: r.endDate,
+  };
 }
 
 
