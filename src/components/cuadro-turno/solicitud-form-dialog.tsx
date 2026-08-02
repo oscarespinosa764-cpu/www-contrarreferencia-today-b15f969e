@@ -397,6 +397,30 @@ export function SolicitudFormDialog({
     };
   }, [esCambio, user, startDate, perfil?.nombre]);
 
+  // Programación real del reemplazo para la misma fecha.
+  useEffect(() => {
+    if (!reqReemplazo || !reempNombre || !startDate) {
+      setTurnoReempCode(null);
+      return;
+    }
+    let cancel = false;
+    (async () => {
+      setBuscandoTurnoReemp(true);
+      const t = await buscarTurnoProgramado({
+        userId: reempUserId,
+        fullName: reempNombre,
+        fecha: startDate,
+      });
+      if (cancel) return;
+      setTurnoReempCode(t?.shift_code ?? null);
+      setBuscandoTurnoReemp(false);
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, [reqReemplazo, reempNombre, reempUserId, startDate]);
+
+
   const handleMotivo = (v: string) => {
     setMotivo(v);
     const cambio = v === CAMBIO_TURNO;
