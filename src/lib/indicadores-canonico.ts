@@ -277,6 +277,123 @@ export function etiquetaPeriodoCorta(periodo: string): string {
   return `${MES_CORTO[Number(m[2]) - 1] ?? m[2]} ${m[1]}`;
 }
 
+// ── Modalidad canónica del indicador ──────────────────────────────────────
+export type ModalidadIndicador = "TIEMPO_REAL" | "MENSUAL_MANUAL" | "HIBRIDO";
+
+/**
+ * Allowlist canónica: solo estos indicadores tienen fuente operativa y por
+ * tanto admiten cálculo parcial del mes en curso. Todos ellos conservan además
+ * la medición mensual oficial (Excel/manual), por eso son HÍBRIDOS.
+ */
+const MODALIDAD_POR_CODIGO: Record<string, ModalidadIndicador> = {
+  "IND-INST-01": "HIBRIDO",
+  "IND-INST-02": "HIBRIDO",
+  "IND-INST-03": "HIBRIDO",
+  "IND-INST-04": "HIBRIDO",
+};
+
+export function modalidadIndicador(ind: Pick<Indicador, "codigo">): ModalidadIndicador {
+  return MODALIDAD_POR_CODIGO[String(ind.codigo ?? "").toUpperCase()] ?? "MENSUAL_MANUAL";
+}
+
+export function admiteParcial(ind: Pick<Indicador, "codigo">): boolean {
+  const m = modalidadIndicador(ind);
+  return m === "TIEMPO_REAL" || m === "HIBRIDO";
+}
+
+export function etiquetaModalidad(m: ModalidadIndicador): string {
+  if (m === "TIEMPO_REAL") return "Tiempo real";
+  if (m === "HIBRIDO") return "Híbrido (automático + oficial)";
+  return "Mensual manual";
+}
+
+// ── Snapshot parcial calculado server-side ────────────────────────────────
+export type FilaParcial = {
+  codigo: string;
+  numerador: number | null;
+  denominador: number | null;
+  resultado: number | null;
+  unidad: string;
+  casos: number;
+  fuenteOperativa: string;
+};
+
+export type SnapshotParcial = {
+  periodo: string;
+  periodoInicio: string;
+  fechaCorte: string;
+  horaCorte: string;
+  calculadoAt: string;
+  filas: FilaParcial[];
+};
+
+export const TIPO_PARCIAL = "AUTOMATICA_PARCIAL";
+
+/**
+ * Fusiona el snapshot parcial del mes en curso con la serie persistida.
+ * - No modifica ni sobrescribe periodos cerrados.
+ * - No persiste nada: la fila es virtual.
+ * - Si el mes en curso ya tiene una medición manual/oficial autorizada, esa
+ *   conserva la precedencia y el parcial no la reemplaza.
+ */
+export function fusionarParcial(
+  ind: Indicador,
+  serie: PeriodoCanonico[],
+  snapshot: SnapshotParcial | null | undefined,
+  ctx: ContextoTemporal,
+): PeriodoCanonico[] {
+  if (!snapshot || !admiteParcial(ind)) return serie;
+  const fila = snapshot.filas.find(
+    (f) => f.codigo.toUpperCase() === String(ind.codigo ?? "").toUpperCase(),
+  );
+  if (!fila) return serie;
+  const periodo = snapshot.periodo;
+  const existente = serie.find((f) => f.periodo === periodo);
+  // Una medición manual/oficial del mes abierto conserva la precedencia.
+  if (existente && prioridadFuente(existente.tipoMedicion) <= prioridadFuente("MANUAL_HISTORICA_IMPORTADA")) {
+    return serie;
+  }
+  const meta = numOrNull(ind.meta);
+  const resultado = fila.resultado;
+  const estadoDato: EstadoDato = resultado === null ? "NO_CALCULABLE" : "CALCULADO";
+  const rango = rangoPeriodo(periodo);
+  const [anioStr, mesStr] = periodo.split("-");
+  const virtual: PeriodoCanonico = {
+    medicionId: `parcial:${ind.id}:${periodo}`,
+    indicadorId: ind.id,
+    periodo,
+    anio: Number(anioStr) || 0,
+    mes: Number(mesStr) || 0,
+    fechaInicio: snapshot.periodoInicio || rango.inicio,
+    fechaFin: rango.fin,
+    fechaCorte: snapshot.fechaCorte,
+    numerador: fila.numerador,
+    denominador: fila.denominador,
+    resultado,
+    unidad: fila.unidad || ind.unidad || "",
+    meta,
+    cumplimiento: calcularCumplimiento(ind.sentido, resultado, meta),
+    semaforo: resultado === null ? "GRIS" : calcularSemaforo(resultado, meta, ind.sentido),
+    estadoDato,
+    esParcial: true,
+    esMesCerrado: false,
+    tipoMedicion: TIPO_PARCIAL,
+    fuente: "Automática (parcial en curso)",
+    fuenteMedicion: fila.fuenteOperativa,
+    notaMetodologica:
+      `Cálculo automático parcial entre ${snapshot.periodoInicio} y ${snapshot.fechaCorte} ` +
+      `(America/Bogota). Casos evaluados: ${fila.casos}. No consolidado.`,
+    comentario: null,
+    createdAt: null,
+    updatedAt: snapshot.calculadoAt,
+    duplicado: false,
+    duplicadoNoResoluble: false,
+    variantes: existente?.variantes ?? [],
+  };
+  const resto = serie.filter((f) => f.periodo !== periodo);
+  return [...resto, virtual].sort((a, b) => a.periodo.localeCompare(b.periodo));
+}
+
 /**
  * Prioridad: 1) parcial del mes actual · 2) último mes cerrado ·
  * 3) último periodo histórico válido · 4) SIN DATO (solo si no hay ninguno).
@@ -287,14 +404,20 @@ export function resolverCanonico(
   ctx: ContextoTemporal,
 ): ResolucionCanonica {
   const validos = serie.filter((f) => f.resultado !== null);
-  const parcial = validos.find((f) => f.periodo === ctx.periodoActual);
-  if (parcial) {
+  const corte = ctx.fechaCorte ? ctx.fechaCorte.split("-").reverse().join("/") : "—";
+  // El mes en curso manda cuando existe cálculo, incluso sin casos.
+  const filaActual = serie.find((f) => f.periodo === ctx.periodoActual);
+  if (filaActual && (filaActual.resultado !== null || filaActual.tipoMedicion === TIPO_PARCIAL)) {
     return {
-      fila: parcial,
+      fila: filaActual,
       origen: "PARCIAL",
-      etiquetaPeriodo: `PARCIAL AL ${ctx.fechaCorte.split("-").reverse().join("/")}`,
+      etiquetaPeriodo:
+        filaActual.resultado === null
+          ? `${etiquetaPeriodoCorta(filaActual.periodo)} · SIN CASOS AL ${corte}`
+          : `PARCIAL AL ${corte}`,
     };
   }
+
   const cerrado = validos.find((f) => f.periodo === ctx.periodoUltimoCerrado);
   if (cerrado) {
     return {
