@@ -104,12 +104,11 @@ export function ultimaMedicionPorIndicador(mediciones: Medicion[]): Record<strin
   return out;
 }
 
-/** Historial ordenado por periodo (ascendente) para un indicador, últimos 12. */
+/** Historial completo ordenado por periodo (ascendente) para un indicador. */
 export function historialIndicador(mediciones: Medicion[], indicadorId: string): Medicion[] {
   return mediciones
     .filter((m) => m.indicador_id === indicadorId)
-    .sort((a, b) => String(a.periodo || "").localeCompare(String(b.periodo || "")))
-    .slice(-12);
+    .sort((a, b) => String(a.periodo || "").localeCompare(String(b.periodo || "")));
 }
 
 /** Texto de tendencia comparando las dos últimas mediciones. */
