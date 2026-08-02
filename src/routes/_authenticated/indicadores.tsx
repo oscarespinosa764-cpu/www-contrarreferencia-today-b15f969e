@@ -1073,82 +1073,96 @@ function FiltrosPanel({
   );
 }
 
-function NumDenPanel({
-  historial,
-  medActual,
+/**
+ * DETALLE DEL PERIODO SELECCIONADO.
+ * Trazabilidad completa: rango, corte, numerador, denominador, resultado,
+ * meta, cumplimiento, estado, fuente y conciliación oficial vs. automática.
+ */
+function DetallePeriodoPanel({
+  fila,
   ind,
 }: {
-  historial: Medicion[];
-  medActual: Medicion | undefined;
+  fila: PeriodoCanonico | null;
   ind: Indicador;
 }) {
-  // Buscar mediciones del mismo periodo que la actual (oficial + automática).
-  const periodo = medActual?.periodo ?? null;
-  const delPeriodo = useMemo(
-    () => (periodo ? historial.filter((h) => h.periodo === periodo) : []),
-    [historial, periodo],
-  );
-  const oficial = delPeriodo.find(
+  if (!fila) {
+    return (
+      <div className="rounded-lg border border-dashed border-border/60 p-4 text-center text-xs italic text-muted-foreground">
+        SIN REGISTRO PARA EL PERIODO SELECCIONADO.
+      </div>
+    );
+  }
+
+  const oficial = fila.variantes.find(
     (m) => m.tipo_medicion === "MANUAL_HISTORICA_IMPORTADA" || m.tipo_medicion === "MANUAL",
   );
-  const automatica = delPeriodo.find(
+  const automatica = fila.variantes.find(
     (m) => m.tipo_medicion === "AUTOMATICA" || m.tipo_medicion === "AUTOMATICA_CONCILIACION",
   );
-  const principal = medActual ?? oficial ?? automatica;
-  if (!principal) return null;
-
-  const unidad = principal.unidad || ind.unidad || "";
-  const fmt = (v: number | null | undefined) =>
-    v === null || v === undefined ? "—" : String(v);
-  const tipoLabel = (t?: string | null) => {
-    switch (t) {
-      case "MANUAL_HISTORICA_IMPORTADA":
-        return "Oficial (Excel histórico)";
-      case "MANUAL":
-        return "Manual";
-      case "AUTOMATICA":
-        return "Automática";
-      case "AUTOMATICA_CONCILIACION":
-        return "Automática (conciliación)";
-      case "AJUSTE_MANUAL":
-        return "Ajuste manual";
-      default:
-        return t || "—";
-    }
-  };
-
   const diferencia =
     oficial?.resultado != null && automatica?.resultado != null
       ? Number(automatica.resultado) - Number(oficial.resultado)
       : null;
+  const fmt = (v: number | null | undefined) =>
+    v === null || v === undefined ? "NO APLICA" : String(v);
 
   return (
     <div className="rounded-lg border border-border/60 bg-muted/20 p-3 sm:p-4">
-      <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-        Numerador / Denominador — {periodo ? formatearPeriodo(periodo) : "periodo actual"}
-      </p>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+          Detalle del periodo seleccionado — {formatearPeriodo(fila.periodo)}
+        </p>
+        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${pillCls[fila.semaforo]}`}>
+          {fila.estadoDato === "NO_CALCULABLE" ? "NO CALCULABLE" : SEMAFORO_LABEL[fila.semaforo]}
+        </span>
+      </div>
+
+      <div className="mb-2 grid grid-cols-1 gap-2 text-[11px] text-muted-foreground sm:grid-cols-3">
+        <span>Rango: {fila.fechaInicio} → {fila.fechaFin}</span>
+        <span>
+          Corte del dato: {fila.fechaCorte}
+          {fila.esParcial ? " (parcial, mes en curso)" : ""}
+        </span>
+        <span>Actualizado: {fila.updatedAt ? new Date(fila.updatedAt).toLocaleString("es-CO") : "NO APLICA"}</span>
+      </div>
+
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <div>
           <p className="text-[10px] uppercase text-muted-foreground">Numerador</p>
-          <p className="text-lg font-semibold tabular-nums">{fmt(principal.numerador_valor)}</p>
+          <p className="text-lg font-semibold tabular-nums">{fmt(fila.numerador)}</p>
         </div>
         <div>
           <p className="text-[10px] uppercase text-muted-foreground">Denominador</p>
-          <p className="text-lg font-semibold tabular-nums">{fmt(principal.denominador_valor)}</p>
+          <p className="text-lg font-semibold tabular-nums">{fmt(fila.denominador)}</p>
         </div>
         <div>
           <p className="text-[10px] uppercase text-muted-foreground">Resultado</p>
           <p className="text-lg font-semibold tabular-nums">
-            {principal.resultado != null ? `${principal.resultado} ${unidad}` : "—"}
+            {fila.resultado !== null ? `${fila.resultado} ${fila.unidad}` : "NO CALCULABLE"}
           </p>
         </div>
         <div>
-          <p className="text-[10px] uppercase text-muted-foreground">Tipo de medición</p>
-          <p className="text-sm font-medium">{tipoLabel(principal.tipo_medicion)}</p>
-          {principal.fuente_medicion && (
-            <p className="text-[10px] text-muted-foreground">Fuente: {principal.fuente_medicion}</p>
-          )}
+          <p className="text-[10px] uppercase text-muted-foreground">Meta / Cumplimiento</p>
+          <p className="text-sm font-medium tabular-nums">
+            {fmtNum(fila.meta, fila.unidad)} ·{" "}
+            {fila.cumplimiento !== null ? `${Math.round(fila.cumplimiento)}%` : "NO APLICA"}
+          </p>
+          <p className="text-[10px] text-muted-foreground">
+            {esMenorEsMejor(ind) ? "Menor es mejor" : "Mayor es mejor"}
+          </p>
         </div>
+      </div>
+
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+        <span>Fuente: {fila.fuente}</span>
+        {fila.fuenteMedicion && <span>Origen: {fila.fuenteMedicion}</span>}
+        {fila.duplicado && (
+          <span className="text-status-amber">
+            {fila.duplicadoNoResoluble
+              ? "DUPLICIDAD NO RESOLUBLE · se muestra la versión de mayor precedencia"
+              : `Se aplicó precedencia sobre ${fila.variantes.length} registros del periodo`}
+          </span>
+        )}
       </div>
 
       {oficial && automatica && (
@@ -1160,13 +1174,13 @@ function NumDenPanel({
             <div>
               <span className="text-muted-foreground">Oficial: </span>
               <span className="font-semibold tabular-nums">
-                {fmt(oficial.numerador_valor)}/{fmt(oficial.denominador_valor)} · {oficial.resultado} {unidad}
+                {fmt(oficial.numerador_valor)}/{fmt(oficial.denominador_valor)} · {oficial.resultado} {fila.unidad}
               </span>
             </div>
             <div>
               <span className="text-muted-foreground">Automática: </span>
               <span className="font-semibold tabular-nums">
-                {fmt(automatica.numerador_valor)}/{fmt(automatica.denominador_valor)} · {automatica.resultado} {unidad}
+                {fmt(automatica.numerador_valor)}/{fmt(automatica.denominador_valor)} · {automatica.resultado} {fila.unidad}
               </span>
             </div>
             <div>
@@ -1180,7 +1194,7 @@ function NumDenPanel({
                       : "text-status-amber"
                 }`}
               >
-                {diferencia === null ? "—" : `${diferencia > 0 ? "+" : ""}${diferencia.toFixed(2)} ${unidad}`}
+                {diferencia === null ? "—" : `${diferencia > 0 ? "+" : ""}${diferencia.toFixed(2)} ${fila.unidad}`}
               </span>
             </div>
           </div>
@@ -1190,14 +1204,15 @@ function NumDenPanel({
         </div>
       )}
 
-      {principal.nota_metodologica && (
+      {fila.notaMetodologica && (
         <p className="mt-2 text-[10px] italic text-muted-foreground">
-          Nota metodológica: {principal.nota_metodologica}
+          Nota metodológica: {fila.notaMetodologica}
         </p>
       )}
     </div>
   );
 }
+
 
 function IndicadorDetalleModal({
 
