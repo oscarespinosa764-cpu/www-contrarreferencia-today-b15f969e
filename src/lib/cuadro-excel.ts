@@ -95,14 +95,14 @@ async function generarOficial(p: OficialParams, incluirDatos: boolean) {
 
 /** Descarga la PLANTILLA oficial TH-FR-10 con el personal real (sin turnos). */
 export async function exportarPlantillaCuadro(params: OficialParams) {
-  const b64 = await generarOficial(params, false);
-  descargarBase64(b64, `TH-FR-10_Plantilla_${MESES[params.mes - 1]}_${params.anio}.xlsx`);
+  const bytes = await generarOficial(params, false);
+  descargarBytes(bytes, `TH-FR-10_Plantilla_${MESES[params.mes - 1]}_${params.anio}.xlsx`);
 }
 
 /** Descarga el CUADRO MENSUAL diligenciado en el formato oficial TH-FR-10. */
 export async function exportarCuadroMensual(params: OficialParams) {
-  const b64 = await generarOficial(params, true);
-  descargarBase64(b64, `TH-FR-10_Cuadro_${MESES[params.mes - 1]}_${params.anio}.xlsx`);
+  const bytes = await generarOficial(params, true);
+  descargarBytes(bytes, `TH-FR-10_Cuadro_${MESES[params.mes - 1]}_${params.anio}.xlsx`);
 }
 
 export interface ImportResultado {
