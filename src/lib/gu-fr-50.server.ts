@@ -1,6 +1,7 @@
 // GU-FR-50 · helpers SERVER-ONLY (mapeo, catálogos, duplicados, parseo).
 // Consume exclusivamente la definición canónica de src/lib/gu-fr-50.ts.
 // Nunca se importa desde el navegador (extensión .server.ts).
+import { createHash } from "crypto";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
@@ -453,4 +454,13 @@ export async function analizarLote(
   }
 
   return { ok: errores.length === 0, estructura: [], resumen, errores, lote };
+}
+
+/** Huella determinística del lote validado (trazabilidad de auditoría). */
+export function huellaLote(lote: Partial<Record<ModuloGuFr50, Record<string, string>[]>>): string {
+  const partes: string[] = [];
+  for (const m of MODULOS) {
+    for (const r of lote[m] ?? []) partes.push(`${m}:${r._fp ?? ""}`);
+  }
+  return createHash("sha256").update(partes.sort().join("\u001f"), "utf8").digest("hex");
 }
