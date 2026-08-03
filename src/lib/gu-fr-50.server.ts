@@ -264,6 +264,7 @@ export interface ResumenHoja {
   advertencias: number;
   errores: number;
   duplicadas: number;
+  ambiguas: number;
   nuevas: number;
 }
 
@@ -277,12 +278,8 @@ export interface ResultadoAnalisis {
 
 const enmascarar = (v: string) => (v.length > 24 ? `${v.slice(0, 21)}…` : v);
 
-const FECHA_CLAVE: Record<ModuloGuFr50, string> = {
-  ENTRANTES: "fecha_envio",
-  SALIENTES: "fecha_solicitud",
-  "ATENCION DOMICILIARIA": "fecha_solicitud",
-  "REFERENCIAS INTERNAS": "fecha_solicitud",
-};
+const FECHA_CLAVE = CAMPO_FECHA;
+
 
 /**
  * Valida estructura, tipos, catálogos y duplicados del archivo recibido.
