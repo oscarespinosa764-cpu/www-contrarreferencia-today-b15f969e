@@ -22,7 +22,7 @@ import {
 
 const MODULOS = HOJAS_GU_FR_50.map((h) => h.nombre as ModuloGuFr50);
 
-type Resumen = { hoja: string; total: number; vacias: number; validas: number; advertencias: number; errores: number; duplicadas: number; nuevas: number };
+type Resumen = { hoja: string; total: number; vacias: number; validas: number; advertencias: number; errores: number; duplicadas: number; ambiguas: number; nuevas: number };
 type ErrFila = { hoja: string; fila: number; columna: string; encabezado: string; valor: string; codigo: string; mensaje: string };
 
 /** Claves de consulta a invalidar tras una importación exitosa. */
