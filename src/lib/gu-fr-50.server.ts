@@ -453,7 +453,16 @@ export async function analizarLote(
 
   }
 
-  return { ok: errores.length === 0, estructura: [], resumen, errores, lote };
+  // Las filas ambiguas no se importan, pero tampoco bloquean el resto del lote.
+  const BLOQUEA = (c: string) => c !== "DUPLICADO_AMBIGUO" && c !== "CONFLICTO_IDENTIDAD";
+  return {
+    ok: errores.filter((e) => BLOQUEA(e.codigo)).length === 0,
+    estructura: [],
+    resumen,
+    errores,
+    lote,
+  };
+
 }
 
 /** Huella determinística del lote validado (trazabilidad de auditoría). */
