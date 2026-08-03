@@ -19,20 +19,21 @@ import {
 // Formato OFICIAL TH-FR-10 (plantilla institucional real con logos y estilos)
 // ---------------------------------------------------------------------------
 
-function descargarBase64(b64: string, nombre: string) {
-  const bin = atob(b64);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  const url = URL.createObjectURL(
-    new Blob([bytes], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    }),
-  );
+const XLSX_MIME =
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+/** Descarga bytes XLSX en el navegador (sin Buffer ni APIs de Node). */
+function descargarBytes(bytes: Uint8Array, nombre: string) {
+  const ab = bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  ) as ArrayBuffer;
+  const url = URL.createObjectURL(new Blob([ab], { type: XLSX_MIME }));
   const a = document.createElement("a");
   a.href = url;
   a.download = nombre;
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 interface OficialParams {
@@ -94,14 +95,14 @@ async function generarOficial(p: OficialParams, incluirDatos: boolean) {
 
 /** Descarga la PLANTILLA oficial TH-FR-10 con el personal real (sin turnos). */
 export async function exportarPlantillaCuadro(params: OficialParams) {
-  const b64 = await generarOficial(params, false);
-  descargarBase64(b64, `TH-FR-10_Plantilla_${MESES[params.mes - 1]}_${params.anio}.xlsx`);
+  const bytes = await generarOficial(params, false);
+  descargarBytes(bytes, `TH-FR-10_Plantilla_${MESES[params.mes - 1]}_${params.anio}.xlsx`);
 }
 
 /** Descarga el CUADRO MENSUAL diligenciado en el formato oficial TH-FR-10. */
 export async function exportarCuadroMensual(params: OficialParams) {
-  const b64 = await generarOficial(params, true);
-  descargarBase64(b64, `TH-FR-10_Cuadro_${MESES[params.mes - 1]}_${params.anio}.xlsx`);
+  const bytes = await generarOficial(params, true);
+  descargarBytes(bytes, `TH-FR-10_Cuadro_${MESES[params.mes - 1]}_${params.anio}.xlsx`);
 }
 
 export interface ImportResultado {

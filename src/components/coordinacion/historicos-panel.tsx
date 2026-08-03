@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
-import { BarChart3, DatabaseBackup, Loader2, Network, CalendarDays, ClipboardList, CalendarClock } from "lucide-react";
+import { BarChart3, DatabaseBackup, Loader2, Network, CalendarDays, ClipboardList, CalendarClock, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { ImportarDialog } from "./importar-dialog";
 import { ImportarRedDialog } from "./importar-red-dialog";
@@ -72,6 +72,21 @@ export function HistoricosPanel() {
 
   const generarRespaldo = useServerFn(respaldoTotal);
 
+  const [plantillaCargando, setPlantillaCargando] = useState(false);
+  const descargarPlantilla = async () => {
+    setPlantillaCargando(true);
+    try {
+      const { descargarPlantillaGuFr50 } = await import("@/lib/gu-fr-50");
+      await descargarPlantillaGuFr50();
+      toast.success("Plantilla GU-FR-50 descargada (4 hojas).");
+    } catch (e) {
+      console.error(e);
+      toast.error("No se pudo generar la plantilla GU-FR-50.");
+    } finally {
+      setPlantillaCargando(false);
+    }
+  };
+
   if (!isAdmin) {
     return (
       <Panel title="Acceso restringido">
@@ -121,9 +136,37 @@ export function HistoricosPanel() {
     <div className="space-y-5">
       <Panel title="Importaciones / exportaciones" action={<AdminBadge />}>
         <div className="space-y-5">
+          {/* Plantilla canónica GU-FR-50 (cuatro hojas) */}
+          <div>
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Bitácora GU-FR-50 · plantilla canónica
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <Button
+                variant="outline"
+                disabled={plantillaCargando}
+                className="h-auto justify-start gap-2 whitespace-normal rounded-xl py-3 text-left text-sm font-semibold"
+                onClick={descargarPlantilla}
+              >
+                {plantillaCargando ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                ) : (
+                  <FileSpreadsheet className="h-4 w-4 text-primary" />
+                )}
+                <span>Descargar plantilla GU-FR-50 (4 hojas)</span>
+              </Button>
+            </div>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              ENTRANTES · SALIENTES · ATENCION DOMICILIARIA · REFERENCIAS INTERNAS.
+              Encabezados en la fila 2 y datos desde la fila 3. Los catálogos se validan
+              contra la base de datos, no contra el Excel.
+            </p>
+          </div>
+
           {grupos.slice(0, 1).map((g) => (
             <GrupoBotones key={g.titulo} g={g} onSelect={setActivo} />
           ))}
+
 
           {/* Red y disponibilidad: importación por archivo + exportación de datos */}
           <div>
