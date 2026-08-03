@@ -308,7 +308,8 @@ export async function analizarLote(
     let vacias = 0;
     let advertencias = 0;
     let duplicadas = 0;
-    const aceptadas: Record<string, string>[] = [];
+    const candidatas: { registro: Record<string, string>; id: Identidad }[] = [];
+
     const vistos = new Set<string>();
 
     for (let i = 0; i < cruda.filas.length; i++) {
