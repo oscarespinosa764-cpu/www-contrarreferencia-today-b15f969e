@@ -237,8 +237,8 @@ type Periodo = (typeof PERIODOS)[number];
 const VISTAS: { key: Vista; label: string; icon: typeof Home; color: string }[] = [
   { key: "entrantes", label: "Entrantes", icon: ArrowDownLeft, color: "bg-status-green" },
   { key: "salientes", label: "Salientes", icon: ArrowUpRight, color: "bg-status-teal" },
-  { key: "phd", label: "PHD/PAD/O2/Esp.", icon: Home, color: "bg-status-sky" },
-  { key: "interna", label: "Ref. Internas", icon: Stethoscope, color: "bg-status-blue" },
+  { key: "phd", label: "ATENCION DOMICILIARIA", icon: Home, color: "bg-status-sky" },
+  { key: "interna", label: "REFERENCIAS INTERNAS", icon: Stethoscope, color: "bg-status-blue" },
 ];
 
 // --- Mapeo de acciones / estados para la bitácora de ENTRANTES ---
