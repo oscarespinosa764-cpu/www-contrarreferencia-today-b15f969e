@@ -49,6 +49,7 @@ export function GuFr50Dialog({
   const [resumen, setResumen] = useState<Resumen[] | null>(null);
   const [errores, setErrores] = useState<ErrFila[]>([]);
   const [estructura, setEstructura] = useState<string[]>([]);
+  const [okPrevio, setOkPrevio] = useState(false);
   const [validando, setValidando] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
@@ -57,7 +58,7 @@ export function GuFr50Dialog({
   const confirmar = useServerFn(confirmarImportacionGuFr50);
 
   const reset = () => {
-    setArchivo(null); setHojas([]); setResumen(null); setErrores([]); setEstructura([]);
+    setArchivo(null); setHojas([]); setResumen(null); setErrores([]); setEstructura([]); setOkPrevio(false);
     if (inputRef.current) inputRef.current.value = "";
   };
   const cerrar = (v: boolean) => { if (!v) reset(); onOpenChange(v); };
@@ -94,7 +95,7 @@ export function GuFr50Dialog({
   };
 
   const onFile = async (file: File) => {
-    setResumen(null); setErrores([]); setEstructura([]);
+    setResumen(null); setErrores([]); setEstructura([]); setOkPrevio(false);
     if (file.size > 15_000_000) { toast.error("Archivo demasiado grande (máx. 15 MB)."); return; }
     try {
       const wb = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
@@ -119,7 +120,7 @@ export function GuFr50Dialog({
     setValidando(true);
     try {
       const r = await previsualizar({ data: { hojas } });
-      setEstructura(r.estructura); setErrores(r.errores as ErrFila[]); setResumen(r.resumen as Resumen[]);
+      setEstructura(r.estructura); setErrores(r.errores as ErrFila[]); setResumen(r.resumen as Resumen[]); setOkPrevio(r.ok);
       if (r.estructura.length > 0) toast.error("Estructura inválida: el archivo no es la plantilla GU-FR-50.");
     } catch (e) {
       console.error(e);
@@ -133,7 +134,7 @@ export function GuFr50Dialog({
       const r = await confirmar({ data: { hojas } });
       if (!r.ok) { toast.error(r.error ?? "No se pudo importar."); return; }
       CLAVES.forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
-      toast.success(`Importación completada: ${r.insertadas} insertada(s), ${r.omitidas} omitida(s).`);
+      toast.success(`Importación completada: ${r.insertadas} insertada(s), ${r.omitidas} omitida(s), ${r.ambiguas ?? 0} ambigua(s).`);
       cerrar(false);
     } catch (e) {
       console.error(e);
@@ -141,8 +142,8 @@ export function GuFr50Dialog({
     } finally { setGuardando(false); }
   };
 
-  const totalValidas = resumen?.reduce((a, r) => a + r.validas, 0) ?? 0;
-  const puedeImportar = !!resumen && estructura.length === 0 && errores.length === 0 && totalValidas > 0;
+  const totalValidas = resumen?.reduce((a, r) => a + r.nuevas, 0) ?? 0;
+  const puedeImportar = !!resumen && okPrevio && estructura.length === 0 && totalValidas > 0;
 
   return (
     <Dialog open={open} onOpenChange={cerrar}>
