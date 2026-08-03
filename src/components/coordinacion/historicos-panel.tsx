@@ -72,6 +72,21 @@ export function HistoricosPanel() {
 
   const generarRespaldo = useServerFn(respaldoTotal);
 
+  const [plantillaCargando, setPlantillaCargando] = useState(false);
+  const descargarPlantilla = async () => {
+    setPlantillaCargando(true);
+    try {
+      const { descargarPlantillaGuFr50 } = await import("@/lib/gu-fr-50");
+      await descargarPlantillaGuFr50();
+      toast.success("Plantilla GU-FR-50 descargada (4 hojas).");
+    } catch (e) {
+      console.error(e);
+      toast.error("No se pudo generar la plantilla GU-FR-50.");
+    } finally {
+      setPlantillaCargando(false);
+    }
+  };
+
   if (!isAdmin) {
     return (
       <Panel title="Acceso restringido">
