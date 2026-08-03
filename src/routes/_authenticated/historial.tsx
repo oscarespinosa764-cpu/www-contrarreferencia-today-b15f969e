@@ -67,6 +67,9 @@ import {
   type Seccion,
   type GrupoEntrante,
 } from "@/lib/historial-export";
+import { useServerFn } from "@tanstack/react-start";
+import { exportarGuFr50 } from "@/lib/gu-fr-50.functions";
+import type { FilaGuFr50, ModuloGuFr50 } from "@/lib/gu-fr-50";
 import {
   generarBitacoraPDF,
   generarBitacoraConsolidadaPDF,
@@ -1209,6 +1212,8 @@ function HistorialPage() {
     if (vista === "interna") return seccionInternas(internasF as Record<string, unknown>[], segMap);
     return null;
   };
+
+  const exportarBitacora = useServerFn(exportarGuFr50);
 
   // Exportación canónica GU-FR-50 (server-authoritative, cuatro hojas).
   const MODULO_VISTA: Record<string, ModuloGuFr50> = {

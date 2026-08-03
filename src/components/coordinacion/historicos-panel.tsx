@@ -12,6 +12,7 @@ import { ImportarCuadroDialog } from "./importar-cuadro-dialog";
 import { ImportarTurnoDialog, type TurnoImportTipo } from "./importar-turno-dialog";
 import { IndicadoresDatosDialog } from "./indicadores-datos";
 import { BorradoSeguroDialog } from "./borrado-seguro-dialog";
+import { GuFr50Dialog } from "./gu-fr-50-dialog";
 import { respaldoTotal } from "@/lib/backup.functions";
 import type { DestinoKey } from "@/lib/importar.functions";
 
@@ -72,6 +73,7 @@ export function HistoricosPanel() {
 
   const generarRespaldo = useServerFn(respaldoTotal);
 
+  const [guOpen, setGuOpen] = useState(false);
   const [plantillaCargando, setPlantillaCargando] = useState(false);
   const descargarPlantilla = async () => {
     setPlantillaCargando(true);
@@ -154,6 +156,14 @@ export function HistoricosPanel() {
                   <FileSpreadsheet className="h-4 w-4 text-primary" />
                 )}
                 <span>Descargar plantilla GU-FR-50 (4 hojas)</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto justify-start gap-2 whitespace-normal rounded-xl py-3 text-left text-sm font-semibold"
+                onClick={() => setGuOpen(true)}
+              >
+                <FileSpreadsheet className="h-4 w-4 text-primary" />
+                <span>Exportar / importar bitácora GU-FR-50</span>
               </Button>
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">
@@ -304,6 +314,7 @@ export function HistoricosPanel() {
         />
       )}
 
+      <GuFr50Dialog open={guOpen} onOpenChange={setGuOpen} />
       <IndicadoresDatosDialog open={indOpen} onOpenChange={setIndOpen} />
       <BorradoSeguroDialog open={borradoOpen} onOpenChange={setBorradoOpen} />
 
