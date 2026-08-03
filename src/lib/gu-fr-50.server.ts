@@ -380,33 +380,54 @@ export async function analizarLote(
       }
       if (filaConError) continue;
 
-      const clv = `${registro.documento}|${fechaClave.slice(0, 16)}`;
-      if (vistos.has(clv)) {
+      // Identidad canónica (misma función que usará la confirmación).
+      const id = identidad(modulo, registro);
+      if (vistos.has(id.exacta)) {
         duplicadas++;
         continue;
       }
-      vistos.add(clv);
-      aceptadas.push(registro);
+      vistos.add(id.exacta);
+      candidatas.push({ registro, id });
     }
 
-    // Duplicados contra la base de datos (mismo documento y misma fecha).
-    let existentes = 0;
-    if (aceptadas.length > 0) {
-      const docs = [...new Set(aceptadas.map((a) => a.documento))].slice(0, 1000);
-      const { data } = await supabase
-        .from(fuente.tabla)
-        .select(`documento, ${fuente.fecha}` as "*")
-        .in("documento", docs);
-      const yaExisten = new Set(
-        ((data ?? []) as unknown as Row[]).map(
-          (r) => `${t(r.documento)}|${(iso(r[fuente.fecha]) ?? "").slice(0, 16)}`,
-        ),
-      );
-      for (const a of aceptadas) {
-        if (yaExisten.has(`${a.documento}|${a[FECHA_CLAVE[modulo]].slice(0, 16)}`)) existentes++;
+    // Índices canónicos contra la base de datos (por módulo, nunca cruzados).
+    let dupBD = 0;
+    let ambiguas = 0;
+    const aceptadas: Record<string, string>[] = [];
+    if (candidatas.length > 0) {
+      const docs = [...new Set(candidatas.map((c) => c.registro.documento))].slice(0, 1000);
+      const { data } = await supabase.from(fuente.tabla).select("*").in("documento", docs);
+      const existentes = mapearModulo(modulo, (data ?? []) as Row[]);
+      const idxExacto = new Map<string, number>();
+      const idxMinuto = new Map<string, number>();
+      for (const e of existentes) {
+        const ie = identidad(modulo, e as unknown as Record<string, unknown>);
+        idxExacto.set(ie.exacta, (idxExacto.get(ie.exacta) ?? 0) + 1);
+        idxMinuto.set(ie.minuto, (idxMinuto.get(ie.minuto) ?? 0) + 1);
       }
-      duplicadas += existentes;
+      for (const c of candidatas) {
+        const estado = clasificar(c.id, idxExacto, idxMinuto);
+        if (estado === "NUEVO") {
+          // El fingerprint viaja server-side hacia la RPC (nunca desde el cliente).
+          aceptadas.push({ ...c.registro, _fp: c.id.exacta });
+          continue;
+        }
+        if (estado === "DUPLICADO_AMBIGUO" || estado === "CONFLICTO_IDENTIDAD") {
+          ambiguas++;
+          errores.push({
+            hoja: def.nombre, fila: 0, columna: "-", encabezado: "IDENTIDAD",
+            valor: enmascarar(c.registro.documento ?? ""), codigo: estado,
+            mensaje:
+              estado === "DUPLICADO_AMBIGUO"
+                ? "Coincide con más de un caso existente: requiere revisión manual."
+                : "Identidad incompleta o contradictoria: no se puede importar.",
+          });
+          continue;
+        }
+        dupBD++;
+      }
     }
+    duplicadas += dupBD;
 
     lote[modulo] = aceptadas;
     resumen.push({
@@ -417,8 +438,10 @@ export async function analizarLote(
       advertencias,
       errores: errores.filter((e) => e.hoja === def.nombre).length,
       duplicadas,
-      nuevas: Math.max(0, aceptadas.length - existentes),
+      ambiguas,
+      nuevas: aceptadas.length,
     });
+
   }
 
   return { ok: errores.length === 0, estructura: [], resumen, errores, lote };
