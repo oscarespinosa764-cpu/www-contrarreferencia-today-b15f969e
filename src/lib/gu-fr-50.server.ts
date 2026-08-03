@@ -9,6 +9,13 @@ import {
   type FilaGuFr50,
   type ModuloGuFr50,
 } from "./gu-fr-50";
+import {
+  CAMPO_FECHA,
+  clasificar,
+  identidad,
+  type Identidad,
+} from "./gu-fr-50-identidad.server";
+
 
 type SB = SupabaseClient<any, any, any>;
 
