@@ -43,7 +43,7 @@ export const exportarGuFr50 = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { consultarModulo } = await import("./gu-fr-50.server");
     const { registrarAuditoriaServer } = await import("./auditoria.server");
-    const filas: Record<string, unknown[]> = {};
+    const filas: Record<string, Record<string, string | number | null>[]> = {};
     let total = 0;
     for (const m of data.modules) {
       const f = await consultarModulo(
@@ -52,7 +52,7 @@ export const exportarGuFr50 = createServerFn({ method: "POST" })
         data.startDate ?? null,
         data.endDate ?? null,
       );
-      filas[m] = f;
+      filas[m] = f as Record<string, string | number | null>[];
       total += f.length;
     }
     await registrarAuditoriaServer(context.userId, {
@@ -128,5 +128,11 @@ export const confirmarImportacionGuFr50 = createServerFn({ method: "POST" })
       }).catch(() => {});
       return { ok: false as const, error: error.message, estructura: [], errores: [] };
     }
-    return { ok: true as const, resultado: res as Record<string, unknown> };
+    const out = (res ?? {}) as { recibidas?: number; insertadas?: number; omitidas?: number };
+    return {
+      ok: true as const,
+      recibidas: Number(out.recibidas ?? 0),
+      insertadas: Number(out.insertadas ?? 0),
+      omitidas: Number(out.omitidas ?? 0),
+    };
   });
