@@ -40,11 +40,21 @@ export interface BuildParams {
   convenciones: ConvencionFila[];
 }
 
-/** Devuelve el XLSX oficial TH-FR-10 diligenciado, en base64. */
-export async function construirCuadroTHFR10(p: BuildParams): Promise<string> {
+/** Decodifica base64 sin depender de Buffer (browser-safe). */
+function base64ABytes(b64: string): Uint8Array {
+  const limpio = b64.replace(/\s+/g, "");
+  const bin = atob(limpio);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/** Devuelve el XLSX oficial TH-FR-10 diligenciado, como bytes. */
+export async function construirCuadroTHFR10(p: BuildParams): Promise<Uint8Array> {
   const wb = new ExcelJS.Workbook();
+  const base = base64ABytes(TH_FR_10_BASE_B64);
   await wb.xlsx.load(
-    Buffer.from(TH_FR_10_BASE_B64, "base64") as unknown as Parameters<typeof wb.xlsx.load>[0],
+    base.buffer.slice(base.byteOffset, base.byteOffset + base.byteLength) as ArrayBuffer,
   );
   const ws = wb.getWorksheet(HOJA);
   if (!ws) throw new Error("PLANTILLA_INVALIDA");
