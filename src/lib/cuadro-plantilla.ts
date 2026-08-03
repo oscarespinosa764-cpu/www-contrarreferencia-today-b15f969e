@@ -125,6 +125,6 @@ export async function construirCuadroTHFR10(p: BuildParams): Promise<Uint8Array>
   if (p.elaboradoNombre) ws.getCell("Q64").value = p.elaboradoNombre;
   if (p.elaboradoCargo) ws.getCell("Q65").value = p.elaboradoCargo;
 
-  const buf = await wb.xlsx.writeBuffer();
-  return Buffer.from(buf).toString("base64");
+  const buf = (await wb.xlsx.writeBuffer()) as ArrayBuffer;
+  return new Uint8Array(buf);
 }
