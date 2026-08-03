@@ -19,20 +19,21 @@ import {
 // Formato OFICIAL TH-FR-10 (plantilla institucional real con logos y estilos)
 // ---------------------------------------------------------------------------
 
-function descargarBase64(b64: string, nombre: string) {
-  const bin = atob(b64);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  const url = URL.createObjectURL(
-    new Blob([bytes], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    }),
-  );
+const XLSX_MIME =
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+/** Descarga bytes XLSX en el navegador (sin Buffer ni APIs de Node). */
+function descargarBytes(bytes: Uint8Array, nombre: string) {
+  const ab = bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  ) as ArrayBuffer;
+  const url = URL.createObjectURL(new Blob([ab], { type: XLSX_MIME }));
   const a = document.createElement("a");
   a.href = url;
   a.download = nombre;
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 interface OficialParams {
