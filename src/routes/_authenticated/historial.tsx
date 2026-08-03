@@ -1210,32 +1210,50 @@ function HistorialPage() {
     return null;
   };
 
+  // Exportación canónica GU-FR-50 (server-authoritative, cuatro hojas).
+  const MODULO_VISTA: Record<string, ModuloGuFr50> = {
+    entrantes: "ENTRANTES",
+    salientes: "SALIENTES",
+    phd: "ATENCION DOMICILIARIA",
+    interna: "REFERENCIAS INTERNAS",
+  };
+
+  const exportarCanonico = async (modules: ModuloGuFr50[], etiqueta: string) => {
+    try {
+      const res = await exportarBitacora({ data: { modules, startDate: null, endDate: null } });
+      if (res.total === 0) {
+        toast.info("No hay registros para exportar.");
+        return;
+      }
+      const { construirLibroGuFr50, descargarXlsx } = await import("@/lib/gu-fr-50");
+      const datos: Partial<Record<ModuloGuFr50, FilaGuFr50[]>> = {};
+      for (const m of modules) datos[m] = (res.filas[m] ?? []) as FilaGuFr50[];
+      descargarXlsx(
+        await construirLibroGuFr50(datos),
+        `GU-FR-50_${etiqueta}_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      );
+      auditar("exportar_excel_seccion", { vista: etiqueta, registros: res.total });
+      toast.success(`Excel GU-FR-50 generado (${res.total} registro(s)).`);
+    } catch (e) {
+      console.error(e);
+      toast.error("No se pudo generar el Excel GU-FR-50.");
+    }
+  };
+
   const exportarVistaActual = () => {
-    const sec = seccionActual();
-    if (!sec || sec.rows.length === 0) {
-      toast.info("No hay registros para exportar.");
+    const m = MODULO_VISTA[vista];
+    if (!m) {
+      toast.info("Esta vista no hace parte de la bitácora GU-FR-50.");
       return;
     }
-    descargarLibro([sec], usuario, filtrosTexto, `historial_${vista}`);
-    auditar("exportar_excel_seccion", { vista, filtros: filtrosTexto, registros: sec.rows.length });
-    toast.success("Excel generado");
+    void exportarCanonico([m], vista);
   };
 
   const exportarTodo = () => {
-    const secciones = [
-      seccionRecibidas(gruposEntrantesExport()),
-      seccionRemisiones(remisionesF as Record<string, unknown>[], segMap),
-      seccionPHD(phdF as Record<string, unknown>[], segMap),
-      seccionInternas(internasF as Record<string, unknown>[], segMap),
-    ];
-    const total = secciones.reduce((s, x) => s + x.rows.length, 0);
-    if (total === 0) {
-      toast.info("No hay registros para exportar.");
-      return;
-    }
-    descargarLibro(secciones, usuario, filtrosTexto, "historial_bitacora_general");
-    auditar("exportar_excel_unificado", { filtros: filtrosTexto, registros: total });
-    toast.success("Excel unificado generado");
+    void exportarCanonico(
+      ["ENTRANTES", "SALIENTES", "ATENCION DOMICILIARIA", "REFERENCIAS INTERNAS"],
+      "bitacora_general",
+    );
   };
 
   // ---- PDF bitácora ----
