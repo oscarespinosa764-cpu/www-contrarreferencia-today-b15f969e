@@ -398,10 +398,10 @@ export async function analizarLote(
       const docs = [...new Set(aceptadas.map((a) => a.documento))].slice(0, 1000);
       const { data } = await supabase
         .from(fuente.tabla)
-        .select(`documento, ${fuente.fecha}`)
+        .select(`documento, ${fuente.fecha}` as "*")
         .in("documento", docs);
       const yaExisten = new Set(
-        ((data ?? []) as Row[]).map(
+        ((data ?? []) as unknown as Row[]).map(
           (r) => `${t(r.documento)}|${(iso(r[fuente.fecha]) ?? "").slice(0, 16)}`,
         ),
       );
