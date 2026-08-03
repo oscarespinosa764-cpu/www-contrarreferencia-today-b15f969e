@@ -228,21 +228,27 @@ export function GuFr50Dialog({
                 <p className="flex items-center gap-1.5 font-semibold">
                   <CheckCircle2 className="h-4 w-4 text-status-green" /> Previsualización (sin escritura)
                 </p>
+                <p className="text-[11px] text-muted-foreground">
+                  La importación sólo inserta casos nuevos: los duplicados se omiten y las filas
+                  ambiguas requieren revisión manual. Nunca actualiza casos existentes.
+                </p>
                 <table className="w-full text-left">
                   <thead className="text-muted-foreground">
-                    <tr><th>Hoja</th><th>Filas</th><th>Válidas</th><th>Errores</th><th>Duplicadas</th><th>Nuevas</th></tr>
+                    <tr><th>Hoja</th><th>Filas</th><th>Nuevas</th><th>Errores</th><th>Duplicadas</th><th>Ambiguas</th></tr>
                   </thead>
                   <tbody>
                     {resumen.map((r) => (
                       <tr key={r.hoja}>
                         <td className="pr-2 font-semibold">{r.hoja}</td>
-                        <td>{r.total}</td><td>{r.validas}</td>
+                        <td>{r.total}</td><td>{r.nuevas}</td>
                         <td className={r.errores ? "text-status-red" : ""}>{r.errores}</td>
-                        <td>{r.duplicadas}</td><td>{r.nuevas}</td>
+                        <td>{r.duplicadas}</td>
+                        <td className={r.ambiguas ? "text-status-amber" : ""}>{r.ambiguas}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+
                 {errores.length > 0 && (
                   <div className="mt-2 max-h-40 overflow-auto rounded-md border border-status-red/30 bg-status-red/5 p-2">
                     <p className="mb-1 font-semibold text-status-red">{errores.length} error(es)</p>
