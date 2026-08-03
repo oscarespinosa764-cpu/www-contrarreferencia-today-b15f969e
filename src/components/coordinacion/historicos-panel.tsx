@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Panel } from "@/components/stat-card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
-import { BarChart3, DatabaseBackup, Loader2, Network, CalendarDays, ClipboardList, CalendarClock } from "lucide-react";
+import { BarChart3, DatabaseBackup, Loader2, Network, CalendarDays, ClipboardList, CalendarClock, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { ImportarDialog } from "./importar-dialog";
 import { ImportarRedDialog } from "./importar-red-dialog";
