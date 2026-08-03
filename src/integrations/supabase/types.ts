@@ -1640,6 +1640,33 @@ export type Database = {
           },
         ]
       }
+      gu_fr_50_import_ledger: {
+        Row: {
+          case_id: string | null
+          created_at: string
+          fingerprint: string
+          id: string
+          import_id: string
+          modulo: string
+        }
+        Insert: {
+          case_id?: string | null
+          created_at?: string
+          fingerprint: string
+          id?: string
+          import_id: string
+          modulo: string
+        }
+        Update: {
+          case_id?: string | null
+          created_at?: string
+          fingerprint?: string
+          id?: string
+          import_id?: string
+          modulo?: string
+        }
+        Relationships: []
+      }
       historial_turnos: {
         Row: {
           created_at: string

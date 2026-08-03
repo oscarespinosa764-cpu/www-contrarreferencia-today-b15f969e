@@ -22,7 +22,7 @@ import {
 
 const MODULOS = HOJAS_GU_FR_50.map((h) => h.nombre as ModuloGuFr50);
 
-type Resumen = { hoja: string; total: number; vacias: number; validas: number; advertencias: number; errores: number; duplicadas: number; nuevas: number };
+type Resumen = { hoja: string; total: number; vacias: number; validas: number; advertencias: number; errores: number; duplicadas: number; ambiguas: number; nuevas: number };
 type ErrFila = { hoja: string; fila: number; columna: string; encabezado: string; valor: string; codigo: string; mensaje: string };
 
 /** Claves de consulta a invalidar tras una importación exitosa. */
@@ -49,6 +49,7 @@ export function GuFr50Dialog({
   const [resumen, setResumen] = useState<Resumen[] | null>(null);
   const [errores, setErrores] = useState<ErrFila[]>([]);
   const [estructura, setEstructura] = useState<string[]>([]);
+  const [okPrevio, setOkPrevio] = useState(false);
   const [validando, setValidando] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
@@ -57,7 +58,7 @@ export function GuFr50Dialog({
   const confirmar = useServerFn(confirmarImportacionGuFr50);
 
   const reset = () => {
-    setArchivo(null); setHojas([]); setResumen(null); setErrores([]); setEstructura([]);
+    setArchivo(null); setHojas([]); setResumen(null); setErrores([]); setEstructura([]); setOkPrevio(false);
     if (inputRef.current) inputRef.current.value = "";
   };
   const cerrar = (v: boolean) => { if (!v) reset(); onOpenChange(v); };
@@ -94,7 +95,7 @@ export function GuFr50Dialog({
   };
 
   const onFile = async (file: File) => {
-    setResumen(null); setErrores([]); setEstructura([]);
+    setResumen(null); setErrores([]); setEstructura([]); setOkPrevio(false);
     if (file.size > 15_000_000) { toast.error("Archivo demasiado grande (máx. 15 MB)."); return; }
     try {
       const wb = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
@@ -119,7 +120,7 @@ export function GuFr50Dialog({
     setValidando(true);
     try {
       const r = await previsualizar({ data: { hojas } });
-      setEstructura(r.estructura); setErrores(r.errores as ErrFila[]); setResumen(r.resumen as Resumen[]);
+      setEstructura(r.estructura); setErrores(r.errores as ErrFila[]); setResumen(r.resumen as Resumen[]); setOkPrevio(r.ok);
       if (r.estructura.length > 0) toast.error("Estructura inválida: el archivo no es la plantilla GU-FR-50.");
     } catch (e) {
       console.error(e);
@@ -133,7 +134,7 @@ export function GuFr50Dialog({
       const r = await confirmar({ data: { hojas } });
       if (!r.ok) { toast.error(r.error ?? "No se pudo importar."); return; }
       CLAVES.forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
-      toast.success(`Importación completada: ${r.insertadas} insertada(s), ${r.omitidas} omitida(s).`);
+      toast.success(`Importación completada: ${r.insertadas} insertada(s), ${r.omitidas} omitida(s), ${r.ambiguas ?? 0} ambigua(s).`);
       cerrar(false);
     } catch (e) {
       console.error(e);
@@ -141,8 +142,8 @@ export function GuFr50Dialog({
     } finally { setGuardando(false); }
   };
 
-  const totalValidas = resumen?.reduce((a, r) => a + r.validas, 0) ?? 0;
-  const puedeImportar = !!resumen && estructura.length === 0 && errores.length === 0 && totalValidas > 0;
+  const totalValidas = resumen?.reduce((a, r) => a + r.nuevas, 0) ?? 0;
+  const puedeImportar = !!resumen && okPrevio && estructura.length === 0 && totalValidas > 0;
 
   return (
     <Dialog open={open} onOpenChange={cerrar}>
@@ -228,21 +229,27 @@ export function GuFr50Dialog({
                 <p className="flex items-center gap-1.5 font-semibold">
                   <CheckCircle2 className="h-4 w-4 text-status-green" /> Previsualización (sin escritura)
                 </p>
+                <p className="text-[11px] text-muted-foreground">
+                  La importación sólo inserta casos nuevos: los duplicados se omiten y las filas
+                  ambiguas requieren revisión manual. Nunca actualiza casos existentes.
+                </p>
                 <table className="w-full text-left">
                   <thead className="text-muted-foreground">
-                    <tr><th>Hoja</th><th>Filas</th><th>Válidas</th><th>Errores</th><th>Duplicadas</th><th>Nuevas</th></tr>
+                    <tr><th>Hoja</th><th>Filas</th><th>Nuevas</th><th>Errores</th><th>Duplicadas</th><th>Ambiguas</th></tr>
                   </thead>
                   <tbody>
                     {resumen.map((r) => (
                       <tr key={r.hoja}>
                         <td className="pr-2 font-semibold">{r.hoja}</td>
-                        <td>{r.total}</td><td>{r.validas}</td>
+                        <td>{r.total}</td><td>{r.nuevas}</td>
                         <td className={r.errores ? "text-status-red" : ""}>{r.errores}</td>
-                        <td>{r.duplicadas}</td><td>{r.nuevas}</td>
+                        <td>{r.duplicadas}</td>
+                        <td className={r.ambiguas ? "text-status-amber" : ""}>{r.ambiguas}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+
                 {errores.length > 0 && (
                   <div className="mt-2 max-h-40 overflow-auto rounded-md border border-status-red/30 bg-status-red/5 p-2">
                     <p className="mb-1 font-semibold text-status-red">{errores.length} error(es)</p>

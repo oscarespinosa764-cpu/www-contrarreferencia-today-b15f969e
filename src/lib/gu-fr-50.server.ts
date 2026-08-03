@@ -1,6 +1,7 @@
 // GU-FR-50 · helpers SERVER-ONLY (mapeo, catálogos, duplicados, parseo).
 // Consume exclusivamente la definición canónica de src/lib/gu-fr-50.ts.
 // Nunca se importa desde el navegador (extensión .server.ts).
+import { createHash } from "crypto";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
@@ -9,6 +10,13 @@ import {
   type FilaGuFr50,
   type ModuloGuFr50,
 } from "./gu-fr-50";
+import {
+  CAMPO_FECHA,
+  clasificar,
+  identidad,
+  type Identidad,
+} from "./gu-fr-50-identidad.server";
+
 
 type SB = SupabaseClient<any, any, any>;
 
@@ -264,6 +272,7 @@ export interface ResumenHoja {
   advertencias: number;
   errores: number;
   duplicadas: number;
+  ambiguas: number;
   nuevas: number;
 }
 
@@ -277,12 +286,8 @@ export interface ResultadoAnalisis {
 
 const enmascarar = (v: string) => (v.length > 24 ? `${v.slice(0, 21)}…` : v);
 
-const FECHA_CLAVE: Record<ModuloGuFr50, string> = {
-  ENTRANTES: "fecha_envio",
-  SALIENTES: "fecha_solicitud",
-  "ATENCION DOMICILIARIA": "fecha_solicitud",
-  "REFERENCIAS INTERNAS": "fecha_solicitud",
-};
+const FECHA_CLAVE = CAMPO_FECHA;
+
 
 /**
  * Valida estructura, tipos, catálogos y duplicados del archivo recibido.
@@ -311,7 +316,8 @@ export async function analizarLote(
     let vacias = 0;
     let advertencias = 0;
     let duplicadas = 0;
-    const aceptadas: Record<string, string>[] = [];
+    const candidatas: { registro: Record<string, string>; id: Identidad }[] = [];
+
     const vistos = new Set<string>();
 
     for (let i = 0; i < cruda.filas.length; i++) {
@@ -383,33 +389,54 @@ export async function analizarLote(
       }
       if (filaConError) continue;
 
-      const clv = `${registro.documento}|${fechaClave.slice(0, 16)}`;
-      if (vistos.has(clv)) {
+      // Identidad canónica (misma función que usará la confirmación).
+      const id = identidad(modulo, registro);
+      if (vistos.has(id.exacta)) {
         duplicadas++;
         continue;
       }
-      vistos.add(clv);
-      aceptadas.push(registro);
+      vistos.add(id.exacta);
+      candidatas.push({ registro, id });
     }
 
-    // Duplicados contra la base de datos (mismo documento y misma fecha).
-    let existentes = 0;
-    if (aceptadas.length > 0) {
-      const docs = [...new Set(aceptadas.map((a) => a.documento))].slice(0, 1000);
-      const { data } = await supabase
-        .from(fuente.tabla)
-        .select(`documento, ${fuente.fecha}` as "*")
-        .in("documento", docs);
-      const yaExisten = new Set(
-        ((data ?? []) as unknown as Row[]).map(
-          (r) => `${t(r.documento)}|${(iso(r[fuente.fecha]) ?? "").slice(0, 16)}`,
-        ),
-      );
-      for (const a of aceptadas) {
-        if (yaExisten.has(`${a.documento}|${a[FECHA_CLAVE[modulo]].slice(0, 16)}`)) existentes++;
+    // Índices canónicos contra la base de datos (por módulo, nunca cruzados).
+    let dupBD = 0;
+    let ambiguas = 0;
+    const aceptadas: Record<string, string>[] = [];
+    if (candidatas.length > 0) {
+      const docs = [...new Set(candidatas.map((c) => c.registro.documento))].slice(0, 1000);
+      const { data } = await supabase.from(fuente.tabla).select("*").in("documento", docs);
+      const existentes = mapearModulo(modulo, (data ?? []) as Row[]);
+      const idxExacto = new Map<string, number>();
+      const idxMinuto = new Map<string, number>();
+      for (const e of existentes) {
+        const ie = identidad(modulo, e as unknown as Record<string, unknown>);
+        idxExacto.set(ie.exacta, (idxExacto.get(ie.exacta) ?? 0) + 1);
+        idxMinuto.set(ie.minuto, (idxMinuto.get(ie.minuto) ?? 0) + 1);
       }
-      duplicadas += existentes;
+      for (const c of candidatas) {
+        const estado = clasificar(c.id, idxExacto, idxMinuto);
+        if (estado === "NUEVO") {
+          // El fingerprint viaja server-side hacia la RPC (nunca desde el cliente).
+          aceptadas.push({ ...c.registro, _fp: c.id.exacta });
+          continue;
+        }
+        if (estado === "DUPLICADO_AMBIGUO" || estado === "CONFLICTO_IDENTIDAD") {
+          ambiguas++;
+          errores.push({
+            hoja: def.nombre, fila: 0, columna: "-", encabezado: "IDENTIDAD",
+            valor: enmascarar(c.registro.documento ?? ""), codigo: estado,
+            mensaje:
+              estado === "DUPLICADO_AMBIGUO"
+                ? "Coincide con más de un caso existente: requiere revisión manual."
+                : "Identidad incompleta o contradictoria: no se puede importar.",
+          });
+          continue;
+        }
+        dupBD++;
+      }
     }
+    duplicadas += dupBD;
 
     lote[modulo] = aceptadas;
     resumen.push({
@@ -420,9 +447,29 @@ export async function analizarLote(
       advertencias,
       errores: errores.filter((e) => e.hoja === def.nombre).length,
       duplicadas,
-      nuevas: Math.max(0, aceptadas.length - existentes),
+      ambiguas,
+      nuevas: aceptadas.length,
     });
+
   }
 
-  return { ok: errores.length === 0, estructura: [], resumen, errores, lote };
+  // Las filas ambiguas no se importan, pero tampoco bloquean el resto del lote.
+  const BLOQUEA = (c: string) => c !== "DUPLICADO_AMBIGUO" && c !== "CONFLICTO_IDENTIDAD";
+  return {
+    ok: errores.filter((e) => BLOQUEA(e.codigo)).length === 0,
+    estructura: [],
+    resumen,
+    errores,
+    lote,
+  };
+
+}
+
+/** Huella determinística del lote validado (trazabilidad de auditoría). */
+export function huellaLote(lote: Partial<Record<ModuloGuFr50, Record<string, string>[]>>): string {
+  const partes: string[] = [];
+  for (const m of MODULOS) {
+    for (const r of lote[m] ?? []) partes.push(`${m}:${r._fp ?? ""}`);
+  }
+  return createHash("sha256").update(partes.sort().join("\u001f"), "utf8").digest("hex");
 }
