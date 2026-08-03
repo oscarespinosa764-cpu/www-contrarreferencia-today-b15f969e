@@ -121,9 +121,37 @@ export function HistoricosPanel() {
     <div className="space-y-5">
       <Panel title="Importaciones / exportaciones" action={<AdminBadge />}>
         <div className="space-y-5">
+          {/* Plantilla canónica GU-FR-50 (cuatro hojas) */}
+          <div>
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Bitácora GU-FR-50 · plantilla canónica
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <Button
+                variant="outline"
+                disabled={plantillaCargando}
+                className="h-auto justify-start gap-2 whitespace-normal rounded-xl py-3 text-left text-sm font-semibold"
+                onClick={descargarPlantilla}
+              >
+                {plantillaCargando ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                ) : (
+                  <FileSpreadsheet className="h-4 w-4 text-primary" />
+                )}
+                <span>Descargar plantilla GU-FR-50 (4 hojas)</span>
+              </Button>
+            </div>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              ENTRANTES · SALIENTES · ATENCION DOMICILIARIA · REFERENCIAS INTERNAS.
+              Encabezados en la fila 2 y datos desde la fila 3. Los catálogos se validan
+              contra la base de datos, no contra el Excel.
+            </p>
+          </div>
+
           {grupos.slice(0, 1).map((g) => (
             <GrupoBotones key={g.titulo} g={g} onSelect={setActivo} />
           ))}
+
 
           {/* Red y disponibilidad: importación por archivo + exportación de datos */}
           <div>
