@@ -786,7 +786,7 @@ function HistorialPage() {
 
   const listadoInput = useMemo<HistorialQueryInput>(
     () => ({
-      module: MODULO_CANONICO[vista],
+      module: MODULO_CANONICO[vista] ?? "ENTRANTES",
       periodMode: filtroPeriodo.periodMode ?? "ALL",
       year: filtroPeriodo.year ?? null,
       month: filtroPeriodo.month ?? null,
