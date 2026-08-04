@@ -308,17 +308,3 @@ function buildWorksheet(sec: Seccion, usuario: string, filtros: string): XLSX.Wo
   return ws;
 }
 
-export function descargarLibro(secciones: Seccion[], usuario: string, filtros: string, nombreArchivo: string): void {
-  const wb = XLSX.utils.book_new();
-  for (const sec of secciones) {
-    if (sec.rows.length === 0) continue;
-    const ws = buildWorksheet(sec, usuario, filtros);
-    XLSX.utils.book_append_sheet(wb, ws, sec.sheet.slice(0, 31));
-  }
-  if (wb.SheetNames.length === 0) {
-    // Hoja vacía para evitar libro inválido
-    const ws = buildWorksheet({ sheet: "SIN DATOS", headers: ["Sin registros"], rows: [] }, usuario, filtros);
-    XLSX.utils.book_append_sheet(wb, ws, "SIN DATOS");
-  }
-  XLSX.writeFile(wb, `${nombreArchivo}_${new Date().toISOString().slice(0, 10)}.xlsx`);
-}
