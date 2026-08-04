@@ -1074,10 +1074,26 @@ function HistorialPage() {
       return campos(r).toLowerCase().includes(term);
     });
 
+  // El subtipo de Atención Domiciliaria usa exactamente los mismos valores
+  // canónicos que aplica el servidor al exportar (allowlist PHD/PAD/O2/ESPECIALES).
+  const SUBTIPO_AD_VALORES: Record<string, string[]> = {
+    PHD: ["PHD"],
+    PAD: ["PAD"],
+    O2: ["O2", "OXIGENO"],
+    ESPECIALES: ["ESPECIAL", "ESPECIALES"],
+  };
   const phdF = useMemo(
-    () => filtraGenerico(phdDatos, (r) => `${v(r.paciente)} ${v(r.documento)} ${v(r.tipo_solicitud)} ${v(r.eapb)} ${v(r.codigo_radicacion)}`),
+    () =>
+      filtraGenerico(
+        subtipoAD === "TODOS"
+          ? phdDatos
+          : phdDatos.filter((r) =>
+              (SUBTIPO_AD_VALORES[subtipoAD] ?? []).includes(v(r.tipo_solicitud).toUpperCase()),
+            ),
+        (r) => `${v(r.paciente)} ${v(r.documento)} ${v(r.tipo_solicitud)} ${v(r.eapb)} ${v(r.codigo_radicacion)}`,
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [phdDatos, genTipo, periodo, fechaEspecifica, term, servicio],
+    [phdDatos, genTipo, periodo, fechaEspecifica, term, servicio, subtipoAD],
   );
   const internasF = useMemo(
     () => filtraGenerico(internasDatos, (r) => `${v(r.paciente)} ${v(r.documento)} ${v(r.tipo_solicitud)} ${v(r.servicio)} ${v(r.eapb)}`),
