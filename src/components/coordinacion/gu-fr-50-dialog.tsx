@@ -13,7 +13,7 @@ import {
 import { Upload, Download, FileSpreadsheet, Loader2, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  construirLibroGuFr50, descargarXlsx, HOJAS_GU_FR_50, GU_FR_50,
+  construirLibroGuFr50, descargarXlsx, nombreArchivoGuFr50, HOJAS_GU_FR_50, GU_FR_50,
   type FilaGuFr50, type ModuloGuFr50,
 } from "@/lib/gu-fr-50";
 import {
@@ -66,10 +66,11 @@ export function GuFr50Dialog({
   const toggle = (m: ModuloGuFr50) =>
     setSel((s) => (s.includes(m) ? s.filter((x) => x !== m) : [...s, m]));
 
-  const rango = () => ({
-    startDate: desde ? new Date(`${desde}T00:00:00`).toISOString() : null,
-    endDate: hasta ? new Date(`${hasta}T23:59:59`).toISOString() : null,
-  });
+  // Sólo fechas puras: el servidor resuelve el rango real (America/Bogota).
+  const rango = () =>
+    desde && hasta
+      ? { periodMode: "RANGE" as const, startDate: desde, endDate: hasta }
+      : { periodMode: "ALL" as const };
 
   const descargarPlantilla = async () => {
     try {
@@ -82,11 +83,23 @@ export function GuFr50Dialog({
     if (sel.length === 0) { toast.info("Selecciona al menos un módulo."); return; }
     setExportando(true);
     try {
-      const res = await exportar({ data: { modules: sel, ...rango() } });
+      const res = await exportar({
+        data: { scope: sel.length === 1 ? "INDIVIDUAL" : "GENERAL", modules: sel, ...rango() },
+      });
       const datos: Partial<Record<ModuloGuFr50, FilaGuFr50[]>> = {};
       for (const m of sel) datos[m] = (res.filas[m] ?? []) as FilaGuFr50[];
-      const bytes = await construirLibroGuFr50(datos);
-      descargarXlsx(bytes, `GU-FR-50_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      const bytes = await construirLibroGuFr50(
+        datos,
+        sel.length === 1 ? { soloHoja: sel[0] } : {},
+      );
+      descargarXlsx(
+        bytes,
+        nombreArchivoGuFr50({
+          scope: sel.length === 1 ? "INDIVIDUAL" : "GENERAL",
+          modulo: sel[0],
+          sufijoFecha: res.rango.fileSuffix,
+        }),
+      );
       toast.success(`Exportación GU-FR-50: ${res.total} registro(s).`);
     } catch (e) {
       console.error(e);

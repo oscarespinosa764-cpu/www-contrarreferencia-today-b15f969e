@@ -239,9 +239,11 @@ export function validarEstructuraGuFr50(
   const errores: string[] = [];
   const encontradas = hojas.map((h) => h.nombre.trim());
 
-  if (hojas.length !== 4) {
+  // Variante GENERAL: las cuatro hojas en orden. Variante INDIVIDUAL: una
+  // sola hoja canónica (exportación puntual de un módulo).
+  if (hojas.length !== 4 && hojas.length !== 1) {
     errores.push(
-      `El archivo debe tener exactamente 4 hojas (${NOMBRES_HOJAS.join(", ")}). Encontradas: ${hojas.length}.`,
+      `El archivo debe tener las 4 hojas (${NOMBRES_HOJAS.join(", ")}) o una sola hoja canónica. Encontradas: ${hojas.length}.`,
     );
   }
   for (const nombre of encontradas) {
@@ -253,7 +255,11 @@ export function validarEstructuraGuFr50(
       );
     }
   }
-  HOJAS_GU_FR_50.forEach((def, i) => {
+  const definiciones =
+    hojas.length === 1
+      ? HOJAS_GU_FR_50.filter((d) => d.nombre === encontradas[0])
+      : HOJAS_GU_FR_50;
+  definiciones.forEach((def, i) => {
     const hoja = hojas[i];
     if (!hoja) {
       errores.push(`Falta la hoja "${def.nombre}" en la posición ${i + 1}.`);
@@ -303,6 +309,7 @@ export type FilaGuFr50 = Record<string, string | number | Date | null | undefine
  */
 export async function construirLibroGuFr50(
   datos: Partial<Record<ModuloGuFr50, FilaGuFr50[]>> = {},
+  opciones: { soloHoja?: ModuloGuFr50 } = {},
 ): Promise<Uint8Array> {
   const ExcelJS = (await import("exceljs")).default;
   const resp = await fetch(GU_FR_50.url);
@@ -313,6 +320,7 @@ export async function construirLibroGuFr50(
   await wb.xlsx.load(base);
 
   for (const def of HOJAS_GU_FR_50) {
+
     const ws = wb.getWorksheet(def.nombre);
     if (!ws) throw new Error(`PLANTILLA_INVALIDA: falta la hoja ${def.nombre}`);
 
@@ -352,7 +360,18 @@ export async function construirLibroGuFr50(
     });
   }
 
+  // Variante INDIVIDUAL: se conserva únicamente la hoja canónica del módulo
+  // (mismos encabezados, estilos y configuración de impresión oficiales).
+  if (opciones.soloHoja) {
+    for (const def of HOJAS_GU_FR_50) {
+      if (def.nombre === opciones.soloHoja) continue;
+      const ws = wb.getWorksheet(def.nombre);
+      if (ws) wb.removeWorksheet(ws.id);
+    }
+  }
+
   const buf = (await wb.xlsx.writeBuffer()) as ArrayBuffer;
+
   return new Uint8Array(buf);
 }
 
@@ -360,4 +379,22 @@ export async function construirLibroGuFr50(
 export async function descargarPlantillaGuFr50() {
   const bytes = await construirLibroGuFr50({});
   descargarXlsx(bytes, GU_FR_50.archivo);
+}
+
+/** Nombre canónico del archivo exportado (GENERAL o INDIVIDUAL). */
+export function nombreArchivoGuFr50(opts: {
+  scope: "GENERAL" | "INDIVIDUAL";
+  modulo?: ModuloGuFr50;
+  subtipo?: string | null;
+  sufijoFecha: string;
+}): string {
+  const limpio = (s: string) =>
+    s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]+/g, "_")
+      .replace(/^_|_$/g, "").toUpperCase();
+  if (opts.scope === "GENERAL") {
+    return `GU-FR-50_GENERAL_${opts.sufijoFecha}.xlsx`;
+  }
+  const base = limpio(opts.modulo ?? "");
+  const sub = opts.subtipo ? `_${limpio(opts.subtipo)}` : "";
+  return `GU-FR-50_${base}${sub}_${opts.sufijoFecha}.xlsx`;
 }

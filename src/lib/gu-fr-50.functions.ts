@@ -14,13 +14,25 @@ const MODULOS = [
 
 const esquemaExport = z
   .object({
+    /** GENERAL = las cuatro hojas; INDIVIDUAL = una sola hoja canónica. */
+    scope: z.enum(["GENERAL", "INDIVIDUAL"]).default("GENERAL"),
     modules: z.array(z.enum(MODULOS)).min(1).max(4),
-    startDate: z.string().datetime().nullable().optional(),
-    endDate: z.string().datetime().nullable().optional(),
+    /** Subtipo funcional (sólo ATENCION DOMICILIARIA: PHD/PAD/O2/ESPECIAL). */
+    subtype: z.string().max(40).nullable().optional(),
+    periodMode: z
+      .enum(["ALL", "TODAY", "THIS_WEEK", "THIS_MONTH", "PREVIOUS_MONTH", "MONTH", "RANGE"])
+      .default("ALL"),
+    year: z.number().int().min(2000).max(2100).nullable().optional(),
+    month: z.number().int().min(1).max(12).nullable().optional(),
+    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
     // Allowlist de casos concretos (exportación puntual desde Historial).
     casoIds: z.array(z.string().uuid()).max(50).nullable().optional(),
   })
-  .strict();
+  .strict()
+  .refine((d) => d.scope !== "INDIVIDUAL" || d.modules.length === 1, {
+    message: "La exportación individual admite exactamente un módulo.",
+  });
 
 const esquemaHojas = z
   .object({
@@ -34,27 +46,41 @@ const esquemaHojas = z
           })
           .strict(),
       )
+      .min(1)
       .max(8),
   })
   .strict();
 
-/** Exportación server-authoritative: datos y permisos resueltos en servidor. */
+/** Exportación server-authoritative: datos, periodo y permisos en servidor. */
 export const exportarGuFr50 = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => esquemaExport.parse(d))
   .handler(async ({ data, context }) => {
     const { consultarModulo } = await import("./gu-fr-50.server");
+    const { resolverFiltroTemporalHistorial } = await import("./historial-filtro");
     const { registrarAuditoriaServer } = await import("./auditoria.server");
+    // El periodo SIEMPRE se resuelve con el reloj del servidor (America/Bogota).
+    const rango = resolverFiltroTemporalHistorial(
+      {
+        periodMode: data.periodMode,
+        year: data.year ?? null,
+        month: data.month ?? null,
+        startDate: data.startDate ?? null,
+        endDate: data.endDate ?? null,
+      },
+      new Date(),
+    );
     const filas: Record<string, Record<string, string | number | null>[]> = {};
     let total = 0;
     for (const m of data.modules) {
       const f = await consultarModulo(
         context.supabase,
         m,
-        data.startDate ?? null,
-        data.endDate ?? null,
+        rango.startAt,
+        rango.endExclusive,
         5000,
         data.casoIds ?? null,
+        data.subtype ?? null,
       );
       filas[m] = f as Record<string, string | number | null>[];
       total += f.length;
@@ -66,12 +92,16 @@ export const exportarGuFr50 = createServerFn({ method: "POST" })
       detalles: {
         plantilla: "GU-FR-50",
         version: "02",
+        alcance: data.scope,
         modulos: data.modules.join(", "),
+        periodo: rango.label,
+        corte: rango.cutoffAt,
         filas: total,
       },
     }).catch(() => {});
-    return { ok: true as const, filas, total };
+    return { ok: true as const, filas, total, rango };
   });
+
 
 /** Previsualización: valida estructura, catálogos y duplicados. No escribe. */
 export const previsualizarImportacionGuFr50 = createServerFn({ method: "POST" })

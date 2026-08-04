@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
@@ -13,6 +13,12 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { FiltersBar } from "@/components/filters/filters-bar";
+import {
+  resolverFiltroTemporalHistorial,
+  TAMANOS_PAGINA,
+  type HistorialFilterInput,
+  type ModoPeriodo,
+} from "@/lib/historial-filtro";
 import {
   Dialog,
   DialogContent,
@@ -231,6 +237,19 @@ const GEN_LABEL: Record<GenFilter, string> = {
 const PERIODOS = ["Todos", "Hoy", "Esta semana", "Este mes", "Mes anterior"] as const;
 type Periodo = (typeof PERIODOS)[number];
 
+/** Cada chip rápido corresponde a un modo canónico del filtro compartido. */
+const MODO_CHIP: Record<Periodo, ModoPeriodo> = {
+  Todos: "ALL",
+  Hoy: "TODAY",
+  "Esta semana": "THIS_WEEK",
+  "Este mes": "THIS_MONTH",
+  "Mes anterior": "PREVIOUS_MONTH",
+};
+
+const ymd = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+
 const VISTAS: { key: Vista; label: string; icon: typeof Home; color: string }[] = [
   { key: "entrantes", label: "Entrantes", icon: ArrowDownLeft, color: "bg-status-green" },
   { key: "salientes", label: "Salientes", icon: ArrowUpRight, color: "bg-status-teal" },
@@ -422,55 +441,11 @@ function mismoDia(raw: string | null, day: Date): boolean {
   );
 }
 
-function dentroPeriodo(raw: string | null, periodo: Periodo): boolean {
-  if (periodo === "Todos") return true;
-  if (!raw) return false;
-  const d = new Date(raw);
-  if (isNaN(d.getTime())) return false;
-  const now = new Date();
-  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (periodo === "Hoy") return d >= startToday;
-  if (periodo === "Esta semana") {
-    const ws = new Date(startToday);
-    ws.setDate(ws.getDate() - ((ws.getDay() + 6) % 7));
-    return d >= ws;
-  }
-  if (periodo === "Este mes") return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-  if (periodo === "Mes anterior") {
-    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    return d.getFullYear() === prev.getFullYear() && d.getMonth() === prev.getMonth();
-  }
-  return true;
-}
+// El filtro temporal ya NO se calcula aquí: la resolución canónica vive en
+// src/lib/historial-filtro.ts (America/Bogota) y es la misma que usa el
+// servidor para la exportación GU-FR-50.
 
-// Rango de fechas (ISO) equivalente al filtro cliente `pasaPeriodo`, para
-// aplicar server-side sobre `created_at` y evitar los topes de 1000/5000.
-function periodoRange(periodo: Periodo, fecha?: Date): { start?: string; end?: string } {
-  if (fecha) {
-    const s = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
-    const e = new Date(s); e.setDate(e.getDate() + 1);
-    return { start: s.toISOString(), end: e.toISOString() };
-  }
-  if (periodo === "Todos") return {};
-  const now = new Date();
-  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (periodo === "Hoy") return { start: startToday.toISOString() };
-  if (periodo === "Esta semana") {
-    const ws = new Date(startToday);
-    ws.setDate(ws.getDate() - ((ws.getDay() + 6) % 7));
-    return { start: ws.toISOString() };
-  }
-  if (periodo === "Este mes") {
-    const s = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { start: s.toISOString() };
-  }
-  if (periodo === "Mes anterior") {
-    const s = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const e = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { start: s.toISOString(), end: e.toISOString() };
-  }
-  return {};
-}
+
 
 const docBuscableServer = (doc: string): boolean =>
   doc.length >= 4 && /^\d+$/.test(doc);
@@ -720,14 +695,64 @@ function HistorialPage() {
   // Estado inicial: barra "Últimos 10 casos" plegable + secuencia de caso desplegable.
   const [u10Abierto, setU10Abierto] = useState(false);
   const [casoExpandido, setCasoExpandido] = useState<string | null>(null);
-  const [limite, setLimite] = useState(20);
+  // Paginación real (no recorte visual).
+  const [pagina, setPagina] = useState(1);
+  const [tamanoPagina, setTamanoPagina] = useState<number>(25);
+  // Mes específico y rango personalizado (fechas puras YYYY-MM-DD).
+  const [mesEsp, setMesEsp] = useState<{ year: number; month: number } | null>(null);
+  const [rangoIni, setRangoIni] = useState("");
+  const [rangoFin, setRangoFin] = useState("");
+  const [errorPeriodo, setErrorPeriodo] = useState("");
 
-  // Rango del período/fecha específica y documento normalizado, usados como
-  // filtros server-side para no depender del cap de 1000/5000 registros.
-  const { start: rangoStart, end: rangoEnd } = useMemo(
-    () => periodoRange(periodo, fechaEspecifica),
-    [periodo, fechaEspecifica],
-  );
+  // Filtro temporal canónico (mismo resolver que usa el servidor al exportar).
+  const filtroPeriodo = useMemo<HistorialFilterInput>(() => {
+    if (fechaEspecifica) {
+      const d = ymd(fechaEspecifica);
+      return { module: "GENERAL", periodMode: "RANGE", startDate: d, endDate: d };
+    }
+    if (rangoIni && rangoFin) {
+      return { module: "GENERAL", periodMode: "RANGE", startDate: rangoIni, endDate: rangoFin };
+    }
+    if (mesEsp) {
+      return { module: "GENERAL", periodMode: "MONTH", year: mesEsp.year, month: mesEsp.month };
+    }
+    return { module: "GENERAL", periodMode: MODO_CHIP[periodo] };
+  }, [fechaEspecifica, rangoIni, rangoFin, mesEsp, periodo]);
+
+  const temporal = useMemo(() => {
+    try {
+      const r = resolverFiltroTemporalHistorial({
+        periodMode: filtroPeriodo.periodMode ?? "ALL",
+        year: filtroPeriodo.year ?? null,
+        month: filtroPeriodo.month ?? null,
+        startDate: filtroPeriodo.startDate ?? null,
+        endDate: filtroPeriodo.endDate ?? null,
+      });
+      return { ...r, error: "" };
+    } catch (e) {
+      return {
+        ...resolverFiltroTemporalHistorial({ periodMode: "ALL" }),
+        error: e instanceof Error ? e.message : "Periodo inválido.",
+      };
+    }
+  }, [filtroPeriodo]);
+
+  // Prefiltro server-side sobre created_at con holgura: el filtro real por
+  // fecha funcional (fecha / fecha_inicio) se aplica luego con `pasaPeriodo`,
+  // de modo que ningún caso quede fuera por diferencia entre ambas fechas.
+  const HOLGURA_MS = 3 * 24 * 60 * 60 * 1000;
+  const rangoStart = temporal.startAt
+    ? new Date(new Date(temporal.startAt).getTime() - HOLGURA_MS).toISOString()
+    : undefined;
+  const rangoEnd = temporal.endExclusive
+    ? new Date(new Date(temporal.endExclusive).getTime() + HOLGURA_MS).toISOString()
+    : undefined;
+
+  // Cualquier cambio de filtro devuelve el listado a la primera página.
+  useEffect(() => {
+    setPagina(1);
+  }, [vista, tipo, salTipo, genTipo, periodo, fechaEspecifica, mesEsp, rangoIni, rangoFin, docBusca, tamanoPagina]);
+
   const docTrimEarly = docBusca.trim();
   const docServer = docBuscableServer(docTrimEarly) ? docTrimEarly : "";
 
@@ -939,10 +964,21 @@ function HistorialPage() {
     genTipo !== "TODOS" ||
     periodo !== "Todos" ||
     !!fechaEspecifica ||
+    !!mesEsp ||
+    (!!rangoIni && !!rangoFin) ||
     servicioActivo;
 
-  const pasaPeriodo = (raw: string | null) =>
-    fechaEspecifica ? mismoDia(raw, fechaEspecifica) : dentroPeriodo(raw, periodo);
+  // Un registro entra al periodo cuando su fecha funcional cae en el rango
+  // canónico [startAt, endExclusive) resuelto en America/Bogota.
+  const pasaPeriodo = (raw: string | null) => {
+    if (!temporal.startAt && !temporal.endExclusive) return true;
+    if (!raw) return false;
+    const t = new Date(raw).getTime();
+    if (Number.isNaN(t)) return false;
+    if (temporal.startAt && t < new Date(temporal.startAt).getTime()) return false;
+    if (temporal.endExclusive && t >= new Date(temporal.endExclusive).getTime()) return false;
+    return true;
+  };
 
   // Índice de pacientes (para la búsqueda avanzada por nombre/apellido).
   const pacientesIndex = useMemo<PacienteIndex[]>(() => {
@@ -980,7 +1016,11 @@ function HistorialPage() {
     setGenTipo("TODOS");
     setPeriodo("Todos");
     setFechaEspecifica(undefined);
-    setLimite(20);
+    setMesEsp(null);
+    setRangoIni("");
+    setRangoFin("");
+    setErrorPeriodo("");
+    setPagina(1);
     setU10Abierto(false);
     setCasoExpandido(null);
   };
@@ -1046,21 +1086,24 @@ function HistorialPage() {
     [pendientes, genTipo, periodo, fechaEspecifica, term, servicio],
   );
 
-  // Listas visibles: sin búsqueda activa, sólo los últimos `limite` (20 por
-  // defecto) con botón VER MÁS; con búsqueda activa se muestran todos los
-  // resultados reales.
-  const cap = <T,>(arr: T[]): T[] => (busquedaActiva ? arr : arr.slice(0, limite));
-  const gruposV = cap(gruposF);
-  const remisionesV = cap(remisionesF);
-  const phdV = cap(phdF);
-  const internasV = cap(internasF);
+  // Paginación real: se recorre TODO el conjunto filtrado, página por página.
   const fullLen =
     vista === "entrantes" ? gruposF.length
     : vista === "salientes" ? remisionesF.length
     : vista === "phd" ? phdF.length
     : vista === "interna" ? internasF.length
     : pendientesF.length;
-  const hayMas = !busquedaActiva && fullLen > limite;
+  const totalPaginas = Math.max(1, Math.ceil(fullLen / tamanoPagina));
+  const paginaActual = Math.min(pagina, totalPaginas);
+  const desdeIdx = (paginaActual - 1) * tamanoPagina;
+  const pag = <T,>(arr: T[]): T[] => arr.slice(desdeIdx, desdeIdx + tamanoPagina);
+  const gruposV = pag(gruposF);
+  const remisionesV = pag(remisionesF);
+  const phdV = pag(phdF);
+  const internasV = pag(internasF);
+  const rangoVisible = fullLen === 0
+    ? "0 de 0"
+    : `${desdeIdx + 1}–${Math.min(desdeIdx + tamanoPagina, fullLen)} de ${fullLen}`;
 
   const mensajeVacio = !busquedaActiva
     ? "NO HAY CASOS REGISTRADOS EN ESTA CATEGORÍA."
@@ -1109,9 +1152,7 @@ function HistorialPage() {
       });
   }, [vista, casos, historicosEntrantes, remisiones]);
 
-  const periodoLabel = fechaEspecifica
-    ? `${pad(fechaEspecifica.getDate())}/${pad(fechaEspecifica.getMonth() + 1)}/${fechaEspecifica.getFullYear()}`
-    : periodo;
+  const periodoLabel = temporal.label;
 
   const filtroCasoLabel =
     vista === "entrantes" ? TIPO_LABEL[tipo] : vista === "salientes" ? SAL_LABEL[salTipo] : GEN_LABEL[genTipo];
@@ -1209,21 +1250,55 @@ function HistorialPage() {
     interna: "REFERENCIAS INTERNAS",
   };
 
-  const exportarCanonico = async (modules: ModuloGuFr50[], etiqueta: string) => {
+  // El periodo NO se envía resuelto: se envía el modo y el servidor resuelve
+  // el rango real (America/Bogota) con su propio reloj.
+  const periodoDTO = () => ({
+    periodMode: filtroPeriodo.periodMode ?? "ALL",
+    year: filtroPeriodo.year ?? null,
+    month: filtroPeriodo.month ?? null,
+    startDate: filtroPeriodo.startDate ?? null,
+    endDate: filtroPeriodo.endDate ?? null,
+  });
+
+  const exportarCanonico = async (
+    modules: ModuloGuFr50[],
+    etiqueta: string,
+    scope: "GENERAL" | "INDIVIDUAL",
+  ) => {
+    if (temporal.error || errorPeriodo) {
+      toast.error(temporal.error || errorPeriodo);
+      return;
+    }
     try {
-      const res = await exportarBitacora({ data: { modules, startDate: null, endDate: null } });
+      const res = await exportarBitacora({
+        data: { scope, modules, ...periodoDTO() },
+      });
       if (res.total === 0) {
-        toast.info("No hay registros para exportar.");
+        toast.info(`No hay registros en el período seleccionado (${res.rango.label}).`);
         return;
       }
-      const { construirLibroGuFr50, descargarXlsx } = await import("@/lib/gu-fr-50");
+      const { construirLibroGuFr50, descargarXlsx, nombreArchivoGuFr50 } =
+        await import("@/lib/gu-fr-50");
       const datos: Partial<Record<ModuloGuFr50, FilaGuFr50[]>> = {};
       for (const m of modules) datos[m] = (res.filas[m] ?? []) as FilaGuFr50[];
-      descargarXlsx(
-        await construirLibroGuFr50(datos),
-        `GU-FR-50_${etiqueta}_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      const bytes = await construirLibroGuFr50(
+        datos,
+        scope === "INDIVIDUAL" ? { soloHoja: modules[0] } : {},
       );
-      auditar("exportar_excel_seccion", { vista: etiqueta, registros: res.total });
+      descargarXlsx(
+        bytes,
+        nombreArchivoGuFr50({
+          scope,
+          modulo: modules[0],
+          sufijoFecha: res.rango.fileSuffix,
+        }),
+      );
+      auditar("exportar_excel_seccion", {
+        vista: etiqueta,
+        alcance: scope,
+        periodo: res.rango.label,
+        registros: res.total,
+      });
       toast.success(`Excel GU-FR-50 generado (${res.total} registro(s)).`);
     } catch (e) {
       console.error(e);
@@ -1237,13 +1312,14 @@ function HistorialPage() {
       toast.info("Esta vista no hace parte de la bitácora GU-FR-50.");
       return;
     }
-    void exportarCanonico([m], vista);
+    void exportarCanonico([m], vista, "INDIVIDUAL");
   };
 
   const exportarTodo = () => {
     void exportarCanonico(
       ["ENTRANTES", "SALIENTES", "ATENCION DOMICILIARIA", "REFERENCIAS INTERNAS"],
       "bitacora_general",
+      "GENERAL",
     );
   };
 
@@ -1617,7 +1693,7 @@ function HistorialPage() {
     void (async () => {
       try {
         const res = await exportarBitacora({
-          data: { modules: [modulo], startDate: null, endDate: null, casoIds: [c.casoId] },
+          data: { scope: "INDIVIDUAL", modules: [modulo], periodMode: "ALL", casoIds: [c.casoId] },
         });
         if (res.total === 0) {
           toast.info("No fue posible localizar el caso para exportar.");
@@ -1628,7 +1704,7 @@ function HistorialPage() {
           [modulo]: (res.filas[modulo] ?? []) as FilaGuFr50[],
         };
         const nombre = `GU-FR-50_caso_${(c.referencia || c.casoId).replace(/[^\w\-]+/g, "_")}`;
-        descargarXlsx(await construirLibroGuFr50(datos), `${nombre}.xlsx`);
+        descargarXlsx(await construirLibroGuFr50(datos, { soloHoja: modulo }), `${nombre}.xlsx`);
         auditar("exportar_excel_caso", { caso: c.casoId, tabla: c.tabla, vista: c.vista });
         toast.success("Excel GU-FR-50 del caso generado");
       } catch (e) {
@@ -1659,6 +1735,10 @@ function HistorialPage() {
   const setQuickPeriodo = (p: Periodo) => {
     setPeriodo(p);
     setFechaEspecifica(undefined);
+    setMesEsp(null);
+    setRangoIni("");
+    setRangoFin("");
+    setErrorPeriodo("");
   };
 
   const tituloVista = VISTAS.find((x) => x.key === vista)?.label ?? "";
@@ -1680,7 +1760,7 @@ function HistorialPage() {
                   key={vw.key}
                   onClick={() => {
                     setVista(vw.key);
-                    setLimite(20);
+                    setPagina(1);
                     setCasoExpandido(null);
                   }}
                   className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
@@ -1733,7 +1813,7 @@ function HistorialPage() {
                       return;
                     }
                     setDocBusca(doc);
-                    setLimite(20);
+                    setPagina(1);
                     setCasoExpandido(null);
                   }}
                 />
@@ -1751,7 +1831,7 @@ function HistorialPage() {
                       return;
                     }
                     setDocBusca(doc);
-                    setLimite(20);
+                    setPagina(1);
                     setCasoExpandido(null);
                   }}
                 >
@@ -1858,6 +1938,72 @@ function HistorialPage() {
                             </button>
                           ))}
                         </div>
+                        <div className="mt-2 space-y-2 border-t pt-2">
+                          <div>
+                            <p className="px-1 pb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                              Mes específico
+                            </p>
+                            <input
+                              type="month"
+                              value={mesEsp ? `${mesEsp.year}-${String(mesEsp.month).padStart(2, "0")}` : ""}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setErrorPeriodo("");
+                                if (!val) { setMesEsp(null); return; }
+                                const [y, m] = val.split("-").map(Number);
+                                const hoy = new Date();
+                                if (y > hoy.getFullYear() || (y === hoy.getFullYear() && m > hoy.getMonth() + 1)) {
+                                  setErrorPeriodo("El mes seleccionado es futuro.");
+                                  return;
+                                }
+                                setMesEsp({ year: y, month: m });
+                                setPeriodo("Todos");
+                                setFechaEspecifica(undefined);
+                                setRangoIni("");
+                                setRangoFin("");
+                              }}
+                              className="w-full rounded-md border border-border bg-card px-2 py-1 text-[11px]"
+                            />
+                          </div>
+                          <div>
+                            <p className="px-1 pb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                              Rango personalizado
+                            </p>
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="date"
+                                value={rangoIni}
+                                onChange={(e) => {
+                                  setErrorPeriodo("");
+                                  setRangoIni(e.target.value);
+                                  if (e.target.value) { setPeriodo("Todos"); setFechaEspecifica(undefined); setMesEsp(null); }
+                                  if (rangoFin && e.target.value > rangoFin) setErrorPeriodo("La fecha inicial no puede ser posterior a la final.");
+                                }}
+                                className="w-full rounded-md border border-border bg-card px-2 py-1 text-[11px]"
+                              />
+                              <span className="text-[10px] text-muted-foreground">a</span>
+                              <input
+                                type="date"
+                                value={rangoFin}
+                                onChange={(e) => {
+                                  setErrorPeriodo("");
+                                  setRangoFin(e.target.value);
+                                  if (e.target.value) { setPeriodo("Todos"); setFechaEspecifica(undefined); setMesEsp(null); }
+                                  if (rangoIni && rangoIni > e.target.value) setErrorPeriodo("La fecha inicial no puede ser posterior a la final.");
+                                }}
+                                className="w-full rounded-md border border-border bg-card px-2 py-1 text-[11px]"
+                              />
+                            </div>
+                          </div>
+                          {(errorPeriodo || temporal.error) && (
+                            <p className="px-1 text-[10px] font-semibold text-destructive">
+                              {errorPeriodo || temporal.error}
+                            </p>
+                          )}
+                          <p className="px-1 text-[10px] font-semibold text-muted-foreground">
+                            Período aplicado: {temporal.label}
+                          </p>
+                        </div>
                         <div className="mt-2 border-t pt-1">
                           <p className="px-1 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                             O elige una fecha
@@ -1867,11 +2013,12 @@ function HistorialPage() {
                             selected={fechaEspecifica}
                             onSelect={(d) => {
                               setFechaEspecifica(d ?? undefined);
-                              if (d) setPeriodo("Todos");
+                              if (d) { setPeriodo("Todos"); setMesEsp(null); setRangoIni(""); setRangoFin(""); }
                             }}
                             captionLayout="dropdown"
                           />
                         </div>
+
                       </div>
                     </div>
                   }
@@ -1948,10 +2095,16 @@ function HistorialPage() {
         ) : cargando ? (
           <p className="py-10 text-center text-sm text-muted-foreground">Cargando…</p>
         ) : (
-          <Ultimos10Bar
+          <ListadoBar
             abierto={u10Abierto}
             onToggle={() => setU10Abierto((o) => !o)}
-            total={Math.min(fullLen, 10)}
+            rango={rangoVisible}
+            periodo={temporal.label}
+            pagina={paginaActual}
+            totalPaginas={totalPaginas}
+            tamano={tamanoPagina}
+            onTamano={(n) => { setTamanoPagina(n); setPagina(1); }}
+            onPagina={setPagina}
           >
             {fullLen === 0 ? (
               <p className="py-6 text-center text-xs font-semibold text-muted-foreground">
@@ -1959,19 +2112,19 @@ function HistorialPage() {
               </p>
             ) : vista === "entrantes" ? (
               <div className="grid gap-2">
-                {gruposF.slice(0, 10).map((g) => (
+                {gruposV.map((g) => (
                   <CasoCard key={g.key} grupo={g} canEdit={canEdit} onConfirmar={() => setIngresoFor(g)} onPDF={() => pdfEntrante(g)} />
                 ))}
               </div>
             ) : vista === "salientes" ? (
               <div className="grid gap-2">
-                {(remisionesF as Remision[]).slice(0, 10).map((r) => (
+                {(remisionesV as Remision[]).map((r) => (
                   <RemisionCard key={r.id} remision={r} onPDF={() => pdfSaliente(r)} />
                 ))}
               </div>
             ) : vista === "phd" ? (
               <div className="grid gap-2">
-                {(phdF as Generico[]).slice(0, 10).map((r) => (
+                {(phdV as Generico[]).map((r) => (
                   <GenericoCard
                     key={r.id}
                     titulo={`${v(r.paciente) || "Sin nombre"}`}
@@ -1985,7 +2138,7 @@ function HistorialPage() {
               </div>
             ) : (
               <div className="grid gap-2">
-                {(internasF as Generico[]).slice(0, 10).map((r) => (
+                {(internasV as Generico[]).map((r) => (
                   <GenericoCard
                     key={r.id}
                     titulo={`${v(r.paciente) || "Sin nombre"}`}
@@ -1997,7 +2150,7 @@ function HistorialPage() {
                 ))}
               </div>
             )}
-          </Ultimos10Bar>
+          </ListadoBar>
         )}
       </Panel>
 
@@ -2010,7 +2163,7 @@ function HistorialPage() {
         pacientes={pacientesIndex}
         onPick={(documento) => {
           setDocBusca(documento.trim());
-          setLimite(20);
+          setPagina(1);
         }}
       />
 
@@ -2816,16 +2969,28 @@ function PacienteResultado({
   );
 }
 
-// Barra plegable "Últimos 10 casos" (estado inicial sin búsqueda).
-function Ultimos10Bar({
+// Barra plegable del listado con PAGINACIÓN REAL (ya no "últimos 10").
+function ListadoBar({
   abierto,
   onToggle,
-  total,
+  rango,
+  periodo,
+  pagina,
+  totalPaginas,
+  tamano,
+  onTamano,
+  onPagina,
   children,
 }: {
   abierto: boolean;
   onToggle: () => void;
-  total: number;
+  rango: string;
+  periodo: string;
+  pagina: number;
+  totalPaginas: number;
+  tamano: number;
+  onTamano: (n: number) => void;
+  onPagina: (n: number) => void;
   children: ReactNode;
 }) {
   return (
@@ -2837,12 +3002,58 @@ function Ultimos10Bar({
       >
         <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-foreground">
           <Clock className="h-4 w-4 text-muted-foreground" />
-          Últimos 10 casos
-          {total > 0 && <span className="text-muted-foreground">· {total} registro(s)</span>}
+          Listado de casos
+          <span className="text-muted-foreground">· {rango} · {periodo}</span>
         </span>
         <ChevronDown className={`h-4 w-4 text-muted-foreground transition ${abierto ? "rotate-180" : ""}`} />
       </button>
-      {abierto && <div className="border-t border-border p-2.5">{children}</div>}
+      {abierto && (
+        <div className="border-t border-border p-2.5">
+          {children}
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+              <span>Por página</span>
+              {TAMANOS_PAGINA.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => onTamano(n)}
+                  className={`rounded-full border px-2 py-0.5 transition ${
+                    tamano === n
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-border bg-card hover:text-foreground"
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2 text-[11px] font-semibold">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-[11px]"
+                disabled={pagina <= 1}
+                onClick={() => onPagina(pagina - 1)}
+              >
+                Anterior
+              </Button>
+              <span className="text-muted-foreground">
+                Página {pagina} de {totalPaginas}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-[11px]"
+                disabled={pagina >= totalPaginas}
+                onClick={() => onPagina(pagina + 1)}
+              >
+                Siguiente
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

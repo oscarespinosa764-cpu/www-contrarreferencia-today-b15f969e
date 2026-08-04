@@ -184,19 +184,23 @@ export async function consultarModulo(
   supabase: SB,
   modulo: ModuloGuFr50,
   desde: string | null,
-  hasta: string | null,
+  /** Límite superior EXCLUSIVO (resuelto server-side). */
+  hastaExclusivo: string | null,
   limite = 5000,
   casoIds: string[] | null = null,
+  subtipo: string | null = null,
 ): Promise<FilaGuFr50[]> {
   const f = FUENTE[modulo];
   let q = supabase.from(f.tabla).select("*").order(f.fecha, { ascending: true }).limit(limite);
   if (desde) q = q.gte(f.fecha, desde);
-  if (hasta) q = q.lte(f.fecha, hasta);
+  if (hastaExclusivo) q = q.lt(f.fecha, hastaExclusivo);
   if (casoIds && casoIds.length > 0) q = q.in("id", casoIds);
+  if (subtipo && modulo === "ATENCION DOMICILIARIA") q = q.ilike("tipo_solicitud", `%${subtipo}%`);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
   return mapearModulo(modulo, (data ?? []) as Row[]);
 }
+
 
 // ---------------------------------------------------------------------------
 // Catálogos server-authoritative
@@ -311,9 +315,13 @@ export async function analizarLote(
   const resumen: ResumenHoja[] = [];
   const lote: Partial<Record<ModuloGuFr50, Record<string, string>[]>> = {};
 
+  // Sólo se analizan las hojas presentes: el archivo puede ser el libro
+  // completo (4 hojas) o una exportación individual (1 hoja canónica).
   for (const def of HOJAS_GU_FR_50) {
     const modulo = def.nombre as ModuloGuFr50;
-    const cruda = hojas.find((h) => h.nombre.trim() === def.nombre)!;
+    const cruda = hojas.find((h) => h.nombre.trim() === def.nombre);
+    if (!cruda) continue;
+
     const fuente = FUENTE[modulo];
     let vacias = 0;
     let advertencias = 0;
