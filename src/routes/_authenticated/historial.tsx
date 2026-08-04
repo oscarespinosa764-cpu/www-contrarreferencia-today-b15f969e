@@ -953,8 +953,17 @@ function HistorialPage() {
     !!fechaEspecifica ||
     servicioActivo;
 
-  const pasaPeriodo = (raw: string | null) =>
-    fechaEspecifica ? mismoDia(raw, fechaEspecifica) : dentroPeriodo(raw, periodo);
+  // Un registro entra al periodo cuando su fecha funcional cae en el rango
+  // canónico [startAt, endExclusive) resuelto en America/Bogota.
+  const pasaPeriodo = (raw: string | null) => {
+    if (!temporal.startAt && !temporal.endExclusive) return true;
+    if (!raw) return false;
+    const t = new Date(raw).getTime();
+    if (Number.isNaN(t)) return false;
+    if (temporal.startAt && t < new Date(temporal.startAt).getTime()) return false;
+    if (temporal.endExclusive && t >= new Date(temporal.endExclusive).getTime()) return false;
+    return true;
+  };
 
   // Índice de pacientes (para la búsqueda avanzada por nombre/apellido).
   const pacientesIndex = useMemo<PacienteIndex[]>(() => {
@@ -1058,21 +1067,24 @@ function HistorialPage() {
     [pendientes, genTipo, periodo, fechaEspecifica, term, servicio],
   );
 
-  // Listas visibles: sin búsqueda activa, sólo los últimos `limite` (20 por
-  // defecto) con botón VER MÁS; con búsqueda activa se muestran todos los
-  // resultados reales.
-  const cap = <T,>(arr: T[]): T[] => (busquedaActiva ? arr : arr.slice(0, limite));
-  const gruposV = cap(gruposF);
-  const remisionesV = cap(remisionesF);
-  const phdV = cap(phdF);
-  const internasV = cap(internasF);
+  // Paginación real: se recorre TODO el conjunto filtrado, página por página.
   const fullLen =
     vista === "entrantes" ? gruposF.length
     : vista === "salientes" ? remisionesF.length
     : vista === "phd" ? phdF.length
     : vista === "interna" ? internasF.length
     : pendientesF.length;
-  const hayMas = !busquedaActiva && fullLen > limite;
+  const totalPaginas = Math.max(1, Math.ceil(fullLen / tamanoPagina));
+  const paginaActual = Math.min(pagina, totalPaginas);
+  const desdeIdx = (paginaActual - 1) * tamanoPagina;
+  const pag = <T,>(arr: T[]): T[] => arr.slice(desdeIdx, desdeIdx + tamanoPagina);
+  const gruposV = pag(gruposF);
+  const remisionesV = pag(remisionesF);
+  const phdV = pag(phdF);
+  const internasV = pag(internasF);
+  const rangoVisible = fullLen === 0
+    ? "0 de 0"
+    : `${desdeIdx + 1}–${Math.min(desdeIdx + tamanoPagina, fullLen)} de ${fullLen}`;
 
   const mensajeVacio = !busquedaActiva
     ? "NO HAY CASOS REGISTRADOS EN ESTA CATEGORÍA."
