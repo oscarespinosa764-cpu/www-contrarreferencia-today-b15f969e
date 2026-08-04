@@ -1072,9 +1072,12 @@ function HistorialPage() {
   const remisionesV = remisionesF;
   const phdV = phdF;
   const internasV = internasF;
-  const rangoVisible = fullLen === 0
+  const sinFechaFuncional = listado?.missingFunctionalDateCount ?? 0;
+  const rangoVisible = (fullLen === 0
     ? "0 de 0"
-    : `${desdeIdx + 1}–${Math.min(desdeIdx + filas.length, fullLen)} de ${fullLen}`;
+    : `${desdeIdx + 1}–${Math.min(desdeIdx + filas.length, fullLen)} de ${fullLen}`) +
+    (sinFechaFuncional > 0 ? ` · ${sinFechaFuncional} sin fecha funcional` : "");
+
 
   const mensajeVacio = !busquedaActiva
     ? "NO HAY CASOS REGISTRADOS EN ESTA CATEGORÍA."
@@ -1183,7 +1186,8 @@ function HistorialPage() {
       } else {
         toast.success("Ingreso confirmado · alerta de visita IPS enviada a Coordinación");
         setIngresoFor(null);
-        qc.invalidateQueries({ queryKey: ["historial-casos"] });
+        qc.invalidateQueries({ queryKey: ["historial-listado"] });
+        qc.invalidateQueries({ queryKey: ["historial-hidrata-entrantes"] });
         qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
         qc.invalidateQueries({ queryKey: ["coordinacion-alertas"] });
         return;
@@ -1191,8 +1195,10 @@ function HistorialPage() {
     }
     toast.success("Ingreso confirmado");
     setIngresoFor(null);
-    qc.invalidateQueries({ queryKey: ["historial-casos"] });
+    qc.invalidateQueries({ queryKey: ["historial-listado"] });
+    qc.invalidateQueries({ queryKey: ["historial-hidrata-entrantes"] });
     qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+
   };
 
   // ---- Auditoría de exportación ----
