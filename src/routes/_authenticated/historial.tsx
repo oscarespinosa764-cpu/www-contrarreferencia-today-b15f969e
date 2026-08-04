@@ -14,6 +14,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { FiltersBar } from "@/components/filters/filters-bar";
 import {
+  resolverFiltroTemporalHistorial,
+  TAMANOS_PAGINA,
+  type HistorialFilterInput,
+  type ModoPeriodo,
+} from "@/lib/historial-filtro";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -986,7 +992,7 @@ function HistorialPage() {
     setGenTipo("TODOS");
     setPeriodo("Todos");
     setFechaEspecifica(undefined);
-    setLimite(20);
+    setPagina(1);
     setU10Abierto(false);
     setCasoExpandido(null);
   };
@@ -1686,7 +1692,7 @@ function HistorialPage() {
                   key={vw.key}
                   onClick={() => {
                     setVista(vw.key);
-                    setLimite(20);
+                    setPagina(1);
                     setCasoExpandido(null);
                   }}
                   className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
@@ -1739,7 +1745,7 @@ function HistorialPage() {
                       return;
                     }
                     setDocBusca(doc);
-                    setLimite(20);
+                    setPagina(1);
                     setCasoExpandido(null);
                   }}
                 />
@@ -1757,7 +1763,7 @@ function HistorialPage() {
                       return;
                     }
                     setDocBusca(doc);
-                    setLimite(20);
+                    setPagina(1);
                     setCasoExpandido(null);
                   }}
                 >
@@ -2016,7 +2022,7 @@ function HistorialPage() {
         pacientes={pacientesIndex}
         onPick={(documento) => {
           setDocBusca(documento.trim());
-          setLimite(20);
+          setPagina(1);
         }}
       />
 
