@@ -1018,6 +1018,7 @@ function HistorialPage() {
     setTipo("TODOS");
     setSalTipo("TODOS");
     setGenTipo("TODOS");
+    setSubtipoAD("TODOS");
     setPeriodo("Todos");
     setFechaEspecifica(undefined);
     setMesEsp(null);
