@@ -7,7 +7,6 @@
 // escribe estilos de celda (ajuste de texto, congelar), por lo que se aplica
 // ancho de columnas y autofiltro, que sí son compatibles.
 
-import * as XLSX from "xlsx";
 import { fmtFechaHora, fmtEdad, fmtRadicado } from "./remisiones-utils";
 
 const META = {
@@ -273,38 +272,4 @@ export type GrupoEntrante = {
 // Construcción del libro y descarga
 // ============================================================
 
-function buildWorksheet(sec: Seccion, usuario: string, filtros: string): XLSX.WorkSheet {
-  const ncol = sec.headers.length;
-  const blank = (n: number) => Array(n).fill("");
-  const metaRow = (left: string, right: string) => {
-    const row = blank(ncol);
-    row[0] = left;
-    if (ncol > 1) row[ncol - 1] = right;
-    return row;
-  };
-  const aoa: (string | number)[][] = [];
-  aoa.push(metaRow(META.proceso, META.codigo));
-  aoa.push(metaRow(META.formato, META.version));
-  aoa.push(metaRow(META.nombre, "Aprobado:"));
-  aoa.push(blank(ncol));
-  const gen = blank(ncol);
-  gen[0] = `Fecha de generación: ${fmtFechaHora(new Date().toISOString())}`;
-  if (ncol > 1) gen[1] = `Usuario que exporta: ${usuario}`;
-  aoa.push(gen);
-  const filt = blank(ncol);
-  filt[0] = `Filtros: ${filtros || "Todos"}`;
-  aoa.push(filt);
-  aoa.push(sec.headers);
-  for (const r of sec.rows) aoa.push(r);
-
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-  // Ancho de columnas
-  ws["!cols"] = sec.headers.map((h, i) => ({
-    wch: Math.min(40, Math.max(12, (sec.widths?.[i] ?? h.length) + 2)),
-  }));
-  // Autofiltro en la fila de encabezados (fila 7 -> índice 6)
-  const lastCol = XLSX.utils.encode_col(ncol - 1);
-  ws["!autofilter"] = { ref: `A7:${lastCol}7` };
-  return ws;
-}
 

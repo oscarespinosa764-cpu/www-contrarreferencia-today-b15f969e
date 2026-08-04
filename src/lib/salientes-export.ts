@@ -8,7 +8,6 @@
 // internamente un Blob + object URL + anchor temporal con `download` y lo
 // revocan tras la descarga, por lo que la descarga es confiable y limpia.
 
-import * as XLSX from "xlsx";
 import logoAsset from "@/assets/cedim-logo.png.asset.json";
 import { fmtFechaHora, fmtEdad, fmtTranscurrido } from "./remisiones-utils";
 import { getPlantillaConfig, pickText, pickBool } from "./plantillas-inventario-config";
