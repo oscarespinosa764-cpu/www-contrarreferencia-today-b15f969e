@@ -239,9 +239,11 @@ export function validarEstructuraGuFr50(
   const errores: string[] = [];
   const encontradas = hojas.map((h) => h.nombre.trim());
 
-  if (hojas.length !== 4) {
+  // Variante GENERAL: las cuatro hojas en orden. Variante INDIVIDUAL: una
+  // sola hoja canónica (exportación puntual de un módulo).
+  if (hojas.length !== 4 && hojas.length !== 1) {
     errores.push(
-      `El archivo debe tener exactamente 4 hojas (${NOMBRES_HOJAS.join(", ")}). Encontradas: ${hojas.length}.`,
+      `El archivo debe tener las 4 hojas (${NOMBRES_HOJAS.join(", ")}) o una sola hoja canónica. Encontradas: ${hojas.length}.`,
     );
   }
   for (const nombre of encontradas) {
@@ -253,7 +255,11 @@ export function validarEstructuraGuFr50(
       );
     }
   }
-  HOJAS_GU_FR_50.forEach((def, i) => {
+  const definiciones =
+    hojas.length === 1
+      ? HOJAS_GU_FR_50.filter((d) => d.nombre === encontradas[0])
+      : HOJAS_GU_FR_50;
+  definiciones.forEach((def, i) => {
     const hoja = hojas[i];
     if (!hoja) {
       errores.push(`Falta la hoja "${def.nombre}" en la posición ${i + 1}.`);
