@@ -231,6 +231,19 @@ const GEN_LABEL: Record<GenFilter, string> = {
 const PERIODOS = ["Todos", "Hoy", "Esta semana", "Este mes", "Mes anterior"] as const;
 type Periodo = (typeof PERIODOS)[number];
 
+/** Cada chip rápido corresponde a un modo canónico del filtro compartido. */
+const MODO_CHIP: Record<Periodo, ModoPeriodo> = {
+  Todos: "ALL",
+  Hoy: "TODAY",
+  "Esta semana": "THIS_WEEK",
+  "Este mes": "THIS_MONTH",
+  "Mes anterior": "PREVIOUS_MONTH",
+};
+
+const ymd = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+
 const VISTAS: { key: Vista; label: string; icon: typeof Home; color: string }[] = [
   { key: "entrantes", label: "Entrantes", icon: ArrowDownLeft, color: "bg-status-green" },
   { key: "salientes", label: "Salientes", icon: ArrowUpRight, color: "bg-status-teal" },
