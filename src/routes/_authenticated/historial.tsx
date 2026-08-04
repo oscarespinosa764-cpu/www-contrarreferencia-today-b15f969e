@@ -737,8 +737,16 @@ function HistorialPage() {
     }
   }, [filtroPeriodo]);
 
-  const rangoStart = temporal.startAt ?? undefined;
-  const rangoEnd = temporal.endExclusive ?? undefined;
+  // Prefiltro server-side sobre created_at con holgura: el filtro real por
+  // fecha funcional (fecha / fecha_inicio) se aplica luego con `pasaPeriodo`,
+  // de modo que ningún caso quede fuera por diferencia entre ambas fechas.
+  const HOLGURA_MS = 3 * 24 * 60 * 60 * 1000;
+  const rangoStart = temporal.startAt
+    ? new Date(new Date(temporal.startAt).getTime() - HOLGURA_MS).toISOString()
+    : undefined;
+  const rangoEnd = temporal.endExclusive
+    ? new Date(new Date(temporal.endExclusive).getTime() + HOLGURA_MS).toISOString()
+    : undefined;
 
   // Cualquier cambio de filtro devuelve el listado a la primera página.
   useEffect(() => {
