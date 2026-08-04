@@ -360,7 +360,18 @@ export async function construirLibroGuFr50(
     });
   }
 
+  // Variante INDIVIDUAL: se conserva únicamente la hoja canónica del módulo
+  // (mismos encabezados, estilos y configuración de impresión oficiales).
+  if (opciones.soloHoja) {
+    for (const def of HOJAS_GU_FR_50) {
+      if (def.nombre === opciones.soloHoja) continue;
+      const ws = wb.getWorksheet(def.nombre);
+      if (ws) wb.removeWorksheet(ws.id);
+    }
+  }
+
   const buf = (await wb.xlsx.writeBuffer()) as ArrayBuffer;
+
   return new Uint8Array(buf);
 }
 
