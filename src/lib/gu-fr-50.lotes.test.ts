@@ -33,13 +33,17 @@ function fakeSupabase(universo: Record<string, unknown>[]) {
     api.range = (from: number, to: number) => ((estado.from = from), (estado.to = to), self());
     api.then = (resolve: (r: { data: unknown[]; error: null }) => unknown) => {
       llamadas.push({ desde: estado.desde, hasta: estado.hasta, from: estado.from, to: estado.to });
-      let filas = [...universo].sort((a, b) =>
-        String(a.fecha).localeCompare(String(b.fecha)) || String(a.id).localeCompare(String(b.id)),
+      let filas = [...universo].sort(
+        (a, b) =>
+          String(a.fecha).localeCompare(String(b.fecha)) ||
+          String(a.id).localeCompare(String(b.id)),
       );
       if (estado.desde) filas = filas.filter((r) => String(r.fecha) >= estado.desde!);
       if (estado.hasta) filas = filas.filter((r) => String(r.fecha) < estado.hasta!);
       if (estado.documento) filas = filas.filter((r) => r.documento === estado.documento);
-      return Promise.resolve(resolve({ data: filas.slice(estado.from, estado.to + 1), error: null }));
+      return Promise.resolve(
+        resolve({ data: filas.slice(estado.from, estado.to + 1), error: null }),
+      );
     };
     return api;
   };

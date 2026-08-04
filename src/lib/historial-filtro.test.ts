@@ -24,7 +24,13 @@ describe("intervalo técnico vs. visible", () => {
 
   it("RANGE conserva el final visible inclusivo y usa el día siguiente técnicamente", () => {
     const r = resolverFiltroTemporalHistorial(
-      { periodMode: "RANGE", year: null, month: null, startDate: "2026-07-15", endDate: "2026-08-04" },
+      {
+        periodMode: "RANGE",
+        year: null,
+        month: null,
+        startDate: "2026-07-15",
+        endDate: "2026-08-04",
+      },
       AHORA,
     );
     expect(r.endExclusive).toBe("2026-08-05T05:00:00.000Z");
