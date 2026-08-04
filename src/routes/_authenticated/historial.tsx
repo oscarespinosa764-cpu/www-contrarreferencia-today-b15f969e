@@ -1821,7 +1821,7 @@ function HistorialPage() {
         const datos: Partial<Record<ModuloGuFr50, FilaGuFr50[]>> = {
           [modulo]: (res.filas[modulo] ?? []) as FilaGuFr50[],
         };
-        const nombre = `GU-FR-50_caso_${(c.referencia || c.casoId).replace(/[^\w\-]+/g, "_")}`;
+        const nombre = `GU-FR-50_caso_${(c.referencia || c.casoId).replace(/[^\w-]+/g, "_")}`;
         descargarXlsx(await construirLibroGuFr50(datos, { soloHoja: modulo }), `${nombre}.xlsx`);
         auditar("exportar_excel_caso", { caso: c.casoId, tabla: c.tabla, vista: c.vista });
         toast.success("Excel GU-FR-50 del caso generado");
