@@ -186,11 +186,13 @@ export async function consultarModulo(
   desde: string | null,
   hasta: string | null,
   limite = 5000,
+  casoIds: string[] | null = null,
 ): Promise<FilaGuFr50[]> {
   const f = FUENTE[modulo];
   let q = supabase.from(f.tabla).select("*").order(f.fecha, { ascending: true }).limit(limite);
   if (desde) q = q.gte(f.fecha, desde);
   if (hasta) q = q.lte(f.fecha, hasta);
+  if (casoIds && casoIds.length > 0) q = q.in("id", casoIds);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
   return mapearModulo(modulo, (data ?? []) as Row[]);
