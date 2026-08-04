@@ -309,6 +309,7 @@ export type FilaGuFr50 = Record<string, string | number | Date | null | undefine
  */
 export async function construirLibroGuFr50(
   datos: Partial<Record<ModuloGuFr50, FilaGuFr50[]>> = {},
+  opciones: { soloHoja?: ModuloGuFr50 } = {},
 ): Promise<Uint8Array> {
   const ExcelJS = (await import("exceljs")).default;
   const resp = await fetch(GU_FR_50.url);
@@ -319,6 +320,7 @@ export async function construirLibroGuFr50(
   await wb.xlsx.load(base);
 
   for (const def of HOJAS_GU_FR_50) {
+
     const ws = wb.getWorksheet(def.nombre);
     if (!ws) throw new Error(`PLANTILLA_INVALIDA: falta la hoja ${def.nombre}`);
 
