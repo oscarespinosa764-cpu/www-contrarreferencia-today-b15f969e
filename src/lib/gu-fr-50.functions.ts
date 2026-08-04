@@ -17,6 +17,8 @@ const esquemaExport = z
     modules: z.array(z.enum(MODULOS)).min(1).max(4),
     startDate: z.string().datetime().nullable().optional(),
     endDate: z.string().datetime().nullable().optional(),
+    // Allowlist de casos concretos (exportación puntual desde Historial).
+    casoIds: z.array(z.string().uuid()).max(50).nullable().optional(),
   })
   .strict();
 
