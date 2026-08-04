@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { useAuth } from "@/lib/auth";
@@ -19,8 +19,17 @@ import {
   TAMANOS_PAGINA,
   type HistorialFilterInput,
   type ModoPeriodo,
+  type ModuloHistorial,
   type SubtipoAD,
 } from "@/lib/historial-filtro";
+import {
+  historialQueryKey,
+  type HistorialQueryInput,
+} from "@/lib/historial-listado";
+import {
+  buscarPacientesHistorial,
+  listarHistorialCasos,
+} from "@/lib/historial-listado.functions";
 import {
   Dialog,
   DialogContent,
@@ -563,12 +572,21 @@ async function fetchHistoricosCasos(opts: {
   start?: string;
   end?: string;
   documento?: string;
+  /** Hidratación por identificadores de la página vigente (camino canónico). */
+  ids?: string[];
 }): Promise<HistoricoCaso[]> {
-  // La tabla histórica supera los 20k registros. Para no traerla completa se
-  // aplican filtros server-side (rango de `created_at` + documento cuando
-  // aplica). Sin filtros: cap defensivo de 5000 registros más recientes POR
-  // SECCIÓN (entrantes se importaron antes que salientes, por lo que un cap
-  // global dejaba fuera todos los entrantes recientes).
+  // Camino canónico: el listado server-side ya decidió QUÉ registros componen
+  // la página, así que sólo se leen esos identificadores. Sin límites ni caps.
+  if (opts.ids) {
+    if (opts.ids.length === 0) return [];
+    const { data, error } = await supabase
+      .from("historicos_casos")
+      .select(HISTORICOS_SELECT)
+      .in("id", opts.ids);
+    if (error) throw error;
+    return (data ?? []) as HistoricoCaso[];
+  }
+  // Camino legado (consultas puntuales por documento/rango).
   const hasFilter = !!(opts.start || opts.end || opts.documento);
   const perSection = hasFilter ? 20000 : 5000;
   const build = (seccion: string) => {
@@ -741,17 +759,6 @@ function HistorialPage() {
     }
   }, [filtroPeriodo]);
 
-  // Prefiltro server-side sobre created_at con holgura: el filtro real por
-  // fecha funcional (fecha / fecha_inicio) se aplica luego con `pasaPeriodo`,
-  // de modo que ningún caso quede fuera por diferencia entre ambas fechas.
-  const HOLGURA_MS = 3 * 24 * 60 * 60 * 1000;
-  const rangoStart = temporal.startAt
-    ? new Date(new Date(temporal.startAt).getTime() - HOLGURA_MS).toISOString()
-    : undefined;
-  const rangoEnd = temporal.endExclusive
-    ? new Date(new Date(temporal.endExclusive).getTime() + HOLGURA_MS).toISOString()
-    : undefined;
-
   // Cualquier cambio de filtro devuelve el listado a la primera página.
   useEffect(() => {
     setPagina(1);
@@ -760,28 +767,100 @@ function HistorialPage() {
   const docTrimEarly = docBusca.trim();
   const docServer = docBuscableServer(docTrimEarly) ? docTrimEarly : "";
 
+  // ============================================================
+  // LISTADO CANÓNICO SERVER-SIDE (public.historial_listado)
+  //
+  // El servidor resuelve TODO: periodo (reloj del servidor, America/Bogota),
+  // filtros funcionales, agrupación de Entrantes, orden estable, total exacto
+  // y paginación. El navegador NUNCA descarga el universo: sólo hidrata los
+  // identificadores de la página vigente. No hay límites 3.000/20.000.
+  // ============================================================
+  // "pendientes" NO es un módulo canónico de la bitácora: conserva su lectura
+  // acotada propia y no participa del listado server-side de cuatro módulos.
+  const MODULO_CANONICO: Partial<Record<Vista, ModuloHistorial>> = {
+    entrantes: "ENTRANTES",
+    salientes: "SALIENTES",
+    phd: "ATENCION_DOMICILIARIA",
+    interna: "REFERENCIAS_INTERNAS",
+  };
+
+  const listadoInput = useMemo<HistorialQueryInput>(
+    () => ({
+      module: MODULO_CANONICO[vista] ?? "ENTRANTES",
+      periodMode: filtroPeriodo.periodMode ?? "ALL",
+      year: filtroPeriodo.year ?? null,
+      month: filtroPeriodo.month ?? null,
+      startDate: filtroPeriodo.startDate ?? null,
+      endDate: filtroPeriodo.endDate ?? null,
+      caseType: vista === "entrantes" && tipo !== "TODOS" ? tipo : null,
+      status:
+        vista === "salientes"
+          ? salTipo !== "TODOS"
+            ? salTipo
+            : null
+          : vista !== "entrantes" && genTipo !== "TODOS"
+            ? genTipo
+            : null,
+      sede,
+      servicio,
+      documento: docServer || null,
+      searchTerm: !docServer && docTrimEarly ? docTrimEarly : null,
+      subtype: vista === "phd" ? subtipoAD : null,
+      page: pagina,
+      pageSize: tamanoPagina,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [vista, filtroPeriodo, tipo, salTipo, genTipo, sede, servicio, docServer, docTrimEarly, subtipoAD, pagina, tamanoPagina],
+  );
+
+  const fnListarHistorial = useServerFn(listarHistorialCasos);
+  const { data: listado, isFetching: cargandoListado } = useQuery({
+    queryKey: historialQueryKey(listadoInput),
+    queryFn: () => fnListarHistorial({ data: listadoInput }),
+    placeholderData: keepPreviousData,
+  });
+
+  const filas = useMemo(() => listado?.rows ?? [], [listado]);
+  const idsPagina = useMemo(() => filas.flatMap((f) => f.ids), [filas]);
+  const claveIds = idsPagina.join(",");
+  const idsActivos = useMemo(() => idsPagina.filter((id) => !id.startsWith("hist-")), [idsPagina]);
+  const idsHistoricos = useMemo(
+    () => idsPagina.filter((id) => id.startsWith("hist-")).map((id) => id.slice(5)),
+    [idsPagina],
+  );
+
+  /** Reordena los registros hidratados según el orden canónico del servidor. */
+  const ordenarComoServidor = <T extends { id: string }>(rows: T[]): T[] => {
+    const porId = new Map(rows.map((r) => [String(r.id), r]));
+    const out: T[] = [];
+    for (const f of filas) {
+      for (const id of f.ids) {
+        const r = porId.get(id.startsWith("hist-") ? id.slice(5) : id);
+        if (r) out.push(r);
+      }
+    }
+    return out;
+  };
+
   const { data: casos, isLoading } = useQuery({
-    queryKey: ["historial-casos", rangoStart ?? null, rangoEnd ?? null, docServer || null],
+    queryKey: ["historial-hidrata-entrantes", claveIds],
+    enabled: vista === "entrantes" && idsActivos.length > 0,
     queryFn: async () => {
-      let q = supabase
+      const { data, error } = await supabase
         .from("casos_entrantes")
         .select(
           "id, codigo, tipo, cod_ref, documento, nombres, apellidos, ips, unidad, especialidad, estado, fecha, fecha_vence, detalle, eapb, regimen, texto_ia, created_at",
         )
-        .order("created_at", { ascending: false })
-        .limit(docServer ? 20000 : 3000);
-      if (rangoStart) q = q.gte("created_at", rangoStart);
-      if (rangoEnd) q = q.lt("created_at", rangoEnd);
-      if (docServer) q = q.eq("documento", docServer);
-      const { data, error } = await q;
+        .in("id", idsActivos);
       if (error) throw error;
       return data as Caso[];
     },
   });
 
   const { data: historicos, isLoading: loadingHist } = useQuery<HistoricoCaso[]>({
-    queryKey: ["historicos-casos-importados", rangoStart ?? null, rangoEnd ?? null, docServer || null],
-    queryFn: () => fetchHistoricosCasos({ start: rangoStart, end: rangoEnd, documento: docServer || undefined }),
+    queryKey: ["historial-hidrata-historicos", claveIds],
+    enabled: idsHistoricos.length > 0,
+    queryFn: () => fetchHistoricosCasos({ ids: idsHistoricos }),
   });
 
   const historicosEntrantes = useMemo(
@@ -808,82 +887,54 @@ function HistorialPage() {
   );
 
   const { data: remisionesActivas, isLoading: loadingSal } = useQuery({
-    queryKey: ["historial-remisiones-full", rangoStart ?? null, rangoEnd ?? null, docServer || null],
+    queryKey: ["historial-hidrata-salientes", claveIds],
+    enabled: vista === "salientes" && idsActivos.length > 0,
     queryFn: async () => {
-      let q = supabase
-        .from("remisiones")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(docServer || rangoStart || rangoEnd ? 20000 : 3000);
-      if (rangoStart) q = q.gte("created_at", rangoStart);
-      if (rangoEnd) q = q.lt("created_at", rangoEnd);
-      if (docServer) q = q.eq("documento", docServer);
-      const { data, error } = await q;
+      const { data, error } = await supabase.from("remisiones").select("*").in("id", idsActivos);
       if (error) throw error;
       return data as Remision[];
     },
   });
 
   const remisiones = useMemo<Remision[]>(
-    () => [...(remisionesActivas ?? []), ...historicosSalientes],
-    [remisionesActivas, historicosSalientes],
+    () => ordenarComoServidor([...(remisionesActivas ?? []), ...historicosSalientes]),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [remisionesActivas, historicosSalientes, filas],
   );
 
   const { data: phd, isLoading: loadingPhd } = useQuery({
-    queryKey: ["historial-domiciliarios", rangoStart ?? null, rangoEnd ?? null, docServer || null],
+    queryKey: ["historial-hidrata-domiciliarios", claveIds],
+    enabled: vista === "phd" && idsActivos.length > 0,
     queryFn: async () => {
-      let q = supabase
-        .from("domiciliarios")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(docServer || rangoStart || rangoEnd ? 20000 : 3000);
-      if (rangoStart) q = q.gte("created_at", rangoStart);
-      if (rangoEnd) q = q.lt("created_at", rangoEnd);
-      if (docServer) q = q.eq("documento", docServer);
-      const { data, error } = await q;
+      const { data, error } = await supabase.from("domiciliarios").select("*").in("id", idsActivos);
       if (error) throw error;
       return data as Generico[];
     },
   });
 
   const { data: internas, isLoading: loadingInt } = useQuery({
-    queryKey: ["historial-internas", rangoStart ?? null, rangoEnd ?? null, docServer || null],
+    queryKey: ["historial-hidrata-internas", claveIds],
+    enabled: vista === "interna" && idsActivos.length > 0,
     queryFn: async () => {
-      let q = supabase
+      const { data, error } = await supabase
         .from("referencia_interna")
         .select("*")
-        .order("created_at", { ascending: false })
-        .limit(docServer || rangoStart || rangoEnd ? 20000 : 3000);
-      if (rangoStart) q = q.gte("created_at", rangoStart);
-      if (rangoEnd) q = q.lt("created_at", rangoEnd);
-      if (docServer) q = q.eq("documento", docServer);
-      const { data, error } = await q;
+        .in("id", idsActivos);
       if (error) throw error;
       return data as Generico[];
     },
   });
 
-  const phdDatos = useMemo<Generico[]>(() => [...((phd ?? []) as Generico[]), ...historicosPhd], [phd, historicosPhd]);
-  const internasDatos = useMemo<Generico[]>(
-    () => [...((internas ?? []) as Generico[]), ...historicosInternas],
-    [internas, historicosInternas],
+  const phdDatos = useMemo<Generico[]>(
+    () => ordenarComoServidor([...((phd ?? []) as Generico[]), ...historicosPhd]),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [phd, historicosPhd, filas],
   );
-
-  const { data: pendientes, isLoading: loadingPen } = useQuery({
-    queryKey: ["historial-pendientes", rangoStart ?? null, rangoEnd ?? null],
-    queryFn: async () => {
-      let q = supabase
-        .from("pendientes")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(rangoStart || rangoEnd ? 20000 : 2000);
-      if (rangoStart) q = q.gte("created_at", rangoStart);
-      if (rangoEnd) q = q.lt("created_at", rangoEnd);
-      const { data, error } = await q;
-      if (error) throw error;
-      return data as Generico[];
-    },
-  });
+  const internasDatos = useMemo<Generico[]>(
+    () => ordenarComoServidor([...((internas ?? []) as Generico[]), ...historicosInternas]),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [internas, historicosInternas, filas],
+  );
 
   // Catálogo real de servicios/unidades (para el filtro SERVICIO). Se reutiliza
   // el catálogo existente; no se crea uno paralelo.
@@ -922,25 +973,27 @@ function HistorialPage() {
 
   const segMap = useMemo<SegMap>(() => buildSegMap(seguimientos ?? []), [seguimientos]);
 
+  // Agrupación canónica: las UNIDADES y su orden los define el servidor
+  // (una tarjeta = una unidad). Aquí sólo se hidratan los eventos de cada
+  // unidad de la página vigente; no se reagrupa ni se reordena en memoria.
   const grupos = useMemo<Grupo[]>(() => {
-    const map = new Map<string, Caso[]>();
-    for (const c of [...(casos ?? []), ...historicosEntrantes]) {
-      const key = (c.cod_ref || c.codigo || c.id).toUpperCase();
-      const arr = map.get(key) ?? [];
-      arr.push(c);
-      map.set(key, arr);
-    }
+    const porId = new Map<string, Caso>();
+    for (const c of casos ?? []) porId.set(String(c.id), c);
+    for (const c of historicosEntrantes) porId.set(String(c.id), c);
     const out: Grupo[] = [];
-    for (const [key, eventos] of map) {
+    for (const fila of filas) {
+      const eventos = fila.ids
+        .map((id) => porId.get(id.startsWith("hist-") ? id.slice(5) : id))
+        .filter((c): c is Caso => Boolean(c));
+      if (eventos.length === 0) continue;
       eventos.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       const base = eventos.find((e) => !e.cod_ref) ?? eventos[0];
       const { estadoFinal, activa } = calcularEstado(base, eventos);
       const confirmable = esConfirmable(base, eventos, activa);
-      out.push({ key, base, eventos, estadoFinal, activa, confirmable });
+      out.push({ key: fila.unitKey, base, eventos, estadoFinal, activa, confirmable });
     }
-    out.sort((a, b) => new Date(b.base.created_at).getTime() - new Date(a.base.created_at).getTime());
     return out;
-  }, [casos, historicosEntrantes]);
+  }, [casos, historicosEntrantes, filas]);
 
   // El documento de la consulta por paciente tiene prioridad sobre el buscador
   // libre; el documento normalizado alimenta el término de filtrado.
@@ -948,18 +1001,6 @@ function HistorialPage() {
   const term = docTrim.toLowerCase();
 
   const servicioActivo = servicio !== "TODOS LOS SERVICIOS";
-  const sedeActiva = sede !== "TODAS LAS SEDES";
-  const su = sinTildes(servicio).toUpperCase();
-  const seu = sinTildes(sede).toUpperCase();
-  const matchServicio = (txt: string) =>
-    !servicioActivo || sinTildes(txt).toUpperCase().includes(su);
-  // La sede sólo excluye cuando el registro tiene un valor de unidad/sede que
-  // no coincide; registros sin ese dato siempre pasan (evita ocultar todo).
-  const matchSede = (txt: string) => {
-    if (!sedeActiva) return true;
-    const t = sinTildes(txt).toUpperCase().trim();
-    return t === "" || t.includes(seu);
-  };
 
   const busquedaActiva =
     term !== "" ||
@@ -972,37 +1013,20 @@ function HistorialPage() {
     (!!rangoIni && !!rangoFin) ||
     servicioActivo;
 
-  // Un registro entra al periodo cuando su fecha funcional cae en el rango
-  // canónico [startAt, endExclusive) resuelto en America/Bogota.
-  const pasaPeriodo = (raw: string | null) => {
-    if (!temporal.startAt && !temporal.endExclusive) return true;
-    if (!raw) return false;
-    const t = new Date(raw).getTime();
-    if (Number.isNaN(t)) return false;
-    if (temporal.startAt && t < new Date(temporal.startAt).getTime()) return false;
-    if (temporal.endExclusive && t >= new Date(temporal.endExclusive).getTime()) return false;
-    return true;
-  };
+  // El filtrado por periodo, sede, servicio y término ya NO ocurre en memoria:
+  // lo resuelve public.historial_listado con el reloj del servidor.
 
-  // Índice de pacientes (para la búsqueda avanzada por nombre/apellido).
-  const pacientesIndex = useMemo<PacienteIndex[]>(() => {
-    const map = new Map<string, PacienteIndex>();
-    const add = (documento: string, nombres: string, apellidos: string) => {
-      const doc = documento.trim();
-      if (!doc || map.has(doc)) return;
-      map.set(doc, {
-        documento: doc,
-        nombres: nombres.trim(),
-        apellidos: apellidos.trim(),
-        nombre: [nombres, apellidos].filter(Boolean).join(" ").trim(),
-      });
-    };
-    for (const c of [...(casos ?? []), ...historicosEntrantes])
-      add(v(c.documento), v(c.nombres), v(c.apellidos));
-    for (const r of remisiones ?? []) add(v(r.documento), v(r.paciente), "");
-    for (const r of [...phdDatos, ...internasDatos]) add(v(r.documento), v(r.paciente), "");
-    return Array.from(map.values());
-  }, [casos, historicosEntrantes, remisiones, phdDatos, internasDatos]);
+  // Índice de pacientes: la búsqueda por documento/nombre se resuelve
+  // SERVER-SIDE (máx. 50 resultados). Antes se construía en el navegador a
+  // partir del universo completo de casos.
+  const fnBuscarPacientes = useServerFn(buscarPacientesHistorial);
+  const terminoPaciente = docTrim.length >= 3 ? docTrim : "";
+  const { data: pacientesIndex = [] } = useQuery<PacienteIndex[]>({
+    queryKey: ["historial-pacientes", terminoPaciente],
+    enabled: terminoPaciente !== "",
+    queryFn: () => fnBuscarPacientes({ data: { termino: terminoPaciente } }),
+    placeholderData: keepPreviousData,
+  });
 
   const pacienteNombre = useMemo(() => {
     if (!docTrim) return "";
@@ -1030,101 +1054,27 @@ function HistorialPage() {
     setCasoExpandido(null);
   };
 
-  const gruposF = useMemo(
-    () =>
-      grupos.filter((g) => {
-        if (tipo !== "TODOS" && !tieneTipo(g.eventos, tipo)) return false;
-        if (!pasaPeriodo(g.base.fecha || g.base.created_at)) return false;
-        if (!matchServicio(`${g.base.unidad ?? ""} ${g.base.especialidad ?? ""}`)) return false;
-        if (!matchSede(`${g.base.unidad ?? ""}`)) return false;
-        if (!term) return true;
-        const hay = g.eventos
-          .map((e) => `${e.codigo ?? ""} ${e.documento ?? ""} ${e.nombres ?? ""} ${e.apellidos ?? ""} ${e.ips ?? ""}`)
-          .join(" ")
-          .toLowerCase();
-        return hay.includes(term);
-      }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [grupos, tipo, periodo, fechaEspecifica, term, servicio, sede],
-  );
+  // ============================================================
+  // Conjuntos visibles: YA vienen filtrados, agrupados, ordenados y paginados
+  // por el servidor. Aquí no se vuelve a filtrar ni a recortar en memoria.
+  // ============================================================
+  const gruposF = grupos;
+  const remisionesF = remisiones;
+  const phdF = phdDatos;
+  const internasF = internasDatos;
 
-  const remisionesF = useMemo(
-    () =>
-      (remisiones ?? []).filter((r) => {
-        if (salTipo !== "TODOS" && !(r.estado || "").toUpperCase().includes(salTipo)) return false;
-        if (!pasaPeriodo((r.fecha_radicado as string) || r.created_at)) return false;
-        if (!matchServicio(`${v(r.servicio)} ${v((r as Record<string, unknown>).especialidad_receptora)}`)) return false;
-        if (!term) return true;
-        const hay = `${r.codigo_radicacion ?? ""} ${r.documento ?? ""} ${r.paciente ?? ""} ${r.ips_receptora ?? ""} ${r.servicio ?? ""}`.toLowerCase();
-        return hay.includes(term);
-      }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [remisiones, salTipo, periodo, fechaEspecifica, term, servicio],
-  );
-
-  const filtraGenerico = (rows: Generico[], campos: (r: Generico) => string) =>
-    rows.filter((r) => {
-      if (genTipo !== "TODOS") {
-        const e = (r.estado || "").toUpperCase();
-        if (genTipo === "CERRADO" && !/COMPLET|CERRAD|CULMIN/.test(e)) return false;
-        if (genTipo !== "CERRADO" && !e.includes(genTipo)) return false;
-      }
-      if (!pasaPeriodo((r.fecha_inicio as string) || (r.fecha as string) || r.created_at)) return false;
-      if (!matchServicio(`${v(r.servicio)} ${v(r.tipo_solicitud)} ${v((r as Record<string, unknown>).unidad)}`)) return false;
-      if (!term) return true;
-      return campos(r).toLowerCase().includes(term);
-    });
-
-  // El subtipo de Atención Domiciliaria usa exactamente los mismos valores
-  // canónicos que aplica el servidor al exportar (allowlist PHD/PAD/O2/ESPECIALES).
-  const SUBTIPO_AD_VALORES: Record<string, string[]> = {
-    PHD: ["PHD"],
-    PAD: ["PAD"],
-    O2: ["O2", "OXIGENO"],
-    ESPECIALES: ["ESPECIAL", "ESPECIALES"],
-  };
-  const phdF = useMemo(
-    () =>
-      filtraGenerico(
-        subtipoAD === "TODOS"
-          ? phdDatos
-          : phdDatos.filter((r) =>
-              (SUBTIPO_AD_VALORES[subtipoAD] ?? []).includes(v(r.tipo_solicitud).toUpperCase()),
-            ),
-        (r) => `${v(r.paciente)} ${v(r.documento)} ${v(r.tipo_solicitud)} ${v(r.eapb)} ${v(r.codigo_radicacion)}`,
-      ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [phdDatos, genTipo, periodo, fechaEspecifica, term, servicio, subtipoAD],
-  );
-  const internasF = useMemo(
-    () => filtraGenerico(internasDatos, (r) => `${v(r.paciente)} ${v(r.documento)} ${v(r.tipo_solicitud)} ${v(r.servicio)} ${v(r.eapb)}`),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [internasDatos, genTipo, periodo, fechaEspecifica, term, servicio],
-  );
-  const pendientesF = useMemo(
-    () => filtraGenerico((pendientes ?? []) as Generico[], (r) => `${v(r.paciente_asunto)} ${v(r.tipo_pendiente)} ${v(r.ips_area)} ${v(r.prioridad)}`),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [pendientes, genTipo, periodo, fechaEspecifica, term, servicio],
-  );
-
-  // Paginación real: se recorre TODO el conjunto filtrado, página por página.
-  const fullLen =
-    vista === "entrantes" ? gruposF.length
-    : vista === "salientes" ? remisionesF.length
-    : vista === "phd" ? phdF.length
-    : vista === "interna" ? internasF.length
-    : pendientesF.length;
-  const totalPaginas = Math.max(1, Math.ceil(fullLen / tamanoPagina));
-  const paginaActual = Math.min(pagina, totalPaginas);
+  // Paginación server-side: total y páginas son autoritativos del servidor.
+  const fullLen = listado?.total ?? 0;
+  const totalPaginas = listado?.totalPages ?? 1;
+  const paginaActual = listado?.page ?? pagina;
   const desdeIdx = (paginaActual - 1) * tamanoPagina;
-  const pag = <T,>(arr: T[]): T[] => arr.slice(desdeIdx, desdeIdx + tamanoPagina);
-  const gruposV = pag(gruposF);
-  const remisionesV = pag(remisionesF);
-  const phdV = pag(phdF);
-  const internasV = pag(internasF);
+  const gruposV = gruposF;
+  const remisionesV = remisionesF;
+  const phdV = phdF;
+  const internasV = internasF;
   const rangoVisible = fullLen === 0
     ? "0 de 0"
-    : `${desdeIdx + 1}–${Math.min(desdeIdx + tamanoPagina, fullLen)} de ${fullLen}`;
+    : `${desdeIdx + 1}–${Math.min(desdeIdx + filas.length, fullLen)} de ${fullLen}`;
 
   const mensajeVacio = !busquedaActiva
     ? "NO HAY CASOS REGISTRADOS EN ESTA CATEGORÍA."
@@ -1770,19 +1720,14 @@ function HistorialPage() {
 
 
 
-  const cargando =
+  const cargandoHidratacion =
     vista === "entrantes" ? isLoading || loadingHist
     : vista === "salientes" ? loadingSal || loadingHist
     : vista === "phd" ? loadingPhd || loadingHist
-    : vista === "interna" ? loadingInt || loadingHist
-    : loadingPen;
+    : loadingInt || loadingHist;
+  const cargando = cargandoListado || cargandoHidratacion;
 
-  const vacio =
-    vista === "entrantes" ? gruposF.length === 0
-    : vista === "salientes" ? remisionesF.length === 0
-    : vista === "phd" ? phdF.length === 0
-    : vista === "interna" ? internasF.length === 0
-    : pendientesF.length === 0;
+  const vacio = fullLen === 0;
 
   const setQuickPeriodo = (p: Periodo) => {
     setPeriodo(p);

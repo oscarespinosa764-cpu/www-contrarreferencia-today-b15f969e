@@ -1,0 +1,1 @@
+grant execute on function public.historial_listado(text,timestamptz,timestamptz,text,text,text,text,text,text,text,integer,integer) to service_role;

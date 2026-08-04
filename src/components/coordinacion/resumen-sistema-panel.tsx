@@ -48,7 +48,7 @@ const CARDS: Card[] = [
     key: "hist_total",
     label: "Casos históricos",
     icon: Archive,
-    fetch: () => countRows("historicos_casos", (q) => (q as { eq: (a: string, b: unknown) => unknown }).eq("archivado", false)),
+    fetch: () => countRows("historicos_casos", (q) => (q as unknown as { eq: (a: string, b: unknown) => unknown }).eq("archivado", false)),
     linkTo: "/historial",
     linkLabel: "Abrir historial",
   },
@@ -56,13 +56,13 @@ const CARDS: Card[] = [
     key: "hist_ent",
     label: "Entrantes históricos",
     icon: ArrowDownLeft,
-    fetch: () => countRows("historicos_casos", (q) => (q as { eq: (a: string, b: unknown) => unknown; }).eq("seccion", "entrante")),
+    fetch: () => countRows("historicos_casos", (q) => (q as unknown as { eq: (a: string, b: unknown) => unknown; }).eq("seccion", "entrante")),
   },
   {
     key: "hist_sal",
     label: "Salientes históricos",
     icon: ArrowUpRight,
-    fetch: () => countRows("historicos_casos", (q) => (q as { eq: (a: string, b: unknown) => unknown; }).eq("seccion", "saliente")),
+    fetch: () => countRows("historicos_casos", (q) => (q as unknown as { eq: (a: string, b: unknown) => unknown; }).eq("seccion", "saliente")),
   },
   {
     key: "audit",
@@ -116,7 +116,7 @@ const CARDS: Card[] = [
     icon: Smartphone,
     fetch: () =>
       countRows("authorized_devices", (q) =>
-        (q as { eq: (a: string, b: unknown) => unknown }).eq("estado", "AUTORIZADO"),
+        (q as unknown as { eq: (a: string, b: unknown) => unknown }).eq("estado", "AUTORIZADO"),
       ),
   },
   {
@@ -125,7 +125,7 @@ const CARDS: Card[] = [
     icon: KeyRound,
     fetch: () =>
       countRows("device_access_requests", (q) =>
-        (q as { eq: (a: string, b: unknown) => unknown }).eq("estado", "PENDIENTE"),
+        (q as unknown as { eq: (a: string, b: unknown) => unknown }).eq("estado", "PENDIENTE"),
       ),
   },
   {
@@ -134,7 +134,7 @@ const CARDS: Card[] = [
     icon: KeyRound,
     fetch: () =>
       countRows("authorized_device_sessions", (q) =>
-        (q as { eq: (a: string, b: unknown) => unknown }).eq("estado", "ACTIVA"),
+        (q as unknown as { eq: (a: string, b: unknown) => unknown }).eq("estado", "ACTIVA"),
       ),
   },
   {
@@ -149,7 +149,7 @@ const CARDS: Card[] = [
     icon: QrCode,
     fetch: () =>
       countRows("entrega_firmas", (q) =>
-        (q as { eq: (a: string, b: unknown) => unknown }).eq("estado", "FIRMADA"),
+        (q as unknown as { eq: (a: string, b: unknown) => unknown }).eq("estado", "FIRMADA"),
       ),
   },
   {
@@ -159,7 +159,7 @@ const CARDS: Card[] = [
     fetch: () =>
       countRows("entrega_firmas", (q) => {
         const nowIso = new Date().toISOString();
-        return (q as {
+        return (q as unknown as {
           eq: (a: string, b: unknown) => { gt: (a: string, b: unknown) => unknown };
         })
           .eq("estado", "PENDIENTE")
