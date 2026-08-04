@@ -311,9 +311,13 @@ export async function analizarLote(
   const resumen: ResumenHoja[] = [];
   const lote: Partial<Record<ModuloGuFr50, Record<string, string>[]>> = {};
 
+  // Sólo se analizan las hojas presentes: el archivo puede ser el libro
+  // completo (4 hojas) o una exportación individual (1 hoja canónica).
   for (const def of HOJAS_GU_FR_50) {
     const modulo = def.nombre as ModuloGuFr50;
-    const cruda = hojas.find((h) => h.nombre.trim() === def.nombre)!;
+    const cruda = hojas.find((h) => h.nombre.trim() === def.nombre);
+    if (!cruda) continue;
+
     const fuente = FUENTE[modulo];
     let vacias = 0;
     let advertencias = 0;
