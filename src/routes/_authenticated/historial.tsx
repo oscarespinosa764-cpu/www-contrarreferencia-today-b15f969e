@@ -19,8 +19,17 @@ import {
   TAMANOS_PAGINA,
   type HistorialFilterInput,
   type ModoPeriodo,
+  type ModuloHistorial,
   type SubtipoAD,
 } from "@/lib/historial-filtro";
+import {
+  historialQueryKey,
+  type HistorialQueryInput,
+} from "@/lib/historial-listado";
+import {
+  buscarPacientesHistorial,
+  listarHistorialCasos,
+} from "@/lib/historial-listado.functions";
 import {
   Dialog,
   DialogContent,
