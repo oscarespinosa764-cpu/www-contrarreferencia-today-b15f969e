@@ -689,14 +689,51 @@ function HistorialPage() {
   // Estado inicial: barra "Últimos 10 casos" plegable + secuencia de caso desplegable.
   const [u10Abierto, setU10Abierto] = useState(false);
   const [casoExpandido, setCasoExpandido] = useState<string | null>(null);
-  const [limite, setLimite] = useState(20);
+  // Paginación real (no recorte visual).
+  const [pagina, setPagina] = useState(1);
+  const [tamanoPagina, setTamanoPagina] = useState<number>(25);
+  // Mes específico y rango personalizado (fechas puras YYYY-MM-DD).
+  const [mesEsp, setMesEsp] = useState<{ year: number; month: number } | null>(null);
+  const [rangoIni, setRangoIni] = useState("");
+  const [rangoFin, setRangoFin] = useState("");
+  const [errorPeriodo, setErrorPeriodo] = useState("");
 
-  // Rango del período/fecha específica y documento normalizado, usados como
-  // filtros server-side para no depender del cap de 1000/5000 registros.
-  const { start: rangoStart, end: rangoEnd } = useMemo(
-    () => periodoRange(periodo, fechaEspecifica),
-    [periodo, fechaEspecifica],
-  );
+  // Filtro temporal canónico (mismo resolver que usa el servidor al exportar).
+  const filtroPeriodo = useMemo<HistorialFilterInput>(() => {
+    if (fechaEspecifica) {
+      const d = ymd(fechaEspecifica);
+      return { module: "GENERAL", periodMode: "RANGE", startDate: d, endDate: d };
+    }
+    if (rangoIni && rangoFin) {
+      return { module: "GENERAL", periodMode: "RANGE", startDate: rangoIni, endDate: rangoFin };
+    }
+    if (mesEsp) {
+      return { module: "GENERAL", periodMode: "MONTH", year: mesEsp.year, month: mesEsp.month };
+    }
+    return { module: "GENERAL", periodMode: MODO_CHIP[periodo] };
+  }, [fechaEspecifica, rangoIni, rangoFin, mesEsp, periodo]);
+
+  const temporal = useMemo(() => {
+    try {
+      const r = resolverFiltroTemporalHistorial({
+        periodMode: filtroPeriodo.periodMode ?? "ALL",
+        year: filtroPeriodo.year ?? null,
+        month: filtroPeriodo.month ?? null,
+        startDate: filtroPeriodo.startDate ?? null,
+        endDate: filtroPeriodo.endDate ?? null,
+      });
+      return { ...r, error: "" };
+    } catch (e) {
+      return {
+        ...resolverFiltroTemporalHistorial({ periodMode: "ALL" }),
+        error: e instanceof Error ? e.message : "Periodo inválido.",
+      };
+    }
+  }, [filtroPeriodo]);
+
+  const rangoStart = temporal.startAt ?? undefined;
+  const rangoEnd = temporal.endExclusive ?? undefined;
+
   const docTrimEarly = docBusca.trim();
   const docServer = docBuscableServer(docTrimEarly) ? docTrimEarly : "";
 
