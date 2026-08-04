@@ -1037,25 +1037,17 @@ function HistorialPage() {
     return true;
   };
 
-  // Índice de pacientes (para la búsqueda avanzada por nombre/apellido).
-  const pacientesIndex = useMemo<PacienteIndex[]>(() => {
-    const map = new Map<string, PacienteIndex>();
-    const add = (documento: string, nombres: string, apellidos: string) => {
-      const doc = documento.trim();
-      if (!doc || map.has(doc)) return;
-      map.set(doc, {
-        documento: doc,
-        nombres: nombres.trim(),
-        apellidos: apellidos.trim(),
-        nombre: [nombres, apellidos].filter(Boolean).join(" ").trim(),
-      });
-    };
-    for (const c of [...(casos ?? []), ...historicosEntrantes])
-      add(v(c.documento), v(c.nombres), v(c.apellidos));
-    for (const r of remisiones ?? []) add(v(r.documento), v(r.paciente), "");
-    for (const r of [...phdDatos, ...internasDatos]) add(v(r.documento), v(r.paciente), "");
-    return Array.from(map.values());
-  }, [casos, historicosEntrantes, remisiones, phdDatos, internasDatos]);
+  // Índice de pacientes: la búsqueda por documento/nombre se resuelve
+  // SERVER-SIDE (máx. 50 resultados). Antes se construía en el navegador a
+  // partir del universo completo de casos.
+  const fnBuscarPacientes = useServerFn(buscarPacientesHistorial);
+  const terminoPaciente = docTrim.length >= 3 ? docTrim : "";
+  const { data: pacientesIndex = [] } = useQuery<PacienteIndex[]>({
+    queryKey: ["historial-pacientes", terminoPaciente],
+    enabled: terminoPaciente !== "",
+    queryFn: () => fnBuscarPacientes({ data: { termino: terminoPaciente } }),
+    placeholderData: keepPreviousData,
+  });
 
   const pacienteNombre = useMemo(() => {
     if (!docTrim) return "";
