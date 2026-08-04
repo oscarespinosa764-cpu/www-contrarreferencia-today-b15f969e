@@ -1747,19 +1747,14 @@ function HistorialPage() {
 
 
 
-  const cargando =
+  const cargandoHidratacion =
     vista === "entrantes" ? isLoading || loadingHist
     : vista === "salientes" ? loadingSal || loadingHist
     : vista === "phd" ? loadingPhd || loadingHist
-    : vista === "interna" ? loadingInt || loadingHist
-    : loadingPen;
+    : loadingInt || loadingHist;
+  const cargando = cargandoListado || cargandoHidratacion;
 
-  const vacio =
-    vista === "entrantes" ? gruposF.length === 0
-    : vista === "salientes" ? remisionesF.length === 0
-    : vista === "phd" ? phdF.length === 0
-    : vista === "interna" ? internasF.length === 0
-    : pendientesF.length === 0;
+  const vacio = fullLen === 0;
 
   const setQuickPeriodo = (p: Periodo) => {
     setPeriodo(p);
