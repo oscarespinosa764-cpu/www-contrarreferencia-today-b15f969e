@@ -17,6 +17,8 @@ const esquemaExport = z
     modules: z.array(z.enum(MODULOS)).min(1).max(4),
     startDate: z.string().datetime().nullable().optional(),
     endDate: z.string().datetime().nullable().optional(),
+    // Allowlist de casos concretos (exportación puntual desde Historial).
+    casoIds: z.array(z.string().uuid()).max(50).nullable().optional(),
   })
   .strict();
 
@@ -51,6 +53,8 @@ export const exportarGuFr50 = createServerFn({ method: "POST" })
         m,
         data.startDate ?? null,
         data.endDate ?? null,
+        5000,
+        data.casoIds ?? null,
       );
       filas[m] = f as Record<string, string | number | null>[];
       total += f.length;

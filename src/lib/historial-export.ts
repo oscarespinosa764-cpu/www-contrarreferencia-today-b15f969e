@@ -7,7 +7,6 @@
 // escribe estilos de celda (ajuste de texto, congelar), por lo que se aplica
 // ancho de columnas y autofiltro, que sí son compatibles.
 
-import * as XLSX from "xlsx";
 import { fmtFechaHora, fmtEdad, fmtRadicado } from "./remisiones-utils";
 
 const META = {
@@ -273,52 +272,4 @@ export type GrupoEntrante = {
 // Construcción del libro y descarga
 // ============================================================
 
-function buildWorksheet(sec: Seccion, usuario: string, filtros: string): XLSX.WorkSheet {
-  const ncol = sec.headers.length;
-  const blank = (n: number) => Array(n).fill("");
-  const metaRow = (left: string, right: string) => {
-    const row = blank(ncol);
-    row[0] = left;
-    if (ncol > 1) row[ncol - 1] = right;
-    return row;
-  };
-  const aoa: (string | number)[][] = [];
-  aoa.push(metaRow(META.proceso, META.codigo));
-  aoa.push(metaRow(META.formato, META.version));
-  aoa.push(metaRow(META.nombre, "Aprobado:"));
-  aoa.push(blank(ncol));
-  const gen = blank(ncol);
-  gen[0] = `Fecha de generación: ${fmtFechaHora(new Date().toISOString())}`;
-  if (ncol > 1) gen[1] = `Usuario que exporta: ${usuario}`;
-  aoa.push(gen);
-  const filt = blank(ncol);
-  filt[0] = `Filtros: ${filtros || "Todos"}`;
-  aoa.push(filt);
-  aoa.push(sec.headers);
-  for (const r of sec.rows) aoa.push(r);
 
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-  // Ancho de columnas
-  ws["!cols"] = sec.headers.map((h, i) => ({
-    wch: Math.min(40, Math.max(12, (sec.widths?.[i] ?? h.length) + 2)),
-  }));
-  // Autofiltro en la fila de encabezados (fila 7 -> índice 6)
-  const lastCol = XLSX.utils.encode_col(ncol - 1);
-  ws["!autofilter"] = { ref: `A7:${lastCol}7` };
-  return ws;
-}
-
-export function descargarLibro(secciones: Seccion[], usuario: string, filtros: string, nombreArchivo: string): void {
-  const wb = XLSX.utils.book_new();
-  for (const sec of secciones) {
-    if (sec.rows.length === 0) continue;
-    const ws = buildWorksheet(sec, usuario, filtros);
-    XLSX.utils.book_append_sheet(wb, ws, sec.sheet.slice(0, 31));
-  }
-  if (wb.SheetNames.length === 0) {
-    // Hoja vacía para evitar libro inválido
-    const ws = buildWorksheet({ sheet: "SIN DATOS", headers: ["Sin registros"], rows: [] }, usuario, filtros);
-    XLSX.utils.book_append_sheet(wb, ws, "SIN DATOS");
-  }
-  XLSX.writeFile(wb, `${nombreArchivo}_${new Date().toISOString().slice(0, 10)}.xlsx`);
-}
