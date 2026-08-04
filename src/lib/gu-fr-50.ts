@@ -380,3 +380,21 @@ export async function descargarPlantillaGuFr50() {
   const bytes = await construirLibroGuFr50({});
   descargarXlsx(bytes, GU_FR_50.archivo);
 }
+
+/** Nombre canónico del archivo exportado (GENERAL o INDIVIDUAL). */
+export function nombreArchivoGuFr50(opts: {
+  scope: "GENERAL" | "INDIVIDUAL";
+  modulo?: ModuloGuFr50;
+  subtipo?: string | null;
+  sufijoFecha: string;
+}): string {
+  const limpio = (s: string) =>
+    s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]+/g, "_")
+      .replace(/^_|_$/g, "").toUpperCase();
+  if (opts.scope === "GENERAL") {
+    return `GU-FR-50_GENERAL_${opts.sufijoFecha}.xlsx`;
+  }
+  const base = limpio(opts.modulo ?? "");
+  const sub = opts.subtipo ? `_${limpio(opts.subtipo)}` : "";
+  return `GU-FR-50_${base}${sub}_${opts.sufijoFecha}.xlsx`;
+}
