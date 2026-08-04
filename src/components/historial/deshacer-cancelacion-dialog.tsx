@@ -23,7 +23,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { reactivarCasoCanceladoAdmin } from "@/lib/reactivar-caso.functions";
 import type { TipoCasoReactivable } from "@/lib/reactivar-caso";
 
-
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -109,9 +108,7 @@ export function DeshacerCancelacionDialog({
       return res;
     },
     onSuccess: (res) => {
-      toast.success(
-        `Caso reactivado. Estado restaurado: ${res.estadoRestaurado ?? "—"}`,
-      );
+      toast.success(`Caso reactivado. Estado restaurado: ${res.estadoRestaurado ?? "—"}`);
       // Invalidación selectiva de consumidores reales.
       qc.invalidateQueries({ queryKey: ["historial"] });
       qc.invalidateQueries({ queryKey: ["historial-listado"] });
@@ -151,16 +148,26 @@ export function DeshacerCancelacionDialog({
         </DialogHeader>
 
         <div className="grid gap-2 text-sm">
-          <div><span className="font-medium">Flujo:</span> {ETIQUETA_TIPO[tipoCaso]}</div>
-          <div><span className="font-medium">Paciente:</span> {paciente || "—"}</div>
-          <div><span className="font-medium">Documento:</span> {documento || "—"}</div>
+          <div>
+            <span className="font-medium">Flujo:</span> {ETIQUETA_TIPO[tipoCaso]}
+          </div>
+          <div>
+            <span className="font-medium">Paciente:</span> {paciente || "—"}
+          </div>
+          <div>
+            <span className="font-medium">Documento:</span> {documento || "—"}
+          </div>
           {codigo ? (
-            <div><span className="font-medium">Código:</span> {codigo}</div>
+            <div>
+              <span className="font-medium">Código:</span> {codigo}
+            </div>
           ) : null}
-          <div><span className="font-medium">Estado actual:</span> {estadoCancelado}</div>
+          <div>
+            <span className="font-medium">Estado actual:</span> {estadoCancelado}
+          </div>
           <div className="text-xs text-muted-foreground">
-            El estado restaurado se determina automáticamente desde el historial estructurado.
-            Si no puede identificarse con certeza, la operación se bloqueará.
+            El estado restaurado se determina automáticamente desde el historial estructurado. Si no
+            puede identificarse con certeza, la operación se bloqueará.
           </div>
         </div>
 
@@ -195,11 +202,7 @@ export function DeshacerCancelacionDialog({
           >
             Cancelar
           </Button>
-          <Button
-            type="button"
-            onClick={() => mutation.mutate()}
-            disabled={!puedeEnviar}
-          >
+          <Button type="button" onClick={() => mutation.mutate()} disabled={!puedeEnviar}>
             {mutation.isPending ? "Reactivando…" : "Reactivar caso"}
           </Button>
         </DialogFooter>
