@@ -755,7 +755,7 @@ function HistorialPage() {
   // Cualquier cambio de filtro devuelve el listado a la primera página.
   useEffect(() => {
     setPagina(1);
-  }, [vista, tipo, salTipo, genTipo, periodo, fechaEspecifica, mesEsp, rangoIni, rangoFin, docBusca, tamanoPagina]);
+  }, [vista, tipo, salTipo, genTipo, subtipoAD, sede, servicio, periodo, fechaEspecifica, mesEsp, rangoIni, rangoFin, docBusca, tamanoPagina]);
 
   const docTrimEarly = docBusca.trim();
   const docServer = docBuscableServer(docTrimEarly) ? docTrimEarly : "";
