@@ -572,12 +572,21 @@ async function fetchHistoricosCasos(opts: {
   start?: string;
   end?: string;
   documento?: string;
+  /** Hidratación por identificadores de la página vigente (camino canónico). */
+  ids?: string[];
 }): Promise<HistoricoCaso[]> {
-  // La tabla histórica supera los 20k registros. Para no traerla completa se
-  // aplican filtros server-side (rango de `created_at` + documento cuando
-  // aplica). Sin filtros: cap defensivo de 5000 registros más recientes POR
-  // SECCIÓN (entrantes se importaron antes que salientes, por lo que un cap
-  // global dejaba fuera todos los entrantes recientes).
+  // Camino canónico: el listado server-side ya decidió QUÉ registros componen
+  // la página, así que sólo se leen esos identificadores. Sin límites ni caps.
+  if (opts.ids) {
+    if (opts.ids.length === 0) return [];
+    const { data, error } = await supabase
+      .from("historicos_casos")
+      .select(HISTORICOS_SELECT)
+      .in("id", opts.ids);
+    if (error) throw error;
+    return (data ?? []) as HistoricoCaso[];
+  }
+  // Camino legado (consultas puntuales por documento/rango).
   const hasFilter = !!(opts.start || opts.end || opts.documento);
   const perSection = hasFilter ? 20000 : 5000;
   const build = (seccion: string) => {
