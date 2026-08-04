@@ -1081,101 +1081,27 @@ function HistorialPage() {
     setCasoExpandido(null);
   };
 
-  const gruposF = useMemo(
-    () =>
-      grupos.filter((g) => {
-        if (tipo !== "TODOS" && !tieneTipo(g.eventos, tipo)) return false;
-        if (!pasaPeriodo(g.base.fecha || g.base.created_at)) return false;
-        if (!matchServicio(`${g.base.unidad ?? ""} ${g.base.especialidad ?? ""}`)) return false;
-        if (!matchSede(`${g.base.unidad ?? ""}`)) return false;
-        if (!term) return true;
-        const hay = g.eventos
-          .map((e) => `${e.codigo ?? ""} ${e.documento ?? ""} ${e.nombres ?? ""} ${e.apellidos ?? ""} ${e.ips ?? ""}`)
-          .join(" ")
-          .toLowerCase();
-        return hay.includes(term);
-      }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [grupos, tipo, periodo, fechaEspecifica, term, servicio, sede],
-  );
+  // ============================================================
+  // Conjuntos visibles: YA vienen filtrados, agrupados, ordenados y paginados
+  // por el servidor. Aquí no se vuelve a filtrar ni a recortar en memoria.
+  // ============================================================
+  const gruposF = grupos;
+  const remisionesF = remisiones;
+  const phdF = phdDatos;
+  const internasF = internasDatos;
 
-  const remisionesF = useMemo(
-    () =>
-      (remisiones ?? []).filter((r) => {
-        if (salTipo !== "TODOS" && !(r.estado || "").toUpperCase().includes(salTipo)) return false;
-        if (!pasaPeriodo((r.fecha_radicado as string) || r.created_at)) return false;
-        if (!matchServicio(`${v(r.servicio)} ${v((r as Record<string, unknown>).especialidad_receptora)}`)) return false;
-        if (!term) return true;
-        const hay = `${r.codigo_radicacion ?? ""} ${r.documento ?? ""} ${r.paciente ?? ""} ${r.ips_receptora ?? ""} ${r.servicio ?? ""}`.toLowerCase();
-        return hay.includes(term);
-      }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [remisiones, salTipo, periodo, fechaEspecifica, term, servicio],
-  );
-
-  const filtraGenerico = (rows: Generico[], campos: (r: Generico) => string) =>
-    rows.filter((r) => {
-      if (genTipo !== "TODOS") {
-        const e = (r.estado || "").toUpperCase();
-        if (genTipo === "CERRADO" && !/COMPLET|CERRAD|CULMIN/.test(e)) return false;
-        if (genTipo !== "CERRADO" && !e.includes(genTipo)) return false;
-      }
-      if (!pasaPeriodo((r.fecha_inicio as string) || (r.fecha as string) || r.created_at)) return false;
-      if (!matchServicio(`${v(r.servicio)} ${v(r.tipo_solicitud)} ${v((r as Record<string, unknown>).unidad)}`)) return false;
-      if (!term) return true;
-      return campos(r).toLowerCase().includes(term);
-    });
-
-  // El subtipo de Atención Domiciliaria usa exactamente los mismos valores
-  // canónicos que aplica el servidor al exportar (allowlist PHD/PAD/O2/ESPECIALES).
-  const SUBTIPO_AD_VALORES: Record<string, string[]> = {
-    PHD: ["PHD"],
-    PAD: ["PAD"],
-    O2: ["O2", "OXIGENO"],
-    ESPECIALES: ["ESPECIAL", "ESPECIALES"],
-  };
-  const phdF = useMemo(
-    () =>
-      filtraGenerico(
-        subtipoAD === "TODOS"
-          ? phdDatos
-          : phdDatos.filter((r) =>
-              (SUBTIPO_AD_VALORES[subtipoAD] ?? []).includes(v(r.tipo_solicitud).toUpperCase()),
-            ),
-        (r) => `${v(r.paciente)} ${v(r.documento)} ${v(r.tipo_solicitud)} ${v(r.eapb)} ${v(r.codigo_radicacion)}`,
-      ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [phdDatos, genTipo, periodo, fechaEspecifica, term, servicio, subtipoAD],
-  );
-  const internasF = useMemo(
-    () => filtraGenerico(internasDatos, (r) => `${v(r.paciente)} ${v(r.documento)} ${v(r.tipo_solicitud)} ${v(r.servicio)} ${v(r.eapb)}`),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [internasDatos, genTipo, periodo, fechaEspecifica, term, servicio],
-  );
-  const pendientesF = useMemo(
-    () => filtraGenerico((pendientes ?? []) as Generico[], (r) => `${v(r.paciente_asunto)} ${v(r.tipo_pendiente)} ${v(r.ips_area)} ${v(r.prioridad)}`),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [pendientes, genTipo, periodo, fechaEspecifica, term, servicio],
-  );
-
-  // Paginación real: se recorre TODO el conjunto filtrado, página por página.
-  const fullLen =
-    vista === "entrantes" ? gruposF.length
-    : vista === "salientes" ? remisionesF.length
-    : vista === "phd" ? phdF.length
-    : vista === "interna" ? internasF.length
-    : pendientesF.length;
-  const totalPaginas = Math.max(1, Math.ceil(fullLen / tamanoPagina));
-  const paginaActual = Math.min(pagina, totalPaginas);
+  // Paginación server-side: total y páginas son autoritativos del servidor.
+  const fullLen = listado?.total ?? 0;
+  const totalPaginas = listado?.totalPages ?? 1;
+  const paginaActual = listado?.page ?? pagina;
   const desdeIdx = (paginaActual - 1) * tamanoPagina;
-  const pag = <T,>(arr: T[]): T[] => arr.slice(desdeIdx, desdeIdx + tamanoPagina);
-  const gruposV = pag(gruposF);
-  const remisionesV = pag(remisionesF);
-  const phdV = pag(phdF);
-  const internasV = pag(internasF);
+  const gruposV = gruposF;
+  const remisionesV = remisionesF;
+  const phdV = phdF;
+  const internasV = internasF;
   const rangoVisible = fullLen === 0
     ? "0 de 0"
-    : `${desdeIdx + 1}–${Math.min(desdeIdx + tamanoPagina, fullLen)} de ${fullLen}`;
+    : `${desdeIdx + 1}–${Math.min(desdeIdx + filas.length, fullLen)} de ${fullLen}`;
 
   const mensajeVacio = !busquedaActiva
     ? "NO HAY CASOS REGISTRADOS EN ESTA CATEGORÍA."
