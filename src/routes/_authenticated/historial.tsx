@@ -422,55 +422,11 @@ function mismoDia(raw: string | null, day: Date): boolean {
   );
 }
 
-function dentroPeriodo(raw: string | null, periodo: Periodo): boolean {
-  if (periodo === "Todos") return true;
-  if (!raw) return false;
-  const d = new Date(raw);
-  if (isNaN(d.getTime())) return false;
-  const now = new Date();
-  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (periodo === "Hoy") return d >= startToday;
-  if (periodo === "Esta semana") {
-    const ws = new Date(startToday);
-    ws.setDate(ws.getDate() - ((ws.getDay() + 6) % 7));
-    return d >= ws;
-  }
-  if (periodo === "Este mes") return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-  if (periodo === "Mes anterior") {
-    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    return d.getFullYear() === prev.getFullYear() && d.getMonth() === prev.getMonth();
-  }
-  return true;
-}
+// El filtro temporal ya NO se calcula aquí: la resolución canónica vive en
+// src/lib/historial-filtro.ts (America/Bogota) y es la misma que usa el
+// servidor para la exportación GU-FR-50.
 
-// Rango de fechas (ISO) equivalente al filtro cliente `pasaPeriodo`, para
-// aplicar server-side sobre `created_at` y evitar los topes de 1000/5000.
-function periodoRange(periodo: Periodo, fecha?: Date): { start?: string; end?: string } {
-  if (fecha) {
-    const s = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
-    const e = new Date(s); e.setDate(e.getDate() + 1);
-    return { start: s.toISOString(), end: e.toISOString() };
-  }
-  if (periodo === "Todos") return {};
-  const now = new Date();
-  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (periodo === "Hoy") return { start: startToday.toISOString() };
-  if (periodo === "Esta semana") {
-    const ws = new Date(startToday);
-    ws.setDate(ws.getDate() - ((ws.getDay() + 6) % 7));
-    return { start: ws.toISOString() };
-  }
-  if (periodo === "Este mes") {
-    const s = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { start: s.toISOString() };
-  }
-  if (periodo === "Mes anterior") {
-    const s = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const e = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { start: s.toISOString(), end: e.toISOString() };
-  }
-  return {};
-}
+
 
 const docBuscableServer = (doc: string): boolean =>
   doc.length >= 4 && /^\d+$/.test(doc);
