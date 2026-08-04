@@ -15,9 +15,11 @@ import { Calendar } from "@/components/ui/calendar";
 import { FiltersBar } from "@/components/filters/filters-bar";
 import {
   resolverFiltroTemporalHistorial,
+  SUBTIPOS_AD,
   TAMANOS_PAGINA,
   type HistorialFilterInput,
   type ModoPeriodo,
+  type SubtipoAD,
 } from "@/lib/historial-filtro";
 import {
   Dialog,
