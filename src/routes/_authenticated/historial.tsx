@@ -1972,10 +1972,16 @@ function HistorialPage() {
         ) : cargando ? (
           <p className="py-10 text-center text-sm text-muted-foreground">Cargando…</p>
         ) : (
-          <Ultimos10Bar
+          <ListadoBar
             abierto={u10Abierto}
             onToggle={() => setU10Abierto((o) => !o)}
-            total={Math.min(fullLen, 10)}
+            rango={rangoVisible}
+            periodo={temporal.label}
+            pagina={paginaActual}
+            totalPaginas={totalPaginas}
+            tamano={tamanoPagina}
+            onTamano={(n) => { setTamanoPagina(n); setPagina(1); }}
+            onPagina={setPagina}
           >
             {fullLen === 0 ? (
               <p className="py-6 text-center text-xs font-semibold text-muted-foreground">
@@ -1983,19 +1989,19 @@ function HistorialPage() {
               </p>
             ) : vista === "entrantes" ? (
               <div className="grid gap-2">
-                {gruposF.slice(0, 10).map((g) => (
+                {gruposV.map((g) => (
                   <CasoCard key={g.key} grupo={g} canEdit={canEdit} onConfirmar={() => setIngresoFor(g)} onPDF={() => pdfEntrante(g)} />
                 ))}
               </div>
             ) : vista === "salientes" ? (
               <div className="grid gap-2">
-                {(remisionesF as Remision[]).slice(0, 10).map((r) => (
+                {(remisionesV as Remision[]).map((r) => (
                   <RemisionCard key={r.id} remision={r} onPDF={() => pdfSaliente(r)} />
                 ))}
               </div>
             ) : vista === "phd" ? (
               <div className="grid gap-2">
-                {(phdF as Generico[]).slice(0, 10).map((r) => (
+                {(phdV as Generico[]).map((r) => (
                   <GenericoCard
                     key={r.id}
                     titulo={`${v(r.paciente) || "Sin nombre"}`}
@@ -2009,7 +2015,7 @@ function HistorialPage() {
               </div>
             ) : (
               <div className="grid gap-2">
-                {(internasF as Generico[]).slice(0, 10).map((r) => (
+                {(internasV as Generico[]).map((r) => (
                   <GenericoCard
                     key={r.id}
                     titulo={`${v(r.paciente) || "Sin nombre"}`}
@@ -2021,7 +2027,7 @@ function HistorialPage() {
                 ))}
               </div>
             )}
-          </Ultimos10Bar>
+          </ListadoBar>
         )}
       </Panel>
 
@@ -2840,16 +2846,28 @@ function PacienteResultado({
   );
 }
 
-// Barra plegable "Últimos 10 casos" (estado inicial sin búsqueda).
-function Ultimos10Bar({
+// Barra plegable del listado con PAGINACIÓN REAL (ya no "últimos 10").
+function ListadoBar({
   abierto,
   onToggle,
-  total,
+  rango,
+  periodo,
+  pagina,
+  totalPaginas,
+  tamano,
+  onTamano,
+  onPagina,
   children,
 }: {
   abierto: boolean;
   onToggle: () => void;
-  total: number;
+  rango: string;
+  periodo: string;
+  pagina: number;
+  totalPaginas: number;
+  tamano: number;
+  onTamano: (n: number) => void;
+  onPagina: (n: number) => void;
   children: ReactNode;
 }) {
   return (
@@ -2861,12 +2879,58 @@ function Ultimos10Bar({
       >
         <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-foreground">
           <Clock className="h-4 w-4 text-muted-foreground" />
-          Últimos 10 casos
-          {total > 0 && <span className="text-muted-foreground">· {total} registro(s)</span>}
+          Listado de casos
+          <span className="text-muted-foreground">· {rango} · {periodo}</span>
         </span>
         <ChevronDown className={`h-4 w-4 text-muted-foreground transition ${abierto ? "rotate-180" : ""}`} />
       </button>
-      {abierto && <div className="border-t border-border p-2.5">{children}</div>}
+      {abierto && (
+        <div className="border-t border-border p-2.5">
+          {children}
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+              <span>Por página</span>
+              {TAMANOS_PAGINA.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => onTamano(n)}
+                  className={`rounded-full border px-2 py-0.5 transition ${
+                    tamano === n
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-border bg-card hover:text-foreground"
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2 text-[11px] font-semibold">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-[11px]"
+                disabled={pagina <= 1}
+                onClick={() => onPagina(pagina - 1)}
+              >
+                Anterior
+              </Button>
+              <span className="text-muted-foreground">
+                Página {pagina} de {totalPaginas}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-[11px]"
+                disabled={pagina >= totalPaginas}
+                onClick={() => onPagina(pagina + 1)}
+              >
+                Siguiente
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
