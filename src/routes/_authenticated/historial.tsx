@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
@@ -740,6 +740,11 @@ function HistorialPage() {
   const rangoStart = temporal.startAt ?? undefined;
   const rangoEnd = temporal.endExclusive ?? undefined;
 
+  // Cualquier cambio de filtro devuelve el listado a la primera página.
+  useEffect(() => {
+    setPagina(1);
+  }, [vista, tipo, salTipo, genTipo, periodo, fechaEspecifica, mesEsp, rangoIni, rangoFin, docBusca, tamanoPagina]);
+
   const docTrimEarly = docBusca.trim();
   const docServer = docBuscableServer(docTrimEarly) ? docTrimEarly : "";
 
@@ -951,6 +956,8 @@ function HistorialPage() {
     genTipo !== "TODOS" ||
     periodo !== "Todos" ||
     !!fechaEspecifica ||
+    !!mesEsp ||
+    (!!rangoIni && !!rangoFin) ||
     servicioActivo;
 
   // Un registro entra al periodo cuando su fecha funcional cae en el rango
@@ -1001,6 +1008,10 @@ function HistorialPage() {
     setGenTipo("TODOS");
     setPeriodo("Todos");
     setFechaEspecifica(undefined);
+    setMesEsp(null);
+    setRangoIni("");
+    setRangoFin("");
+    setErrorPeriodo("");
     setPagina(1);
     setU10Abierto(false);
     setCasoExpandido(null);
@@ -1133,9 +1144,7 @@ function HistorialPage() {
       });
   }, [vista, casos, historicosEntrantes, remisiones]);
 
-  const periodoLabel = fechaEspecifica
-    ? `${pad(fechaEspecifica.getDate())}/${pad(fechaEspecifica.getMonth() + 1)}/${fechaEspecifica.getFullYear()}`
-    : periodo;
+  const periodoLabel = temporal.label;
 
   const filtroCasoLabel =
     vista === "entrantes" ? TIPO_LABEL[tipo] : vista === "salientes" ? SAL_LABEL[salTipo] : GEN_LABEL[genTipo];
@@ -1683,6 +1692,10 @@ function HistorialPage() {
   const setQuickPeriodo = (p: Periodo) => {
     setPeriodo(p);
     setFechaEspecifica(undefined);
+    setMesEsp(null);
+    setRangoIni("");
+    setRangoFin("");
+    setErrorPeriodo("");
   };
 
   const tituloVista = VISTAS.find((x) => x.key === vista)?.label ?? "";
