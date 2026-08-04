@@ -114,7 +114,14 @@ export function DeshacerCancelacionDialog({
       );
       // Invalidación selectiva de consumidores reales.
       qc.invalidateQueries({ queryKey: ["historial"] });
+      qc.invalidateQueries({ queryKey: ["historial-listado"] });
+      qc.invalidateQueries({ queryKey: ["historial-hidrata-entrantes"] });
+      qc.invalidateQueries({ queryKey: ["historial-hidrata-salientes"] });
+      qc.invalidateQueries({ queryKey: ["historial-hidrata-domiciliarios"] });
+      qc.invalidateQueries({ queryKey: ["historial-hidrata-internas"] });
+      qc.invalidateQueries({ queryKey: ["historial-hidrata-historicos"] });
       qc.invalidateQueries({ queryKey: ["historicos-casos"] });
+
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["dashboard-metrics"] });
       qc.invalidateQueries({ queryKey: ["remisiones"] });
