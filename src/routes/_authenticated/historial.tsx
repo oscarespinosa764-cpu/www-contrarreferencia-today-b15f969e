@@ -22,14 +22,8 @@ import {
   type ModuloHistorial,
   type SubtipoAD,
 } from "@/lib/historial-filtro";
-import {
-  historialQueryKey,
-  type HistorialQueryInput,
-} from "@/lib/historial-listado";
-import {
-  buscarPacientesHistorial,
-  listarHistorialCasos,
-} from "@/lib/historial-listado.functions";
+import { historialQueryKey, type HistorialQueryInput } from "@/lib/historial-listado";
+import { buscarPacientesHistorial, listarHistorialCasos } from "@/lib/historial-listado.functions";
 import {
   Dialog,
   DialogContent,
@@ -54,7 +48,6 @@ import {
   ArrowUpRight,
   Home,
   Stethoscope,
-  
   Filter,
   CalendarDays,
   ChevronDown,
@@ -90,11 +83,7 @@ import {
   type BloqueCaso,
 } from "@/lib/bitacora-pdf";
 import { DeshacerCancelacionDialog } from "@/components/historial/deshacer-cancelacion-dialog";
-import {
-  ESTADOS_CANCEL_POR_TIPO,
-  type TipoCasoReactivable,
-} from "@/lib/reactivar-caso";
-
+import { ESTADOS_CANCEL_POR_TIPO, type TipoCasoReactivable } from "@/lib/reactivar-caso";
 
 function tipoCasoReactivableDesdeTabla(
   tabla: "casos_entrantes" | "remisiones" | "domiciliarios" | "referencia_interna",
@@ -105,10 +94,7 @@ function tipoCasoReactivableDesdeTabla(
   return null; // referencia_interna: NO APLICA ACTUALMENTE
 }
 
-function esEstadoCancelatorio(
-  tipo: TipoCasoReactivable,
-  estado: string,
-): boolean {
+function esEstadoCancelatorio(tipo: TipoCasoReactivable, estado: string): boolean {
   return ESTADOS_CANCEL_POR_TIPO[tipo].includes(estado);
 }
 
@@ -260,7 +246,6 @@ const MODO_CHIP: Record<Periodo, ModoPeriodo> = {
 const ymd = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-
 const VISTAS: { key: Vista; label: string; icon: typeof Home; color: string }[] = [
   { key: "entrantes", label: "Entrantes", icon: ArrowDownLeft, color: "bg-status-green" },
   { key: "salientes", label: "Salientes", icon: ArrowUpRight, color: "bg-status-teal" },
@@ -351,11 +336,15 @@ function motivoNegDesdeTexto(textoIa: string | null | undefined): string {
   if (t.includes("NIVEL DE COMPLEJIDAD")) return "POR NIVEL DE COMPLEJIDAD";
   if (t.includes("RED PRESTADORA CONTRATADA") || t.includes("NO INTEGRA LA RED"))
     return "RED NO CONTRATADA";
-  if (t.includes("ALTA OCUPACION") || (t.includes("DISPONIBILIDAD DE CAMAS") && t.includes("OCUPAC")))
+  if (
+    t.includes("ALTA OCUPACION") ||
+    (t.includes("DISPONIBILIDAD DE CAMAS") && t.includes("OCUPAC"))
+  )
     return "NO DISPONIBILIDAD DE CAMAS POR SOBREOCUPACIÓN";
   if (t.includes("DISPONIBILIDAD DE LA ESPECIALIDAD")) return "NO RECURSO HUMANO";
   if (t.includes("DISPONIBILIDAD DE LA UNIDAD")) return "NO DISPONIBILIDAD DE UNIDAD";
-  if (t.includes("INSUMO") || t.includes("TECNOLOG")) return "NO DISPONIBILIDAD DE INSUMO O TECNOLOGÍA";
+  if (t.includes("INSUMO") || t.includes("TECNOLOG"))
+    return "NO DISPONIBILIDAD DE INSUMO O TECNOLOGÍA";
   if (t.includes("FALTA DE DOCUMENTACION") || t.includes("DOCUMENTACION INCOMPLETA"))
     return "FALTA DE DOCUMENTACIÓN";
   return "";
@@ -456,31 +445,34 @@ function mismoDia(raw: string | null, day: Date): boolean {
 // src/lib/historial-filtro.ts (America/Bogota) y es la misma que usa el
 // servidor para la exportación GU-FR-50.
 
-
-
-const docBuscableServer = (doc: string): boolean =>
-  doc.length >= 4 && /^\d+$/.test(doc);
+const docBuscableServer = (doc: string): boolean => doc.length >= 4 && /^\d+$/.test(doc);
 
 function tieneTipo(eventos: Caso[], tipo: string): boolean {
   return eventos.some((e) => (e.tipo || "").toUpperCase().includes(tipo));
 }
 
-function calcularEstado(base: Caso, eventos: Caso[]): { estadoFinal: Grupo["estadoFinal"]; activa: boolean } {
+function calcularEstado(
+  base: Caso,
+  eventos: Caso[],
+): { estadoFinal: Grupo["estadoFinal"]; activa: boolean } {
   const est = (base.estado || "").toUpperCase();
   const baseTipo = (base.tipo || "").toUpperCase();
   const hasIng = tieneTipo(eventos, "ING") || est.includes("INGRESAD");
   const hasCan = tieneTipo(eventos, "CAN") || est.includes("CANCELAD");
-  if (baseTipo.includes("NEG")) return { estadoFinal: { label: "CERRADA — NO ACEPTADA", color: "red" }, activa: false };
+  if (baseTipo.includes("NEG"))
+    return { estadoFinal: { label: "CERRADA — NO ACEPTADA", color: "red" }, activa: false };
   if (hasIng) return { estadoFinal: { label: "CERRADA — INGRESÓ", color: "green" }, activa: false };
   if (hasCan) return { estadoFinal: { label: "CERRADA — CANCELADA", color: "red" }, activa: false };
-  if (est.includes("CERRAD")) return { estadoFinal: { label: "CERRADA", color: "red" }, activa: false };
+  if (est.includes("CERRAD"))
+    return { estadoFinal: { label: "CERRADA", color: "red" }, activa: false };
   return { estadoFinal: { label: "ACTIVA", color: "green" }, activa: true };
 }
 
 function esConfirmable(base: Caso, eventos: Caso[], activa: boolean): boolean {
   const baseTipo = (base.tipo || "").toUpperCase();
   if (baseTipo.includes("NEG")) return false;
-  if (tieneTipo(eventos, "ING") || (base.estado || "").toUpperCase().includes("INGRESAD")) return false;
+  if (tieneTipo(eventos, "ING") || (base.estado || "").toUpperCase().includes("INGRESAD"))
+    return false;
   if (activa) return true;
   const ahora = Date.now();
   const dia = 24 * 3600 * 1000;
@@ -511,7 +503,8 @@ function estadoSaliente(estado: string | null): { label: string; color: StatusCo
 
 function estadoGenerico(estado: string | null): { label: string; color: StatusColor } {
   const e = (estado || "").toUpperCase();
-  if (e.includes("COMPLET") || e.includes("CERRAD") || e.includes("CULMIN")) return { label: e || "CERRADO", color: "green" };
+  if (e.includes("COMPLET") || e.includes("CERRAD") || e.includes("CULMIN"))
+    return { label: e || "CERRADO", color: "green" };
   if (e.includes("PARCIAL")) return { label: "CUMPLIMIENTO PARCIAL", color: "amber" };
   if (e.includes("DESIST") || e.includes("CANCELAD")) return { label: e, color: "red" };
   if (e.includes("PENDIENTE")) return { label: "PENDIENTE", color: "amber" };
@@ -608,11 +601,13 @@ async function fetchHistoricosCasos(opts: {
   return [...((ent.data ?? []) as HistoricoCaso[]), ...((sal.data ?? []) as HistoricoCaso[])];
 }
 
-
 const historicoFecha = (h: HistoricoCaso): string => v(h.fecha) || v(h.created_at);
 const historicoTextoMeta = (h: HistoricoCaso): string =>
-  sinTildes(`${h.seccion ?? ""} ${h.tipo_caso ?? ""} ${h.fuente_hoja ?? ""} ${h.fuente_archivo ?? ""}`).toUpperCase();
-const historicoTextoDetalle = (h: HistoricoCaso): string => sinTildes(h.detalle ?? "").toUpperCase();
+  sinTildes(
+    `${h.seccion ?? ""} ${h.tipo_caso ?? ""} ${h.fuente_hoja ?? ""} ${h.fuente_archivo ?? ""}`,
+  ).toUpperCase();
+const historicoTextoDetalle = (h: HistoricoCaso): string =>
+  sinTildes(h.detalle ?? "").toUpperCase();
 const esHistoricoPHD = (h: HistoricoCaso): boolean => {
   const meta = historicoTextoMeta(h);
   const detalle = historicoTextoDetalle(h);
@@ -625,7 +620,8 @@ const esHistoricoPHD = (h: HistoricoCaso): boolean => {
     /\bESPECIALES?\b/.test(meta)
   );
 };
-const esHistoricoInterna = (h: HistoricoCaso): boolean => /\b(REF\.?\s*INTERNA|REFERENCIA\s*INTERNA|INTERNA)\b/.test(historicoTextoMeta(h));
+const esHistoricoInterna = (h: HistoricoCaso): boolean =>
+  /\b(REF\.?\s*INTERNA|REFERENCIA\s*INTERNA|INTERNA)\b/.test(historicoTextoMeta(h));
 
 function historicoAEntrante(h: HistoricoCaso): Caso {
   const fecha = historicoFecha(h);
@@ -697,8 +693,7 @@ function historicoAGenerico(h: HistoricoCaso): Generico {
 
 function HistorialPage() {
   const { canEdit, isAdmin, user } = useAuth();
-  const usuario =
-    (user?.user_metadata?.nombre as string) || user?.email || "Usuario autenticado";
+  const usuario = (user?.user_metadata?.nombre as string) || user?.email || "Usuario autenticado";
   const qc = useQueryClient();
   const [vista, setVista] = useState<Vista>("entrantes");
   const [tipo, setTipo] = useState<TipoFilter>("TODOS");
@@ -762,7 +757,22 @@ function HistorialPage() {
   // Cualquier cambio de filtro devuelve el listado a la primera página.
   useEffect(() => {
     setPagina(1);
-  }, [vista, tipo, salTipo, genTipo, subtipoAD, sede, servicio, periodo, fechaEspecifica, mesEsp, rangoIni, rangoFin, docBusca, tamanoPagina]);
+  }, [
+    vista,
+    tipo,
+    salTipo,
+    genTipo,
+    subtipoAD,
+    sede,
+    servicio,
+    periodo,
+    fechaEspecifica,
+    mesEsp,
+    rangoIni,
+    rangoFin,
+    docBusca,
+    tamanoPagina,
+  ]);
 
   const docTrimEarly = docBusca.trim();
   const docServer = docBuscableServer(docTrimEarly) ? docTrimEarly : "";
@@ -810,7 +820,20 @@ function HistorialPage() {
       pageSize: tamanoPagina,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [vista, filtroPeriodo, tipo, salTipo, genTipo, sede, servicio, docServer, docTrimEarly, subtipoAD, pagina, tamanoPagina],
+    [
+      vista,
+      filtroPeriodo,
+      tipo,
+      salTipo,
+      genTipo,
+      sede,
+      servicio,
+      docServer,
+      docTrimEarly,
+      subtipoAD,
+      pagina,
+      tamanoPagina,
+    ],
   );
 
   const fnListarHistorial = useServerFn(listarHistorialCasos);
@@ -963,7 +986,9 @@ function HistorialPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("seguimientos")
-        .select("caso_id, tipo_caso, tipo_seguimiento, detalle, plantilla_indigo, estado_solicitud, nombre_contacto, nombre_usuario, created_at")
+        .select(
+          "caso_id, tipo_caso, tipo_seguimiento, detalle, plantilla_indigo, estado_solicitud, nombre_contacto, nombre_usuario, created_at",
+        )
         .order("created_at", { ascending: true })
         .limit(5000);
       if (error) throw error;
@@ -1033,8 +1058,10 @@ function HistorialPage() {
     const dn = docTrim.toLowerCase();
     return pacientesIndex.find((p) => p.documento.toLowerCase() === dn)?.nombre ?? "";
   }, [docTrim, pacientesIndex]);
-  const pacienteExiste = pacienteNombre !== "" || (docTrim !== "" &&
-    pacientesIndex.some((p) => p.documento.toLowerCase() === docTrim.toLowerCase()));
+  const pacienteExiste =
+    pacienteNombre !== "" ||
+    (docTrim !== "" &&
+      pacientesIndex.some((p) => p.documento.toLowerCase() === docTrim.toLowerCase()));
 
   const limpiarConsulta = () => {
     setDocBusca("");
@@ -1072,9 +1099,12 @@ function HistorialPage() {
   const remisionesV = remisionesF;
   const phdV = phdF;
   const internasV = internasF;
-  const rangoVisible = fullLen === 0
-    ? "0 de 0"
-    : `${desdeIdx + 1}–${Math.min(desdeIdx + filas.length, fullLen)} de ${fullLen}`;
+  const sinFechaFuncional = listado?.missingFunctionalDateCount ?? 0;
+  const rangoVisible =
+    (fullLen === 0
+      ? "0 de 0"
+      : `${desdeIdx + 1}–${Math.min(desdeIdx + filas.length, fullLen)} de ${fullLen}`) +
+    (sinFechaFuncional > 0 ? ` · ${sinFechaFuncional} sin fecha funcional` : "");
 
   const mensajeVacio = !busquedaActiva
     ? "NO HAY CASOS REGISTRADOS EN ESTA CATEGORÍA."
@@ -1083,7 +1113,6 @@ function HistorialPage() {
       : docTrim && pacienteExiste
         ? "EL PACIENTE FUE ENCONTRADO, PERO NO TIENE REGISTROS EN ESTA CATEGORÍA Y CON LOS FILTROS ACTUALES."
         : "Sin coincidencias";
-
 
   // Mensajes recientes
   const mensajes = useMemo<MensajeItem[]>(() => {
@@ -1126,7 +1155,11 @@ function HistorialPage() {
   const periodoLabel = temporal.label;
 
   const filtroCasoLabel =
-    vista === "entrantes" ? TIPO_LABEL[tipo] : vista === "salientes" ? SAL_LABEL[salTipo] : GEN_LABEL[genTipo];
+    vista === "entrantes"
+      ? TIPO_LABEL[tipo]
+      : vista === "salientes"
+        ? SAL_LABEL[salTipo]
+        : GEN_LABEL[genTipo];
 
   const handleConfirmarIngreso = async (g: Grupo, datos: IngresoDatos) => {
     const base = g.base;
@@ -1161,7 +1194,10 @@ function HistorialPage() {
       return;
     }
     if (base.codigo) {
-      await supabase.from("casos_entrantes").update({ estado: "INGRESADO" }).eq("codigo", base.codigo);
+      await supabase
+        .from("casos_entrantes")
+        .update({ estado: "INGRESADO" })
+        .eq("codigo", base.codigo);
     }
     if (!g.activa) {
       const paciente = [base.nombres, base.apellidos].filter(Boolean).join(" ") || null;
@@ -1183,7 +1219,8 @@ function HistorialPage() {
       } else {
         toast.success("Ingreso confirmado · alerta de visita IPS enviada a Coordinación");
         setIngresoFor(null);
-        qc.invalidateQueries({ queryKey: ["historial-casos"] });
+        qc.invalidateQueries({ queryKey: ["historial-listado"] });
+        qc.invalidateQueries({ queryKey: ["historial-hidrata-entrantes"] });
         qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
         qc.invalidateQueries({ queryKey: ["coordinacion-alertas"] });
         return;
@@ -1191,7 +1228,8 @@ function HistorialPage() {
     }
     toast.success("Ingreso confirmado");
     setIngresoFor(null);
-    qc.invalidateQueries({ queryKey: ["historial-casos"] });
+    qc.invalidateQueries({ queryKey: ["historial-listado"] });
+    qc.invalidateQueries({ queryKey: ["historial-hidrata-entrantes"] });
     qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
   };
 
@@ -1209,7 +1247,11 @@ function HistorialPage() {
   const filtrosTexto = `Caso=${filtroCasoLabel}; Período=${periodoLabel}${term ? `; Búsqueda="${term}"` : ""}`;
 
   const gruposEntrantesExport = (): GrupoEntrante[] =>
-    gruposF.map((g) => ({ base: g.base as unknown as GrupoEntrante["base"], eventos: g.eventos as unknown as Record<string, unknown>[], estadoLabel: g.estadoFinal.label }));
+    gruposF.map((g) => ({
+      base: g.base as unknown as GrupoEntrante["base"],
+      eventos: g.eventos as unknown as Record<string, unknown>[],
+      estadoLabel: g.estadoFinal.label,
+    }));
 
   const exportarBitacora = useServerFn(exportarGuFr50);
 
@@ -1246,10 +1288,15 @@ function HistorialPage() {
     if (scope === "GENERAL") return { ...compartidos, status: null, sede: null, subtype: null };
     const m = modules[0];
     const estado =
-      m === "SALIENTES" ? (salTipo === "TODOS" ? null : salTipo)
-      : m === "ATENCION DOMICILIARIA" || m === "REFERENCIAS INTERNAS"
-        ? genTipo === "TODOS" || genTipo === "CERRADO" ? null : genTipo
-        : null;
+      m === "SALIENTES"
+        ? salTipo === "TODOS"
+          ? null
+          : salTipo
+        : m === "ATENCION DOMICILIARIA" || m === "REFERENCIAS INTERNAS"
+          ? genTipo === "TODOS" || genTipo === "CERRADO"
+            ? null
+            : genTipo
+          : null;
     return {
       ...compartidos,
       status: estado,
@@ -1380,7 +1427,8 @@ function HistorialPage() {
     // El flujo no requiere especialidad/unidad/ingreso cuando el caso termina en negación
     // o cancelación sin ingreso registrado.
     const sinIngreso =
-      !ingreso && (tiposEv.some((t) => t.includes("NEG")) || tiposEv.some((t) => t.includes("CAN")));
+      !ingreso &&
+      (tiposEv.some((t) => t.includes("NEG")) || tiposEv.some((t) => t.includes("CAN")));
     const naSiNoAplica = (val: string) => (sinIngreso ? "NO APLICA" : val || "—");
     const datosPaciente: CampoPDF[] = [
       { label: "Apellidos", value: v(b.apellidos) || "—" },
@@ -1388,7 +1436,10 @@ function HistorialPage() {
       { label: "Tipo documento", value: "CC" },
       { label: "Número documento", value: v(b.documento) || "—" },
       { label: "Edad", value: fmtEdad(b.edad) },
-      { label: "Entidad responsable", value: v(b.eapb) || v((b as Record<string, unknown>).aseguramiento) || "—" },
+      {
+        label: "Entidad responsable",
+        value: v(b.eapb) || v((b as Record<string, unknown>).aseguramiento) || "—",
+      },
       { label: "Régimen", value: v(b.regimen) || "—" },
       { label: "Teléfono", value: v((b as Record<string, unknown>).telefono) || "—" },
     ];
@@ -1396,30 +1447,43 @@ function HistorialPage() {
       { label: "Tipo de trámite", value: "REMISIONES ENTRANTES" },
       { label: "IPS remitente", value: v(b.ips) || "—" },
       { label: "Estado final del caso", value: estadoFinalEntrante(g) },
-      { label: "Códigos del caso", value: g.eventos.map((e) => v(e.codigo)).filter(Boolean).join(" · ") || "—" },
+      {
+        label: "Códigos del caso",
+        value:
+          g.eventos
+            .map((e) => v(e.codigo))
+            .filter(Boolean)
+            .join(" · ") || "—",
+      },
       { label: "Especialidad", value: naSiNoAplica(v(b.especialidad)) },
       { label: "Unidad / Servicio", value: naSiNoAplica(v(b.unidad)) },
       {
         label: "Fecha y hora de ingreso",
-        value: ingreso ? fmtFechaHora(ingreso.created_at || ingreso.fecha) : sinIngreso ? "NO APLICA" : "—",
+        value: ingreso
+          ? fmtFechaHora(ingreso.created_at || ingreso.fecha)
+          : sinIngreso
+            ? "NO APLICA"
+            : "—",
       },
     ];
-    const seguimientos: SeguimientoPDF[] = g.eventos
-      .map((e) => ({
-        fecha: fmtFechaHora(e.created_at || e.fecha),
-        entidad: v(e.ips) || "—",
-        observaciones: observacionEntrante(e),
-        estado: estadoEntrante(e.tipo || ""),
-        accion: accionEntrante(e.tipo || ""),
-        funcionario: v((e as Record<string, unknown>).usuario_registro) || "—",
-        _orden: new Date(e.created_at || e.fecha || 0).getTime(),
-      }));
+    const seguimientos: SeguimientoPDF[] = g.eventos.map((e) => ({
+      fecha: fmtFechaHora(e.created_at || e.fecha),
+      entidad: v(e.ips) || "—",
+      observaciones: observacionEntrante(e),
+      estado: estadoEntrante(e.tipo || ""),
+      accion: accionEntrante(e.tipo || ""),
+      funcionario: v((e as Record<string, unknown>).usuario_registro) || "—",
+      _orden: new Date(e.created_at || e.fecha || 0).getTime(),
+    }));
     return {
       documento: v(b.documento),
       paciente: [b.nombres, b.apellidos].filter(Boolean).join(" ") || "—",
       fechaBase: v(b.fecha) || v(b.created_at),
       estado: g.estadoFinal.label,
-      codigo: g.eventos.map((e) => v(e.codigo)).filter(Boolean).join(" · "),
+      codigo: g.eventos
+        .map((e) => v(e.codigo))
+        .filter(Boolean)
+        .join(" · "),
       referencia: v(b.documento) || v(b.codigo) || g.key,
       datosPaciente,
       bloque: { tipoDocumento: "REMISIÓN ENTRANTE", datosReferencia, seguimientos },
@@ -1433,8 +1497,14 @@ function HistorialPage() {
     const nm = splitNombre(v(r.paciente));
     const eapb = v(r.eapb) || v(r.asegurador);
     const datosPaciente: CampoPDF[] = [
-      { label: "Apellidos", value: [nm.primerApellido, nm.segundoApellido].filter(Boolean).join(" ") || "—" },
-      { label: "Nombres", value: [nm.primerNombre, nm.segundoNombre].filter(Boolean).join(" ") || "—" },
+      {
+        label: "Apellidos",
+        value: [nm.primerApellido, nm.segundoApellido].filter(Boolean).join(" ") || "—",
+      },
+      {
+        label: "Nombres",
+        value: [nm.primerNombre, nm.segundoNombre].filter(Boolean).join(" ") || "—",
+      },
       { label: "Tipo documento", value: v(r.tipo_documento) || "CC" },
       { label: "Número documento", value: v(r.documento) || "—" },
       { label: "Edad", value: fmtEdad(r.edad as string) },
@@ -1444,7 +1514,10 @@ function HistorialPage() {
     ];
     const datosReferencia: CampoPDF[] = [
       { label: "Tipo de trámite", value: "REMISIONES SALIENTES" },
-      { label: "Fecha de solicitud", value: fmtFechaHora((r.fecha_inicio as string) || r.created_at) },
+      {
+        label: "Fecha de solicitud",
+        value: fmtFechaHora((r.fecha_inicio as string) || r.created_at),
+      },
       { label: "Servicio remitente", value: v(r.servicio) || "—" },
       { label: "Especialidad remitente", value: joinList(r.especialidades_tratantes) || "—" },
       { label: "Especialidad receptora", value: joinList(r.especialidades_receptoras) || "—" },
@@ -1454,7 +1527,10 @@ function HistorialPage() {
       { label: "Estado actual", value: estadoLabel(r.estado) },
       { label: "EAPB / ERP", value: eapb || "—" },
       { label: "Régimen", value: v(r.regimen) || "—" },
-      { label: "Número de radicado", value: fmtRadicado(v(r.codigo_radicacion), r.eapb_genera_codigo as boolean) },
+      {
+        label: "Número de radicado",
+        value: fmtRadicado(v(r.codigo_radicacion), r.eapb_genera_codigo as boolean),
+      },
       { label: "Red comentada", value: redComentadaTxt(r) },
     ];
     return {
@@ -1480,8 +1556,14 @@ function HistorialPage() {
     const nm = splitNombre(v(r.paciente));
     const eapb = v(r.eapb);
     const datosPaciente: CampoPDF[] = [
-      { label: "Apellidos", value: [nm.primerApellido, nm.segundoApellido].filter(Boolean).join(" ") || "—" },
-      { label: "Nombres", value: [nm.primerNombre, nm.segundoNombre].filter(Boolean).join(" ") || "—" },
+      {
+        label: "Apellidos",
+        value: [nm.primerApellido, nm.segundoApellido].filter(Boolean).join(" ") || "—",
+      },
+      {
+        label: "Nombres",
+        value: [nm.primerNombre, nm.segundoNombre].filter(Boolean).join(" ") || "—",
+      },
       { label: "Tipo documento", value: v(r.tipo_documento) || "CC" },
       { label: "Número documento", value: v(r.documento) || "—" },
       { label: "Edad", value: fmtEdad(r.edad as string) },
@@ -1491,8 +1573,14 @@ function HistorialPage() {
     ];
     const datosReferencia: CampoPDF[] = [
       { label: "Tipo de trámite", value: "PHD/PAD/O2/ESPECIALES" },
-      { label: "Fecha de solicitud", value: fmtFechaHora((r.fecha_inicio as string) || r.created_at) },
-      { label: "Tipo de solicitud", value: v(r.tipo_solicitud_detalle) || v(r.tipo_solicitud) || "—" },
+      {
+        label: "Fecha de solicitud",
+        value: fmtFechaHora((r.fecha_inicio as string) || r.created_at),
+      },
+      {
+        label: "Tipo de solicitud",
+        value: v(r.tipo_solicitud_detalle) || v(r.tipo_solicitud) || "—",
+      },
       { label: "Unidad especial", value: v(r.unidad_especial) || "—" },
       { label: "Servicio solicitante", value: v(r.servicio) || "—" },
       { label: "Especialidad solicitante", value: joinList(r.especialidades_tratantes) || "—" },
@@ -1504,7 +1592,10 @@ function HistorialPage() {
       { label: "Parentesco familiar", value: v(r.contacto_parentesco) || "—" },
       { label: "EAPB / ERP", value: eapb || "—" },
       { label: "Régimen", value: v(r.regimen) || "—" },
-      { label: "Código de radicación", value: fmtRadicado(v(r.codigo_radicacion), r.eapb_genera_codigo as boolean) },
+      {
+        label: "Código de radicación",
+        value: fmtRadicado(v(r.codigo_radicacion), r.eapb_genera_codigo as boolean),
+      },
       { label: "Estado actual", value: estadoGenerico(r.estado).label },
     ];
     return {
@@ -1530,8 +1621,14 @@ function HistorialPage() {
     const nm = splitNombre(v(r.paciente));
     const eapb = v(r.eapb) || v(r.proveedor_prestador);
     const datosPaciente: CampoPDF[] = [
-      { label: "Apellidos", value: [nm.primerApellido, nm.segundoApellido].filter(Boolean).join(" ") || "—" },
-      { label: "Nombres", value: [nm.primerNombre, nm.segundoNombre].filter(Boolean).join(" ") || "—" },
+      {
+        label: "Apellidos",
+        value: [nm.primerApellido, nm.segundoApellido].filter(Boolean).join(" ") || "—",
+      },
+      {
+        label: "Nombres",
+        value: [nm.primerNombre, nm.segundoNombre].filter(Boolean).join(" ") || "—",
+      },
       { label: "Tipo documento", value: v(r.tipo_documento) || "CC" },
       { label: "Número documento", value: v(r.documento) || "—" },
       { label: "Edad", value: fmtEdad(r.edad as string) },
@@ -1541,7 +1638,10 @@ function HistorialPage() {
     ];
     const datosReferencia: CampoPDF[] = [
       { label: "Tipo de trámite", value: "REFERENCIA INTERNA" },
-      { label: "Fecha de solicitud", value: fmtFechaHora((r.fecha_inicio as string) || r.created_at) },
+      {
+        label: "Fecha de solicitud",
+        value: fmtFechaHora((r.fecha_inicio as string) || r.created_at),
+      },
       { label: "Servicio solicitante", value: v(r.servicio) || "—" },
       { label: "Tipo de solicitud", value: v(r.tipo_solicitud) || "—" },
       { label: "Tipo de ambulancia requerida", value: v(r.tipo_ambulancia) || "—" },
@@ -1575,7 +1675,11 @@ function HistorialPage() {
       seguimientos: c.bloque.seguimientos,
       usuario,
     });
-    auditar("exportar_pdf_bitacora", { vista: vistaAud, caso: c.referencia, documento: c.documento });
+    auditar("exportar_pdf_bitacora", {
+      vista: vistaAud,
+      caso: c.referencia,
+      documento: c.documento,
+    });
   };
 
   const pdfEntrante = (g: Grupo) => generarUno(buildEntrante(g), "entrantes");
@@ -1602,10 +1706,19 @@ function HistorialPage() {
     doc: string,
     ini?: Date,
     fin?: Date,
-  ): { entrantes: Construido[]; salientes: Construido[]; phd: Construido[]; internas: Construido[] } => {
+  ): {
+    entrantes: Construido[];
+    salientes: Construido[];
+    phd: Construido[];
+    internas: Construido[];
+  } => {
     const d = doc.trim().toLowerCase();
-    const lo = ini ? new Date(ini.getFullYear(), ini.getMonth(), ini.getDate()).getTime() : -Infinity;
-    const hi = fin ? new Date(fin.getFullYear(), fin.getMonth(), fin.getDate(), 23, 59, 59, 999).getTime() : Infinity;
+    const lo = ini
+      ? new Date(ini.getFullYear(), ini.getMonth(), ini.getDate()).getTime()
+      : -Infinity;
+    const hi = fin
+      ? new Date(fin.getFullYear(), fin.getMonth(), fin.getDate(), 23, 59, 59, 999).getTime()
+      : Infinity;
     const sinRango = lo === -Infinity && hi === Infinity;
     const match = (docu: unknown) => {
       const s = v(docu).toLowerCase();
@@ -1650,7 +1763,10 @@ function HistorialPage() {
     const bloques = cs.map((c) => {
       const dr = [...c.bloque.datosReferencia];
       const idx = dr.findIndex((f) => f.label === "Tipo de trámite");
-      const campoFecha: CampoPDF = { label: "Fecha de la gestión", value: fmtFechaHora(c.fechaBase) };
+      const campoFecha: CampoPDF = {
+        label: "Fecha de la gestión",
+        value: fmtFechaHora(c.fechaBase),
+      };
       if (idx >= 0) dr.splice(idx + 1, 0, campoFecha);
       else dr.unshift(campoFecha);
       return { ...c.bloque, datosReferencia: dr };
@@ -1705,7 +1821,7 @@ function HistorialPage() {
         const datos: Partial<Record<ModuloGuFr50, FilaGuFr50[]>> = {
           [modulo]: (res.filas[modulo] ?? []) as FilaGuFr50[],
         };
-        const nombre = `GU-FR-50_caso_${(c.referencia || c.casoId).replace(/[^\w\-]+/g, "_")}`;
+        const nombre = `GU-FR-50_caso_${(c.referencia || c.casoId).replace(/[^\w-]+/g, "_")}`;
         descargarXlsx(await construirLibroGuFr50(datos, { soloHoja: modulo }), `${nombre}.xlsx`);
         auditar("exportar_excel_caso", { caso: c.casoId, tabla: c.tabla, vista: c.vista });
         toast.success("Excel GU-FR-50 del caso generado");
@@ -1716,15 +1832,14 @@ function HistorialPage() {
     })();
   };
 
-
-
-
-
   const cargandoHidratacion =
-    vista === "entrantes" ? isLoading || loadingHist
-    : vista === "salientes" ? loadingSal || loadingHist
-    : vista === "phd" ? loadingPhd || loadingHist
-    : loadingInt || loadingHist;
+    vista === "entrantes"
+      ? isLoading || loadingHist
+      : vista === "salientes"
+        ? loadingSal || loadingHist
+        : vista === "phd"
+          ? loadingPhd || loadingHist
+          : loadingInt || loadingHist;
   const cargando = cargandoListado || cargandoHidratacion;
 
   const vacio = fullLen === 0;
@@ -1761,7 +1876,9 @@ function HistorialPage() {
                     setCasoExpandido(null);
                   }}
                   className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
-                    active ? `${vw.color} text-white shadow-sm` : "text-muted-foreground hover:text-foreground"
+                    active
+                      ? `${vw.color} text-white shadow-sm`
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   <Icon className="h-3.5 w-3.5" /> {vw.label}
@@ -1780,10 +1897,7 @@ function HistorialPage() {
             {vista === "phd" && (
               <div className="grid gap-1">
                 <Label className="text-[10px] uppercase text-muted-foreground">Subtipo</Label>
-                <Select
-                  value={subtipoAD}
-                  onValueChange={(x) => setSubtipoAD(x as SubtipoAD)}
-                >
+                <Select value={subtipoAD} onValueChange={(x) => setSubtipoAD(x as SubtipoAD)}>
                   <SelectTrigger className="h-9 w-[10rem] text-xs">
                     <SelectValue />
                   </SelectTrigger>
@@ -1814,7 +1928,9 @@ function HistorialPage() {
               </Select>
             </div>
             <div className="grid gap-1">
-              <Label className="text-[10px] uppercase text-muted-foreground">Documento del paciente</Label>
+              <Label className="text-[10px] uppercase text-muted-foreground">
+                Documento del paciente
+              </Label>
               <div className="flex items-center gap-1.5">
                 <Input
                   className="h-9 w-[11rem] text-xs"
@@ -1852,28 +1968,37 @@ function HistorialPage() {
                     setCasoExpandido(null);
                   }}
                 >
-                  {docBusca.trim() === "" ? <UserSearch className="h-4 w-4" /> : <Search className="h-4 w-4" />}
+                  {docBusca.trim() === "" ? (
+                    <UserSearch className="h-4 w-4" />
+                  ) : (
+                    <Search className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </div>
             {docTrim && (
               <div className="grid gap-1">
-                <Label className="text-[10px] uppercase text-muted-foreground">Nombre del paciente</Label>
+                <Label className="text-[10px] uppercase text-muted-foreground">
+                  Nombre del paciente
+                </Label>
                 <div className="flex h-9 items-center rounded-md border border-border bg-card px-2.5 text-xs font-semibold uppercase text-foreground">
                   {(pacienteNombre || "Paciente no encontrado").toUpperCase().replace(/\s+/g, " ")}
                 </div>
               </div>
             )}
             <div className="ml-auto flex items-end gap-1.5">
-              <Button type="button" size="sm" variant="outline" className="h-9" onClick={limpiarConsulta}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-9"
+                onClick={limpiarConsulta}
+              >
                 <Eraser className="mr-1.5 h-4 w-4" /> Limpiar búsqueda
               </Button>
             </div>
           </div>
         </div>
-
-
-
 
         {/* Encabezado: título + filtros + exportar */}
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -1962,14 +2087,24 @@ function HistorialPage() {
                             </p>
                             <input
                               type="month"
-                              value={mesEsp ? `${mesEsp.year}-${String(mesEsp.month).padStart(2, "0")}` : ""}
+                              value={
+                                mesEsp
+                                  ? `${mesEsp.year}-${String(mesEsp.month).padStart(2, "0")}`
+                                  : ""
+                              }
                               onChange={(e) => {
                                 const val = e.target.value;
                                 setErrorPeriodo("");
-                                if (!val) { setMesEsp(null); return; }
+                                if (!val) {
+                                  setMesEsp(null);
+                                  return;
+                                }
                                 const [y, m] = val.split("-").map(Number);
                                 const hoy = new Date();
-                                if (y > hoy.getFullYear() || (y === hoy.getFullYear() && m > hoy.getMonth() + 1)) {
+                                if (
+                                  y > hoy.getFullYear() ||
+                                  (y === hoy.getFullYear() && m > hoy.getMonth() + 1)
+                                ) {
                                   setErrorPeriodo("El mes seleccionado es futuro.");
                                   return;
                                 }
@@ -1993,8 +2128,15 @@ function HistorialPage() {
                                 onChange={(e) => {
                                   setErrorPeriodo("");
                                   setRangoIni(e.target.value);
-                                  if (e.target.value) { setPeriodo("Todos"); setFechaEspecifica(undefined); setMesEsp(null); }
-                                  if (rangoFin && e.target.value > rangoFin) setErrorPeriodo("La fecha inicial no puede ser posterior a la final.");
+                                  if (e.target.value) {
+                                    setPeriodo("Todos");
+                                    setFechaEspecifica(undefined);
+                                    setMesEsp(null);
+                                  }
+                                  if (rangoFin && e.target.value > rangoFin)
+                                    setErrorPeriodo(
+                                      "La fecha inicial no puede ser posterior a la final.",
+                                    );
                                 }}
                                 className="w-full rounded-md border border-border bg-card px-2 py-1 text-[11px]"
                               />
@@ -2005,8 +2147,15 @@ function HistorialPage() {
                                 onChange={(e) => {
                                   setErrorPeriodo("");
                                   setRangoFin(e.target.value);
-                                  if (e.target.value) { setPeriodo("Todos"); setFechaEspecifica(undefined); setMesEsp(null); }
-                                  if (rangoIni && rangoIni > e.target.value) setErrorPeriodo("La fecha inicial no puede ser posterior a la final.");
+                                  if (e.target.value) {
+                                    setPeriodo("Todos");
+                                    setFechaEspecifica(undefined);
+                                    setMesEsp(null);
+                                  }
+                                  if (rangoIni && rangoIni > e.target.value)
+                                    setErrorPeriodo(
+                                      "La fecha inicial no puede ser posterior a la final.",
+                                    );
                                 }}
                                 className="w-full rounded-md border border-border bg-card px-2 py-1 text-[11px]"
                               />
@@ -2030,12 +2179,16 @@ function HistorialPage() {
                             selected={fechaEspecifica}
                             onSelect={(d) => {
                               setFechaEspecifica(d ?? undefined);
-                              if (d) { setPeriodo("Todos"); setMesEsp(null); setRangoIni(""); setRangoFin(""); }
+                              if (d) {
+                                setPeriodo("Todos");
+                                setMesEsp(null);
+                                setRangoIni("");
+                                setRangoFin("");
+                              }
                             }}
                             captionLayout="dropdown"
                           />
                         </div>
-
                       </div>
                     </div>
                   }
@@ -2046,7 +2199,10 @@ function HistorialPage() {
             {/* Exportación */}
             <Popover>
               <PopoverTrigger asChild>
-                <Button size="sm" className="h-8 rounded-full bg-status-green text-white hover:bg-status-green/90">
+                <Button
+                  size="sm"
+                  className="h-8 rounded-full bg-status-green text-white hover:bg-status-green/90"
+                >
                   <FileSpreadsheet className="mr-1.5 h-4 w-4" /> Exportar
                   <ChevronDown className="ml-1 h-3.5 w-3.5 opacity-80" />
                 </Button>
@@ -2065,7 +2221,8 @@ function HistorialPage() {
                   onClick={exportarTodo}
                   className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs font-medium transition hover:bg-muted"
                 >
-                  <FileSpreadsheet className="h-4 w-4 text-status-teal" /> Todo el histórico (4 hojas)
+                  <FileSpreadsheet className="h-4 w-4 text-status-teal" /> Todo el histórico (4
+                  hojas)
                 </button>
               </PopoverContent>
             </Popover>
@@ -2079,7 +2236,9 @@ function HistorialPage() {
             <p className="py-10 text-center text-sm text-muted-foreground">Cargando…</p>
           ) : !pacienteExiste ? (
             <div className="rounded-2xl border border-border bg-card py-14 text-center shadow-sm">
-              <p className="text-sm font-semibold text-foreground">NO SE ENCONTRÓ UN PACIENTE CON EL DOCUMENTO INGRESADO.</p>
+              <p className="text-sm font-semibold text-foreground">
+                NO SE ENCONTRÓ UN PACIENTE CON EL DOCUMENTO INGRESADO.
+              </p>
             </div>
           ) : (
             <PacienteResultado
@@ -2120,7 +2279,10 @@ function HistorialPage() {
             pagina={paginaActual}
             totalPaginas={totalPaginas}
             tamano={tamanoPagina}
-            onTamano={(n) => { setTamanoPagina(n); setPagina(1); }}
+            onTamano={(n) => {
+              setTamanoPagina(n);
+              setPagina(1);
+            }}
             onPagina={setPagina}
           >
             {fullLen === 0 ? (
@@ -2130,7 +2292,13 @@ function HistorialPage() {
             ) : vista === "entrantes" ? (
               <div className="grid gap-2">
                 {gruposV.map((g) => (
-                  <CasoCard key={g.key} grupo={g} canEdit={canEdit} onConfirmar={() => setIngresoFor(g)} onPDF={() => pdfEntrante(g)} />
+                  <CasoCard
+                    key={g.key}
+                    grupo={g}
+                    canEdit={canEdit}
+                    onConfirmar={() => setIngresoFor(g)}
+                    onPDF={() => pdfEntrante(g)}
+                  />
                 ))}
               </div>
             ) : vista === "salientes" ? (
@@ -2145,7 +2313,11 @@ function HistorialPage() {
                   <GenericoCard
                     key={r.id}
                     titulo={`${v(r.paciente) || "Sin nombre"}`}
-                    sub={[v(r.documento), v(r.tipo_solicitud_detalle) || v(r.tipo_solicitud), v(r.eapb)]}
+                    sub={[
+                      v(r.documento),
+                      v(r.tipo_solicitud_detalle) || v(r.tipo_solicitud),
+                      v(r.eapb),
+                    ]}
                     estado={estadoGenerico(r.estado)}
                     fecha={fmtFechaHora((r.fecha_inicio as string) || r.created_at)}
                     radicado={fmtRadicado(v(r.codigo_radicacion), r.eapb_genera_codigo as boolean)}
@@ -2171,9 +2343,11 @@ function HistorialPage() {
         )}
       </Panel>
 
-
-
-      <IngresoDialog grupo={ingresoFor} onClose={() => setIngresoFor(null)} onConfirmar={handleConfirmarIngreso} />
+      <IngresoDialog
+        grupo={ingresoFor}
+        onClose={() => setIngresoFor(null)}
+        onConfirmar={handleConfirmarIngreso}
+      />
       <BuscarPacienteDialog
         open={buscarPacienteOpen}
         onClose={() => setBuscarPacienteOpen(false)}
@@ -2189,7 +2363,9 @@ function HistorialPage() {
       {reactivarCaso && tipoCasoReactivableDesdeTabla(reactivarCaso.tabla) ? (
         <DeshacerCancelacionDialog
           open={!!reactivarCaso}
-          onOpenChange={(v) => { if (!v) setReactivarCaso(null); }}
+          onOpenChange={(v) => {
+            if (!v) setReactivarCaso(null);
+          }}
           tipoCaso={tipoCasoReactivableDesdeTabla(reactivarCaso.tabla) as TipoCasoReactivable}
           casoId={reactivarCaso.casoId}
           paciente={reactivarCaso.paciente || ""}
@@ -2198,7 +2374,6 @@ function HistorialPage() {
           estadoCancelado={reactivarCaso.estado || ""}
         />
       ) : null}
-
     </div>
   );
 }
@@ -2212,7 +2387,15 @@ function redComentadaTxt(r: Remision): string {
   return partes.length ? partes.join(" | ") : v(r.alcance_red) || "N/A";
 }
 
-function FilterButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
+function FilterButton({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
   return (
     <button
       onClick={onClick}
@@ -2267,34 +2450,66 @@ function IngresoDialog({
         </DialogHeader>
         {grupo && (
           <p className="-mt-1 text-xs text-muted-foreground">
-            {grupo.base.documento} — {[grupo.base.nombres, grupo.base.apellidos].filter(Boolean).join(" ")}
+            {grupo.base.documento} —{" "}
+            {[grupo.base.nombres, grupo.base.apellidos].filter(Boolean).join(" ")}
           </p>
         )}
         <div className="grid gap-3 py-1">
           <div className="grid gap-1.5">
-            <Label htmlFor="transporte" className="text-xs">IPS / Entidad que transporta</Label>
-            <Input id="transporte" value={datos.transporte} onChange={(e) => set("transporte", e.target.value)} />
+            <Label htmlFor="transporte" className="text-xs">
+              IPS / Entidad que transporta
+            </Label>
+            <Input
+              id="transporte"
+              value={datos.transporte}
+              onChange={(e) => set("transporte", e.target.value)}
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
-              <Label htmlFor="placa" className="text-xs">Placa del vehículo</Label>
-              <Input id="placa" value={datos.placa} onChange={(e) => set("placa", e.target.value)} />
+              <Label htmlFor="placa" className="text-xs">
+                Placa del vehículo
+              </Label>
+              <Input
+                id="placa"
+                value={datos.placa}
+                onChange={(e) => set("placa", e.target.value)}
+              />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="cargo" className="text-xs">Cargo</Label>
-              <Input id="cargo" value={datos.cargo} onChange={(e) => set("cargo", e.target.value)} />
+              <Label htmlFor="cargo" className="text-xs">
+                Cargo
+              </Label>
+              <Input
+                id="cargo"
+                value={datos.cargo}
+                onChange={(e) => set("cargo", e.target.value)}
+              />
             </div>
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="profesional" className="text-xs">Profesional / Personal a cargo</Label>
-            <Input id="profesional" value={datos.profesional} onChange={(e) => set("profesional", e.target.value)} />
+            <Label htmlFor="profesional" className="text-xs">
+              Profesional / Personal a cargo
+            </Label>
+            <Input
+              id="profesional"
+              value={datos.profesional}
+              onChange={(e) => set("profesional", e.target.value)}
+            />
           </div>
           <div className="grid gap-1.5">
             <Label className="text-xs">Fecha y hora</Label>
-            <Input value={fmtFecha(new Date().toISOString())} readOnly disabled className="bg-muted/50" />
+            <Input
+              value={fmtFecha(new Date().toISOString())}
+              readOnly
+              disabled
+              className="bg-muted/50"
+            />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="observaciones" className="text-xs">Observaciones</Label>
+            <Label htmlFor="observaciones" className="text-xs">
+              Observaciones
+            </Label>
             <Textarea
               id="observaciones"
               rows={3}
@@ -2308,7 +2523,11 @@ function IngresoDialog({
           <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
-          <Button className="bg-status-green text-white hover:bg-status-green/90" onClick={submit} disabled={guardando}>
+          <Button
+            className="bg-status-green text-white hover:bg-status-green/90"
+            onClick={submit}
+            disabled={guardando}
+          >
             <Hospital className="mr-1.5 h-4 w-4" /> {guardando ? "Guardando…" : "Confirmar ingreso"}
           </Button>
         </DialogFooter>
@@ -2344,15 +2563,21 @@ function CasoCard({
   const { base, eventos, estadoFinal, confirmable } = grupo;
   const nombre = [base.nombres, base.apellidos].filter(Boolean).join(" ") || "Sin nombre";
   return (
-    <div className={`rounded-lg border border-border border-l-4 ${cardBorder[estadoFinal.color]} bg-card px-3 py-2 shadow-sm`}>
+    <div
+      className={`rounded-lg border border-border border-l-4 ${cardBorder[estadoFinal.color]} bg-card px-3 py-2 shadow-sm`}
+    >
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <div className="min-w-0">
           <span className="text-sm font-extrabold text-status-blue">{base.documento || "—"}</span>
-          <span className="ml-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{nombre}</span>
+          <span className="ml-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {nombre}
+          </span>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2 text-right">
           {base.ips && <span className="text-[11px] font-bold text-foreground">{base.ips}</span>}
-          {base.unidad && <span className="text-[11px] italic text-muted-foreground">{base.unidad}</span>}
+          {base.unidad && (
+            <span className="text-[11px] italic text-muted-foreground">{base.unidad}</span>
+          )}
           <span
             className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${statusBadge[estadoFinal.color]}`}
           >
@@ -2371,8 +2596,12 @@ function CasoCard({
               >
                 {(e.tipo || "?").toUpperCase()}
               </span>
-              <span className="font-mono text-[11px] font-semibold text-foreground">{e.codigo}</span>
-              <span className="font-mono text-[10px] text-muted-foreground">{fmtFecha(e.created_at, e.fecha)}</span>
+              <span className="font-mono text-[11px] font-semibold text-foreground">
+                {e.codigo}
+              </span>
+              <span className="font-mono text-[10px] text-muted-foreground">
+                {fmtFecha(e.created_at, e.fecha)}
+              </span>
             </span>
           </div>
         ))}
@@ -2395,7 +2624,9 @@ function CasoCard({
 function RemisionCard({ remision: r, onPDF }: { remision: Remision; onPDF: () => void }) {
   const est = estadoSaliente(r.estado);
   return (
-    <div className={`rounded-lg border border-border border-l-4 ${cardBorder[est.color]} bg-card px-3 py-2 shadow-sm`}>
+    <div
+      className={`rounded-lg border border-border border-l-4 ${cardBorder[est.color]} bg-card px-3 py-2 shadow-sm`}
+    >
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <div className="min-w-0">
           <span className="text-sm font-extrabold text-status-blue">{r.documento || "—"}</span>
@@ -2404,8 +2635,12 @@ function RemisionCard({ remision: r, onPDF }: { remision: Remision; onPDF: () =>
           </span>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2 text-right">
-          {r.servicio && <span className="text-[11px] italic text-muted-foreground">{r.servicio}</span>}
-          {r.ips_receptora && <span className="text-[11px] font-bold text-foreground">{r.ips_receptora}</span>}
+          {r.servicio && (
+            <span className="text-[11px] italic text-muted-foreground">{r.servicio}</span>
+          )}
+          {r.ips_receptora && (
+            <span className="text-[11px] font-bold text-foreground">{r.ips_receptora}</span>
+          )}
           <span
             className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${statusBadge[est.color]}`}
           >
@@ -2414,8 +2649,12 @@ function RemisionCard({ remision: r, onPDF }: { remision: Remision; onPDF: () =>
         </div>
       </div>
       <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-        <span className="font-mono">Rad. {fmtRadicado(v(r.codigo_radicacion), r.eapb_genera_codigo as boolean)}</span>
-        {(r.eapb || r.asegurador) && <span className="rounded border px-1.5 py-0.5">{r.eapb || r.asegurador}</span>}
+        <span className="font-mono">
+          Rad. {fmtRadicado(v(r.codigo_radicacion), r.eapb_genera_codigo as boolean)}
+        </span>
+        {(r.eapb || r.asegurador) && (
+          <span className="rounded border px-1.5 py-0.5">{r.eapb || r.asegurador}</span>
+        )}
         <span className="font-mono">{fmtFecha(r.created_at, r.fecha_radicado as string)}</span>
       </div>
     </div>
@@ -2439,7 +2678,9 @@ function GenericoCard({
 }) {
   const subItems = sub.filter(Boolean);
   return (
-    <div className={`rounded-lg border border-border border-l-4 ${cardBorder[estado.color]} bg-card px-3 py-2 shadow-sm`}>
+    <div
+      className={`rounded-lg border border-border border-l-4 ${cardBorder[estado.color]} bg-card px-3 py-2 shadow-sm`}
+    >
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <div className="min-w-0">
           <span className="text-sm font-extrabold text-status-blue">{titulo}</span>
@@ -2452,7 +2693,9 @@ function GenericoCard({
       </div>
       <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
         {subItems.map((s, i) => (
-          <span key={i} className="rounded border px-1.5 py-0.5">{s}</span>
+          <span key={i} className="rounded border px-1.5 py-0.5">
+            {s}
+          </span>
         ))}
         {radicado && <span className="font-mono">Rad. {radicado}</span>}
         <span className="font-mono">{fecha}</span>
@@ -2477,8 +2720,6 @@ const TRAMITE_OPS: { key: TramiteKey; label: string }[] = [
   { key: "phd", label: "PHD/PAD/O2/Especiales" },
   { key: "internas", label: "Referencias internas" },
 ];
-
-
 
 // ---- Línea de tiempo del paciente (referencia funcional ÍNDIGO) ----
 type LineaEvento = {
@@ -2554,7 +2795,9 @@ function LineaTiempoPaciente({ items, documento }: { items: Construido[]; docume
     return (
       <div className="rounded-lg border border-border bg-card py-10 text-center">
         <p className="text-sm font-semibold text-foreground">Sin eventos</p>
-        <p className="text-xs text-muted-foreground">No hay movimientos registrados para este paciente.</p>
+        <p className="text-xs text-muted-foreground">
+          No hay movimientos registrados para este paciente.
+        </p>
       </div>
     );
   }
@@ -2567,11 +2810,21 @@ function LineaTiempoPaciente({ items, documento }: { items: Construido[]; docume
           {nombre || "Paciente sin nombre"}
         </p>
         <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-          <span><b className="text-foreground">Documento:</b> {campoVal("Tipo documento")} {documento}</span>
-          <span><b className="text-foreground">Edad:</b> {campoVal("Edad")}</span>
-          <span><b className="text-foreground">Entidad:</b> {campoVal("Entidad responsable")}</span>
-          <span><b className="text-foreground">Régimen:</b> {campoVal("Régimen")}</span>
-          <span><b className="text-foreground">Teléfono:</b> {campoVal("Teléfono")}</span>
+          <span>
+            <b className="text-foreground">Documento:</b> {campoVal("Tipo documento")} {documento}
+          </span>
+          <span>
+            <b className="text-foreground">Edad:</b> {campoVal("Edad")}
+          </span>
+          <span>
+            <b className="text-foreground">Entidad:</b> {campoVal("Entidad responsable")}
+          </span>
+          <span>
+            <b className="text-foreground">Régimen:</b> {campoVal("Régimen")}
+          </span>
+          <span>
+            <b className="text-foreground">Teléfono:</b> {campoVal("Teléfono")}
+          </span>
         </div>
         <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           {eventos.length} evento(s) · orden cronológico (más reciente primero)
@@ -2588,18 +2841,38 @@ function LineaTiempoPaciente({ items, documento }: { items: Construido[]; docume
             <div className="rounded-lg border border-border bg-card px-2.5 py-2 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${statusBadge[e.color]}`}>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${statusBadge[e.color]}`}
+                  >
                     {e.tramite}
                   </span>
-                  {e.codigo && <span className="font-mono text-[10px] font-semibold text-status-blue">{e.codigo}</span>}
-                  <span className="text-[11px] font-bold uppercase text-foreground">{e.accion}</span>
+                  {e.codigo && (
+                    <span className="font-mono text-[10px] font-semibold text-status-blue">
+                      {e.codigo}
+                    </span>
+                  )}
+                  <span className="text-[11px] font-bold uppercase text-foreground">
+                    {e.accion}
+                  </span>
                 </div>
                 <span className="font-mono text-[10px] text-muted-foreground">{e.fecha}</span>
               </div>
               <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
-                {e.entidad !== "—" && <span><b className="text-foreground">Entidad:</b> {e.entidad}</span>}
-                {e.estado !== "—" && <span><b className="text-foreground">Estado:</b> {e.estado}</span>}
-                {e.funcionario !== "—" && <span><b className="text-foreground">Gestor:</b> {e.funcionario}</span>}
+                {e.entidad !== "—" && (
+                  <span>
+                    <b className="text-foreground">Entidad:</b> {e.entidad}
+                  </span>
+                )}
+                {e.estado !== "—" && (
+                  <span>
+                    <b className="text-foreground">Estado:</b> {e.estado}
+                  </span>
+                )}
+                {e.funcionario !== "—" && (
+                  <span>
+                    <b className="text-foreground">Gestor:</b> {e.funcionario}
+                  </span>
+                )}
               </div>
               {e.observaciones !== "—" && (
                 <p className="mt-1 whitespace-pre-wrap break-words text-[11px] leading-snug text-foreground">
@@ -2662,11 +2935,21 @@ function PacienteCabecera({
             {nombre || "Paciente sin nombre"}
           </p>
           <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-            <span><b className="text-foreground">Documento:</b> {resumen.tipoDoc} {documento}</span>
-            <span><b className="text-foreground">Edad:</b> {resumen.edad}</span>
-            <span><b className="text-foreground">Entidad:</b> {resumen.entidad}</span>
-            <span><b className="text-foreground">Régimen:</b> {resumen.regimen}</span>
-            <span><b className="text-foreground">Teléfono:</b> {resumen.telefono}</span>
+            <span>
+              <b className="text-foreground">Documento:</b> {resumen.tipoDoc} {documento}
+            </span>
+            <span>
+              <b className="text-foreground">Edad:</b> {resumen.edad}
+            </span>
+            <span>
+              <b className="text-foreground">Entidad:</b> {resumen.entidad}
+            </span>
+            <span>
+              <b className="text-foreground">Régimen:</b> {resumen.regimen}
+            </span>
+            <span>
+              <b className="text-foreground">Teléfono:</b> {resumen.telefono}
+            </span>
           </div>
           <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             {totalCasos} caso(s) en esta subventana · clic para acciones
@@ -2674,7 +2957,11 @@ function PacienteCabecera({
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-64 p-1.5">
-        <MenuBtn icon={ListTree} label="Ver todos los casos del paciente" onClick={() => setOpen(false)} />
+        <MenuBtn
+          icon={ListTree}
+          label="Ver todos los casos del paciente"
+          onClick={() => setOpen(false)}
+        />
         <MenuBtn
           icon={FileText}
           label="Generar bitácora unificada"
@@ -2809,7 +3096,6 @@ function CasoConMenu({
   );
 }
 
-
 // Resumen compacto de un caso (por case_id).
 function CasoResumenRow({
   c,
@@ -2834,9 +3120,13 @@ function CasoResumenRow({
           <span className="rounded-full bg-status-blue/10 px-2 py-0.5 text-[9px] font-bold uppercase text-status-blue">
             {c.bloque.tipoDocumento}
           </span>
-          {c.codigo && <span className="font-mono text-[11px] font-semibold text-status-blue">{c.codigo}</span>}
+          {c.codigo && (
+            <span className="font-mono text-[11px] font-semibold text-status-blue">{c.codigo}</span>
+          )}
         </div>
-        <span className="font-mono text-[10px] text-muted-foreground">{fmtFechaHora(c.fechaBase)}</span>
+        <span className="font-mono text-[10px] text-muted-foreground">
+          {fmtFechaHora(c.fechaBase)}
+        </span>
       </div>
       <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
         <span className="text-[11px] font-semibold text-foreground">{c.estado || "—"}</span>
@@ -2911,13 +3201,35 @@ function PacienteResultado({
 }) {
   const rows = useMemo(() => {
     if (vista === "entrantes")
-      return entrantes.map((g) => ({ key: g.key, construido: buildEntrante(g), grupo: g as Grupo | null }));
+      return entrantes.map((g) => ({
+        key: g.key,
+        construido: buildEntrante(g),
+        grupo: g as Grupo | null,
+      }));
     if (vista === "salientes")
-      return salientes.map((r) => ({ key: r.id, construido: buildSaliente(r), grupo: null as Grupo | null }));
+      return salientes.map((r) => ({
+        key: r.id,
+        construido: buildSaliente(r),
+        grupo: null as Grupo | null,
+      }));
     if (vista === "phd")
       return phd.map((r) => ({ key: r.id, construido: buildPHD(r), grupo: null as Grupo | null }));
-    return internas.map((r) => ({ key: r.id, construido: buildInterna(r), grupo: null as Grupo | null }));
-  }, [vista, entrantes, salientes, phd, internas, buildEntrante, buildSaliente, buildPHD, buildInterna]);
+    return internas.map((r) => ({
+      key: r.id,
+      construido: buildInterna(r),
+      grupo: null as Grupo | null,
+    }));
+  }, [
+    vista,
+    entrantes,
+    salientes,
+    phd,
+    internas,
+    buildEntrante,
+    buildSaliente,
+    buildPHD,
+    buildInterna,
+  ]);
 
   const construidos = rows.map((x) => x.construido);
   const { campos } = resumenPaciente(construidos);
@@ -2951,9 +3263,7 @@ function PacienteResultado({
         rows.map((row, idx) => {
           const tipoReact = tipoCasoReactivableDesdeTabla(row.construido.tabla);
           const puedeReactivarEste =
-            puedeReactivar &&
-            !!tipoReact &&
-            esEstadoCancelatorio(tipoReact, row.construido.estado);
+            puedeReactivar && !!tipoReact && esEstadoCancelatorio(tipoReact, row.construido.estado);
           return (
             <CasoConMenu
               key={row.key}
@@ -3020,9 +3330,13 @@ function ListadoBar({
         <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-foreground">
           <Clock className="h-4 w-4 text-muted-foreground" />
           Listado de casos
-          <span className="text-muted-foreground">· {rango} · {periodo}</span>
+          <span className="text-muted-foreground">
+            · {rango} · {periodo}
+          </span>
         </span>
-        <ChevronDown className={`h-4 w-4 text-muted-foreground transition ${abierto ? "rotate-180" : ""}`} />
+        <ChevronDown
+          className={`h-4 w-4 text-muted-foreground transition ${abierto ? "rotate-180" : ""}`}
+        />
       </button>
       {abierto && (
         <div className="border-t border-border p-2.5">
@@ -3074,7 +3388,6 @@ function ListadoBar({
     </div>
   );
 }
-
 
 // ---- Índice de pacientes (para búsqueda avanzada por nombre/apellido) ----
 export type PacienteIndex = {
@@ -3162,15 +3475,54 @@ function BuscarPacienteDialog({
         </DialogHeader>
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-5">
-          <div className="grid gap-1"><Label className="text-[11px]">Identificación</Label><Input value={ident} onChange={(e) => setIdent(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setBuscado(true)} /></div>
-          <div className="grid gap-1"><Label className="text-[11px]">Primer nombre</Label><Input value={n1} onChange={(e) => setN1(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setBuscado(true)} /></div>
-          <div className="grid gap-1"><Label className="text-[11px]">Segundo nombre</Label><Input value={n2} onChange={(e) => setN2(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setBuscado(true)} /></div>
-          <div className="grid gap-1"><Label className="text-[11px]">Primer apellido</Label><Input value={a1} onChange={(e) => setA1(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setBuscado(true)} /></div>
-          <div className="grid gap-1"><Label className="text-[11px]">Segundo apellido</Label><Input value={a2} onChange={(e) => setA2(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setBuscado(true)} /></div>
+          <div className="grid gap-1">
+            <Label className="text-[11px]">Identificación</Label>
+            <Input
+              value={ident}
+              onChange={(e) => setIdent(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && setBuscado(true)}
+            />
+          </div>
+          <div className="grid gap-1">
+            <Label className="text-[11px]">Primer nombre</Label>
+            <Input
+              value={n1}
+              onChange={(e) => setN1(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && setBuscado(true)}
+            />
+          </div>
+          <div className="grid gap-1">
+            <Label className="text-[11px]">Segundo nombre</Label>
+            <Input
+              value={n2}
+              onChange={(e) => setN2(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && setBuscado(true)}
+            />
+          </div>
+          <div className="grid gap-1">
+            <Label className="text-[11px]">Primer apellido</Label>
+            <Input
+              value={a1}
+              onChange={(e) => setA1(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && setBuscado(true)}
+            />
+          </div>
+          <div className="grid gap-1">
+            <Label className="text-[11px]">Segundo apellido</Label>
+            <Input
+              value={a2}
+              onChange={(e) => setA2(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && setBuscado(true)}
+            />
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" className="bg-status-blue text-white hover:bg-status-blue/90" onClick={() => setBuscado(true)}>
+          <Button
+            size="sm"
+            className="bg-status-blue text-white hover:bg-status-blue/90"
+            onClick={() => setBuscado(true)}
+          >
             <Search className="mr-1.5 h-4 w-4" /> Buscar
           </Button>
           <Button size="sm" variant="outline" onClick={limpiar}>
@@ -3180,9 +3532,13 @@ function BuscarPacienteDialog({
 
         <div className="mt-1 max-h-[45vh] overflow-y-auto rounded-lg border border-border">
           {!buscado ? (
-            <p className="py-8 text-center text-xs text-muted-foreground">Ingresa un criterio y presiona Buscar.</p>
+            <p className="py-8 text-center text-xs text-muted-foreground">
+              Ingresa un criterio y presiona Buscar.
+            </p>
           ) : criterios.length === 0 ? (
-            <p className="py-8 text-center text-xs text-muted-foreground">Ingresa al menos un criterio de búsqueda.</p>
+            <p className="py-8 text-center text-xs text-muted-foreground">
+              Ingresa al menos un criterio de búsqueda.
+            </p>
           ) : resultados.length === 0 ? (
             <p className="py-8 text-center text-xs text-muted-foreground">
               NO SE ENCONTRÓ UN PACIENTE CON LOS CRITERIOS INGRESADOS.
@@ -3211,7 +3567,9 @@ function BuscarPacienteDialog({
                       sel === p.documento ? "bg-status-blue/15" : "hover:bg-muted/50"
                     }`}
                   >
-                    <td className="px-2 py-1.5 font-mono font-semibold text-status-blue">{p.documento}</td>
+                    <td className="px-2 py-1.5 font-mono font-semibold text-status-blue">
+                      {p.documento}
+                    </td>
                     <td className="px-2 py-1.5">{p.nombres || "—"}</td>
                     <td className="px-2 py-1.5">{p.apellidos || "—"}</td>
                   </tr>
@@ -3247,17 +3605,32 @@ function InfoCasoDialog({ caso, onClose }: { caso: Construido | null; onClose: (
         {caso && (
           <div className="grid gap-3 text-sm">
             <div className="rounded-lg border border-border bg-muted/30 p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Paciente</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Paciente
+              </p>
               <p className="mt-0.5 text-sm font-semibold">{caso.paciente}</p>
               <p className="text-xs text-muted-foreground">Documento: {caso.documento || "—"}</p>
             </div>
             <div className="rounded-lg border border-border bg-card p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Datos de referencia</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Datos de referencia
+              </p>
               <div className="mt-1.5 grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
-                <p><span className="font-medium text-muted-foreground">Tipo:</span> {caso.bloque.tipoDocumento}</p>
-                <p><span className="font-medium text-muted-foreground">Estado:</span> {caso.estado}</p>
-                <p><span className="font-medium text-muted-foreground">Código:</span> {caso.codigo || "—"}</p>
-                <p><span className="font-medium text-muted-foreground">Fecha base:</span> {fmtFechaHora(caso.fechaBase)}</p>
+                <p>
+                  <span className="font-medium text-muted-foreground">Tipo:</span>{" "}
+                  {caso.bloque.tipoDocumento}
+                </p>
+                <p>
+                  <span className="font-medium text-muted-foreground">Estado:</span> {caso.estado}
+                </p>
+                <p>
+                  <span className="font-medium text-muted-foreground">Código:</span>{" "}
+                  {caso.codigo || "—"}
+                </p>
+                <p>
+                  <span className="font-medium text-muted-foreground">Fecha base:</span>{" "}
+                  {fmtFechaHora(caso.fechaBase)}
+                </p>
               </div>
               <div className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
                 {caso.bloque.datosReferencia.slice(0, 12).map((c, i) => (
@@ -3277,8 +3650,12 @@ function InfoCasoDialog({ caso, onClose }: { caso: Construido | null; onClose: (
                 ) : (
                   caso.bloque.seguimientos.slice(0, 6).map((s, i) => (
                     <div key={i} className="rounded border border-border bg-background p-2 text-xs">
-                      <p className="font-medium">{s.fecha} · {s.estado || "—"}</p>
-                      <p className="text-muted-foreground">{s.accion || "—"} · {s.funcionario || "—"}</p>
+                      <p className="font-medium">
+                        {s.fecha} · {s.estado || "—"}
+                      </p>
+                      <p className="text-muted-foreground">
+                        {s.accion || "—"} · {s.funcionario || "—"}
+                      </p>
                     </div>
                   ))
                 )}
@@ -3287,7 +3664,9 @@ function InfoCasoDialog({ caso, onClose }: { caso: Construido | null; onClose: (
           </div>
         )}
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cerrar</Button>
+          <Button variant="outline" onClick={onClose}>
+            Cerrar
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -3322,7 +3701,9 @@ function AuditoriaCasoDialog({
       if (!caso) return [] as AuditRow[];
       const { data, error } = await supabase
         .from("audit_logs")
-        .select("id, created_at, actor_email, accion, modulo, tabla, registro_id, resultado, detalles")
+        .select(
+          "id, created_at, actor_email, accion, modulo, tabla, registro_id, resultado, detalles",
+        )
         .eq("registro_id", caso.casoId)
         .order("created_at", { ascending: false })
         .limit(200);
@@ -3363,8 +3744,18 @@ function AuditoriaCasoDialog({
                     </div>
                     <p className="text-muted-foreground">
                       Actor: <span className="text-foreground">{r.actor_email ?? "—"}</span>
-                      {r.modulo ? <> · Módulo: <span className="text-foreground">{r.modulo}</span></> : null}
-                      {r.resultado ? <> · Resultado: <span className="text-foreground">{r.resultado}</span></> : null}
+                      {r.modulo ? (
+                        <>
+                          {" "}
+                          · Módulo: <span className="text-foreground">{r.modulo}</span>
+                        </>
+                      ) : null}
+                      {r.resultado ? (
+                        <>
+                          {" "}
+                          · Resultado: <span className="text-foreground">{r.resultado}</span>
+                        </>
+                      ) : null}
                     </p>
                     {r.detalles ? (
                       <pre className="mt-1 max-h-32 overflow-auto rounded bg-muted/40 p-1.5 text-[10px] leading-snug">
@@ -3378,7 +3769,9 @@ function AuditoriaCasoDialog({
           </div>
         ) : null}
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cerrar</Button>
+          <Button variant="outline" onClick={onClose}>
+            Cerrar
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
