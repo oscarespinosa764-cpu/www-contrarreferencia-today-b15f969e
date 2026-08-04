@@ -1780,6 +1780,26 @@ function HistorialPage() {
             Consulta por paciente
           </p>
           <div className="flex flex-wrap items-end gap-2">
+            {vista === "phd" && (
+              <div className="grid gap-1">
+                <Label className="text-[10px] uppercase text-muted-foreground">Subtipo</Label>
+                <Select
+                  value={subtipoAD}
+                  onValueChange={(x) => setSubtipoAD(x as SubtipoAD)}
+                >
+                  <SelectTrigger className="h-9 w-[10rem] text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SUBTIPOS_AD.map((s) => (
+                      <SelectItem key={s} value={s} className="text-xs">
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid gap-1">
               <Label className="text-[10px] uppercase text-muted-foreground">Sede</Label>
               <Select value={sede} onValueChange={setSede}>
