@@ -1607,37 +1607,35 @@ function HistorialPage() {
     }
   };
 
+  // Exportación puntual de un caso en la plantilla canónica GU-FR-50.
   const exportarCasoExcel = (c: Construido) => {
-    let sec: Seccion | null = null;
-    if (c.vista === "entrantes") {
-      const grupo = gruposF.find((g) => v(g.base.id) === c.casoId);
-      if (grupo) {
-        sec = seccionRecibidas([
-          {
-            base: grupo.base as unknown as GrupoEntrante["base"],
-            eventos: grupo.eventos as unknown as Record<string, unknown>[],
-            estadoLabel: grupo.estadoFinal.label,
-          },
-        ]);
-      }
-    } else if (c.vista === "salientes") {
-      const row = (remisionesF as Remision[]).find((r) => r.id === c.casoId);
-      if (row) sec = seccionRemisiones([row as unknown as Record<string, unknown>], segMap);
-    } else if (c.vista === "phd") {
-      const row = (phdF as Generico[]).find((r) => r.id === c.casoId);
-      if (row) sec = seccionPHD([row as unknown as Record<string, unknown>], segMap);
-    } else if (c.vista === "interna") {
-      const row = (internasF as Generico[]).find((r) => r.id === c.casoId);
-      if (row) sec = seccionInternas([row as unknown as Record<string, unknown>], segMap);
-    }
-    if (!sec || sec.rows.length === 0) {
-      toast.info("No fue posible localizar el caso para exportar.");
+    const modulo = MODULO_VISTA[c.vista];
+    if (!modulo || !c.casoId) {
+      toast.info("Este caso no hace parte de la bitácora GU-FR-50.");
       return;
     }
-    const nombre = `caso_${(c.referencia || c.casoId || "sin_ref").replace(/[^\w\-]+/g, "_")}`;
-    descargarLibro([sec], usuario, `Caso=${c.referencia}; Vista=${c.vista}`, nombre);
-    auditar("exportar_excel_caso", { caso: c.casoId, tabla: c.tabla, vista: c.vista });
-    toast.success("Excel del caso generado");
+    void (async () => {
+      try {
+        const res = await exportarBitacora({
+          data: { modules: [modulo], startDate: null, endDate: null, casoIds: [c.casoId] },
+        });
+        if (res.total === 0) {
+          toast.info("No fue posible localizar el caso para exportar.");
+          return;
+        }
+        const { construirLibroGuFr50, descargarXlsx } = await import("@/lib/gu-fr-50");
+        const datos: Partial<Record<ModuloGuFr50, FilaGuFr50[]>> = {
+          [modulo]: (res.filas[modulo] ?? []) as FilaGuFr50[],
+        };
+        const nombre = `GU-FR-50_caso_${(c.referencia || c.casoId).replace(/[^\w\-]+/g, "_")}`;
+        descargarXlsx(await construirLibroGuFr50(datos), `${nombre}.xlsx`);
+        auditar("exportar_excel_caso", { caso: c.casoId, tabla: c.tabla, vista: c.vista });
+        toast.success("Excel GU-FR-50 del caso generado");
+      } catch (e) {
+        console.error(e);
+        toast.error("No se pudo generar el Excel del caso.");
+      }
+    })();
   };
 
 
