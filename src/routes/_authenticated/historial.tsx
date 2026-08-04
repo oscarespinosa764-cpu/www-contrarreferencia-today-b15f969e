@@ -1280,6 +1280,33 @@ function HistorialPage() {
     endDate: filtroPeriodo.endDate ?? null,
   });
 
+  /**
+   * Filtros funcionales enviados al servidor. Sólo se envían los filtros con
+   * semántica real en el módulo exportado: en GENERAL únicamente los
+   * compartidos (documento, término y servicio); estado/sede/subtipo se
+   * aplican en la exportación individual del módulo correspondiente.
+   */
+  const filtrosDTO = (modules: ModuloGuFr50[], scope: "GENERAL" | "INDIVIDUAL") => {
+    const compartidos = {
+      documento: docServer || null,
+      searchTerm: !docServer && term ? term : null,
+      servicio: servicio.startsWith("TODOS") ? null : servicio,
+    };
+    if (scope === "GENERAL") return { ...compartidos, status: null, sede: null, subtype: null };
+    const m = modules[0];
+    const estado =
+      m === "SALIENTES" ? (salTipo === "TODOS" ? null : salTipo)
+      : m === "ATENCION DOMICILIARIA" || m === "REFERENCIAS INTERNAS"
+        ? genTipo === "TODOS" || genTipo === "CERRADO" ? null : genTipo
+        : null;
+    return {
+      ...compartidos,
+      status: estado,
+      sede: m === "ENTRANTES" && sede !== SEDE_DEFAULT ? sede : null,
+      subtype: m === "ATENCION DOMICILIARIA" ? subtipoAD : null,
+    };
+  };
+
   const exportarCanonico = async (
     modules: ModuloGuFr50[],
     etiqueta: string,
@@ -1291,7 +1318,7 @@ function HistorialPage() {
     }
     try {
       const res = await exportarBitacora({
-        data: { scope, modules, ...periodoDTO() },
+        data: { scope, modules, ...periodoDTO(), ...filtrosDTO(modules, scope) },
       });
       if (res.total === 0) {
         toast.info(`No hay registros en el período seleccionado (${res.rango.label}).`);
