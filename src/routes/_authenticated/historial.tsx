@@ -1242,21 +1242,55 @@ function HistorialPage() {
     interna: "REFERENCIAS INTERNAS",
   };
 
-  const exportarCanonico = async (modules: ModuloGuFr50[], etiqueta: string) => {
+  // El periodo NO se envía resuelto: se envía el modo y el servidor resuelve
+  // el rango real (America/Bogota) con su propio reloj.
+  const periodoDTO = () => ({
+    periodMode: filtroPeriodo.periodMode ?? "ALL",
+    year: filtroPeriodo.year ?? null,
+    month: filtroPeriodo.month ?? null,
+    startDate: filtroPeriodo.startDate ?? null,
+    endDate: filtroPeriodo.endDate ?? null,
+  });
+
+  const exportarCanonico = async (
+    modules: ModuloGuFr50[],
+    etiqueta: string,
+    scope: "GENERAL" | "INDIVIDUAL",
+  ) => {
+    if (temporal.error || errorPeriodo) {
+      toast.error(temporal.error || errorPeriodo);
+      return;
+    }
     try {
-      const res = await exportarBitacora({ data: { modules, startDate: null, endDate: null } });
+      const res = await exportarBitacora({
+        data: { scope, modules, ...periodoDTO() },
+      });
       if (res.total === 0) {
-        toast.info("No hay registros para exportar.");
+        toast.info(`No hay registros en el período seleccionado (${res.rango.label}).`);
         return;
       }
-      const { construirLibroGuFr50, descargarXlsx } = await import("@/lib/gu-fr-50");
+      const { construirLibroGuFr50, descargarXlsx, nombreArchivoGuFr50 } =
+        await import("@/lib/gu-fr-50");
       const datos: Partial<Record<ModuloGuFr50, FilaGuFr50[]>> = {};
       for (const m of modules) datos[m] = (res.filas[m] ?? []) as FilaGuFr50[];
-      descargarXlsx(
-        await construirLibroGuFr50(datos),
-        `GU-FR-50_${etiqueta}_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      const bytes = await construirLibroGuFr50(
+        datos,
+        scope === "INDIVIDUAL" ? { soloHoja: modules[0] } : {},
       );
-      auditar("exportar_excel_seccion", { vista: etiqueta, registros: res.total });
+      descargarXlsx(
+        bytes,
+        nombreArchivoGuFr50({
+          scope,
+          modulo: modules[0],
+          sufijoFecha: res.rango.fileSuffix,
+        }),
+      );
+      auditar("exportar_excel_seccion", {
+        vista: etiqueta,
+        alcance: scope,
+        periodo: res.rango.label,
+        registros: res.total,
+      });
       toast.success(`Excel GU-FR-50 generado (${res.total} registro(s)).`);
     } catch (e) {
       console.error(e);
@@ -1270,13 +1304,14 @@ function HistorialPage() {
       toast.info("Esta vista no hace parte de la bitácora GU-FR-50.");
       return;
     }
-    void exportarCanonico([m], vista);
+    void exportarCanonico([m], vista, "INDIVIDUAL");
   };
 
   const exportarTodo = () => {
     void exportarCanonico(
       ["ENTRANTES", "SALIENTES", "ATENCION DOMICILIARIA", "REFERENCIAS INTERNAS"],
       "bitacora_general",
+      "GENERAL",
     );
   };
 
@@ -1650,7 +1685,7 @@ function HistorialPage() {
     void (async () => {
       try {
         const res = await exportarBitacora({
-          data: { modules: [modulo], startDate: null, endDate: null, casoIds: [c.casoId] },
+          data: { scope: "INDIVIDUAL", modules: [modulo], periodMode: "ALL", casoIds: [c.casoId] },
         });
         if (res.total === 0) {
           toast.info("No fue posible localizar el caso para exportar.");
@@ -1661,7 +1696,7 @@ function HistorialPage() {
           [modulo]: (res.filas[modulo] ?? []) as FilaGuFr50[],
         };
         const nombre = `GU-FR-50_caso_${(c.referencia || c.casoId).replace(/[^\w\-]+/g, "_")}`;
-        descargarXlsx(await construirLibroGuFr50(datos), `${nombre}.xlsx`);
+        descargarXlsx(await construirLibroGuFr50(datos, { soloHoja: modulo }), `${nombre}.xlsx`);
         auditar("exportar_excel_caso", { caso: c.casoId, tabla: c.tabla, vista: c.vista });
         toast.success("Excel GU-FR-50 del caso generado");
       } catch (e) {
