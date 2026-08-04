@@ -98,66 +98,6 @@ async function getImg(url: string): Promise<string | null> {
   }
 }
 
-// ===========================================================================
-// EXCEL CRUE — listado de remisiones salientes activas (formato operativo)
-// ===========================================================================
-export function descargarExcelCRUE(remisiones: Remision[]): void {
-  if (!remisiones || remisiones.length === 0) {
-    throw new Error("No se encontraron remisiones activas para exportar.");
-  }
-  const headers = [
-    "FECHA INICIO",
-    "PACIENTE",
-    "TIPO DOC",
-    "DOCUMENTO",
-    "EDAD",
-    "CIE-10",
-    "EAPB / ASEGURADOR",
-    "RÉGIMEN",
-    "SERVICIO",
-    "PRIORIDAD",
-    "ESTADO",
-    "ESP. TRATANTES",
-    "ESP. RECEPTORAS",
-    "TIPO AMBULANCIA",
-    "RADICADO",
-  ];
-  const rows = remisiones.map((r) => [
-    fmtFechaHora(r.fecha_inicio),
-    v(r.paciente),
-    v(r.tipo_documento),
-    v(r.documento),
-    fmtEdad(r.edad),
-    v(r.cie10),
-    v(r.eapb || r.asegurador),
-    v(r.regimen),
-    v(r.servicio),
-    v(r.prioridad),
-    v(r.estado),
-    v(r.especialidades_tratantes),
-    v(r.especialidades_receptoras),
-    v(r.tipo_ambulancia),
-    v(r.codigo_radicacion),
-  ]);
-
-  const meta = [
-    [INSTITUCION],
-    [NIT],
-    ["FORMATO CRUE — REMISIONES SALIENTES ACTIVAS"],
-    [`Generado: ${new Date().toLocaleString("es-CO")}`],
-    [],
-  ];
-  const aoa = [...meta, headers, ...rows];
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws["!cols"] = headers.map((h, i) => ({
-    wch: Math.max(h.length, ...rows.map((row) => v(row[i]).length)) + 2,
-  }));
-  const ref = ws["!ref"];
-  if (ref) ws["!autofilter"] = { ref: `A6:O6` };
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "CRUE");
-  XLSX.writeFile(wb, `Excel_CRUE_${hoy()}.xlsx`);
-}
 
 // ===========================================================================
 // REPORTE GENERAL OPERATIVO — SALIENTES
