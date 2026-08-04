@@ -53,6 +53,8 @@ export const exportarGuFr50 = createServerFn({ method: "POST" })
         m,
         data.startDate ?? null,
         data.endDate ?? null,
+        5000,
+        data.casoIds ?? null,
       );
       filas[m] = f as Record<string, string | number | null>[];
       total += f.length;
