@@ -390,9 +390,9 @@ export function nombreArchivoGuFr50(opts: {
 }): string {
   const limpio = (s: string) =>
     s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]+/g, "_")
-      .replace(/^_|_$/g, "").toUpperCase();
+      .replace(/^_|_$/g, "").toLowerCase();
   if (opts.scope === "GENERAL") {
-    return `GU-FR-50_GENERAL_${opts.sufijoFecha}.xlsx`;
+    return `GU-FR-50_bitacora_general_${opts.sufijoFecha}.xlsx`;
   }
   const base = limpio(opts.modulo ?? "");
   const sub = opts.subtipo ? `_${limpio(opts.subtipo)}` : "";
