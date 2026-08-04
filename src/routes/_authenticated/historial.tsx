@@ -973,25 +973,27 @@ function HistorialPage() {
 
   const segMap = useMemo<SegMap>(() => buildSegMap(seguimientos ?? []), [seguimientos]);
 
+  // Agrupación canónica: las UNIDADES y su orden los define el servidor
+  // (una tarjeta = una unidad). Aquí sólo se hidratan los eventos de cada
+  // unidad de la página vigente; no se reagrupa ni se reordena en memoria.
   const grupos = useMemo<Grupo[]>(() => {
-    const map = new Map<string, Caso[]>();
-    for (const c of [...(casos ?? []), ...historicosEntrantes]) {
-      const key = (c.cod_ref || c.codigo || c.id).toUpperCase();
-      const arr = map.get(key) ?? [];
-      arr.push(c);
-      map.set(key, arr);
-    }
+    const porId = new Map<string, Caso>();
+    for (const c of casos ?? []) porId.set(String(c.id), c);
+    for (const c of historicosEntrantes) porId.set(String(c.id), c);
     const out: Grupo[] = [];
-    for (const [key, eventos] of map) {
+    for (const fila of filas) {
+      const eventos = fila.ids
+        .map((id) => porId.get(id.startsWith("hist-") ? id.slice(5) : id))
+        .filter((c): c is Caso => Boolean(c));
+      if (eventos.length === 0) continue;
       eventos.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       const base = eventos.find((e) => !e.cod_ref) ?? eventos[0];
       const { estadoFinal, activa } = calcularEstado(base, eventos);
       const confirmable = esConfirmable(base, eventos, activa);
-      out.push({ key, base, eventos, estadoFinal, activa, confirmable });
+      out.push({ key: fila.unitKey, base, eventos, estadoFinal, activa, confirmable });
     }
-    out.sort((a, b) => new Date(b.base.created_at).getTime() - new Date(a.base.created_at).getTime());
     return out;
-  }, [casos, historicosEntrantes]);
+  }, [casos, historicosEntrantes, filas]);
 
   // El documento de la consulta por paciente tiene prioridad sobre el buscador
   // libre; el documento normalizado alimenta el término de filtrado.
