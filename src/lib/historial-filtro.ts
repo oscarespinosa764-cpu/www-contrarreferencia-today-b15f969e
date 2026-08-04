@@ -102,12 +102,27 @@ export interface FiltroTemporalResuelto {
   startAt: string | null;
   /** Final EXCLUSIVO (ISO UTC) o null cuando llega hasta el corte actual. */
   endExclusive: string | null;
+  /** Fecha inicial VISIBLE (YYYY-MM-DD, Bogotá) o null en TODO EL HISTÓRICO. */
+  startDateVisible: string | null;
+  /** Fecha final VISIBLE INCLUSIVA (YYYY-MM-DD, Bogotá). Nunca endExclusive. */
+  endDateVisible: string;
   /** Corte autoritativo del servidor (ISO UTC). */
   cutoffAt: string;
   label: string;
   timezone: string;
-  /** Sufijo canónico para el nombre de archivo. */
+  /** Sufijo canónico para el nombre de archivo (usa el intervalo VISIBLE). */
   fileSuffix: string;
+}
+
+/** Fecha local (Bogotá) de un instante UTC, en formato YYYY-MM-DD. */
+function fechaLocal(inst: Date): string {
+  const p = partesLocales(inst);
+  return fecha(p.y, p.m, p.d);
+}
+
+/** Día VISIBLE inclusivo a partir de un final EXCLUSIVO técnico. */
+function visibleDesdeExclusivo(finExcl: Date): string {
+  return fechaLocal(new Date(finExcl.getTime() - 1));
 }
 
 /**
@@ -123,51 +138,35 @@ export function resolverFiltroTemporalHistorial(
   const base = { mode: f.periodMode, cutoffAt, timezone: TZ_HISTORIAL };
   const hoyStr = fecha(y, m, d);
 
-  const conRango = (
-    ini: Date,
-    finExcl: Date | null,
-    label: string,
-    fileSuffix: string,
-  ): FiltroTemporalResuelto => ({
-    ...base,
-    startAt: ini.toISOString(),
-    endExclusive: finExcl ? finExcl.toISOString() : null,
-    label,
-    fileSuffix,
-  });
+  const conRango = (ini: Date, finExcl: Date | null, label: string): FiltroTemporalResuelto => {
+    const startDateVisible = fechaLocal(ini);
+    // El final visible SIEMPRE es inclusivo: nunca se muestra endExclusive.
+    const endDateVisible = finExcl ? visibleDesdeExclusivo(finExcl) : hoyStr;
+    return {
+      ...base,
+      startAt: ini.toISOString(),
+      endExclusive: finExcl ? finExcl.toISOString() : null,
+      startDateVisible,
+      endDateVisible,
+      label,
+      fileSuffix: `${startDateVisible}_a_${endDateVisible}`,
+    };
+  };
 
   if (f.periodMode === "TODAY") {
-    return conRango(
-      utcDesdeLocal(y, m, d),
-      utcDesdeLocal(y, m, d + 1),
-      `HOY ${hoyStr}`,
-      `${hoyStr}_a_${hoyStr}`,
-    );
+    return conRango(utcDesdeLocal(y, m, d), utcDesdeLocal(y, m, d + 1), `HOY ${hoyStr}`);
   }
   if (f.periodMode === "THIS_WEEK") {
     const desplazamiento = (dow + 6) % 7; // semana inicia lunes
-    const ini = utcDesdeLocal(y, m, d - desplazamiento);
-    return conRango(ini, null, "ESTA SEMANA", `${ini.toISOString().slice(0, 10)}_a_${hoyStr}`);
+    return conRango(utcDesdeLocal(y, m, d - desplazamiento), null, "ESTA SEMANA");
   }
   if (f.periodMode === "THIS_MONTH") {
-    return conRango(
-      utcDesdeLocal(y, m, 1),
-      null,
-      `${MESES[m - 1]} ${y}`,
-      `${fecha(y, m, 1)}_a_${hoyStr}`,
-    );
+    return conRango(utcDesdeLocal(y, m, 1), null, `${MESES[m - 1]} ${y}`);
   }
   if (f.periodMode === "PREVIOUS_MONTH") {
     const py = m === 1 ? y - 1 : y;
     const pm = m === 1 ? 12 : m - 1;
-    const ini = utcDesdeLocal(py, pm, 1);
-    const fin = utcDesdeLocal(y, m, 1);
-    return conRango(
-      ini,
-      fin,
-      `${MESES[pm - 1]} ${py}`,
-      `${fecha(py, pm, 1)}_a_${fecha(y, m, 1)}`,
-    );
+    return conRango(utcDesdeLocal(py, pm, 1), utcDesdeLocal(y, m, 1), `${MESES[pm - 1]} ${py}`);
   }
   if (f.periodMode === "MONTH") {
     const my = f.year!;
@@ -177,12 +176,7 @@ export function resolverFiltroTemporalHistorial(
     if (ini.getTime() > ahora.getTime()) {
       throw new Error("El mes seleccionado es futuro.");
     }
-    return conRango(
-      ini,
-      fin,
-      `${MESES[mm - 1]} ${my}`,
-      `${fecha(my, mm, 1)}_a_${fin.toISOString().slice(0, 10)}`,
-    );
+    return conRango(ini, fin, `${MESES[mm - 1]} ${my}`);
   }
   if (f.periodMode === "RANGE") {
     const [sy, sm, sd] = f.startDate!.split("-").map(Number);
@@ -190,18 +184,81 @@ export function resolverFiltroTemporalHistorial(
     const ini = utcDesdeLocal(sy, sm, sd);
     const fin = utcDesdeLocal(ey, em, ed + 1); // final inclusivo visualmente
     if (ini.getTime() > ahora.getTime()) throw new Error("La fecha inicial es futura.");
-    return conRango(
-      ini,
-      fin,
-      `${f.startDate} A ${f.endDate}`,
-      `${f.startDate}_a_${f.endDate}`,
-    );
+    return conRango(ini, fin, `${f.startDate} A ${f.endDate}`);
   }
   return {
     ...base,
     startAt: null,
     endExclusive: null,
+    startDateVisible: null,
+    endDateVisible: hoyStr,
     label: "TODO EL HISTÓRICO",
     fileSuffix: `hasta_${hoyStr}`,
   };
 }
+
+// ============================================================
+// Filtros funcionales canónicos (DTO estricto compartido)
+// ============================================================
+
+/** Subtipos reales de ATENCIÓN DOMICILIARIA. NO son módulos ni hojas. */
+export const SUBTIPOS_AD = ["TODOS", "PHD", "PAD", "O2", "ESPECIALES"] as const;
+export type SubtipoAD = (typeof SUBTIPOS_AD)[number];
+
+const texto = (max: number) =>
+  z
+    .string()
+    .max(max)
+    .transform((s) => s.replace(/\s+/g, " ").trim());
+
+/**
+ * Filtros funcionales autorizados. Allowlist estricta: nunca se aceptan
+ * nombres de tabla, columna, orden ni SQL desde el cliente.
+ */
+export const filtrosFuncionalesSchema = z
+  .object({
+    /** Estado funcional (texto normalizado contra columna `estado`). */
+    status: texto(40).nullable().optional(),
+    /** Sede/unidad institucional. */
+    sede: texto(60).nullable().optional(),
+    /** Documento del paciente (siempre texto, nunca número). */
+    documento: texto(20).nullable().optional(),
+    /** Servicio/unidad funcional. */
+    servicio: texto(60).nullable().optional(),
+    /** Término libre acotado (se aplica sobre columnas predefinidas). */
+    searchTerm: texto(60).nullable().optional(),
+    /** Subtipo exclusivo de ATENCIÓN DOMICILIARIA. */
+    subtype: z.enum(SUBTIPOS_AD).nullable().optional(),
+  })
+  .strict();
+
+export type FiltrosFuncionales = z.output<typeof filtrosFuncionalesSchema>;
+
+/** Normaliza a mayúsculas sin tildes y descarta valores vacíos o comodín. */
+export function normalizarFiltrosFuncionales(f: FiltrosFuncionales | null | undefined) {
+  const limpio = (s: string | null | undefined, max = 60): string | null => {
+    if (!s) return null;
+    const v = s
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toUpperCase()
+      .slice(0, max);
+    if (!v) return null;
+    if (v.startsWith("TODOS") || v.startsWith("TODAS")) return null;
+    return v;
+  };
+  const sub = f?.subtype && f.subtype !== "TODOS" ? f.subtype : null;
+  return {
+    status: limpio(f?.status, 40),
+    sede: limpio(f?.sede),
+    documento: f?.documento ? f.documento.replace(/[^0-9A-Za-z-]/g, "").slice(0, 20) || null : null,
+    servicio: limpio(f?.servicio),
+    searchTerm: limpio(f?.searchTerm),
+    subtype: sub,
+  };
+}
+
+export type FiltrosFuncionalesNormalizados = ReturnType<typeof normalizarFiltrosFuncionales>;
+
