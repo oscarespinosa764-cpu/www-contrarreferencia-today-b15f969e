@@ -686,6 +686,8 @@ function HistorialPage() {
   const [tipo, setTipo] = useState<TipoFilter>("TODOS");
   const [salTipo, setSalTipo] = useState<SalFilter>("TODOS");
   const [genTipo, setGenTipo] = useState<GenFilter>("TODOS");
+  // Subtipo canónico de ATENCIÓN DOMICILIARIA (TODOS/PHD/PAD/O2/ESPECIALES).
+  const [subtipoAD, setSubtipoAD] = useState<SubtipoAD>("TODOS");
   const [periodo, setPeriodo] = useState<Periodo>("Todos");
   const [fechaEspecifica, setFechaEspecifica] = useState<Date | undefined>(undefined);
   const [ingresoFor, setIngresoFor] = useState<Grupo | null>(null);
