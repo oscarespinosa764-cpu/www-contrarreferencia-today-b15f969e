@@ -15,9 +15,11 @@ import { Calendar } from "@/components/ui/calendar";
 import { FiltersBar } from "@/components/filters/filters-bar";
 import {
   resolverFiltroTemporalHistorial,
+  SUBTIPOS_AD,
   TAMANOS_PAGINA,
   type HistorialFilterInput,
   type ModoPeriodo,
+  type SubtipoAD,
 } from "@/lib/historial-filtro";
 import {
   Dialog,
@@ -684,6 +686,8 @@ function HistorialPage() {
   const [tipo, setTipo] = useState<TipoFilter>("TODOS");
   const [salTipo, setSalTipo] = useState<SalFilter>("TODOS");
   const [genTipo, setGenTipo] = useState<GenFilter>("TODOS");
+  // Subtipo canónico de ATENCIÓN DOMICILIARIA (TODOS/PHD/PAD/O2/ESPECIALES).
+  const [subtipoAD, setSubtipoAD] = useState<SubtipoAD>("TODOS");
   const [periodo, setPeriodo] = useState<Periodo>("Todos");
   const [fechaEspecifica, setFechaEspecifica] = useState<Date | undefined>(undefined);
   const [ingresoFor, setIngresoFor] = useState<Grupo | null>(null);
@@ -751,7 +755,7 @@ function HistorialPage() {
   // Cualquier cambio de filtro devuelve el listado a la primera página.
   useEffect(() => {
     setPagina(1);
-  }, [vista, tipo, salTipo, genTipo, periodo, fechaEspecifica, mesEsp, rangoIni, rangoFin, docBusca, tamanoPagina]);
+  }, [vista, tipo, salTipo, genTipo, subtipoAD, sede, servicio, periodo, fechaEspecifica, mesEsp, rangoIni, rangoFin, docBusca, tamanoPagina]);
 
   const docTrimEarly = docBusca.trim();
   const docServer = docBuscableServer(docTrimEarly) ? docTrimEarly : "";
@@ -1014,6 +1018,7 @@ function HistorialPage() {
     setTipo("TODOS");
     setSalTipo("TODOS");
     setGenTipo("TODOS");
+    setSubtipoAD("TODOS");
     setPeriodo("Todos");
     setFechaEspecifica(undefined);
     setMesEsp(null);
@@ -1070,10 +1075,26 @@ function HistorialPage() {
       return campos(r).toLowerCase().includes(term);
     });
 
+  // El subtipo de Atención Domiciliaria usa exactamente los mismos valores
+  // canónicos que aplica el servidor al exportar (allowlist PHD/PAD/O2/ESPECIALES).
+  const SUBTIPO_AD_VALORES: Record<string, string[]> = {
+    PHD: ["PHD"],
+    PAD: ["PAD"],
+    O2: ["O2", "OXIGENO"],
+    ESPECIALES: ["ESPECIAL", "ESPECIALES"],
+  };
   const phdF = useMemo(
-    () => filtraGenerico(phdDatos, (r) => `${v(r.paciente)} ${v(r.documento)} ${v(r.tipo_solicitud)} ${v(r.eapb)} ${v(r.codigo_radicacion)}`),
+    () =>
+      filtraGenerico(
+        subtipoAD === "TODOS"
+          ? phdDatos
+          : phdDatos.filter((r) =>
+              (SUBTIPO_AD_VALORES[subtipoAD] ?? []).includes(v(r.tipo_solicitud).toUpperCase()),
+            ),
+        (r) => `${v(r.paciente)} ${v(r.documento)} ${v(r.tipo_solicitud)} ${v(r.eapb)} ${v(r.codigo_radicacion)}`,
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [phdDatos, genTipo, periodo, fechaEspecifica, term, servicio],
+    [phdDatos, genTipo, periodo, fechaEspecifica, term, servicio, subtipoAD],
   );
   const internasF = useMemo(
     () => filtraGenerico(internasDatos, (r) => `${v(r.paciente)} ${v(r.documento)} ${v(r.tipo_solicitud)} ${v(r.servicio)} ${v(r.eapb)}`),
@@ -1260,6 +1281,33 @@ function HistorialPage() {
     endDate: filtroPeriodo.endDate ?? null,
   });
 
+  /**
+   * Filtros funcionales enviados al servidor. Sólo se envían los filtros con
+   * semántica real en el módulo exportado: en GENERAL únicamente los
+   * compartidos (documento, término y servicio); estado/sede/subtipo se
+   * aplican en la exportación individual del módulo correspondiente.
+   */
+  const filtrosDTO = (modules: ModuloGuFr50[], scope: "GENERAL" | "INDIVIDUAL") => {
+    const compartidos = {
+      documento: docServer || null,
+      searchTerm: !docServer && term ? term : null,
+      servicio: servicio.startsWith("TODOS") ? null : servicio,
+    };
+    if (scope === "GENERAL") return { ...compartidos, status: null, sede: null, subtype: null };
+    const m = modules[0];
+    const estado =
+      m === "SALIENTES" ? (salTipo === "TODOS" ? null : salTipo)
+      : m === "ATENCION DOMICILIARIA" || m === "REFERENCIAS INTERNAS"
+        ? genTipo === "TODOS" || genTipo === "CERRADO" ? null : genTipo
+        : null;
+    return {
+      ...compartidos,
+      status: estado,
+      sede: m === "ENTRANTES" && sede !== SEDE_DEFAULT ? sede : null,
+      subtype: m === "ATENCION DOMICILIARIA" ? subtipoAD : null,
+    };
+  };
+
   const exportarCanonico = async (
     modules: ModuloGuFr50[],
     etiqueta: string,
@@ -1271,7 +1319,7 @@ function HistorialPage() {
     }
     try {
       const res = await exportarBitacora({
-        data: { scope, modules, ...periodoDTO() },
+        data: { scope, modules, ...periodoDTO(), ...filtrosDTO(modules, scope) },
       });
       if (res.total === 0) {
         toast.info(`No hay registros en el período seleccionado (${res.rango.label}).`);
@@ -1290,6 +1338,8 @@ function HistorialPage() {
         nombreArchivoGuFr50({
           scope,
           modulo: modules[0],
+          // El subtipo sólo afecta el NOMBRE del archivo, nunca el de la hoja.
+          subtipo: res.filtros?.subtype ?? null,
           sufijoFecha: res.rango.fileSuffix,
         }),
       );
@@ -1298,6 +1348,8 @@ function HistorialPage() {
         alcance: scope,
         periodo: res.rango.label,
         registros: res.total,
+        lotes: res.lotes,
+        subtipo: res.filtros?.subtype ?? "TODOS",
       });
       toast.success(`Excel GU-FR-50 generado (${res.total} registro(s)).`);
     } catch (e) {
@@ -1780,6 +1832,26 @@ function HistorialPage() {
             Consulta por paciente
           </p>
           <div className="flex flex-wrap items-end gap-2">
+            {vista === "phd" && (
+              <div className="grid gap-1">
+                <Label className="text-[10px] uppercase text-muted-foreground">Subtipo</Label>
+                <Select
+                  value={subtipoAD}
+                  onValueChange={(x) => setSubtipoAD(x as SubtipoAD)}
+                >
+                  <SelectTrigger className="h-9 w-[10rem] text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SUBTIPOS_AD.map((s) => (
+                      <SelectItem key={s} value={s} className="text-xs">
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid gap-1">
               <Label className="text-[10px] uppercase text-muted-foreground">Sede</Label>
               <Select value={sede} onValueChange={setSede}>

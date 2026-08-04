@@ -179,27 +179,132 @@ export function mapearModulo(modulo: ModuloGuFr50, rows: Row[]): FilaGuFr50[] {
   }));
 }
 
-/** Consulta server-side por módulo con rango de fechas validado. */
+// ---------------------------------------------------------------------------
+// Consulta canónica por módulo (misma resolución para listado y exportación)
+// ---------------------------------------------------------------------------
+
+/** Columnas reales sobre las que aplica cada filtro funcional, por módulo. */
+const CAMPOS_FILTRO: Record<
+  ModuloGuFr50,
+  { estado: string | null; sede: string | null; servicio: string | null; texto: string[] }
+> = {
+  ENTRANTES: {
+    estado: "estado",
+    sede: "unidad",
+    servicio: "unidad",
+    texto: ["documento", "nombres", "apellidos", "ips", "codigo"],
+  },
+  SALIENTES: {
+    estado: "estado",
+    sede: null,
+    servicio: "servicio",
+    texto: ["documento", "paciente", "ips_receptora", "servicio", "codigo_radicacion"],
+  },
+  "ATENCION DOMICILIARIA": {
+    estado: "estado",
+    sede: null,
+    servicio: "servicio",
+    texto: ["documento", "paciente", "tipo_solicitud", "eapb", "codigo_radicacion"],
+  },
+  "REFERENCIAS INTERNAS": {
+    estado: "estado",
+    sede: null,
+    servicio: "servicio",
+    texto: ["documento", "paciente", "tipo_solicitud", "servicio", "eapb"],
+  },
+};
+
+/** Valores reales almacenados para cada subtipo canónico de AD (allowlist). */
+const SUBTIPO_AD: Record<string, string[]> = {
+  PHD: ["PHD"],
+  PAD: ["PAD"],
+  O2: ["O2", "OXIGENO"],
+  ESPECIALES: ["ESPECIAL", "ESPECIALES"],
+};
+
+export interface FiltrosModulo {
+  status?: string | null;
+  sede?: string | null;
+  documento?: string | null;
+  servicio?: string | null;
+  searchTerm?: string | null;
+  subtype?: string | null;
+}
+
+/** Escapa comodines para que el término nunca altere el patrón de ilike. */
+const patron = (s: string) => `%${s.replace(/[%_\\]/g, (c) => `\\${c}`)}%`;
+
+/** Tamaño de lote interno de lectura (no es un límite del universo). */
+const LOTE = 1000;
+
+export interface ResultadoConsulta {
+  filas: FilaGuFr50[];
+  total: number;
+  lotes: number;
+}
+
+/**
+ * Consulta server-side por módulo con periodo canónico, filtros funcionales
+ * y lectura POR LOTES (sin límite silencioso). El orden es estable:
+ * fecha funcional ascendente + id como desempate.
+ */
 export async function consultarModulo(
   supabase: SB,
   modulo: ModuloGuFr50,
   desde: string | null,
   /** Límite superior EXCLUSIVO (resuelto server-side). */
   hastaExclusivo: string | null,
-  limite = 5000,
   casoIds: string[] | null = null,
-  subtipo: string | null = null,
-): Promise<FilaGuFr50[]> {
+  filtros: FiltrosModulo | null = null,
+): Promise<ResultadoConsulta> {
   const f = FUENTE[modulo];
-  let q = supabase.from(f.tabla).select("*").order(f.fecha, { ascending: true }).limit(limite);
-  if (desde) q = q.gte(f.fecha, desde);
-  if (hastaExclusivo) q = q.lt(f.fecha, hastaExclusivo);
-  if (casoIds && casoIds.length > 0) q = q.in("id", casoIds);
-  if (subtipo && modulo === "ATENCION DOMICILIARIA") q = q.ilike("tipo_solicitud", `%${subtipo}%`);
-  const { data, error } = await q;
-  if (error) throw new Error(error.message);
-  return mapearModulo(modulo, (data ?? []) as Row[]);
+  const campos = CAMPOS_FILTRO[modulo];
+  const acumulado: Row[] = [];
+  let lotes = 0;
+  let offset = 0;
+
+  for (;;) {
+    let q = supabase
+      .from(f.tabla)
+      .select("*")
+      .order(f.fecha, { ascending: true, nullsFirst: false })
+      .order("id", { ascending: true })
+      .range(offset, offset + LOTE - 1);
+
+    // Pertenencia al periodo SIEMPRE por la fecha funcional canónica.
+    if (desde) q = q.gte(f.fecha, desde);
+    if (hastaExclusivo) q = q.lt(f.fecha, hastaExclusivo);
+    // Fuera de ALL, los registros sin fecha funcional quedan excluidos.
+    if (desde || hastaExclusivo) q = q.not(f.fecha, "is", null);
+
+    if (casoIds && casoIds.length > 0) q = q.in("id", casoIds);
+
+    if (filtros?.subtype && modulo === "ATENCION DOMICILIARIA") {
+      const valores = SUBTIPO_AD[filtros.subtype];
+      if (!valores) throw new Error("Subtipo no autorizado.");
+      q = q.in("tipo_solicitud", valores);
+    }
+    if (filtros?.status && campos.estado) q = q.ilike(campos.estado, patron(filtros.status));
+    if (filtros?.sede && campos.sede) q = q.ilike(campos.sede, patron(filtros.sede));
+    if (filtros?.servicio && campos.servicio) q = q.ilike(campos.servicio, patron(filtros.servicio));
+    if (filtros?.documento) q = q.eq("documento", filtros.documento);
+    if (filtros?.searchTerm) {
+      const p = patron(filtros.searchTerm);
+      q = q.or(campos.texto.map((c) => `${c}.ilike.${p}`).join(","));
+    }
+
+    const { data, error } = await q;
+    if (error) throw new Error(error.message);
+    const lote = (data ?? []) as Row[];
+    lotes++;
+    acumulado.push(...lote);
+    if (lote.length < LOTE) break;
+    offset += LOTE;
+  }
+
+  return { filas: mapearModulo(modulo, acumulado), total: acumulado.length, lotes };
 }
+
 
 
 // ---------------------------------------------------------------------------

@@ -17,8 +17,14 @@ const esquemaExport = z
     /** GENERAL = las cuatro hojas; INDIVIDUAL = una sola hoja canónica. */
     scope: z.enum(["GENERAL", "INDIVIDUAL"]).default("GENERAL"),
     modules: z.array(z.enum(MODULOS)).min(1).max(4),
-    /** Subtipo funcional (sólo ATENCION DOMICILIARIA: PHD/PAD/O2/ESPECIAL). */
-    subtype: z.string().max(40).nullable().optional(),
+    /** Subtipo funcional (sólo ATENCION DOMICILIARIA: PHD/PAD/O2/ESPECIALES). */
+    subtype: z.enum(["TODOS", "PHD", "PAD", "O2", "ESPECIALES"]).nullable().optional(),
+    /** Filtros funcionales compartidos con el listado (allowlist estricta). */
+    status: z.string().max(40).nullable().optional(),
+    sede: z.string().max(60).nullable().optional(),
+    documento: z.string().max(20).nullable().optional(),
+    servicio: z.string().max(60).nullable().optional(),
+    searchTerm: z.string().max(60).nullable().optional(),
     periodMode: z
       .enum(["ALL", "TODAY", "THIS_WEEK", "THIS_MONTH", "PREVIOUS_MONTH", "MONTH", "RANGE"])
       .default("ALL"),
@@ -57,9 +63,12 @@ export const exportarGuFr50 = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => esquemaExport.parse(d))
   .handler(async ({ data, context }) => {
     const { consultarModulo } = await import("./gu-fr-50.server");
-    const { resolverFiltroTemporalHistorial } = await import("./historial-filtro");
+    const { resolverFiltroTemporalHistorial, normalizarFiltrosFuncionales } = await import(
+      "./historial-filtro"
+    );
     const { registrarAuditoriaServer } = await import("./auditoria.server");
-    // El periodo SIEMPRE se resuelve con el reloj del servidor (America/Bogota).
+    // El periodo SIEMPRE se resuelve con el reloj del servidor (America/Bogota)
+    // y un ÚNICO corte para todos los módulos del mismo archivo.
     const rango = resolverFiltroTemporalHistorial(
       {
         periodMode: data.periodMode,
@@ -70,20 +79,29 @@ export const exportarGuFr50 = createServerFn({ method: "POST" })
       },
       new Date(),
     );
+    const filtros = normalizarFiltrosFuncionales({
+      status: data.status ?? null,
+      sede: data.sede ?? null,
+      documento: data.documento ?? null,
+      servicio: data.servicio ?? null,
+      searchTerm: data.searchTerm ?? null,
+      subtype: data.subtype ?? null,
+    });
     const filas: Record<string, Record<string, string | number | null>[]> = {};
     let total = 0;
+    let lotes = 0;
     for (const m of data.modules) {
-      const f = await consultarModulo(
+      const r = await consultarModulo(
         context.supabase,
         m,
         rango.startAt,
         rango.endExclusive,
-        5000,
         data.casoIds ?? null,
-        data.subtype ?? null,
+        filtros,
       );
-      filas[m] = f as Record<string, string | number | null>[];
-      total += f.length;
+      filas[m] = r.filas as Record<string, string | number | null>[];
+      total += r.total;
+      lotes += r.lotes;
     }
     await registrarAuditoriaServer(context.userId, {
       accion: "GU_FR_50_EXPORT",
@@ -96,11 +114,17 @@ export const exportarGuFr50 = createServerFn({ method: "POST" })
         modulos: data.modules.join(", "),
         periodo: rango.label,
         corte: rango.cutoffAt,
+        intervalo_tecnico: `${rango.startAt ?? "-"} a ${rango.endExclusive ?? "-"} (excl.)`,
+        intervalo_visible: `${rango.startDateVisible ?? "-"} a ${rango.endDateVisible}`,
+        subtipo: filtros.subtype ?? "TODOS",
+        filtros: JSON.stringify(filtros),
+        lotes,
         filas: total,
       },
     }).catch(() => {});
-    return { ok: true as const, filas, total, rango };
+    return { ok: true as const, filas, total, lotes, rango, filtros };
   });
+
 
 
 /** Previsualización: valida estructura, catálogos y duplicados. No escribe. */
