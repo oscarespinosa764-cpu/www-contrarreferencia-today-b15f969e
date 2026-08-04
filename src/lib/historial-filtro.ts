@@ -43,7 +43,14 @@ export const historialFilterSchema = z
     month: z.number().int().min(1).max(12).nullable().optional(),
     startDate: fechaPura.nullable().optional(),
     endDate: fechaPura.nullable().optional(),
-    subtype: z.string().max(40).nullable().optional(),
+    /** Subtipo funcional de ATENCIÓN DOMICILIARIA (allowlist estricta). */
+    subtype: z.enum(["TODOS", "PHD", "PAD", "O2", "ESPECIALES"]).nullable().optional(),
+    /** Filtros funcionales compartidos por listado y exportación. */
+    status: z.string().max(40).nullable().optional(),
+    sede: z.string().max(60).nullable().optional(),
+    documento: z.string().max(20).nullable().optional(),
+    servicio: z.string().max(60).nullable().optional(),
+    searchTerm: z.string().max(60).nullable().optional(),
     page: z.number().int().min(1).max(10000).default(1),
     pageSize: z
       .number()
