@@ -56,15 +56,9 @@ import { toast } from "sonner";
 import { fmtFechaHora, fmtEdad, fmtRadicado } from "@/lib/remisiones-utils";
 import {
   buildSegMap,
-  descargarLibro,
   estadoLabel,
   splitNombre,
-  seccionRecibidas,
-  seccionRemisiones,
-  seccionPHD,
-  seccionInternas,
   type SegMap,
-  type Seccion,
   type GrupoEntrante,
 } from "@/lib/historial-export";
 import { useServerFn } from "@tanstack/react-start";
