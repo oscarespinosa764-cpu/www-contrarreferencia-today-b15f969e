@@ -775,7 +775,9 @@ function HistorialPage() {
   // y paginación. El navegador NUNCA descarga el universo: sólo hidrata los
   // identificadores de la página vigente. No hay límites 3.000/20.000.
   // ============================================================
-  const MODULO_CANONICO: Record<Vista, ModuloHistorial> = {
+  // "pendientes" NO es un módulo canónico de la bitácora: conserva su lectura
+  // acotada propia y no participa del listado server-side de cuatro módulos.
+  const MODULO_CANONICO: Partial<Record<Vista, ModuloHistorial>> = {
     entrantes: "ENTRANTES",
     salientes: "SALIENTES",
     phd: "ATENCION_DOMICILIARIA",
