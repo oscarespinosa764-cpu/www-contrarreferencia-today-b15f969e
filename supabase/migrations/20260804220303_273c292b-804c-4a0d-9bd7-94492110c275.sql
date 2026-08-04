@@ -1,0 +1,1 @@
+grant execute on function public.hist_sin_tildes(text) to service_role;

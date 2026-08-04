@@ -4055,7 +4055,39 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_hist_entrantes_eventos: {
+        Row: {
+          cod_ref: string | null
+          created_at: string | null
+          documento: string | null
+          estado_txt: string | null
+          ev_id: string | null
+          fecha_funcional: string | null
+          haystack: string | null
+          sede_txt: string | null
+          servicio_txt: string | null
+          tipo_u: string | null
+          unit_key: string | null
+        }
+        Relationships: []
+      }
+      v_hist_unidades: {
+        Row: {
+          documento: string | null
+          estado_txt: string | null
+          fecha_funcional: string | null
+          haystack: string | null
+          ids: string[] | null
+          modulo: string | null
+          orden_at: string | null
+          sede_txt: string | null
+          servicio_txt: string | null
+          subtipo: string | null
+          tipo_txt: string | null
+          unit_key: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       calcular_indicadores_mes: {
@@ -4143,6 +4175,24 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      hist_sin_tildes: { Args: { _t: string }; Returns: string }
+      historial_listado: {
+        Args: {
+          _documento?: string
+          _end: string
+          _estado?: string
+          _module: string
+          _page?: number
+          _page_size?: number
+          _sede?: string
+          _servicio?: string
+          _start: string
+          _subtype?: string
+          _term?: string
+          _tipo?: string
+        }
+        Returns: Json
       }
       is_active_member: { Args: { _user_id: string }; Returns: boolean }
       is_current_session_device_authorized: { Args: never; Returns: boolean }
