@@ -1895,6 +1895,72 @@ function HistorialPage() {
                             </button>
                           ))}
                         </div>
+                        <div className="mt-2 space-y-2 border-t pt-2">
+                          <div>
+                            <p className="px-1 pb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                              Mes específico
+                            </p>
+                            <input
+                              type="month"
+                              value={mesEsp ? `${mesEsp.year}-${String(mesEsp.month).padStart(2, "0")}` : ""}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setErrorPeriodo("");
+                                if (!val) { setMesEsp(null); return; }
+                                const [y, m] = val.split("-").map(Number);
+                                const hoy = new Date();
+                                if (y > hoy.getFullYear() || (y === hoy.getFullYear() && m > hoy.getMonth() + 1)) {
+                                  setErrorPeriodo("El mes seleccionado es futuro.");
+                                  return;
+                                }
+                                setMesEsp({ year: y, month: m });
+                                setPeriodo("Todos");
+                                setFechaEspecifica(undefined);
+                                setRangoIni("");
+                                setRangoFin("");
+                              }}
+                              className="w-full rounded-md border border-border bg-card px-2 py-1 text-[11px]"
+                            />
+                          </div>
+                          <div>
+                            <p className="px-1 pb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                              Rango personalizado
+                            </p>
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="date"
+                                value={rangoIni}
+                                onChange={(e) => {
+                                  setErrorPeriodo("");
+                                  setRangoIni(e.target.value);
+                                  if (e.target.value) { setPeriodo("Todos"); setFechaEspecifica(undefined); setMesEsp(null); }
+                                  if (rangoFin && e.target.value > rangoFin) setErrorPeriodo("La fecha inicial no puede ser posterior a la final.");
+                                }}
+                                className="w-full rounded-md border border-border bg-card px-2 py-1 text-[11px]"
+                              />
+                              <span className="text-[10px] text-muted-foreground">a</span>
+                              <input
+                                type="date"
+                                value={rangoFin}
+                                onChange={(e) => {
+                                  setErrorPeriodo("");
+                                  setRangoFin(e.target.value);
+                                  if (e.target.value) { setPeriodo("Todos"); setFechaEspecifica(undefined); setMesEsp(null); }
+                                  if (rangoIni && rangoIni > e.target.value) setErrorPeriodo("La fecha inicial no puede ser posterior a la final.");
+                                }}
+                                className="w-full rounded-md border border-border bg-card px-2 py-1 text-[11px]"
+                              />
+                            </div>
+                          </div>
+                          {(errorPeriodo || temporal.error) && (
+                            <p className="px-1 text-[10px] font-semibold text-destructive">
+                              {errorPeriodo || temporal.error}
+                            </p>
+                          )}
+                          <p className="px-1 text-[10px] font-semibold text-muted-foreground">
+                            Período aplicado: {temporal.label}
+                          </p>
+                        </div>
                         <div className="mt-2 border-t pt-1">
                           <p className="px-1 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                             O elige una fecha
@@ -1904,11 +1970,12 @@ function HistorialPage() {
                             selected={fechaEspecifica}
                             onSelect={(d) => {
                               setFechaEspecifica(d ?? undefined);
-                              if (d) setPeriodo("Todos");
+                              if (d) { setPeriodo("Todos"); setMesEsp(null); setRangoIni(""); setRangoFin(""); }
                             }}
                             captionLayout="dropdown"
                           />
                         </div>
+
                       </div>
                     </div>
                   }
