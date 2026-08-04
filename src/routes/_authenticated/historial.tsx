@@ -1337,6 +1337,8 @@ function HistorialPage() {
         nombreArchivoGuFr50({
           scope,
           modulo: modules[0],
+          // El subtipo sólo afecta el NOMBRE del archivo, nunca el de la hoja.
+          subtipo: res.filtros?.subtype ?? null,
           sufijoFecha: res.rango.fileSuffix,
         }),
       );
@@ -1345,6 +1347,8 @@ function HistorialPage() {
         alcance: scope,
         periodo: res.rango.label,
         registros: res.total,
+        lotes: res.lotes,
+        subtipo: res.filtros?.subtype ?? "TODOS",
       });
       toast.success(`Excel GU-FR-50 generado (${res.total} registro(s)).`);
     } catch (e) {
