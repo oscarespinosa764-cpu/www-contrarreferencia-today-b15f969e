@@ -1001,18 +1001,6 @@ function HistorialPage() {
   const term = docTrim.toLowerCase();
 
   const servicioActivo = servicio !== "TODOS LOS SERVICIOS";
-  const sedeActiva = sede !== "TODAS LAS SEDES";
-  const su = sinTildes(servicio).toUpperCase();
-  const seu = sinTildes(sede).toUpperCase();
-  const matchServicio = (txt: string) =>
-    !servicioActivo || sinTildes(txt).toUpperCase().includes(su);
-  // La sede sólo excluye cuando el registro tiene un valor de unidad/sede que
-  // no coincide; registros sin ese dato siempre pasan (evita ocultar todo).
-  const matchSede = (txt: string) => {
-    if (!sedeActiva) return true;
-    const t = sinTildes(txt).toUpperCase().trim();
-    return t === "" || t.includes(seu);
-  };
 
   const busquedaActiva =
     term !== "" ||
@@ -1025,17 +1013,8 @@ function HistorialPage() {
     (!!rangoIni && !!rangoFin) ||
     servicioActivo;
 
-  // Un registro entra al periodo cuando su fecha funcional cae en el rango
-  // canónico [startAt, endExclusive) resuelto en America/Bogota.
-  const pasaPeriodo = (raw: string | null) => {
-    if (!temporal.startAt && !temporal.endExclusive) return true;
-    if (!raw) return false;
-    const t = new Date(raw).getTime();
-    if (Number.isNaN(t)) return false;
-    if (temporal.startAt && t < new Date(temporal.startAt).getTime()) return false;
-    if (temporal.endExclusive && t >= new Date(temporal.endExclusive).getTime()) return false;
-    return true;
-  };
+  // El filtrado por periodo, sede, servicio y término ya NO ocurre en memoria:
+  // lo resuelve public.historial_listado con el reloj del servidor.
 
   // Índice de pacientes: la búsqueda por documento/nombre se resuelve
   // SERVER-SIDE (máx. 50 resultados). Antes se construía en el navegador a
