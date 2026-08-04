@@ -1199,14 +1199,6 @@ function HistorialPage() {
   const gruposEntrantesExport = (): GrupoEntrante[] =>
     gruposF.map((g) => ({ base: g.base as unknown as GrupoEntrante["base"], eventos: g.eventos as unknown as Record<string, unknown>[], estadoLabel: g.estadoFinal.label }));
 
-  const seccionActual = (): Seccion | null => {
-    if (vista === "entrantes") return seccionRecibidas(gruposEntrantesExport());
-    if (vista === "salientes") return seccionRemisiones(remisionesF as Record<string, unknown>[], segMap);
-    if (vista === "phd") return seccionPHD(phdF as Record<string, unknown>[], segMap);
-    if (vista === "interna") return seccionInternas(internasF as Record<string, unknown>[], segMap);
-    return null;
-  };
-
   const exportarBitacora = useServerFn(exportarGuFr50);
 
   // Exportación canónica GU-FR-50 (server-authoritative, cuatro hojas).
