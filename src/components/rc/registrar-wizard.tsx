@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type Dispatch, type SetStateAction } from "react";
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { siguienteCodigo } from "@/lib/codigo.functions";
