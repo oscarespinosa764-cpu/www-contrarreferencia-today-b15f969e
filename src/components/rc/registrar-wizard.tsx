@@ -1033,7 +1033,7 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Fecha y hora de envío de la remisión</Label>
-                <AppDateTimeInput value={fechaEnvio} onChange={setFechaEnvio} />
+                <AppDateTimeInput name="fecha_envio_remision" value={fechaEnvio} onChange={setFechaEnvio} />
                 <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
                   <Checkbox
                     checked={!horaConocida}
