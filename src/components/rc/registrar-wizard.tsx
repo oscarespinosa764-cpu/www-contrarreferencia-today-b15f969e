@@ -1597,13 +1597,14 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                         ))}
                       </div>
                       {complejidadSub === "CON_ESP" && (
-                        <AutoComplete
-                          label="Especialidad requerida"
+                        <EspNegacionField
+                          label="Especialidad asociada a la negación"
                           value={especialidad}
-                          onChange={setEspecialidad}
+                          onChange={setEspNegacion}
+                          onClear={limpiarEspNegacion}
                           options={catalogos.especialidades}
+                          sugerida={espRemision}
                           required
-                          placeholder="Escribe la especialidad…"
                         />
                       )}
                     </div>
