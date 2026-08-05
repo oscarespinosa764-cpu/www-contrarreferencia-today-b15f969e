@@ -454,34 +454,36 @@ export function AccionDialog({
         const detalleIngreso = posterior && categoria
           ? [`[${CATEGORIA_MARCA[categoria]}]`, obs].filter(Boolean).join(" · ")
           : obs;
-        const { error: e1 } = await supabase.from("casos_entrantes").insert({
-          ...paciente,
-          codigo,
-          tipo: "ING",
-          cod_ref: caso.codigo,
-          estado: "INGRESADO",
-          fecha: fechaIngreso || ahora.toISOString().slice(0, 10),
-          // Datos canónicos del ingreso (fuente única para GU-FR-50).
-          ingreso_confirmado: true,
-          fecha_hora_ingreso: new Date(
-            `${fechaIngreso || ahora.toISOString().slice(0, 10)}T${horaFmt}:00`,
-          ).toISOString(),
-          unidad_real: caso.unidad ?? null,
-          empresa_tep: empresaTep || null,
-          placa_vehiculo: placa || null,
-          profesional_receptor_nombre: profesional || null,
-          profesional_receptor_cargo: cargo || null,
-          detalle: detalleIngreso || null,
-          texto_ia: mensaje || null,
-          created_by: user?.id,
+        // Confirmación SERVER-AUTHORITATIVE: el servidor valida catálogos,
+        // fecha no futura y escribe las columnas canónicas del ingreso.
+        const modalidad = posterior
+          ? categoria === "tardio"
+            ? ("INGRESO_TARDIO" as const)
+            : ("INGRESO_POSTERIOR_A_NEGACION" as const)
+          : ("NORMAL_POR_ACEPTACION" as const);
+        const res = await confirmarIngresoEntrante({
+          data: {
+            casoId: caso.id,
+            codigoIngreso: codigo,
+            posterior: Boolean(posterior && categoria),
+            observaciones: detalleIngreso || null,
+            mensaje: mensaje || null,
+            ingreso: {
+              fechaHora: `${fechaIngreso || ahora.toISOString().slice(0, 10)}T${horaFmt}`,
+              modalidad,
+              unidadPrevista: caso.unidad ?? "",
+              unidadReal: unidadReal.trim(),
+              tipoAmbulancia: tipoAmb.trim(),
+              empresaTep: empresaTep.trim(),
+              placa: placa.trim(),
+              profesionalTepNombre: profesional.trim(),
+              profesionalTepCargo: cargo.trim(),
+              justificacion: justifConf.trim(),
+            },
+          },
         });
-        if (e1) {
-          // El índice único rechaza un segundo ingreso del mismo cupo.
-          const dup = String((e1 as { code?: string }).code) === "23505";
-          throw new Error(
-            dup ? "Este cupo ya tiene un ingreso registrado." : e1.message,
-          );
-        }
+        if (!res.ok) throw new Error(res.error || "No se pudo confirmar el ingreso");
+
         if (posterior && categoria) {
           // Ingreso posterior: NO se sobrescriben los eventos originales
           // (cancelación/negación se conservan). Se genera la alerta de
@@ -509,29 +511,6 @@ export function AccionDialog({
             console.error("No se pudo generar la alerta de coordinación");
             toast.warning("Ingreso registrado, pero no se pudo crear la alerta.");
           }
-        } else {
-          const { error: e2 } = await supabase
-            .from("casos_entrantes")
-            .update({ estado: "INGRESADO" })
-            .eq("id", caso.id);
-          if (e2) throw e2;
-        }
-        try {
-          await registrarAuditoria({
-            data: {
-              accion:
-                posterior && categoria
-                  ? categoria === "tardio"
-                    ? "ingreso_tardio_post_cancelacion"
-                    : "ingreso_sin_referencia"
-                  : "confirmar_ingreso",
-              modulo: "entrantes",
-              tabla: "casos_entrantes",
-              registroId: caso.codigo,
-            },
-          });
-        } catch {
-          /* no bloquea el flujo */
         }
         toast.success(posterior ? "Ingreso posterior registrado · alerta generada" : "Ingreso confirmado");
         refrescar();
