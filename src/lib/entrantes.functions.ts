@@ -2,7 +2,13 @@
 // Toda la lógica vive en entrantes.server.ts (server-only).
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { crearCasoEntranteSchema, confirmarIngresoSchema } from "@/lib/entrantes-dto";
+import {
+  crearCasoEntranteSchema,
+  confirmarIngresoSchema,
+  ampliarCupoSchema,
+  cancelarCupoSchema,
+} from "@/lib/entrantes-dto";
+
 
 export const crearCasoEntrante = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
