@@ -604,6 +604,10 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
           tipo_caso: "NEG",
           entidad_tipo: entidadTipo,
           motivo_negacion: motivoNeg,
+          motivo_negacion_label: MOTIVO_NEG_LABEL[motivoNeg] || null,
+          // Snapshot histórico: dato independiente de la especialidad principal.
+          especialidad_negacion: especialidad.trim().toUpperCase() || null,
+          especialidad_remision: espRemision.trim().toUpperCase() || null,
           observaciones: obs || null,
         };
         if (negDoc) {
