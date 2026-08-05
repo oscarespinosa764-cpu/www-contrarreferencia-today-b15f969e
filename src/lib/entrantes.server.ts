@@ -174,11 +174,12 @@ export async function crearCasoEntranteServer(
     remision_hora_conocida: fechaEnvioIso ? true : null,
     ciudad_remitente: ciudad || null,
     departamento_remitente: departamento || null,
-    edad_valor: data.edadValor ?? null,
-    edad_unidad: data.edadUnidad ?? null,
+    edad_valor: data.edadValor,
+    edad_unidad: data.edadUnidad,
     especialidad_remision: data.especialidadRemision.toUpperCase(),
-    cie10_codigo: data.cie10Codigo,
-    cie10_descripcion: data.cie10Descripcion,
+    cie10_codigo: cie.codigo,
+    cie10_descripcion: cie.descripcion,
+
     // Decisión
     motivo_negacion: data.motivoNegacion || null,
     especialidad_negacion: data.especialidadNegacion || null,
