@@ -10,6 +10,7 @@ import {
   type FilaGuFr50,
   type ModuloGuFr50,
 } from "./gu-fr-50";
+import { mapearEntrantesGuFr50 } from "./entrantes-canonico";
 import {
   CAMPO_FECHA,
   clasificar,
