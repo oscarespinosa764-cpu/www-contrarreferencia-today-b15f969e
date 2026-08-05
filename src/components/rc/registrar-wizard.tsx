@@ -1091,19 +1091,20 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
             </p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Fecha y hora de envío de la remisión</Label>
+                <Label>
+                  Fecha y hora de envío de la remisión <span className="text-status-red">*</span>
+                </Label>
                 <AppDateTimeInput name="fecha_envio_remision" value={fechaEnvio} onChange={setFechaEnvio} />
-                <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                  <Checkbox
-                    checked={!horaConocida}
-                    onCheckedChange={(v) => setHoraConocida(!v)}
-                  />
-                  La hora exacta no es conocida (se exporta solo la fecha)
-                </label>
+                <p className="text-[11px] text-muted-foreground">
+                  Obligatoria: fecha y hora reales del envío de la remisión.
+                </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="dpto">Departamento remitente</Label>
-                <Input id="dpto" value={departamento} onChange={(e) => setDepartamento(e.target.value)} />
+                <Label>Ciudad / Departamento remitente</Label>
+                <Input value={ciudad.trim().toUpperCase()} readOnly disabled />
+                <p className="text-[11px] text-muted-foreground">
+                  Se deriva de la sede seleccionada de la IPS; no se digita aparte.
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
