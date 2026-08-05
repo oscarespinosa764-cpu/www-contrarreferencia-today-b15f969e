@@ -536,6 +536,18 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     // ingreso sin gestión previa, que no tiene remisión).
     if (!isSinGestion && !espRemision.trim())
       return toast.error("Indica la especialidad principal a la que se remite el paciente");
+    if (!isSinGestion) {
+      // La fecha y hora del envío son obligatorias: sin ellas no hay
+      // oportunidad de respuesta calculable en GU-FR-50.
+      if (!fechaEnvio || fechaEnvio.length < 16)
+        return toast.error("Indica la fecha Y la hora de envío de la remisión");
+      if (new Date(fechaEnvio).getTime() > Date.now() + 5 * 60 * 1000)
+        return toast.error("La fecha y hora de envío no pueden ser futuras");
+      if (!ciudad.trim()) return toast.error("Selecciona la sede (ciudad / departamento) de la IPS");
+      if (!edadValor) return toast.error("Indica la edad del paciente");
+      if (!cie10.trim() || !cie10.includes(" - "))
+        return toast.error("Selecciona el diagnóstico CIE-10 del listado");
+    }
     if (tipo === "NEG") {
       if (!motivoNeg) return toast.error("Selecciona el motivo de negación");
       if (negDoc && !docSubtipo) return toast.error("Selecciona el tipo de documentación");
