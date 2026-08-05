@@ -577,7 +577,9 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
       if (!sgSede.trim()) return toast.error("Selecciona la sede de ingreso");
       if (!unidad.trim()) return toast.error("Indica la unidad o servicio de ingreso");
       if (!especialidad.trim()) return toast.error("Indica la especialidad");
-      if (!sgDiagnostico.trim()) return toast.error("Indica el diagnóstico / CIE-10");
+      if (!edadValor) return toast.error("Indica la edad del paciente");
+      if (!sgDiagnostico.trim() || !sgDiagnostico.includes(" - "))
+        return toast.error("Selecciona el diagnóstico CIE-10 del listado");
       if (!sgEmpresa.trim()) return toast.error("Indica la empresa de ambulancia");
       if (!sgTipoAmb.trim()) return toast.error("Selecciona el tipo de ambulancia");
       if (!sgPlaca.trim()) return toast.error("Indica la placa del vehículo");
@@ -825,8 +827,8 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
           ips: (isCrue ? contactoIps : ips) || null,
           sede: ciudad.trim() || null,
           fechaEnvioRemision: isSinGestion ? null : fechaEnvio.slice(0, 16),
-          edadValor: edadValor ? Number(edadValor) : null,
-          edadUnidad: edadValor ? (edadUnidad as "AÑOS" | "MESES" | "DÍAS") : null,
+          edadValor: Number(edadValor),
+          edadUnidad: edadUnidad as "AÑOS" | "MESES" | "DÍAS",
           especialidadRemision: (isSinGestion ? especialidad : espRemision).trim(),
           cie10Codigo: cie10Fuente.split(" - ")[0]?.trim() || "",
           cie10Descripcion: cie10Fuente.split(" - ").slice(1).join(" - ").trim(),
@@ -1777,6 +1779,30 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                     </Select>
                   </div>
                   <AutoComplete label="Especialidad" value={especialidad} onChange={setEspecialidad} options={catalogos.especialidades} minChars={2} required />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="sgedadv">
+                        Edad <span className="text-status-red">*</span>
+                      </Label>
+                      <Input
+                        id="sgedadv"
+                        inputMode="numeric"
+                        value={edadValor}
+                        onChange={(e) => setEdadValor(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Unidad de edad</Label>
+                      <Select value={edadUnidad} onValueChange={setEdadUnidad}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {["AÑOS", "MESES", "DÍAS"].map((u) => (
+                            <SelectItem key={u} value={u}>{u}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                   <div className="sm:col-span-2">
                     <Cie10Field
                       name="sgcie10"
