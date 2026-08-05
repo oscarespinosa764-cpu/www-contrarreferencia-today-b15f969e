@@ -245,11 +245,15 @@ export function AccionDialog({
   const [busy, setBusy] = useState(false);
   const [resultado, setResultado] = useState<{ tipo: string; codigo: string; mensaje: string } | null>(null);
 
-  // ingreso
+  // ingreso · bloque canónico de confirmación (mismo conjunto de datos que el
+  // ingreso sin gestión previa: unidad real + transporte + profesional TEP).
   const [empresaTep, setEmpresaTep] = useState("");
   const [profesional, setProfesional] = useState("");
   const [cargo, setCargo] = useState("");
   const [placa, setPlaca] = useState("");
+  const [tipoAmb, setTipoAmb] = useState("");
+  const [unidadReal, setUnidadReal] = useState(caso.unidad ?? "");
+  const [justifConf, setJustifConf] = useState("");
   // Fecha/hora de ingreso capturadas al ABRIR el modal (hora local de Colombia).
   // Son de solo lectura: se fijan una sola vez al montar el diálogo.
   const ahoraInit = useMemo(() => new Date(), []);
