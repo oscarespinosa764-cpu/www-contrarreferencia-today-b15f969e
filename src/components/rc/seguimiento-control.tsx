@@ -557,32 +557,18 @@ export function AccionDialog({
           { codigo, fecha: fmtFechaHora(ahora), fechaVence: fmtFechaHora(venceD), hrsReserva: String(hrs) },
           { tipo: "AMP", ...paciente, codRef: caso.codigo, detalle } as any,
         );
-        const { error } = await supabase.from("casos_entrantes").insert({
-          ...paciente,
-          codigo,
-          tipo: "AMP",
-          cod_ref: caso.codigo,
-          estado: "REGISTRADO",
-          fecha: ahora.toISOString().slice(0, 10),
-          fecha_vence: venceD.toISOString(),
-          hrs_reserva: String(hrs),
-          detalle: detalle || null,
-          texto_ia: mensaje || null,
-          created_by: user?.id,
+        const res = await ampliarCupoEntrante({
+          data: {
+            casoId: caso.id,
+            codigo,
+            fechaVence: venceD.toISOString(),
+            hrsReserva: hrs,
+            detalle: detalle || null,
+            mensaje: mensaje || null,
+          },
         });
-        if (error) throw error;
-        try {
-          await registrarAuditoria({
-            data: {
-              accion: "ampliar_cupo",
-              modulo: "entrantes",
-              tabla: "casos_entrantes",
-              registroId: caso.codigo,
-            },
-          });
-        } catch {
-          /* no bloquea el flujo */
-        }
+        if (!res.ok) throw new Error(res.error || "No se pudo ampliar el cupo");
+
         toast.success(`Cupo ampliado ${hrs}h`);
         refrescar();
         setResultado({ tipo: "AMP", codigo, mensaje });
