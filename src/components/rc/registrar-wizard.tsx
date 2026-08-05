@@ -49,6 +49,7 @@ import {
   type RedSubtipo,
   type ComplejidadSub,
   type DocItem,
+  MOTIVO_NEG_LABEL,
 } from "@/lib/neg-crue";
 import {
   buscarAcepActivo,
