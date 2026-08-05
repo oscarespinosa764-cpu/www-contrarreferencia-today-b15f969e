@@ -1458,12 +1458,13 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                   </div>
 
                   {redSubtipo === "SERVICIO" && (
-                    <AutoComplete
-                      label="Servicio o especialidad solicitada"
+                    <EspNegacionField
+                      label="Servicio o especialidad asociada a la negación"
                       value={especialidad}
-                      onChange={setEspecialidad}
+                      onChange={setEspNegacion}
+                      onClear={limpiarEspNegacion}
                       options={catalogos.especialidades}
-                      placeholder="Escribe la especialidad…"
+                      sugerida={espRemision}
                     />
                   )}
 
