@@ -1120,10 +1120,11 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 </div>
               </div>
               <AutoComplete
-                label="Especialidad solicitada en la remisión"
+                label="Especialidad principal a la que se remite el paciente"
                 value={espRemision}
                 onChange={setEspRemision}
                 options={catalogos.especialidades}
+                required
               />
               <div className="sm:col-span-2">
                 <Cie10Field name="cie10_remision" defaultValue={cie10} onValueChange={setCie10} />
