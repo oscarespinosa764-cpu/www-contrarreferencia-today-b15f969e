@@ -788,7 +788,9 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
         fecha_envio_remision: fechaEnvio
           ? horaConocida
             ? new Date(fechaEnvio).toISOString()
-            : new Date(fechaEnvio).toISOString().slice(0, 10)
+            : // Sin hora conocida: se conserva la fecha LOCAL tal cual se
+              // capturó (nunca se desplaza el día por conversión a UTC).
+              `${fechaEnvio.slice(0, 10)}T00:00:00Z`
           : null,
         remision_hora_conocida: Boolean(fechaEnvio) && horaConocida,
         departamento_remitente: departamento.trim().toUpperCase() || null,
