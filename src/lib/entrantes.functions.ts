@@ -25,3 +25,19 @@ export const confirmarIngresoEntrante = createServerFn({ method: "POST" })
     const { confirmarIngresoServer } = await import("@/lib/entrantes.server");
     return confirmarIngresoServer(context.supabase, context.userId, data);
   });
+
+export const ampliarCupoEntrante = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => ampliarCupoSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { ampliarCupoServer } = await import("@/lib/entrantes.server");
+    return ampliarCupoServer(context.supabase, context.userId, data);
+  });
+
+export const cancelarCupoEntrante = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => cancelarCupoSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { cancelarCupoServer } = await import("@/lib/entrantes.server");
+    return cancelarCupoServer(context.supabase, context.userId, data);
+  });
