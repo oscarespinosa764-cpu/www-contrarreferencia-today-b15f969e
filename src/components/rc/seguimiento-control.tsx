@@ -614,35 +614,25 @@ export function AccionDialog({
                   detalle,
                 } as any,
               );
-        const { error: e1 } = await supabase.from("casos_entrantes").insert({
-          ...paciente,
-          codigo,
-          tipo: "CAN",
-          cod_ref: caso.codigo,
-          estado: "REGISTRADO",
-          fecha: ahora.toISOString().slice(0, 10),
-          detalle: motivo + (detalle ? ` · ${detalle}` : ""),
-          texto_ia: mensaje || null,
-          created_by: user?.id,
-        });
-        if (e1) throw e1;
-        const { error: e2 } = await supabase
-          .from("casos_entrantes")
-          .update({ estado: esArchivar ? "CANCELADO_VENCIMIENTO" : "CANCELADO" })
-          .eq("id", caso.id);
-        if (e2) throw e2;
-        try {
-          await registrarAuditoria({
-            data: {
-              accion: esArchivar ? "archivar_vencimiento" : "cancelar_cupo",
-              modulo: "entrantes",
-              tabla: "casos_entrantes",
-              registroId: caso.codigo,
-            },
-          });
-        } catch {
-          /* no bloquea el flujo */
+        const justificacion =
+          [motCat?.justificacion || "", detalle].filter(Boolean).join(" · ") ||
+          (esArchivar ? "Cierre por vencimiento del cupo sin ingreso" : "");
+        if (!justificacion.trim()) {
+          setBusy(false);
+          return toast.error("La justificación de la cancelación es obligatoria");
         }
+        const res = await cancelarCupoEntrante({
+          data: {
+            casoId: caso.id,
+            codigo,
+            vencimiento: esArchivar,
+            motivo,
+            justificacion,
+            mensaje: mensaje || null,
+          },
+        });
+        if (!res.ok) throw new Error(res.error || "No se pudo cancelar el cupo");
+
         toast.success(esArchivar ? "Caso archivado · enviado a historial" : "Cupo cancelado");
         refrescar();
         if (esArchivar) {
