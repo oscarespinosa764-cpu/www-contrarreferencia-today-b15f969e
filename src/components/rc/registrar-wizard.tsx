@@ -1500,15 +1500,16 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 </div>
               )}
 
-              {/* NO RECURSO HUMANO → especialidad requerida */}
+              {/* NO RECURSO HUMANO → especialidad asociada a la negación */}
               {negEspecialidad && (
-                <AutoComplete
-                  label="Especialidad requerida"
+                <EspNegacionField
+                  label="Especialidad requerida no disponible"
                   value={especialidad}
-                  onChange={setEspecialidad}
+                  onChange={setEspNegacion}
+                  onClear={limpiarEspNegacion}
                   options={catalogos.especialidades}
+                  sugerida={espRemision}
                   required
-                  placeholder="Escribe la especialidad…"
                 />
               )}
 
