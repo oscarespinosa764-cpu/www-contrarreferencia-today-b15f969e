@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { siguienteCodigo } from "@/lib/codigo.functions";
+import { confirmarIngresoEntrante } from "@/lib/entrantes.functions";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -245,11 +246,15 @@ export function AccionDialog({
   const [busy, setBusy] = useState(false);
   const [resultado, setResultado] = useState<{ tipo: string; codigo: string; mensaje: string } | null>(null);
 
-  // ingreso
+  // ingreso · bloque canónico de confirmación (mismo conjunto de datos que el
+  // ingreso sin gestión previa: unidad real + transporte + profesional TEP).
   const [empresaTep, setEmpresaTep] = useState("");
   const [profesional, setProfesional] = useState("");
   const [cargo, setCargo] = useState("");
   const [placa, setPlaca] = useState("");
+  const [tipoAmb, setTipoAmb] = useState("");
+  const [unidadReal, setUnidadReal] = useState(caso.unidad ?? "");
+  const [justifConf, setJustifConf] = useState("");
   // Fecha/hora de ingreso capturadas al ABRIR el modal (hora local de Colombia).
   // Son de solo lectura: se fijan una sola vez al montar el diálogo.
   const ahoraInit = useMemo(() => new Date(), []);
@@ -413,6 +418,24 @@ export function AccionDialog({
       };
 
       if (accion === "ingreso") {
+        // Datos canónicos obligatorios de la confirmación de ingreso.
+        const faltante =
+          (!unidadReal.trim() && "la unidad o servicio real de ingreso") ||
+          (!tipoAmb.trim() && "el tipo de ambulancia") ||
+          (!empresaTep.trim() && "la empresa de transporte (TEP)") ||
+          (!placa.trim() && "la placa del vehículo") ||
+          (!profesional.trim() && "el profesional TEP") ||
+          (!cargo.trim() && "el cargo del profesional TEP");
+        if (faltante) {
+          setBusy(false);
+          return toast.error(`Indica ${faltante}`);
+        }
+        const cambioUnidad =
+          (caso.unidad ?? "").trim().toUpperCase() !== unidadReal.trim().toUpperCase();
+        if ((posterior || cambioUnidad) && !justifConf.trim()) {
+          setBusy(false);
+          return toast.error("La justificación de la confirmación es obligatoria en este caso");
+        }
         const { codigo } = await siguienteCodigo({
           data: { tipo: "ING", yyyy: ahora.getFullYear(), mm: ahora.getMonth() + 1 },
         });
@@ -450,34 +473,36 @@ export function AccionDialog({
         const detalleIngreso = posterior && categoria
           ? [`[${CATEGORIA_MARCA[categoria]}]`, obs].filter(Boolean).join(" · ")
           : obs;
-        const { error: e1 } = await supabase.from("casos_entrantes").insert({
-          ...paciente,
-          codigo,
-          tipo: "ING",
-          cod_ref: caso.codigo,
-          estado: "INGRESADO",
-          fecha: fechaIngreso || ahora.toISOString().slice(0, 10),
-          // Datos canónicos del ingreso (fuente única para GU-FR-50).
-          ingreso_confirmado: true,
-          fecha_hora_ingreso: new Date(
-            `${fechaIngreso || ahora.toISOString().slice(0, 10)}T${horaFmt}:00`,
-          ).toISOString(),
-          unidad_real: caso.unidad ?? null,
-          empresa_tep: empresaTep || null,
-          placa_vehiculo: placa || null,
-          profesional_receptor_nombre: profesional || null,
-          profesional_receptor_cargo: cargo || null,
-          detalle: detalleIngreso || null,
-          texto_ia: mensaje || null,
-          created_by: user?.id,
+        // Confirmación SERVER-AUTHORITATIVE: el servidor valida catálogos,
+        // fecha no futura y escribe las columnas canónicas del ingreso.
+        const modalidad = posterior
+          ? categoria === "tardio"
+            ? ("INGRESO_TARDIO" as const)
+            : ("INGRESO_POSTERIOR_A_NEGACION" as const)
+          : ("NORMAL_POR_ACEPTACION" as const);
+        const res = await confirmarIngresoEntrante({
+          data: {
+            casoId: caso.id,
+            codigoIngreso: codigo,
+            posterior: Boolean(posterior && categoria),
+            observaciones: detalleIngreso || null,
+            mensaje: mensaje || null,
+            ingreso: {
+              fechaHora: `${fechaIngreso || ahora.toISOString().slice(0, 10)}T${horaFmt}`,
+              modalidad,
+              unidadPrevista: caso.unidad ?? "",
+              unidadReal: unidadReal.trim(),
+              tipoAmbulancia: tipoAmb.trim(),
+              empresaTep: empresaTep.trim(),
+              placa: placa.trim(),
+              profesionalTepNombre: profesional.trim(),
+              profesionalTepCargo: cargo.trim(),
+              justificacion: justifConf.trim(),
+            },
+          },
         });
-        if (e1) {
-          // El índice único rechaza un segundo ingreso del mismo cupo.
-          const dup = String((e1 as { code?: string }).code) === "23505";
-          throw new Error(
-            dup ? "Este cupo ya tiene un ingreso registrado." : e1.message,
-          );
-        }
+        if (!res.ok) throw new Error(res.error || "No se pudo confirmar el ingreso");
+
         if (posterior && categoria) {
           // Ingreso posterior: NO se sobrescriben los eventos originales
           // (cancelación/negación se conservan). Se genera la alerta de
@@ -505,29 +530,6 @@ export function AccionDialog({
             console.error("No se pudo generar la alerta de coordinación");
             toast.warning("Ingreso registrado, pero no se pudo crear la alerta.");
           }
-        } else {
-          const { error: e2 } = await supabase
-            .from("casos_entrantes")
-            .update({ estado: "INGRESADO" })
-            .eq("id", caso.id);
-          if (e2) throw e2;
-        }
-        try {
-          await registrarAuditoria({
-            data: {
-              accion:
-                posterior && categoria
-                  ? categoria === "tardio"
-                    ? "ingreso_tardio_post_cancelacion"
-                    : "ingreso_sin_referencia"
-                  : "confirmar_ingreso",
-              modulo: "entrantes",
-              tabla: "casos_entrantes",
-              registroId: caso.codigo,
-            },
-          });
-        } catch {
-          /* no bloquea el flujo */
         }
         toast.success(posterior ? "Ingreso posterior registrado · alerta generada" : "Ingreso confirmado");
         refrescar();
@@ -765,11 +767,48 @@ export function AccionDialog({
                     />
                   </div>
                 </div>
-                <AutoComplete label="Empresa de transporte (TEP)" value={empresaTep} onChange={setEmpresaTep} options={catalogos.empresasTep} />
-                <AutoComplete label="Placa del vehículo" value={placa} onChange={setPlaca} options={catalogos.placas} />
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <AutoComplete id="prof" label="Profesional que recibe" value={profesional} onChange={setProfesional} onPick={onPickProfesional} options={profesionalOptions} />
-                  <AutoComplete id="cargo" label="Cargo" value={cargo} onChange={setCargo} options={cargoOptions} />
+                  <AutoComplete
+                    label="Unidad / servicio real de ingreso *"
+                    value={unidadReal}
+                    onChange={setUnidadReal}
+                    options={catalogos.unidades.map((u) => u.nombre)}
+                  />
+                  <AutoComplete
+                    label="Tipo de ambulancia *"
+                    value={tipoAmb}
+                    onChange={setTipoAmb}
+                    options={catalogos.tiposAmbulancia}
+                  />
+                </div>
+                {unidadReal.trim() &&
+                  (caso.unidad ?? "").trim().toUpperCase() !== unidadReal.trim().toUpperCase() && (
+                    <p className="rounded-lg border border-status-amber/40 bg-status-amber/10 p-2 text-[11px] text-foreground">
+                      La unidad real difiere de la prevista ({caso.unidad || "—"}). Justifica el
+                      cambio para dejar trazabilidad.
+                    </p>
+                  )}
+                <AutoComplete label="Empresa de transporte (TEP) *" value={empresaTep} onChange={setEmpresaTep} options={catalogos.empresasTep} />
+                <AutoComplete label="Placa del vehículo *" value={placa} onChange={setPlaca} options={catalogos.placas} />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <AutoComplete id="prof" label="Profesional TEP que entrega *" value={profesional} onChange={setProfesional} onPick={onPickProfesional} options={profesionalOptions} />
+                  <AutoComplete id="cargo" label="Cargo *" value={cargo} onChange={setCargo} options={cargoOptions.length ? cargoOptions : catalogos.cargos} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="justconf">
+                    Justificación de la confirmación
+                    {(posterior ||
+                      (unidadReal.trim() &&
+                        (caso.unidad ?? "").trim().toUpperCase() !== unidadReal.trim().toUpperCase())) && (
+                      <span className="text-status-red"> *</span>
+                    )}
+                  </Label>
+                  <Input
+                    id="justconf"
+                    value={justifConf}
+                    onChange={(e) => setJustifConf(e.target.value)}
+                    placeholder="Motivo del ingreso tardío, cambio de unidad u observación institucional"
+                  />
                 </div>
               </>
             )}

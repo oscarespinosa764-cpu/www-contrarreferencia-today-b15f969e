@@ -22,6 +22,8 @@ export interface Catalogos {
   placas: string[];
   empresasTep: string[];
   profesionales: ProfesionalCat[];
+  tiposAmbulancia: string[];
+  cargos: string[];
 }
 
 const EMPTY: Catalogos = {
@@ -39,6 +41,8 @@ const EMPTY: Catalogos = {
   placas: [],
   empresasTep: [],
   profesionales: [],
+  tiposAmbulancia: [],
+  cargos: [],
 };
 
 export function useCatalogos() {
@@ -94,6 +98,8 @@ export function useCatalogos() {
           nombre: r.valor,
           cargo: (r.extra1 || "").trim(),
         })),
+        tiposAmbulancia: byTipo("TIPO_AMBULANCIA").map((r) => r.valor),
+        cargos: byTipo("CARGO").map((r) => r.valor),
       };
     },
     initialData: EMPTY,
