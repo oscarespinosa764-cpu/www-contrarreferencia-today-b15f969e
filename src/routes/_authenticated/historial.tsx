@@ -3,6 +3,9 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
+import { siguienteCodigo } from "@/lib/codigo.functions";
+import { confirmarIngresoEntrante } from "@/lib/entrantes.functions";
+
 import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/app-header";
 import { Panel } from "@/components/stat-card";
