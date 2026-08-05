@@ -41,6 +41,31 @@ export const fechaHoraLocal = z
   .trim()
   .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Fecha y hora inválidas");
 
+/** Normalización simple para comparar unidades (sin tildes, mayúsculas). */
+const normUnidad = (s: string | null | undefined) =>
+  (s ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase();
+
+/**
+ * Regla ÚNICA (UI + servidor) de obligatoriedad de la justificación de
+ * confirmación. Es obligatoria en toda modalidad excepcional y cuando la
+ * unidad real difiere de la prevista. Solo el ingreso normal por aceptación
+ * en la misma unidad la deja opcional.
+ */
+export function requiereJustificacionConfirmacion(i: {
+  modalidad: (typeof MODALIDADES)[number];
+  unidadPrevista?: string | null;
+  unidadReal?: string | null;
+}): boolean {
+  if (i.modalidad !== "NORMAL_POR_ACEPTACION") return true;
+  const prev = normUnidad(i.unidadPrevista);
+  const real = normUnidad(i.unidadReal);
+  return Boolean(prev) && prev !== real;
+}
+
 /** Bloque canónico de confirmación de ingreso (único para todos los flujos). */
 export const confirmacionIngresoSchema = z
   .object({
@@ -55,7 +80,17 @@ export const confirmacionIngresoSchema = z
     profesionalTepCargo: texto(120).min(1, "Cargo del profesional TEP obligatorio"),
     justificacion: texto(1000).optional().default(""),
   })
-  .strict();
+  .strict()
+  .superRefine((v, ctx) => {
+    if (requiereJustificacionConfirmacion(v) && !v.justificacion.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["justificacion"],
+        message: "La justificación de la confirmación es obligatoria en esta modalidad",
+      });
+    }
+  });
+
 
 export type ConfirmacionIngresoDTO = z.infer<typeof confirmacionIngresoSchema>;
 
