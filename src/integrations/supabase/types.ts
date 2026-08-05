@@ -336,87 +336,171 @@ export type Database = {
           apellidos: string | null
           archivado: boolean
           aseguramiento: string | null
+          cie10_codigo: string | null
+          cie10_descripcion: string | null
+          ciudad_remitente: string | null
+          clasificacion_solicitud: string | null
           cod_ref: string | null
           codigo: string | null
+          codigo_crue: string | null
           created_at: string
           created_by: string | null
+          departamento_remitente: string | null
           detalle: string | null
           documento: string | null
           eapb: string | null
           eapb_contratada_snapshot: boolean | null
           eapb_snapshot_at: string | null
+          edad_unidad: string | null
+          edad_valor: number | null
+          empresa_tep: string | null
           especialidad: string | null
+          especialidad_negacion: string | null
+          especialidad_remision: string | null
           estado: string | null
           fecha: string | null
+          fecha_envio_remision: string | null
+          fecha_hora_ingreso: string | null
           fecha_vence: string | null
           hrs_reserva: string | null
           id: string
+          ingreso_confirmado: boolean | null
           ips: string | null
+          justificacion_confirmacion: string | null
+          justificacion_crue: string | null
+          justificacion_decision: string | null
           medico: string | null
           metadata: Json | null
+          modalidad_ingreso: string | null
+          motivo_negacion: string | null
           nombres: string | null
+          placa_vehiculo: string | null
+          profesional_receptor_cargo: string | null
+          profesional_receptor_nombre: string | null
+          profesional_tep_cargo: string | null
+          profesional_tep_nombre: string | null
           regimen: string | null
+          remision_hora_conocida: boolean
           texto_ia: string | null
           tipo: string | null
+          tipo_ambulancia: string | null
           unidad: string | null
+          unidad_prevista: string | null
+          unidad_real: string | null
           updated_at: string
         }
         Insert: {
           apellidos?: string | null
           archivado?: boolean
           aseguramiento?: string | null
+          cie10_codigo?: string | null
+          cie10_descripcion?: string | null
+          ciudad_remitente?: string | null
+          clasificacion_solicitud?: string | null
           cod_ref?: string | null
           codigo?: string | null
+          codigo_crue?: string | null
           created_at?: string
           created_by?: string | null
+          departamento_remitente?: string | null
           detalle?: string | null
           documento?: string | null
           eapb?: string | null
           eapb_contratada_snapshot?: boolean | null
           eapb_snapshot_at?: string | null
+          edad_unidad?: string | null
+          edad_valor?: number | null
+          empresa_tep?: string | null
           especialidad?: string | null
+          especialidad_negacion?: string | null
+          especialidad_remision?: string | null
           estado?: string | null
           fecha?: string | null
+          fecha_envio_remision?: string | null
+          fecha_hora_ingreso?: string | null
           fecha_vence?: string | null
           hrs_reserva?: string | null
           id?: string
+          ingreso_confirmado?: boolean | null
           ips?: string | null
+          justificacion_confirmacion?: string | null
+          justificacion_crue?: string | null
+          justificacion_decision?: string | null
           medico?: string | null
           metadata?: Json | null
+          modalidad_ingreso?: string | null
+          motivo_negacion?: string | null
           nombres?: string | null
+          placa_vehiculo?: string | null
+          profesional_receptor_cargo?: string | null
+          profesional_receptor_nombre?: string | null
+          profesional_tep_cargo?: string | null
+          profesional_tep_nombre?: string | null
           regimen?: string | null
+          remision_hora_conocida?: boolean
           texto_ia?: string | null
           tipo?: string | null
+          tipo_ambulancia?: string | null
           unidad?: string | null
+          unidad_prevista?: string | null
+          unidad_real?: string | null
           updated_at?: string
         }
         Update: {
           apellidos?: string | null
           archivado?: boolean
           aseguramiento?: string | null
+          cie10_codigo?: string | null
+          cie10_descripcion?: string | null
+          ciudad_remitente?: string | null
+          clasificacion_solicitud?: string | null
           cod_ref?: string | null
           codigo?: string | null
+          codigo_crue?: string | null
           created_at?: string
           created_by?: string | null
+          departamento_remitente?: string | null
           detalle?: string | null
           documento?: string | null
           eapb?: string | null
           eapb_contratada_snapshot?: boolean | null
           eapb_snapshot_at?: string | null
+          edad_unidad?: string | null
+          edad_valor?: number | null
+          empresa_tep?: string | null
           especialidad?: string | null
+          especialidad_negacion?: string | null
+          especialidad_remision?: string | null
           estado?: string | null
           fecha?: string | null
+          fecha_envio_remision?: string | null
+          fecha_hora_ingreso?: string | null
           fecha_vence?: string | null
           hrs_reserva?: string | null
           id?: string
+          ingreso_confirmado?: boolean | null
           ips?: string | null
+          justificacion_confirmacion?: string | null
+          justificacion_crue?: string | null
+          justificacion_decision?: string | null
           medico?: string | null
           metadata?: Json | null
+          modalidad_ingreso?: string | null
+          motivo_negacion?: string | null
           nombres?: string | null
+          placa_vehiculo?: string | null
+          profesional_receptor_cargo?: string | null
+          profesional_receptor_nombre?: string | null
+          profesional_tep_cargo?: string | null
+          profesional_tep_nombre?: string | null
           regimen?: string | null
+          remision_hora_conocida?: boolean
           texto_ia?: string | null
           tipo?: string | null
+          tipo_ambulancia?: string | null
           unidad?: string | null
+          unidad_prevista?: string | null
+          unidad_real?: string | null
           updated_at?: string
         }
         Relationships: []
