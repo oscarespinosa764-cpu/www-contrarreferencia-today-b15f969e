@@ -9,10 +9,15 @@
 import {
   partirSede,
   localBogotaAIso,
+  requiereJustificacionConfirmacion,
   type CrearCasoEntranteDTO,
   type ConfirmarIngresoDTO,
+  type AmpliarCupoDTO,
+  type CancelarCupoDTO,
 } from "./entrantes-dto";
+import { resolverCie10 } from "./cie10.server";
 import { registrarAuditoriaServer } from "./auditoria.server";
+
 
 type RpcFn = (
   name: string,
