@@ -185,6 +185,16 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const [sgCrueObs, setSgCrueObs] = useState("");
   const [sgPlantilla, setSgPlantilla] = useState("");
 
+  // ── DATOS DE LA REMISIÓN (columnas canónicas para GU-FR-50) ──
+  const [fechaEnvio, setFechaEnvio] = useState("");
+  const [horaConocida, setHoraConocida] = useState(true);
+  const [departamento, setDepartamento] = useState("");
+  const [edadValor, setEdadValor] = useState("");
+  const [edadUnidad, setEdadUnidad] = useState("AÑOS");
+  const [espRemision, setEspRemision] = useState("");
+  const [cie10, setCie10] = useState("");
+
+
 
 
   // Paciente reconsultante (autollenado) y ventana ADRES
