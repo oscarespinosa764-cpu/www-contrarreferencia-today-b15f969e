@@ -532,6 +532,10 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
 
   const guardar = async () => {
     if (!tipo) return toast.error("Selecciona el tipo de caso");
+    // Especialidad principal: obligatoria en remisiones normales (no aplica al
+    // ingreso sin gestión previa, que no tiene remisión).
+    if (!isSinGestion && !espRemision.trim())
+      return toast.error("Indica la especialidad principal a la que se remite el paciente");
     if (tipo === "NEG") {
       if (!motivoNeg) return toast.error("Selecciona el motivo de negación");
       if (negDoc && !docSubtipo) return toast.error("Selecciona el tipo de documentación");
