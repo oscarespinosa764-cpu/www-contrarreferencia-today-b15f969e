@@ -188,9 +188,10 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const [sgPlantilla, setSgPlantilla] = useState("");
 
   // ── DATOS DE LA REMISIÓN (columnas canónicas para GU-FR-50) ──
+  // La fecha y hora de envío son SIEMPRE obligatorias y conocidas: no existe
+  // la opción "hora desconocida". Ciudad y departamento NO se capturan aparte;
+  // se derivan de la sede seleccionada de la IPS (dato único).
   const [fechaEnvio, setFechaEnvio] = useState("");
-  const [horaConocida, setHoraConocida] = useState(true);
-  const [departamento, setDepartamento] = useState("");
   const [edadValor, setEdadValor] = useState("");
   const [edadUnidad, setEdadUnidad] = useState("AÑOS");
   const [espRemision, setEspRemision] = useState("");
@@ -520,8 +521,6 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     setSgCrueObs("");
     setSgPlantilla("");
     setFechaEnvio("");
-    setHoraConocida(true);
-    setDepartamento("");
     setEdadValor("");
     setEdadUnidad("AÑOS");
     setEspRemision("");
@@ -796,49 +795,58 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
         });
       }
 
-      const { error } = await supabase.from("casos_entrantes").insert({
-        codigo,
-        tipo,
-        documento: documento.trim(),
-        nombres: nombres.trim() || null,
-        apellidos: apellidos.trim() || null,
-        eapb: eapb || null,
-        regimen: regimen || null,
-        ips: (isCrue ? contactoIps : ips) || null,
-        medico: medico || null,
-        especialidad: especialidadCol || null,
-        unidad: unidadEff || null,
-        aseguramiento: tipo === "ACEP" ? aseguramiento : tipo === "NEG" ? entidadTipo : null,
-        detalle: obs || null,
-        estado: isSinGestion
-          ? "INGRESADO SIN GESTIÓN PREVIA DE REFERENCIA"
-          : esActivo
-            ? "ACTIVO"
-            : "REGISTRADO",
-        fecha: ahora.toISOString().slice(0, 10),
-        fecha_vence: fechaVenceISO,
-        hrs_reserva: hrs ? String(hrs) : null,
-        texto_ia: mensaje || null,
-        // Datos canónicos de la remisión (una sola fuente para GU-FR-50).
-        fecha_envio_remision: fechaEnvio
-          ? horaConocida
-            ? new Date(fechaEnvio).toISOString()
-            : // Sin hora conocida: se conserva la fecha LOCAL tal cual se
-              // capturó (nunca se desplaza el día por conversión a UTC).
-              `${fechaEnvio.slice(0, 10)}T00:00:00Z`
-          : null,
-        remision_hora_conocida: Boolean(fechaEnvio) && horaConocida,
-        departamento_remitente: departamento.trim().toUpperCase() || null,
-        ciudad_remitente: ciudad.trim().toUpperCase() || null,
-        edad_valor: edadValor ? Number(edadValor) : null,
-        edad_unidad: edadValor ? edadUnidad : null,
-        especialidad_remision: espRemision.trim().toUpperCase() || null,
-        cie10_codigo: cie10.split(" - ")[0]?.trim().toUpperCase() || null,
-        cie10_descripcion: cie10.split(" - ").slice(1).join(" - ").trim() || null,
-        metadata: metadata as never,
-        created_by: user?.id,
+      // Creación SERVER-AUTHORITATIVE: el navegador nunca escribe la fila.
+      // El servidor valida sesión, catálogos, fechas y deriva ciudad y
+      // departamento de la sede seleccionada.
+      const cie10Fuente = isSinGestion ? sgDiagnostico : cie10;
+      const res = await crearCasoEntrante({
+        data: {
+          origen: isSinGestion ? "SIN_GESTION" : "CON_GESTION",
+          tipo,
+          codigo,
+          documento: documento.trim(),
+          nombres: nombres.trim() || null,
+          apellidos: apellidos.trim() || null,
+          eapb: eapb || null,
+          regimen: regimen || null,
+          ips: (isCrue ? contactoIps : ips) || null,
+          sede: ciudad.trim() || null,
+          fechaEnvioRemision: isSinGestion ? null : fechaEnvio.slice(0, 16),
+          edadValor: edadValor ? Number(edadValor) : null,
+          edadUnidad: edadValor ? (edadUnidad as "AÑOS" | "MESES" | "DÍAS") : null,
+          especialidadRemision: (isSinGestion ? especialidad : espRemision).trim(),
+          cie10Codigo: cie10Fuente.split(" - ")[0]?.trim() || "",
+          cie10Descripcion: cie10Fuente.split(" - ").slice(1).join(" - ").trim(),
+          medico: medico || null,
+          unidadPrevista: unidadEff || null,
+          hrsReserva: hrs || 0,
+          aseguramiento: tipo === "ACEP" ? aseguramiento : tipo === "NEG" ? entidadTipo : null,
+          detalle: obs || null,
+          especialidadCol: especialidadCol || null,
+          motivoNegacion: tipo === "NEG" ? motivoNeg || null : null,
+          especialidadNegacion:
+            tipo === "NEG" ? especialidad.trim().toUpperCase() || null : null,
+          justificacionDecision: obs || null,
+          codigoCrue: (isCrue ? codigoCrue.trim() : sgCrueCodigo.trim()) || null,
+          ingreso: isSinGestion
+            ? {
+                fechaHora: `${sgFechaIng}T${sgHoraIng}`,
+                modalidad: "SIN_GESTION_PREVIA_REFERENCIA" as const,
+                unidadPrevista: "",
+                unidadReal: unidad.trim(),
+                tipoAmbulancia: sgTipoAmb.trim(),
+                empresaTep: sgEmpresa.trim(),
+                placa: sgPlaca.trim(),
+                profesionalTepNombre: sgTripulante.trim(),
+                profesionalTepCargo: sgCargoTrip.trim(),
+                justificacion: obs || "",
+              }
+            : null,
+          mensaje: mensaje || null,
+          metadata: (metadata ?? null) as never,
+        },
       });
-      if (error) throw error;
+      if (!res.ok) throw new Error(res.error || "No se pudo guardar el caso");
 
       // Auditoría de la acción crítica (creación de caso entrante).
       try {

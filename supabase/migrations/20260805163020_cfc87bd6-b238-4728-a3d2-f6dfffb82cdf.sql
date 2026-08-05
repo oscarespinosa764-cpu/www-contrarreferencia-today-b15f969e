@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.casos_entrantes_clasificacion_guard() FROM PUBLIC, anon, authenticated;
