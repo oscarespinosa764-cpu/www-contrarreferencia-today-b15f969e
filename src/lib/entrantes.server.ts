@@ -92,6 +92,16 @@ export async function crearCasoEntranteServer(
   if (esps.length && !esps.includes(norm(data.especialidadRemision)))
     return err("La especialidad no pertenece al catálogo institucional");
 
+  // ── Datos clínicos comunes: edad y CIE-10 en TODOS los orígenes ──
+  if (!Number.isInteger(data.edadValor) || data.edadValor < 0)
+    return err("La edad del paciente es obligatoria");
+  if (!data.edadUnidad) return err("La unidad de edad del paciente es obligatoria");
+
+  // El CIE-10 debe existir en el catálogo estático canónico y su descripción
+  // se deriva SIEMPRE del catálogo (nunca de lo enviado por el cliente).
+  const cie = await resolverCie10(data.cie10Codigo);
+  if (!cie) return err("El código CIE-10 no existe en el catálogo institucional");
+
   // ── Origen / remisión ──
   let ciudad = "";
   let departamento = "";
@@ -106,9 +116,8 @@ export async function crearCasoEntranteServer(
     const ips = (data.ips ?? "").trim();
     const sede = (data.sede ?? "").trim();
     if (!ips) return err("La IPS remitente es obligatoria");
-    if (data.edadValor == null || !data.edadUnidad)
-      return err("La edad del paciente es obligatoria");
     if (!sede) return err("La sede (ciudad y departamento) de la IPS es obligatoria");
+
 
     // La ciudad y el departamento SIEMPRE se reconstruyen server-side desde la
     // sede: nunca se confía en lo que muestre el navegador.
