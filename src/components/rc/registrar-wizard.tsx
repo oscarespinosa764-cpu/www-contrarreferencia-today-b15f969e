@@ -371,6 +371,32 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const negDoc = motivoNeg === "SOLICITUD_DOCUMENTACION";
   const negRed = motivoNeg === "RED_NO_CONTRATADA";
   const negArl = motivoNeg === "ARL_DIRECTO";
+
+  // ── ESPECIALIDAD DE LA NEGACIÓN ──
+  // Dato distinto de la especialidad principal de la remisión. Cuando el motivo
+  // la requiere, se SUGIERE la principal para no repetir la captura; el operador
+  // puede conservarla, limpiarla o buscar otra. Nunca sobrescribe la principal.
+  const requiereEspNegacion =
+    tipo === "NEG" &&
+    (negEspecialidad ||
+      (negRed && redSubtipo === "SERVICIO") ||
+      (negComplejidad && complejidad === "MAYOR COMPLEJIDAD" && complejidadSub === "CON_ESP"));
+  const espNegTocada = useRef(false);
+  useEffect(() => {
+    if (!requiereEspNegacion) return;
+    if (espNegTocada.current) return;
+    if (especialidad.trim()) return;
+    if (espRemision.trim()) setEspecialidad(espRemision.trim());
+  }, [requiereEspNegacion, especialidad, espRemision]);
+  const setEspNegacion = (v: string) => {
+    espNegTocada.current = true;
+    setEspecialidad(v);
+  };
+  const limpiarEspNegacion = () => {
+    espNegTocada.current = true;
+    setEspecialidad("");
+  };
+
   // Documentos disponibles según el subtipo de solicitud de documentación.
   const docItems: DocItem[] =
     docSubtipo === "DOCUMENTACION_EPS"
