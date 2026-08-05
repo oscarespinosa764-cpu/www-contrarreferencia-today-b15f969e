@@ -198,6 +198,47 @@ export const confirmarIngresoSchema = z
   })
   .strict();
 
+// ---------------------------------------------------------------------------
+// Eventos posteriores del cupo (ampliación y cancelación / vencimiento).
+// Se declaran aquí para que el navegador NUNCA escriba directamente la tabla.
+// ---------------------------------------------------------------------------
+
+export const ampliarCupoSchema = z
+  .object({
+    casoId: z.string().uuid(),
+    codigo: z
+      .string()
+      .trim()
+      .regex(/^[A-Z]{1,3}\d{5,9}$/, "Código de ampliación inválido"),
+    /** Nuevo vencimiento calculado a partir del cupo vigente. */
+    fechaVence: z.string().datetime(),
+    hrsReserva: z.number().int().min(1).max(240),
+    detalle: textoOpc(4000),
+    mensaje: z.string().trim().max(20000).nullable().optional(),
+  })
+  .strict();
+
+export type AmpliarCupoDTO = z.infer<typeof ampliarCupoSchema>;
+
+export const cancelarCupoSchema = z
+  .object({
+    casoId: z.string().uuid(),
+    codigo: z
+      .string()
+      .trim()
+      .regex(/^[A-Z]{1,3}\d{5,9}$/, "Código de cancelación inválido"),
+    /** `true` = cierre por vencimiento (no ingresó); `false` = cancelación. */
+    vencimiento: z.boolean().optional().default(false),
+    motivo: texto(200).min(3, "Motivo de cancelación obligatorio"),
+    justificacion: texto(4000).min(3, "La justificación es obligatoria"),
+    mensaje: z.string().trim().max(20000).nullable().optional(),
+  })
+  .strict();
+
+export type CancelarCupoDTO = z.infer<typeof cancelarCupoSchema>;
+
+
+
 export type ConfirmarIngresoDTO = z.infer<typeof confirmarIngresoSchema>;
 
 // ---------------------------------------------------------------------------
