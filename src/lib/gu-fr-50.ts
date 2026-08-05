@@ -344,7 +344,24 @@ export async function construirLibroGuFr50(
         }
         const celda = row.getCell(col.col);
         if (col.tipo === "fecha") {
-          celda.value = bruto instanceof Date ? bruto : new Date(String(bruto));
+          // "YYYY-MM-DD" = registro legacy con fecha conocida pero SIN hora:
+          // se escribe como fecha pura, nunca como 00:00 ficticio.
+          const solo = typeof bruto === "string" && /^\d{4}-\d{2}-\d{2}$/.test(bruto.trim());
+          if (solo) {
+            const [y, m, d] = bruto.trim().split("-").map(Number);
+            celda.value = new Date(Date.UTC(y, m - 1, d));
+            celda.numFmt = "DD/MM/YYYY";
+          } else {
+            const inst = bruto instanceof Date ? bruto : new Date(String(bruto));
+            if (Number.isNaN(inst.getTime())) {
+              celda.value = null;
+            } else {
+              // Excel serializa en UTC: se desplaza al reloj de America/Bogota
+              // (UTC-5 fijo) para que la celda muestre la hora institucional.
+              celda.value = new Date(inst.getTime() + OFFSET_BOGOTA_MS);
+              celda.numFmt = "DD/MM/YYYY HH:mm";
+            }
+          }
         } else if (col.tipo === "numero") {
           const n = Number(bruto);
           celda.value = Number.isFinite(n) ? n : null;
