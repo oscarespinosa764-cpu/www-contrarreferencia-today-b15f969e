@@ -331,3 +331,147 @@ export async function confirmarIngresoServer(
 
   return { ok: true, codigo: data.codigoIngreso };
 }
+
+// ---------------------------------------------------------------------------
+// Eventos posteriores del cupo. El navegador ya no escribe la tabla: estos
+// contratos son la ÚNICA vía autorizada para ampliar o cancelar un cupo.
+// ---------------------------------------------------------------------------
+
+type PadreCupo = {
+  id: string;
+  codigo: string | null;
+  documento: string | null;
+  nombres: string | null;
+  apellidos: string | null;
+  eapb: string | null;
+  regimen: string | null;
+  ips: string | null;
+  medico: string | null;
+  especialidad: string | null;
+  unidad: string | null;
+  archivado: boolean | null;
+};
+
+const COLS_PADRE =
+  "id, codigo, documento, nombres, apellidos, eapb, regimen, ips, medico, especialidad, unidad, archivado";
+
+async function cargarPadre(
+  admin: { from: (t: string) => any },
+  casoId: string,
+): Promise<PadreCupo | null> {
+  const { data } = await admin
+    .from("casos_entrantes")
+    .select(COLS_PADRE)
+    .eq("id", casoId)
+    .maybeSingle();
+  return (data as PadreCupo | null) ?? null;
+}
+
+/** Amplía el cupo vigente creando el evento AMP asociado por `cod_ref`. */
+export async function ampliarCupoServer(
+  supabase: { rpc: unknown },
+  userId: string,
+  data: AmpliarCupoDTO,
+): Promise<EntranteResultado> {
+  if (!(await verificarMiembroActivo(supabase, userId))) return err("Usuario no autorizado");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const admin = supabaseAdmin as unknown as { from: (t: string) => any };
+
+  const padre = await cargarPadre(admin, data.casoId);
+  if (!padre) return err("El caso no existe");
+  if (padre.archivado) return err("El caso está cerrado y no admite ampliaciones");
+
+  const vence = new Date(data.fechaVence);
+  if (!Number.isFinite(vence.getTime()) || vence.getTime() <= Date.now())
+    return err("El nuevo vencimiento debe ser futuro");
+
+  const { error } = await admin.from("casos_entrantes").insert({
+    codigo: data.codigo,
+    tipo: "AMP",
+    cod_ref: padre.codigo,
+    documento: padre.documento,
+    nombres: padre.nombres,
+    apellidos: padre.apellidos,
+    eapb: padre.eapb,
+    regimen: padre.regimen,
+    ips: padre.ips,
+    medico: padre.medico,
+    especialidad: padre.especialidad,
+    unidad: padre.unidad,
+    estado: "REGISTRADO",
+    fecha: new Date().toISOString().slice(0, 10),
+    fecha_vence: vence.toISOString(),
+    hrs_reserva: String(data.hrsReserva),
+    detalle: data.detalle || null,
+    texto_ia: data.mensaje || null,
+    created_by: userId,
+  });
+  if (error) return err(error.message as string);
+
+  await registrarAuditoriaServer(userId, {
+    accion: "ampliar_cupo",
+    modulo: "entrantes",
+    tabla: "casos_entrantes",
+    registroId: padre.codigo ?? data.codigo,
+    detalles: { horas: data.hrsReserva, nuevo_vencimiento: vence.toISOString() },
+  });
+
+  return { ok: true, codigo: data.codigo };
+}
+
+/** Cancela el cupo (o lo cierra por vencimiento) creando el evento CAN. */
+export async function cancelarCupoServer(
+  supabase: { rpc: unknown },
+  userId: string,
+  data: CancelarCupoDTO,
+): Promise<EntranteResultado> {
+  if (!(await verificarMiembroActivo(supabase, userId))) return err("Usuario no autorizado");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const admin = supabaseAdmin as unknown as { from: (t: string) => any };
+
+  const padre = await cargarPadre(admin, data.casoId);
+  if (!padre) return err("El caso no existe");
+
+  const estadoFinal = data.vencimiento ? "CANCELADO_VENCIMIENTO" : "CANCELADO";
+
+  const { error: e1 } = await admin.from("casos_entrantes").insert({
+    codigo: data.codigo,
+    tipo: "CAN",
+    cod_ref: padre.codigo,
+    documento: padre.documento,
+    nombres: padre.nombres,
+    apellidos: padre.apellidos,
+    eapb: padre.eapb,
+    regimen: padre.regimen,
+    ips: padre.ips,
+    medico: padre.medico,
+    especialidad: padre.especialidad,
+    unidad: padre.unidad,
+    estado: "REGISTRADO",
+    fecha: new Date().toISOString().slice(0, 10),
+    detalle: `${data.motivo} · ${data.justificacion}`,
+    // El resultado sin ingreso también exige justificación: se conserva en la
+    // columna canónica de confirmación (no se crean columnas nuevas).
+    justificacion_confirmacion: data.justificacion,
+    ingreso_confirmado: false,
+    texto_ia: data.mensaje || null,
+    created_by: userId,
+  });
+  if (e1) return err(e1.message as string);
+
+  const { error: e2 } = await admin
+    .from("casos_entrantes")
+    .update({ estado: estadoFinal })
+    .eq("id", padre.id);
+  if (e2) return err(e2.message as string);
+
+  await registrarAuditoriaServer(userId, {
+    accion: data.vencimiento ? "archivar_vencimiento" : "cancelar_cupo",
+    modulo: "entrantes",
+    tabla: "casos_entrantes",
+    registroId: padre.codigo ?? data.codigo,
+    detalles: { motivo: data.motivo, justificacion: data.justificacion, estado: estadoFinal },
+  });
+
+  return { ok: true, codigo: data.codigo };
+}
