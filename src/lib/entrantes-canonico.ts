@@ -113,7 +113,7 @@ const orden = (r: FilaEntrante): number => {
 
 /**
  * Agrupa las filas de casos_entrantes en SOLICITUDES: una fila principal
- * (ACEP/NEG/CRUE_*/SIN_GESTION) más sus eventos derivados (cod_ref).
+ * (ACEP, NEG, CRUE, SIN_GESTION) más sus eventos derivados (cod_ref).
  * Las filas huérfanas conservan su propia unidad: nunca se descartan.
  */
 export function agruparEntrantes(filas: FilaEntrante[]): GrupoEntrante[] {
