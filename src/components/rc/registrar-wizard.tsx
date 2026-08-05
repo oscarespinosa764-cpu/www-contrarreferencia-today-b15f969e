@@ -1893,6 +1893,59 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   );
 }
 
+/**
+ * Especialidad ASOCIADA A LA NEGACIÓN. Se precarga con la especialidad
+ * principal de la remisión (sugerencia), pero es un dato independiente:
+ * cambiarla o limpiarla nunca modifica la principal.
+ */
+function EspNegacionField({
+  label,
+  value,
+  onChange,
+  onClear,
+  options,
+  sugerida,
+  required,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  onClear: () => void;
+  options: string[];
+  sugerida?: string;
+  required?: boolean;
+}) {
+  const esSugerida = Boolean(sugerida?.trim()) && value.trim() === (sugerida || "").trim();
+  return (
+    <div className="space-y-1">
+      <AutoComplete
+        label={label}
+        value={value}
+        onChange={onChange}
+        options={options}
+        required={required}
+        placeholder="Escribe la especialidad…"
+      />
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] text-muted-foreground">
+          {esSugerida
+            ? "Sugerida desde la especialidad principal de la remisión. Puedes cambiarla."
+            : "Dato independiente de la especialidad principal de la remisión."}
+        </p>
+        {value.trim() && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="shrink-0 text-[11px] font-semibold text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          >
+            Limpiar
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Lista dinámica de especialidades (autocomplete + agregar/eliminar).
 function DynEspecialidades({
   label,
