@@ -3,6 +3,9 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
+import { siguienteCodigo } from "@/lib/codigo.functions";
+import { confirmarIngresoEntrante } from "@/lib/entrantes.functions";
+
 import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/app-header";
 import { Panel } from "@/components/stat-card";
@@ -514,6 +517,8 @@ function estadoGenerico(estado: string | null): { label: string; color: StatusCo
 
 type IngresoDatos = {
   transporte: string;
+  tipoAmbulancia: string;
+  unidadReal: string;
   placa: string;
   profesional: string;
   cargo: string;
@@ -1175,29 +1180,37 @@ function HistorialPage() {
     ]
       .filter(Boolean)
       .join("\n");
-    const { error } = await supabase.from("casos_entrantes").insert({
-      tipo: "ING",
-      estado: "INGRESADO",
-      cod_ref: base.codigo,
-      documento: base.documento,
-      nombres: base.nombres,
-      apellidos: base.apellidos,
-      ips: base.ips,
-      unidad: base.unidad,
-      especialidad: base.especialidad,
-      fecha: ahora.toISOString().slice(0, 10),
-      detalle,
-      created_by: u.user?.id,
+    const codigoIngreso = (
+      await siguienteCodigo({
+        data: { tipo: "ING", yyyy: ahora.getFullYear(), mm: ahora.getMonth() + 1 },
+      })
+    ).codigo;
+    const fechaHoraLocal = new Date(ahora.getTime() - 5 * 3_600_000)
+      .toISOString()
+      .slice(0, 16);
+    const res = await confirmarIngresoEntrante({
+      data: {
+        casoId: base.id,
+        codigoIngreso,
+        posterior: !g.activa,
+        observaciones: detalle,
+        ingreso: {
+          fechaHora: fechaHoraLocal,
+          modalidad: g.activa ? "NORMAL_POR_ACEPTACION" : "INGRESO_TARDIO",
+          unidadPrevista: base.unidad || "",
+          unidadReal: datos.unidadReal || base.unidad || "",
+          tipoAmbulancia: datos.tipoAmbulancia,
+          empresaTep: datos.transporte,
+          placa: datos.placa,
+          profesionalTepNombre: datos.profesional,
+          profesionalTepCargo: datos.cargo,
+          justificacion: datos.observaciones || "",
+        },
+      },
     });
-    if (error) {
-      toast.error(error.message);
+    if (!res.ok) {
+      toast.error(res.error || "No se pudo confirmar el ingreso");
       return;
-    }
-    if (base.codigo) {
-      await supabase
-        .from("casos_entrantes")
-        .update({ estado: "INGRESADO" })
-        .eq("codigo", base.codigo);
     }
     if (!g.activa) {
       const paciente = [base.nombres, base.apellidos].filter(Boolean).join(" ") || null;
@@ -2423,6 +2436,8 @@ function IngresoDialog({
 }) {
   const [datos, setDatos] = useState<IngresoDatos>({
     transporte: "",
+    tipoAmbulancia: "",
+    unidadReal: "",
     placa: "",
     profesional: "",
     cargo: "",
@@ -2437,7 +2452,15 @@ function IngresoDialog({
     setGuardando(true);
     await onConfirmar(grupo, datos);
     setGuardando(false);
-    setDatos({ transporte: "", placa: "", profesional: "", cargo: "", observaciones: "" });
+    setDatos({
+      transporte: "",
+      tipoAmbulancia: "",
+      unidadReal: "",
+      placa: "",
+      profesional: "",
+      cargo: "",
+      observaciones: "",
+    });
   };
 
   return (
@@ -2464,6 +2487,28 @@ function IngresoDialog({
               value={datos.transporte}
               onChange={(e) => set("transporte", e.target.value)}
             />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="tipoamb" className="text-xs">
+                Tipo de ambulancia
+              </Label>
+              <Input
+                id="tipoamb"
+                value={datos.tipoAmbulancia}
+                onChange={(e) => set("tipoAmbulancia", e.target.value.toUpperCase())}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="unidadreal" className="text-xs">
+                Unidad real de ingreso
+              </Label>
+              <Input
+                id="unidadreal"
+                value={datos.unidadReal}
+                onChange={(e) => set("unidadReal", e.target.value.toUpperCase())}
+              />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">

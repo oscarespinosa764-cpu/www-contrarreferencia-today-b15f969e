@@ -41,6 +41,31 @@ export const fechaHoraLocal = z
   .trim()
   .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Fecha y hora inválidas");
 
+/** Normalización simple para comparar unidades (sin tildes, mayúsculas). */
+const normUnidad = (s: string | null | undefined) =>
+  (s ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase();
+
+/**
+ * Regla ÚNICA (UI + servidor) de obligatoriedad de la justificación de
+ * confirmación. Es obligatoria en toda modalidad excepcional y cuando la
+ * unidad real difiere de la prevista. Solo el ingreso normal por aceptación
+ * en la misma unidad la deja opcional.
+ */
+export function requiereJustificacionConfirmacion(i: {
+  modalidad: (typeof MODALIDADES)[number];
+  unidadPrevista?: string | null;
+  unidadReal?: string | null;
+}): boolean {
+  if (i.modalidad !== "NORMAL_POR_ACEPTACION") return true;
+  const prev = normUnidad(i.unidadPrevista);
+  const real = normUnidad(i.unidadReal);
+  return Boolean(prev) && prev !== real;
+}
+
 /** Bloque canónico de confirmación de ingreso (único para todos los flujos). */
 export const confirmacionIngresoSchema = z
   .object({
@@ -55,7 +80,17 @@ export const confirmacionIngresoSchema = z
     profesionalTepCargo: texto(120).min(1, "Cargo del profesional TEP obligatorio"),
     justificacion: texto(1000).optional().default(""),
   })
-  .strict();
+  .strict()
+  .superRefine((v, ctx) => {
+    if (requiereJustificacionConfirmacion(v) && !v.justificacion.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["justificacion"],
+        message: "La justificación de la confirmación es obligatoria en esta modalidad",
+      });
+    }
+  });
+
 
 export type ConfirmacionIngresoDTO = z.infer<typeof confirmacionIngresoSchema>;
 
@@ -113,16 +148,18 @@ export const crearCasoEntranteSchema = z
     sede: textoOpc(200),
     fechaEnvioRemision: fechaHoraLocal.nullable().optional(),
 
-    // Datos clínicos comunes (todos los orígenes)
-    edadValor: z.number().int().min(0).max(130).nullable().optional(),
-    edadUnidad: z.enum(["AÑOS", "MESES", "DÍAS"]).nullable().optional(),
+    // Datos clínicos comunes (obligatorios en TODOS los orígenes)
+    edadValor: z.number().int().min(0).max(130),
+    edadUnidad: z.enum(["AÑOS", "MESES", "DÍAS"]),
     especialidadRemision: texto(120).min(2, "Especialidad obligatoria"),
     cie10Codigo: z
       .string()
       .trim()
       .toUpperCase()
       .regex(/^[A-Z]\d{2,3}[A-Z0-9]?$/, "Código CIE-10 inválido"),
-    cie10Descripcion: texto(300).min(3, "Descripción CIE-10 obligatoria"),
+    /** Descripción informativa: el servidor SIEMPRE usa la del catálogo. */
+    cie10Descripcion: texto(300).optional().default(""),
+
 
     // Decisión
     medico: textoOpc(160),
@@ -160,6 +197,47 @@ export const confirmarIngresoSchema = z
     ingreso: confirmacionIngresoSchema,
   })
   .strict();
+
+// ---------------------------------------------------------------------------
+// Eventos posteriores del cupo (ampliación y cancelación / vencimiento).
+// Se declaran aquí para que el navegador NUNCA escriba directamente la tabla.
+// ---------------------------------------------------------------------------
+
+export const ampliarCupoSchema = z
+  .object({
+    casoId: z.string().uuid(),
+    codigo: z
+      .string()
+      .trim()
+      .regex(/^[A-Z]{1,3}\d{5,9}$/, "Código de ampliación inválido"),
+    /** Nuevo vencimiento calculado a partir del cupo vigente. */
+    fechaVence: z.string().datetime(),
+    hrsReserva: z.number().int().min(1).max(240),
+    detalle: textoOpc(4000),
+    mensaje: z.string().trim().max(20000).nullable().optional(),
+  })
+  .strict();
+
+export type AmpliarCupoDTO = z.infer<typeof ampliarCupoSchema>;
+
+export const cancelarCupoSchema = z
+  .object({
+    casoId: z.string().uuid(),
+    codigo: z
+      .string()
+      .trim()
+      .regex(/^[A-Z]{1,3}\d{5,9}$/, "Código de cancelación inválido"),
+    /** `true` = cierre por vencimiento (no ingresó); `false` = cancelación. */
+    vencimiento: z.boolean().optional().default(false),
+    motivo: texto(200).min(3, "Motivo de cancelación obligatorio"),
+    justificacion: texto(4000).min(3, "La justificación es obligatoria"),
+    mensaje: z.string().trim().max(20000).nullable().optional(),
+  })
+  .strict();
+
+export type CancelarCupoDTO = z.infer<typeof cancelarCupoSchema>;
+
+
 
 export type ConfirmarIngresoDTO = z.infer<typeof confirmarIngresoSchema>;
 

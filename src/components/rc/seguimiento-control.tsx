@@ -2,7 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { siguienteCodigo } from "@/lib/codigo.functions";
-import { confirmarIngresoEntrante } from "@/lib/entrantes.functions";
+import {
+  confirmarIngresoEntrante,
+  ampliarCupoEntrante,
+  cancelarCupoEntrante,
+} from "@/lib/entrantes.functions";
+
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -557,32 +562,18 @@ export function AccionDialog({
           { codigo, fecha: fmtFechaHora(ahora), fechaVence: fmtFechaHora(venceD), hrsReserva: String(hrs) },
           { tipo: "AMP", ...paciente, codRef: caso.codigo, detalle } as any,
         );
-        const { error } = await supabase.from("casos_entrantes").insert({
-          ...paciente,
-          codigo,
-          tipo: "AMP",
-          cod_ref: caso.codigo,
-          estado: "REGISTRADO",
-          fecha: ahora.toISOString().slice(0, 10),
-          fecha_vence: venceD.toISOString(),
-          hrs_reserva: String(hrs),
-          detalle: detalle || null,
-          texto_ia: mensaje || null,
-          created_by: user?.id,
+        const res = await ampliarCupoEntrante({
+          data: {
+            casoId: caso.id,
+            codigo,
+            fechaVence: venceD.toISOString(),
+            hrsReserva: hrs,
+            detalle: detalle || null,
+            mensaje: mensaje || null,
+          },
         });
-        if (error) throw error;
-        try {
-          await registrarAuditoria({
-            data: {
-              accion: "ampliar_cupo",
-              modulo: "entrantes",
-              tabla: "casos_entrantes",
-              registroId: caso.codigo,
-            },
-          });
-        } catch {
-          /* no bloquea el flujo */
-        }
+        if (!res.ok) throw new Error(res.error || "No se pudo ampliar el cupo");
+
         toast.success(`Cupo ampliado ${hrs}h`);
         refrescar();
         setResultado({ tipo: "AMP", codigo, mensaje });
@@ -623,35 +614,25 @@ export function AccionDialog({
                   detalle,
                 } as any,
               );
-        const { error: e1 } = await supabase.from("casos_entrantes").insert({
-          ...paciente,
-          codigo,
-          tipo: "CAN",
-          cod_ref: caso.codigo,
-          estado: "REGISTRADO",
-          fecha: ahora.toISOString().slice(0, 10),
-          detalle: motivo + (detalle ? ` · ${detalle}` : ""),
-          texto_ia: mensaje || null,
-          created_by: user?.id,
-        });
-        if (e1) throw e1;
-        const { error: e2 } = await supabase
-          .from("casos_entrantes")
-          .update({ estado: esArchivar ? "CANCELADO_VENCIMIENTO" : "CANCELADO" })
-          .eq("id", caso.id);
-        if (e2) throw e2;
-        try {
-          await registrarAuditoria({
-            data: {
-              accion: esArchivar ? "archivar_vencimiento" : "cancelar_cupo",
-              modulo: "entrantes",
-              tabla: "casos_entrantes",
-              registroId: caso.codigo,
-            },
-          });
-        } catch {
-          /* no bloquea el flujo */
+        const justificacion =
+          [motCat?.justificacion || "", detalle].filter(Boolean).join(" · ") ||
+          (esArchivar ? "Cierre por vencimiento del cupo sin ingreso" : "");
+        if (!justificacion.trim()) {
+          setBusy(false);
+          return toast.error("La justificación de la cancelación es obligatoria");
         }
+        const res = await cancelarCupoEntrante({
+          data: {
+            casoId: caso.id,
+            codigo,
+            vencimiento: esArchivar,
+            motivo,
+            justificacion,
+            mensaje: mensaje || null,
+          },
+        });
+        if (!res.ok) throw new Error(res.error || "No se pudo cancelar el cupo");
+
         toast.success(esArchivar ? "Caso archivado · enviado a historial" : "Cupo cancelado");
         refrescar();
         if (esArchivar) {
