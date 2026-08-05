@@ -31,6 +31,9 @@ export const FILA_AGRUPACION = 1;
 export const FILA_ENCABEZADO = 2;
 export const FILA_DATOS = 3;
 
+/** America/Bogota: UTC-5 fijo, sin horario de verano. */
+const OFFSET_BOGOTA_MS = -5 * 60 * 60 * 1000;
+
 export type TipoCelda = "texto" | "fecha" | "duracion" | "numero" | "codigo";
 
 export interface ColumnaCanonica {
