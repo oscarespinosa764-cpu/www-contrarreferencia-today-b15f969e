@@ -1024,6 +1024,66 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
             </div>
           </div>
 
+          {/* ── DATOS DE LA REMISIÓN (obligatorios para GU-FR-50) ── */}
+          <div className="space-y-4 rounded-xl border border-border bg-muted/30 p-4">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Datos de la remisión
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Fecha y hora de envío de la remisión</Label>
+                <AppDateTimeInput value={fechaEnvio} onChange={setFechaEnvio} />
+                <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <Checkbox
+                    checked={!horaConocida}
+                    onCheckedChange={(v) => setHoraConocida(!v)}
+                  />
+                  La hora exacta no es conocida (se exporta solo la fecha)
+                </label>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dpto">Departamento remitente</Label>
+                <Input id="dpto" value={departamento} onChange={(e) => setDepartamento(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="edadv">Edad</Label>
+                  <Input
+                    id="edadv"
+                    inputMode="numeric"
+                    value={edadValor}
+                    onChange={(e) => setEdadValor(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Unidad</Label>
+                  <Select value={edadUnidad} onValueChange={setEdadUnidad}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["AÑOS", "MESES", "DÍAS"].map((u) => (
+                        <SelectItem key={u} value={u}>
+                          {u}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <AutoComplete
+                label="Especialidad solicitada en la remisión"
+                value={espRemision}
+                onChange={setEspRemision}
+                options={catalogos.especialidades}
+              />
+              <div className="sm:col-span-2">
+                <Cie10Field name="cie10_remision" defaultValue={cie10} onValueChange={setCie10} />
+              </div>
+            </div>
+          </div>
+
+
           <div className="flex justify-between">
             <Button type="button" variant="ghost" className="rounded-full" onClick={() => setStep(1)}>
               <ArrowLeft className="mr-1.5 h-4 w-4" /> Atrás
