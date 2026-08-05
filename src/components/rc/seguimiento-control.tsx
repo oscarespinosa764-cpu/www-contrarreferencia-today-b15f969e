@@ -418,6 +418,24 @@ export function AccionDialog({
       };
 
       if (accion === "ingreso") {
+        // Datos canónicos obligatorios de la confirmación de ingreso.
+        const faltante =
+          (!unidadReal.trim() && "la unidad o servicio real de ingreso") ||
+          (!tipoAmb.trim() && "el tipo de ambulancia") ||
+          (!empresaTep.trim() && "la empresa de transporte (TEP)") ||
+          (!placa.trim() && "la placa del vehículo") ||
+          (!profesional.trim() && "el profesional TEP") ||
+          (!cargo.trim() && "el cargo del profesional TEP");
+        if (faltante) {
+          setBusy(false);
+          return toast.error(`Indica ${faltante}`);
+        }
+        const cambioUnidad =
+          (caso.unidad ?? "").trim().toUpperCase() !== unidadReal.trim().toUpperCase();
+        if ((posterior || cambioUnidad) && !justifConf.trim()) {
+          setBusy(false);
+          return toast.error("La justificación de la confirmación es obligatoria en este caso");
+        }
         const { codigo } = await siguienteCodigo({
           data: { tipo: "ING", yyyy: ahora.getFullYear(), mm: ahora.getMonth() + 1 },
         });
