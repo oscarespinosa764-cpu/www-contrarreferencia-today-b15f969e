@@ -784,6 +784,20 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
         fecha_vence: fechaVenceISO,
         hrs_reserva: hrs ? String(hrs) : null,
         texto_ia: mensaje || null,
+        // Datos canónicos de la remisión (una sola fuente para GU-FR-50).
+        fecha_envio_remision: fechaEnvio
+          ? horaConocida
+            ? new Date(fechaEnvio).toISOString()
+            : new Date(fechaEnvio).toISOString().slice(0, 10)
+          : null,
+        remision_hora_conocida: Boolean(fechaEnvio) && horaConocida,
+        departamento_remitente: departamento.trim().toUpperCase() || null,
+        ciudad_remitente: ciudad.trim().toUpperCase() || null,
+        edad_valor: edadValor ? Number(edadValor) : null,
+        edad_unidad: edadValor ? edadUnidad : null,
+        especialidad_remision: espRemision.trim().toUpperCase() || null,
+        cie10_codigo: cie10.split(" - ")[0]?.trim().toUpperCase() || null,
+        cie10_descripcion: cie10.split(" - ").slice(1).join(" - ").trim() || null,
         metadata: metadata as never,
         created_by: user?.id,
       });
