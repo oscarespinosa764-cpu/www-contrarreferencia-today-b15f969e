@@ -148,16 +148,18 @@ export const crearCasoEntranteSchema = z
     sede: textoOpc(200),
     fechaEnvioRemision: fechaHoraLocal.nullable().optional(),
 
-    // Datos clínicos comunes (todos los orígenes)
-    edadValor: z.number().int().min(0).max(130).nullable().optional(),
-    edadUnidad: z.enum(["AÑOS", "MESES", "DÍAS"]).nullable().optional(),
+    // Datos clínicos comunes (obligatorios en TODOS los orígenes)
+    edadValor: z.number().int().min(0).max(130),
+    edadUnidad: z.enum(["AÑOS", "MESES", "DÍAS"]),
     especialidadRemision: texto(120).min(2, "Especialidad obligatoria"),
     cie10Codigo: z
       .string()
       .trim()
       .toUpperCase()
       .regex(/^[A-Z]\d{2,3}[A-Z0-9]?$/, "Código CIE-10 inválido"),
-    cie10Descripcion: texto(300).min(3, "Descripción CIE-10 obligatoria"),
+    /** Descripción informativa: el servidor SIEMPRE usa la del catálogo. */
+    cie10Descripcion: texto(300).optional().default(""),
+
 
     // Decisión
     medico: textoOpc(160),
