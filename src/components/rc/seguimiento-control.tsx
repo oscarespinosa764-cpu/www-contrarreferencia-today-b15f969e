@@ -457,6 +457,16 @@ export function AccionDialog({
           cod_ref: caso.codigo,
           estado: "INGRESADO",
           fecha: fechaIngreso || ahora.toISOString().slice(0, 10),
+          // Datos canónicos del ingreso (fuente única para GU-FR-50).
+          ingreso_confirmado: true,
+          fecha_hora_ingreso: new Date(
+            `${fechaIngreso || ahora.toISOString().slice(0, 10)}T${horaFmt}:00`,
+          ).toISOString(),
+          unidad_real: caso.unidad ?? null,
+          empresa_tep: empresaTep || null,
+          placa_vehiculo: placa || null,
+          profesional_receptor_nombre: profesional || null,
+          profesional_receptor_cargo: cargo || null,
           detalle: detalleIngreso || null,
           texto_ia: mensaje || null,
           created_by: user?.id,

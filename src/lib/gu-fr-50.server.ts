@@ -10,6 +10,7 @@ import {
   type FilaGuFr50,
   type ModuloGuFr50,
 } from "./gu-fr-50";
+import { mapearEntrantesGuFr50 } from "./entrantes-canonico";
 import {
   CAMPO_FECHA,
   clasificar,
@@ -69,35 +70,10 @@ type Row = Record<string, unknown>;
 /** Mapea filas de base de datos al DTO canónico de cada hoja. */
 export function mapearModulo(modulo: ModuloGuFr50, rows: Row[]): FilaGuFr50[] {
   if (modulo === "ENTRANTES") {
-    return rows.map((r) => ({
-      fecha_envio: iso(r.fecha),
-      ips_remite: t(r.ips),
-      ciudad_departamento: "",
-      documento: t(r.documento),
-      paciente: [t(r.nombres), t(r.apellidos)].filter(Boolean).join(" "),
-      edad: null,
-      unidad_edad: "",
-      eapb: t(r.eapb) || t(r.aseguramiento),
-      especialidad: t(r.especialidad),
-      cie10: "",
-      cie10_descripcion: "",
-      fecha_respuesta: iso(r.updated_at),
-      oportunidad_respuesta: dur(r.fecha, r.updated_at),
-      codigo_aceptacion: t(r.codigo),
-      estado: t(r.estado),
-      motivos: "",
-      justificacion: t(r.detalle),
-      unidad: t(r.unidad),
-      ingresa: /ingres/i.test(t(r.estado)) ? "SI" : "",
-      justificacion_confirmacion: "",
-      codigo_crue: t(r.cod_ref),
-      tipo_ambulancia: "",
-      empresa_traslado: "",
-      placa: "",
-      profesional: t(r.medico),
-      cargo: "",
-    }));
+    // Una fila por SOLICITUD (decisión + eventos), no una fila por evento.
+    return mapearEntrantesGuFr50(rows) as FilaGuFr50[];
   }
+
   if (modulo === "SALIENTES") {
     return rows.map((r) => ({
       fecha_solicitud: iso(r.fecha_inicio) ?? iso(r.created_at),

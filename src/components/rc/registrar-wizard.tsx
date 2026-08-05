@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DictationTextarea } from "@/components/voz/dictation-textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { AppDateTimeInput } from "@/components/ui/app-time-picker";
 import {
   ArrowLeft,
   ArrowRight,
@@ -184,6 +185,16 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const [sgCrueFuncionario, setSgCrueFuncionario] = useState("");
   const [sgCrueObs, setSgCrueObs] = useState("");
   const [sgPlantilla, setSgPlantilla] = useState("");
+
+  // ── DATOS DE LA REMISIÓN (columnas canónicas para GU-FR-50) ──
+  const [fechaEnvio, setFechaEnvio] = useState("");
+  const [horaConocida, setHoraConocida] = useState(true);
+  const [departamento, setDepartamento] = useState("");
+  const [edadValor, setEdadValor] = useState("");
+  const [edadUnidad, setEdadUnidad] = useState("AÑOS");
+  const [espRemision, setEspRemision] = useState("");
+  const [cie10, setCie10] = useState("");
+
 
 
 
@@ -481,6 +492,13 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     setSgCrueFuncionario("");
     setSgCrueObs("");
     setSgPlantilla("");
+    setFechaEnvio("");
+    setHoraConocida(true);
+    setDepartamento("");
+    setEdadValor("");
+    setEdadUnidad("AÑOS");
+    setEspRemision("");
+    setCie10("");
     cerrarAdres();
     setResultado(null);
   };
@@ -766,6 +784,22 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
         fecha_vence: fechaVenceISO,
         hrs_reserva: hrs ? String(hrs) : null,
         texto_ia: mensaje || null,
+        // Datos canónicos de la remisión (una sola fuente para GU-FR-50).
+        fecha_envio_remision: fechaEnvio
+          ? horaConocida
+            ? new Date(fechaEnvio).toISOString()
+            : // Sin hora conocida: se conserva la fecha LOCAL tal cual se
+              // capturó (nunca se desplaza el día por conversión a UTC).
+              `${fechaEnvio.slice(0, 10)}T00:00:00Z`
+          : null,
+        remision_hora_conocida: Boolean(fechaEnvio) && horaConocida,
+        departamento_remitente: departamento.trim().toUpperCase() || null,
+        ciudad_remitente: ciudad.trim().toUpperCase() || null,
+        edad_valor: edadValor ? Number(edadValor) : null,
+        edad_unidad: edadValor ? edadUnidad : null,
+        especialidad_remision: espRemision.trim().toUpperCase() || null,
+        cie10_codigo: cie10.split(" - ")[0]?.trim().toUpperCase() || null,
+        cie10_descripcion: cie10.split(" - ").slice(1).join(" - ").trim() || null,
         metadata: metadata as never,
         created_by: user?.id,
       });
@@ -1006,6 +1040,66 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
               )}
             </div>
           </div>
+
+          {/* ── DATOS DE LA REMISIÓN (obligatorios para GU-FR-50) ── */}
+          <div className="space-y-4 rounded-xl border border-border bg-muted/30 p-4">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Datos de la remisión
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Fecha y hora de envío de la remisión</Label>
+                <AppDateTimeInput name="fecha_envio_remision" value={fechaEnvio} onChange={setFechaEnvio} />
+                <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <Checkbox
+                    checked={!horaConocida}
+                    onCheckedChange={(v) => setHoraConocida(!v)}
+                  />
+                  La hora exacta no es conocida (se exporta solo la fecha)
+                </label>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dpto">Departamento remitente</Label>
+                <Input id="dpto" value={departamento} onChange={(e) => setDepartamento(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="edadv">Edad</Label>
+                  <Input
+                    id="edadv"
+                    inputMode="numeric"
+                    value={edadValor}
+                    onChange={(e) => setEdadValor(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Unidad</Label>
+                  <Select value={edadUnidad} onValueChange={setEdadUnidad}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["AÑOS", "MESES", "DÍAS"].map((u) => (
+                        <SelectItem key={u} value={u}>
+                          {u}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <AutoComplete
+                label="Especialidad solicitada en la remisión"
+                value={espRemision}
+                onChange={setEspRemision}
+                options={catalogos.especialidades}
+              />
+              <div className="sm:col-span-2">
+                <Cie10Field name="cie10_remision" defaultValue={cie10} onValueChange={setCie10} />
+              </div>
+            </div>
+          </div>
+
 
           <div className="flex justify-between">
             <Button type="button" variant="ghost" className="rounded-full" onClick={() => setStep(1)}>
