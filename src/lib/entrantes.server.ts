@@ -255,8 +255,21 @@ export async function confirmarIngresoServer(
   if (errPadre) return err(errPadre.message as string);
   if (!padre) return err("El caso no existe");
 
-  const cambioUnidad =
-    norm(String(padre.unidad_prevista ?? padre.unidad ?? "")) !== norm(data.ingreso.unidadReal);
+  // La unidad prevista SIEMPRE se toma de la fila persistida: el cliente no
+  // puede eludir la justificación enviando una prevista vacía o igual.
+  const unidadPrevistaReal = String(padre.unidad_prevista ?? padre.unidad ?? "");
+  const cambioUnidad = norm(unidadPrevistaReal) !== norm(data.ingreso.unidadReal);
+  if (
+    requiereJustificacionConfirmacion({
+      modalidad: data.ingreso.modalidad,
+      unidadPrevista: unidadPrevistaReal,
+      unidadReal: data.ingreso.unidadReal,
+    }) &&
+    !data.ingreso.justificacion.trim()
+  )
+    return err("La justificación de la confirmación es obligatoria en esta modalidad");
+
+
 
   const { error: e1 } = await admin.from("casos_entrantes").insert({
     codigo: data.codigoIngreso,
