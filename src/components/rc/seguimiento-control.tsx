@@ -749,11 +749,48 @@ export function AccionDialog({
                     />
                   </div>
                 </div>
-                <AutoComplete label="Empresa de transporte (TEP)" value={empresaTep} onChange={setEmpresaTep} options={catalogos.empresasTep} />
-                <AutoComplete label="Placa del vehículo" value={placa} onChange={setPlaca} options={catalogos.placas} />
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <AutoComplete id="prof" label="Profesional que recibe" value={profesional} onChange={setProfesional} onPick={onPickProfesional} options={profesionalOptions} />
-                  <AutoComplete id="cargo" label="Cargo" value={cargo} onChange={setCargo} options={cargoOptions} />
+                  <AutoComplete
+                    label="Unidad / servicio real de ingreso *"
+                    value={unidadReal}
+                    onChange={setUnidadReal}
+                    options={catalogos.unidades.map((u) => u.nombre)}
+                  />
+                  <AutoComplete
+                    label="Tipo de ambulancia *"
+                    value={tipoAmb}
+                    onChange={setTipoAmb}
+                    options={catalogos.tiposAmbulancia}
+                  />
+                </div>
+                {unidadReal.trim() &&
+                  (caso.unidad ?? "").trim().toUpperCase() !== unidadReal.trim().toUpperCase() && (
+                    <p className="rounded-lg border border-status-amber/40 bg-status-amber/10 p-2 text-[11px] text-foreground">
+                      La unidad real difiere de la prevista ({caso.unidad || "—"}). Justifica el
+                      cambio para dejar trazabilidad.
+                    </p>
+                  )}
+                <AutoComplete label="Empresa de transporte (TEP) *" value={empresaTep} onChange={setEmpresaTep} options={catalogos.empresasTep} />
+                <AutoComplete label="Placa del vehículo *" value={placa} onChange={setPlaca} options={catalogos.placas} />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <AutoComplete id="prof" label="Profesional TEP que entrega *" value={profesional} onChange={setProfesional} onPick={onPickProfesional} options={profesionalOptions} />
+                  <AutoComplete id="cargo" label="Cargo *" value={cargo} onChange={setCargo} options={cargoOptions.length ? cargoOptions : catalogos.cargos} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="justconf">
+                    Justificación de la confirmación
+                    {(posterior ||
+                      (unidadReal.trim() &&
+                        (caso.unidad ?? "").trim().toUpperCase() !== unidadReal.trim().toUpperCase())) && (
+                      <span className="text-status-red"> *</span>
+                    )}
+                  </Label>
+                  <Input
+                    id="justconf"
+                    value={justifConf}
+                    onChange={(e) => setJustifConf(e.target.value)}
+                    placeholder="Motivo del ingreso tardío, cambio de unidad u observación institucional"
+                  />
                 </div>
               </>
             )}
