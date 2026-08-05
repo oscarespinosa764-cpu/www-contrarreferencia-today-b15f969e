@@ -491,6 +491,13 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
     setSgCrueFuncionario("");
     setSgCrueObs("");
     setSgPlantilla("");
+    setFechaEnvio("");
+    setHoraConocida(true);
+    setDepartamento("");
+    setEdadValor("");
+    setEdadUnidad("AÑOS");
+    setEspRemision("");
+    setCie10("");
     cerrarAdres();
     setResultado(null);
   };
