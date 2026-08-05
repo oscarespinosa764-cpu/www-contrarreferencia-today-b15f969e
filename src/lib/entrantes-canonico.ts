@@ -223,7 +223,14 @@ export function mapearGrupoEntrante(g: GrupoEntrante): Record<string, unknown> {
     edad: p.edad_valor === null || p.edad_valor === undefined ? null : Number(p.edad_valor),
     unidad_edad: t(p.edad_unidad),
     eapb: primero(p.eapb, p.aseguramiento),
-    especialidad: primero(p.especialidad_remision, p.especialidad),
+    // ESPECIALIDAD PRINCIPAL A LA QUE SE REMITE: nunca la de la negación.
+    // Sólo se usa la columna legacy `especialidad` cuando el caso no registró
+    // una especialidad asociada a la negación (evita contaminar el dato).
+    especialidad: primero(
+      p.especialidad_remision,
+      m.especialidad_remision,
+      m.especialidad_negacion ? "" : p.especialidad,
+    ),
     cie10: t(p.cie10_codigo),
     cie10_descripcion: t(p.cie10_descripcion),
     fecha_respuesta: fechaRespuesta,
@@ -233,8 +240,9 @@ export function mapearGrupoEntrante(g: GrupoEntrante): Record<string, unknown> {
     estado: clasificacion ? ETIQUETA_CLASIFICACION[clasificacion] : "",
     motivos:
       clasificacion === "NEGADO"
-        ? primero(p.motivo_negacion, m.motivo_negacion)
+        ? primero(m.motivo_negacion_label, p.motivo_negacion, m.motivo_negacion)
         : "",
+
     justificacion: primero(p.justificacion_decision, p.detalle),
     unidad: ingreso ? unidadReal : clasificacion === "ACEPTADO" && !cierreSinIngreso ? unidadPrevista : "",
     ingresa: ingreso ? "SI" : cierreSinIngreso ? "NO" : "",

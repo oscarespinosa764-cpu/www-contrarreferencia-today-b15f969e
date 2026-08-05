@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type Dispatch, type SetStateAction } from "react";
 import { supabase } from "@/lib/backend-client";
 import { registrarAuditoria } from "@/lib/auditoria.functions";
 import { siguienteCodigo } from "@/lib/codigo.functions";
@@ -49,6 +49,7 @@ import {
   type RedSubtipo,
   type ComplejidadSub,
   type DocItem,
+  MOTIVO_NEG_LABEL,
 } from "@/lib/neg-crue";
 import {
   buscarAcepActivo,
@@ -371,6 +372,32 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
   const negDoc = motivoNeg === "SOLICITUD_DOCUMENTACION";
   const negRed = motivoNeg === "RED_NO_CONTRATADA";
   const negArl = motivoNeg === "ARL_DIRECTO";
+
+  // ── ESPECIALIDAD DE LA NEGACIÓN ──
+  // Dato distinto de la especialidad principal de la remisión. Cuando el motivo
+  // la requiere, se SUGIERE la principal para no repetir la captura; el operador
+  // puede conservarla, limpiarla o buscar otra. Nunca sobrescribe la principal.
+  const requiereEspNegacion =
+    tipo === "NEG" &&
+    (negEspecialidad ||
+      (negRed && redSubtipo === "SERVICIO") ||
+      (negComplejidad && complejidad === "MAYOR COMPLEJIDAD" && complejidadSub === "CON_ESP"));
+  const espNegTocada = useRef(false);
+  useEffect(() => {
+    if (!requiereEspNegacion) return;
+    if (espNegTocada.current) return;
+    if (especialidad.trim()) return;
+    if (espRemision.trim()) setEspecialidad(espRemision.trim());
+  }, [requiereEspNegacion, especialidad, espRemision]);
+  const setEspNegacion = (v: string) => {
+    espNegTocada.current = true;
+    setEspecialidad(v);
+  };
+  const limpiarEspNegacion = () => {
+    espNegTocada.current = true;
+    setEspecialidad("");
+  };
+
   // Documentos disponibles según el subtipo de solicitud de documentación.
   const docItems: DocItem[] =
     docSubtipo === "DOCUMENTACION_EPS"
@@ -505,6 +532,10 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
 
   const guardar = async () => {
     if (!tipo) return toast.error("Selecciona el tipo de caso");
+    // Especialidad principal: obligatoria en remisiones normales (no aplica al
+    // ingreso sin gestión previa, que no tiene remisión).
+    if (!isSinGestion && !espRemision.trim())
+      return toast.error("Indica la especialidad principal a la que se remite el paciente");
     if (tipo === "NEG") {
       if (!motivoNeg) return toast.error("Selecciona el motivo de negación");
       if (negDoc && !docSubtipo) return toast.error("Selecciona el tipo de documentación");
@@ -578,6 +609,10 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
           tipo_caso: "NEG",
           entidad_tipo: entidadTipo,
           motivo_negacion: motivoNeg,
+          motivo_negacion_label: MOTIVO_NEG_LABEL[motivoNeg] || null,
+          // Snapshot histórico: dato independiente de la especialidad principal.
+          especialidad_negacion: especialidad.trim().toUpperCase() || null,
+          especialidad_remision: espRemision.trim().toUpperCase() || null,
           observaciones: obs || null,
         };
         if (negDoc) {
@@ -1089,10 +1124,11 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 </div>
               </div>
               <AutoComplete
-                label="Especialidad solicitada en la remisión"
+                label="Especialidad principal a la que se remite el paciente"
                 value={espRemision}
                 onChange={setEspRemision}
                 options={catalogos.especialidades}
+                required
               />
               <div className="sm:col-span-2">
                 <Cie10Field name="cie10_remision" defaultValue={cie10} onValueChange={setCie10} />
@@ -1432,12 +1468,13 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                   </div>
 
                   {redSubtipo === "SERVICIO" && (
-                    <AutoComplete
-                      label="Servicio o especialidad solicitada"
+                    <EspNegacionField
+                      label="Servicio o especialidad asociada a la negación"
                       value={especialidad}
-                      onChange={setEspecialidad}
+                      onChange={setEspNegacion}
+                      onClear={limpiarEspNegacion}
                       options={catalogos.especialidades}
-                      placeholder="Escribe la especialidad…"
+                      sugerida={espRemision}
                     />
                   )}
 
@@ -1474,15 +1511,16 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                 </div>
               )}
 
-              {/* NO RECURSO HUMANO → especialidad requerida */}
+              {/* NO RECURSO HUMANO → especialidad asociada a la negación */}
               {negEspecialidad && (
-                <AutoComplete
-                  label="Especialidad requerida"
+                <EspNegacionField
+                  label="Especialidad requerida no disponible"
                   value={especialidad}
-                  onChange={setEspecialidad}
+                  onChange={setEspNegacion}
+                  onClear={limpiarEspNegacion}
                   options={catalogos.especialidades}
+                  sugerida={espRemision}
                   required
-                  placeholder="Escribe la especialidad…"
                 />
               )}
 
@@ -1571,13 +1609,14 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
                         ))}
                       </div>
                       {complejidadSub === "CON_ESP" && (
-                        <AutoComplete
-                          label="Especialidad requerida"
+                        <EspNegacionField
+                          label="Especialidad asociada a la negación"
                           value={especialidad}
-                          onChange={setEspecialidad}
+                          onChange={setEspNegacion}
+                          onClear={limpiarEspNegacion}
                           options={catalogos.especialidades}
+                          sugerida={espRemision}
                           required
-                          placeholder="Escribe la especialidad…"
                         />
                       )}
                     </div>
@@ -1860,6 +1899,59 @@ export function RegistrarWizard({ casos, catalogos, plantillas, onDone }: Props)
           </div>
         </section>
       )}
+    </div>
+  );
+}
+
+/**
+ * Especialidad ASOCIADA A LA NEGACIÓN. Se precarga con la especialidad
+ * principal de la remisión (sugerencia), pero es un dato independiente:
+ * cambiarla o limpiarla nunca modifica la principal.
+ */
+function EspNegacionField({
+  label,
+  value,
+  onChange,
+  onClear,
+  options,
+  sugerida,
+  required,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  onClear: () => void;
+  options: string[];
+  sugerida?: string;
+  required?: boolean;
+}) {
+  const esSugerida = Boolean(sugerida?.trim()) && value.trim() === (sugerida || "").trim();
+  return (
+    <div className="space-y-1">
+      <AutoComplete
+        label={label}
+        value={value}
+        onChange={onChange}
+        options={options}
+        required={required}
+        placeholder="Escribe la especialidad…"
+      />
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] text-muted-foreground">
+          {esSugerida
+            ? "Sugerida desde la especialidad principal de la remisión. Puedes cambiarla."
+            : "Dato independiente de la especialidad principal de la remisión."}
+        </p>
+        {value.trim() && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="shrink-0 text-[11px] font-semibold text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          >
+            Limpiar
+          </button>
+        )}
+      </div>
     </div>
   );
 }
