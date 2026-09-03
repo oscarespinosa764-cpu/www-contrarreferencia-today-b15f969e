@@ -246,7 +246,11 @@ export function mapearGrupoEntrante(g: GrupoEntrante): Record<string, unknown> {
     justificacion: primero(p.justificacion_decision, p.detalle),
     unidad: ingreso ? unidadReal : clasificacion === "ACEPTADO" && !cierreSinIngreso ? unidadPrevista : "",
     ingresa: ingreso ? "SI" : cierreSinIngreso ? "NO" : "",
-    justificacion_confirmacion: ingreso ? primero(ingreso.justificacion_confirmacion) : "",
+    // T · JUSTIFICACIÓN DE LA CONFIRMACIÓN. Cuando el paciente no ingresó, la
+    // causal y el detalle quedan en el evento de cancelación/vencimiento.
+    justificacion_confirmacion: ingreso
+      ? primero(ingreso.justificacion_confirmacion)
+      : primero(...todas.map((r) => r.justificacion_confirmacion)),
     codigo_crue: primero(
       ...todas.map((r) => r.codigo_crue),
       ...todas.map((r) => meta(r).codigo_crue),
