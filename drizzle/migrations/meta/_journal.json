@@ -8,6 +8,13 @@
       "when": 1788447405753,
       "tag": "0000_revoke_truncate_casos_entrantes",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788450612747,
+      "tag": "0001_b12e_privilegios_y_atomicidad_entrantes",
+      "breakpoints": true
     }
   ]
 }

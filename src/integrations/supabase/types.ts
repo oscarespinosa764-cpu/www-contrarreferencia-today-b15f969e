@@ -4233,6 +4233,16 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      entrante_evento_compuesto: {
+        Args: {
+          _actor: string
+          _caso_id: string
+          _estado_padre?: string
+          _fila: Json
+          _tipo: string
+        }
+        Returns: Json
+      }
       get_device_access_mode: { Args: never; Returns: string }
       get_directorio_activos:
         | {
