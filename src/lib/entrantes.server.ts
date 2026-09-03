@@ -436,7 +436,6 @@ export async function ampliarCupoServer(
   if (!res.ok)
     return err(res.error === "DUPLICADO" ? "Esta ampliación ya fue registrada." : res.error!);
 
-
   await registrarAuditoriaServer(userId, {
     accion: "ampliar_cupo",
     modulo: "entrantes",
