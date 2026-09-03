@@ -462,10 +462,9 @@ export async function cancelarCupoServer(
 
   const estadoFinal = data.vencimiento ? "CANCELADO_VENCIMIENTO" : "CANCELADO";
 
-  const { error: e1 } = await admin.from("casos_entrantes").insert({
+  // Cierre ATÓMICO: evento CAN + estado final del padre en una transacción.
+  const filaCancelacion = {
     codigo: data.codigo,
-    tipo: "CAN",
-    cod_ref: padre.codigo,
     documento: padre.documento,
     nombres: padre.nombres,
     apellidos: padre.apellidos,
