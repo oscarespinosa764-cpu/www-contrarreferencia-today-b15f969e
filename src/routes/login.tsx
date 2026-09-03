@@ -116,7 +116,7 @@ function LoginPage() {
       }
       if (roles.length === 0) {
         await supabase.auth.signOut();
-        toast.error(mensajeLogin("PERFIL_INVALIDO"));
+        toast.error(mensajeLogin("ROL_INVALIDO"));
         return;
       }
       if (!perfil.activo) {

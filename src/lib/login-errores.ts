@@ -10,6 +10,7 @@ export type LoginFallo =
   | "RED"
   | "USUARIO_INACTIVO"
   | "PERFIL_INVALIDO"
+  | "ROL_INVALIDO"
   | "TURNO_NO_PERMITIDO"
   | "SESION"
   | "INTERNO";
@@ -22,6 +23,7 @@ export const MENSAJES_LOGIN: Record<LoginFallo, string> = {
   RED: "No fue posible conectar con el servidor. Verifica tu conexión e inténtalo nuevamente.",
   USUARIO_INACTIVO: "Tu usuario se encuentra inactivo. Contacta al administrador.",
   PERFIL_INVALIDO: "No fue posible validar tu perfil de acceso.",
+  ROL_INVALIDO: "No fue posible validar los permisos de tu usuario.",
   TURNO_NO_PERMITIDO: "El turno seleccionado no corresponde al horario autorizado.",
   SESION: "No fue posible establecer la sesión. Intenta nuevamente.",
   INTERNO: "No fue posible iniciar sesión. Intenta nuevamente o contacta al administrador.",
