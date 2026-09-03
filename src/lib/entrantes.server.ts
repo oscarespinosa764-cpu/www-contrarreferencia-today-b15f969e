@@ -18,7 +18,6 @@ import {
 import { resolverCie10 } from "./cie10.server";
 import { registrarAuditoriaServer } from "./auditoria.server";
 
-
 type RpcFn = (
   name: string,
   args: Record<string, unknown>,
@@ -73,18 +72,21 @@ async function ejecutarEventoCompuesto(
   userId: string,
 ): Promise<{ ok: boolean; error?: string }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await (
-    (supabaseAdmin as unknown as { rpc: RpcFn }).rpc
-  )("entrante_evento_compuesto", {
-    _actor: userId,
-    _caso_id: casoId,
-    _tipo: tipo,
-    _fila: fila,
-    _estado_padre: estadoPadre,
-  });
+  const { data, error } = await (supabaseAdmin as unknown as { rpc: RpcFn }).rpc(
+    "entrante_evento_compuesto",
+    {
+      _actor: userId,
+      _caso_id: casoId,
+      _tipo: tipo,
+      _fila: fila,
+      _estado_padre: estadoPadre,
+    },
+  );
   if (error) return { ok: false, error: error.message };
   const r = (data ?? {}) as { ok?: boolean; error?: string };
-  return r.ok ? { ok: true } : { ok: false, error: r.error || "No fue posible registrar el evento" };
+  return r.ok
+    ? { ok: true }
+    : { ok: false, error: r.error || "No fue posible registrar el evento" };
 }
 
 const norm = (s: string) =>
@@ -145,7 +147,6 @@ export async function crearCasoEntranteServer(
     const sede = (data.sede ?? "").trim();
     if (!ips) return err("La IPS remitente es obligatoria");
     if (!sede) return err("La sede (ciudad y departamento) de la IPS es obligatoria");
-
 
     // La ciudad y el departamento SIEMPRE se reconstruyen server-side desde la
     // sede: nunca se confía en lo que muestre el navegador.
@@ -267,9 +268,7 @@ export async function confirmarIngresoServer(
   if (e) return err(e);
 
   const catalogos = await cargarCatalogos(admin as never);
-  const tipos = catalogos
-    .filter((c) => c.tipo === "TIPO_AMBULANCIA")
-    .map((c) => norm(c.valor));
+  const tipos = catalogos.filter((c) => c.tipo === "TIPO_AMBULANCIA").map((c) => norm(c.valor));
   if (tipos.length && !tipos.includes(norm(data.ingreso.tipoAmbulancia)))
     return err("El tipo de ambulancia no pertenece al catálogo");
 
@@ -296,8 +295,6 @@ export async function confirmarIngresoServer(
     !data.ingreso.justificacion.trim()
   )
     return err("La justificación de la confirmación es obligatoria en esta modalidad");
-
-
 
   // Operación compuesta ATÓMICA (INSERT del evento ING + UPDATE del padre)
   // en una única transacción de base de datos, con bloqueo del caso padre.
