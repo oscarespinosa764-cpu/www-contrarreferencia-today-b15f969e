@@ -271,10 +271,10 @@ export async function confirmarIngresoServer(
 
 
 
-  const { error: e1 } = await admin.from("casos_entrantes").insert({
+  // Operación compuesta ATÓMICA (INSERT del evento ING + UPDATE del padre)
+  // en una única transacción de base de datos, con bloqueo del caso padre.
+  const filaIngreso = {
     codigo: data.codigoIngreso,
-    tipo: "ING",
-    cod_ref: padre.codigo,
     documento: padre.documento,
     nombres: padre.nombres,
     apellidos: padre.apellidos,
