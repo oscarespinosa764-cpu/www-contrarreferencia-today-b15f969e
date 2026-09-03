@@ -2,11 +2,25 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import { supabase } from "@/lib/backend-client";
 import { useAuth } from "@/lib/auth";
-import { getTurno, useClientTime, TURNOS_CANONICOS, TURNOS_CODIGOS, isTurnoCodigo, type TurnoCodigo } from "@/lib/turno";
+import { clasificarErrorAuth, mensajeLogin } from "@/lib/login-errores";
+import {
+  getTurno,
+  useClientTime,
+  TURNOS_CANONICOS,
+  TURNOS_CODIGOS,
+  isTurnoCodigo,
+  type TurnoCodigo,
+} from "@/lib/turno";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import cedimLogo from "@/assets/cedim-logo.png";
 import {
@@ -66,31 +80,62 @@ function LoginPage() {
     e.preventDefault();
     if (busy) return;
     const form = new FormData(e.currentTarget);
-    const email = String(form.get("email")).trim();
+    // El correo se normaliza (trim + minúsculas); la contraseña se envía EXACTA.
+    const email = String(form.get("email")).trim().toLowerCase();
     const password = String(form.get("password"));
     if (!email) return toast.error("Ingresa tu correo institucional");
     if (!isTurnoCodigo(turnoCodigo)) {
       setTurnoError(true);
       document.getElementById("l-turno")?.focus();
-      return toast.error("Seleccione un turno operativo.");
+      return toast.error(mensajeLogin("TURNO_NO_PERMITIDO"));
     }
     setTurnoError(false);
     setBusy(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    setBusy(false);
-    // Mensaje genérico: no revela si el correo existe o no.
-    if (error || !data.user) {
-      toast.error("Credenciales incorrectas. Verifica tus datos.");
-      return;
-    }
-    // Persistir el turno únicamente después de una autenticación válida,
-    // asociado al user.id real devuelto por Supabase. Se pasa explícitamente
-    // porque el contexto de auth aún no ha recibido el usuario en este tick.
-    setTurnoSesion(turnoCodigo, data.user.id);
-    navigate({ to: "/dashboard", replace: true });
-  };
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error || !data.user || !data.session) {
+        if (error) console.error("[login] auth", error);
+        toast.error(mensajeLogin(error ? clasificarErrorAuth(error) : "SESION"));
+        return;
+      }
 
+      // Validación post-auth: perfil activo + rol técnico asignado.
+      const uid = data.user.id;
+      const [{ data: perfil, error: errPerfil }, { data: roles, error: errRoles }] =
+        await Promise.all([
+          supabase.from("profiles").select("activo").eq("user_id", uid).maybeSingle(),
+          supabase.from("user_roles").select("role").eq("user_id", uid),
+        ]);
+
+      if (errPerfil || errRoles || !perfil || !roles) {
+        console.error("[login] perfil/roles", errPerfil ?? errRoles);
+        await supabase.auth.signOut();
+        toast.error(mensajeLogin("PERFIL_INVALIDO"));
+        return;
+      }
+      if (roles.length === 0) {
+        await supabase.auth.signOut();
+        toast.error(mensajeLogin("PERFIL_INVALIDO"));
+        return;
+      }
+      if (!perfil.activo) {
+        await supabase.auth.signOut();
+        toast.error(mensajeLogin("USUARIO_INACTIVO"));
+        return;
+      }
+
+      // Persistir el turno únicamente después de una autenticación válida,
+      // asociado al user.id real devuelto por Supabase.
+      setTurnoSesion(turnoCodigo, uid);
+      navigate({ to: "/dashboard", replace: true });
+    } catch (err) {
+      console.error("[login] excepción", err);
+      toast.error(mensajeLogin(clasificarErrorAuth(err)));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden bg-background lg:flex-row">
@@ -115,7 +160,8 @@ function LoginPage() {
 
           <p className="mb-10 mt-6 max-w-xl text-base font-light leading-relaxed text-blue-100/90">
             Plataforma unificada para la gestión, coordinación y seguimiento de los procesos de
-            Referencia y Contrarreferencia de CEDIM IPS. Acceso seguro a todos los recursos del área.
+            Referencia y Contrarreferencia de CEDIM IPS. Acceso seguro a todos los recursos del
+            área.
           </p>
 
           <div className="grid w-full max-w-xl grid-cols-1 gap-4 sm:grid-cols-2">
@@ -222,13 +268,19 @@ function LoginPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {TURNOS_CODIGOS.map((c) => (
-                      <SelectItem key={c} value={c}>{TURNOS_CANONICOS[c].etiqueta}</SelectItem>
+                      <SelectItem key={c} value={c}>
+                        {TURNOS_CANONICOS[c].etiqueta}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               {(turnoError || (user && !turnoSesion)) && (
-                <p id="l-turno-error" role="alert" className="ml-1 text-xs font-medium text-destructive">
+                <p
+                  id="l-turno-error"
+                  role="alert"
+                  className="ml-1 text-xs font-medium text-destructive"
+                >
                   Seleccione un turno operativo para continuar.
                 </p>
               )}
