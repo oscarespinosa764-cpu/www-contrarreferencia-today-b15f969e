@@ -59,6 +59,34 @@ async function cargarCatalogos(admin: {
   return data ?? [];
 }
 
+/**
+ * Ejecuta una operación compuesta de Entrantes (evento + actualización del
+ * caso padre) dentro de UNA sola transacción de base de datos, con bloqueo
+ * `FOR UPDATE` sobre el padre. Sin SQL dinámico: la fila se tipa contra
+ * `public.casos_entrantes` en la función SQL.
+ */
+async function ejecutarEventoCompuesto(
+  casoId: string,
+  tipo: "ING" | "CAN" | "AMP",
+  fila: Record<string, unknown>,
+  estadoPadre: string | null,
+  userId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await (
+    (supabaseAdmin as unknown as { rpc: RpcFn }).rpc
+  )("entrante_evento_compuesto", {
+    _actor: userId,
+    _caso_id: casoId,
+    _tipo: tipo,
+    _fila: fila,
+    _estado_padre: estadoPadre,
+  });
+  if (error) return { ok: false, error: error.message };
+  const r = (data ?? {}) as { ok?: boolean; error?: string };
+  return r.ok ? { ok: true } : { ok: false, error: r.error || "No fue posible registrar el evento" };
+}
+
 const norm = (s: string) =>
   s
     .normalize("NFD")
