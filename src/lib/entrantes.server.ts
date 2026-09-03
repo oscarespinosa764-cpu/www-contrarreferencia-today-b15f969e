@@ -300,21 +300,21 @@ export async function confirmarIngresoServer(
     detalle: data.observaciones || null,
     texto_ia: data.mensaje || null,
     created_by: userId,
-  });
-  if (e1) {
-    const dup = String((e1 as { code?: string }).code) === "23505";
-    return err(dup ? "Este cupo ya tiene un ingreso registrado." : (e1.message as string));
-  }
+  };
 
   // Ingreso posterior (tardío / posterior a negación): los eventos originales
   // se conservan intactos; solo el ingreso normal cierra el cupo.
-  if (!data.posterior) {
-    const { error: e2 } = await admin
-      .from("casos_entrantes")
-      .update({ estado: "INGRESADO" })
-      .eq("id", padre.id);
-    if (e2) return err(e2.message as string);
-  }
+  const res = await ejecutarEventoCompuesto(
+    padre.id,
+    "ING",
+    filaIngreso,
+    data.posterior ? null : "INGRESADO",
+    userId,
+  );
+  if (!res.ok)
+    return err(
+      res.error === "DUPLICADO" ? "Este cupo ya tiene un ingreso registrado." : res.error!,
+    );
 
   await registrarAuditoriaServer(userId, {
     accion: data.posterior ? "confirmar_ingreso_posterior" : "confirmar_ingreso",
