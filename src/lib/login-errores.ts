@@ -10,6 +10,7 @@ export type LoginFallo =
   | "RED"
   | "USUARIO_INACTIVO"
   | "PERFIL_INVALIDO"
+  | "ROL_INVALIDO"
   | "TURNO_NO_PERMITIDO"
   | "SESION"
   | "INTERNO";
