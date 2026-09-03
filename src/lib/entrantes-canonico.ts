@@ -51,7 +51,7 @@ export const MODALIDAD_EXIGE_JUSTIFICACION = new Set<string>([
   "SIN_GESTION_PREVIA_REFERENCIA",
 ]);
 
-export const UNIDADES_EDAD = ["AÑOS", "MESES", "DIAS"] as const;
+export const UNIDADES_EDAD = ["AÑOS", "MESES", "DÍAS"] as const;
 export type UnidadEdad = (typeof UNIDADES_EDAD)[number];
 
 export type FilaEntrante = Record<string, unknown>;
