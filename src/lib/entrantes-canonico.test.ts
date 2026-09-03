@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  clasificarCaso,
-  mapearEntrantesGuFr50,
-  type FilaEntrante,
-} from "./entrantes-canonico";
+import { clasificarCaso, mapearEntrantesGuFr50, type FilaEntrante } from "./entrantes-canonico";
 
 const base = (over: Partial<FilaEntrante>): FilaEntrante => ({
   codigo: "E-1",
@@ -33,9 +29,7 @@ describe("clasificación canónica de ENTRANTES", () => {
   });
 
   it("CRUE posterior a aceptación conserva ACEPTADO", () => {
-    expect(
-      clasificarCaso([base({ tipo: "ACEP" }), base({ tipo: "CRUE_ACEP" })]),
-    ).toBe("ACEPTADO");
+    expect(clasificarCaso([base({ tipo: "ACEP" }), base({ tipo: "CRUE_ACEP" })])).toBe("ACEPTADO");
   });
 
   it("CRUE posterior a negación conserva NEGADO", () => {
@@ -51,9 +45,7 @@ describe("clasificación canónica de ENTRANTES", () => {
   });
 
   it("los estados operativos no alimentan ESTADO DE SOLICITUD", () => {
-    const [fila] = mapearEntrantesGuFr50([
-      base({ tipo: "ACEP", estado: "CANCELADO_VENCIMIENTO" }),
-    ]);
+    const [fila] = mapearEntrantesGuFr50([base({ tipo: "ACEP", estado: "CANCELADO_VENCIMIENTO" })]);
     expect(fila.estado).toBe("ACEPTADO");
     expect(fila.ingresa).toBe("NO");
     expect(fila.unidad).toBe("");
@@ -131,7 +123,8 @@ describe("B.1.2D · cierre sin ingreso y DTO estricto", () => {
         codigo: "E-1-CAN",
         tipo: "CAN",
         estado: "REGISTRADO",
-        justificacion_confirmacion: "NO DISPONIBILIDAD DE AMBULANCIA · el paciente no fue trasladado",
+        justificacion_confirmacion:
+          "NO DISPONIBILIDAD DE AMBULANCIA · el paciente no fue trasladado",
         created_at: "2026-08-01T12:00:00Z",
       }),
       base({ tipo: "ACEP", estado: "CANCELADO", created_at: "2026-08-01T10:00:00Z" }),
@@ -145,9 +138,7 @@ describe("B.1.2D · cierre sin ingreso y DTO estricto", () => {
   });
 
   it("nunca exporta CANCELADO_VENCIMIENTO como estado de solicitud", () => {
-    const [fila] = mapearEntrantesGuFr50([
-      base({ tipo: "ACEP", estado: "CANCELADO_VENCIMIENTO" }),
-    ]);
+    const [fila] = mapearEntrantesGuFr50([base({ tipo: "ACEP", estado: "CANCELADO_VENCIMIENTO" })]);
     expect(fila.estado).toBe("ACEPTADO");
   });
 });
@@ -169,9 +160,9 @@ describe("B.1.2D · DTO de creación rechaza mass assignment", () => {
       fechaEnvioRemision: "2026-08-01T10:00",
     };
     expect(crearCasoEntranteSchema.safeParse(valido).success).toBe(true);
-    expect(
-      crearCasoEntranteSchema.safeParse({ ...valido, ingreso_confirmado: true }).success,
-    ).toBe(false);
+    expect(crearCasoEntranteSchema.safeParse({ ...valido, ingreso_confirmado: true }).success).toBe(
+      false,
+    );
     const { edadUnidad: _u, ...sinUnidad } = valido;
     expect(crearCasoEntranteSchema.safeParse(sinUnidad).success).toBe(false);
     const { edadValor: _v, ...sinEdad } = valido;
