@@ -51,7 +51,7 @@ export const MODALIDAD_EXIGE_JUSTIFICACION = new Set<string>([
   "SIN_GESTION_PREVIA_REFERENCIA",
 ]);
 
-export const UNIDADES_EDAD = ["AÑOS", "MESES", "DIAS"] as const;
+export const UNIDADES_EDAD = ["AÑOS", "MESES", "DÍAS"] as const;
 export type UnidadEdad = (typeof UNIDADES_EDAD)[number];
 
 export type FilaEntrante = Record<string, unknown>;
@@ -166,7 +166,7 @@ const dur = (a: unknown, b: unknown): number | null => {
 };
 
 const meta = (r: FilaEntrante): Record<string, unknown> =>
-  (r.metadata && typeof r.metadata === "object" ? (r.metadata as Record<string, unknown>) : {});
+  r.metadata && typeof r.metadata === "object" ? (r.metadata as Record<string, unknown>) : {};
 
 const primero = (...vals: unknown[]): string => {
   for (const v of vals) {
@@ -203,7 +203,8 @@ export function mapearGrupoEntrante(g: GrupoEntrante): Record<string, unknown> {
   const ingreso =
     todas.find((r) => tipoDe(r) === "ING" || r.ingreso_confirmado === true) ??
     (tipoDe(p) === "SIN_GESTION" ? p : undefined);
-  const cierreSinIngreso = !ingreso && todas.some((r) => NO_INGRESO.test(t(r.estado) + " " + tipoDe(r)));
+  const cierreSinIngreso =
+    !ingreso && todas.some((r) => NO_INGRESO.test(t(r.estado) + " " + tipoDe(r)));
 
   const unidadPrevista = primero(p.unidad_prevista, p.unidad);
   const unidadReal = ingreso ? primero(ingreso.unidad_real, ingreso.unidad, unidadPrevista) : "";
@@ -234,8 +235,7 @@ export function mapearGrupoEntrante(g: GrupoEntrante): Record<string, unknown> {
     cie10: t(p.cie10_codigo),
     cie10_descripcion: t(p.cie10_descripcion),
     fecha_respuesta: fechaRespuesta,
-    oportunidad_respuesta:
-      fechaEnvio instanceof Date ? dur(fechaEnvio, fechaRespuesta) : null,
+    oportunidad_respuesta: fechaEnvio instanceof Date ? dur(fechaEnvio, fechaRespuesta) : null,
     codigo_aceptacion: t(p.codigo),
     estado: clasificacion ? ETIQUETA_CLASIFICACION[clasificacion] : "",
     motivos:
@@ -244,9 +244,17 @@ export function mapearGrupoEntrante(g: GrupoEntrante): Record<string, unknown> {
         : "",
 
     justificacion: primero(p.justificacion_decision, p.detalle),
-    unidad: ingreso ? unidadReal : clasificacion === "ACEPTADO" && !cierreSinIngreso ? unidadPrevista : "",
+    unidad: ingreso
+      ? unidadReal
+      : clasificacion === "ACEPTADO" && !cierreSinIngreso
+        ? unidadPrevista
+        : "",
     ingresa: ingreso ? "SI" : cierreSinIngreso ? "NO" : "",
-    justificacion_confirmacion: ingreso ? primero(ingreso.justificacion_confirmacion) : "",
+    // T · JUSTIFICACIÓN DE LA CONFIRMACIÓN. Cuando el paciente no ingresó, la
+    // causal y el detalle quedan en el evento de cancelación/vencimiento.
+    justificacion_confirmacion: ingreso
+      ? primero(ingreso.justificacion_confirmacion)
+      : primero(...todas.map((r) => r.justificacion_confirmacion)),
     codigo_crue: primero(
       ...todas.map((r) => r.codigo_crue),
       ...todas.map((r) => meta(r).codigo_crue),
