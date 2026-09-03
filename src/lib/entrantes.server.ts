@@ -483,14 +483,11 @@ export async function cancelarCupoServer(
     ingreso_confirmado: false,
     texto_ia: data.mensaje || null,
     created_by: userId,
-  });
-  if (e1) return err(e1.message as string);
+  };
 
-  const { error: e2 } = await admin
-    .from("casos_entrantes")
-    .update({ estado: estadoFinal })
-    .eq("id", padre.id);
-  if (e2) return err(e2.message as string);
+  const res = await ejecutarEventoCompuesto(padre.id, "CAN", filaCancelacion, estadoFinal, userId);
+  if (!res.ok)
+    return err(res.error === "DUPLICADO" ? "Esta cancelación ya fue registrada." : res.error!);
 
   await registrarAuditoriaServer(userId, {
     accion: data.vencimiento ? "archivar_vencimiento" : "cancelar_cupo",
