@@ -18,7 +18,6 @@ import {
 import { resolverCie10 } from "./cie10.server";
 import { registrarAuditoriaServer } from "./auditoria.server";
 
-
 type RpcFn = (
   name: string,
   args: Record<string, unknown>,
@@ -57,6 +56,37 @@ async function cargarCatalogos(admin: {
 }): Promise<CatalogoRow[]> {
   const { data } = await admin.from("catalogos").select("tipo, valor, extra1").eq("activo", true);
   return data ?? [];
+}
+
+/**
+ * Ejecuta una operación compuesta de Entrantes (evento + actualización del
+ * caso padre) dentro de UNA sola transacción de base de datos, con bloqueo
+ * `FOR UPDATE` sobre el padre. Sin SQL dinámico: la fila se tipa contra
+ * `public.casos_entrantes` en la función SQL.
+ */
+async function ejecutarEventoCompuesto(
+  casoId: string,
+  tipo: "ING" | "CAN" | "AMP",
+  fila: Record<string, unknown>,
+  estadoPadre: string | null,
+  userId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await (supabaseAdmin as unknown as { rpc: RpcFn }).rpc(
+    "entrante_evento_compuesto",
+    {
+      _actor: userId,
+      _caso_id: casoId,
+      _tipo: tipo,
+      _fila: fila,
+      _estado_padre: estadoPadre,
+    },
+  );
+  if (error) return { ok: false, error: error.message };
+  const r = (data ?? {}) as { ok?: boolean; error?: string };
+  return r.ok
+    ? { ok: true }
+    : { ok: false, error: r.error || "No fue posible registrar el evento" };
 }
 
 const norm = (s: string) =>
@@ -117,7 +147,6 @@ export async function crearCasoEntranteServer(
     const sede = (data.sede ?? "").trim();
     if (!ips) return err("La IPS remitente es obligatoria");
     if (!sede) return err("La sede (ciudad y departamento) de la IPS es obligatoria");
-
 
     // La ciudad y el departamento SIEMPRE se reconstruyen server-side desde la
     // sede: nunca se confía en lo que muestre el navegador.
@@ -239,9 +268,7 @@ export async function confirmarIngresoServer(
   if (e) return err(e);
 
   const catalogos = await cargarCatalogos(admin as never);
-  const tipos = catalogos
-    .filter((c) => c.tipo === "TIPO_AMBULANCIA")
-    .map((c) => norm(c.valor));
+  const tipos = catalogos.filter((c) => c.tipo === "TIPO_AMBULANCIA").map((c) => norm(c.valor));
   if (tipos.length && !tipos.includes(norm(data.ingreso.tipoAmbulancia)))
     return err("El tipo de ambulancia no pertenece al catálogo");
 
@@ -269,12 +296,10 @@ export async function confirmarIngresoServer(
   )
     return err("La justificación de la confirmación es obligatoria en esta modalidad");
 
-
-
-  const { error: e1 } = await admin.from("casos_entrantes").insert({
+  // Operación compuesta ATÓMICA (INSERT del evento ING + UPDATE del padre)
+  // en una única transacción de base de datos, con bloqueo del caso padre.
+  const filaIngreso = {
     codigo: data.codigoIngreso,
-    tipo: "ING",
-    cod_ref: padre.codigo,
     documento: padre.documento,
     nombres: padre.nombres,
     apellidos: padre.apellidos,
@@ -300,21 +325,21 @@ export async function confirmarIngresoServer(
     detalle: data.observaciones || null,
     texto_ia: data.mensaje || null,
     created_by: userId,
-  });
-  if (e1) {
-    const dup = String((e1 as { code?: string }).code) === "23505";
-    return err(dup ? "Este cupo ya tiene un ingreso registrado." : (e1.message as string));
-  }
+  };
 
   // Ingreso posterior (tardío / posterior a negación): los eventos originales
   // se conservan intactos; solo el ingreso normal cierra el cupo.
-  if (!data.posterior) {
-    const { error: e2 } = await admin
-      .from("casos_entrantes")
-      .update({ estado: "INGRESADO" })
-      .eq("id", padre.id);
-    if (e2) return err(e2.message as string);
-  }
+  const res = await ejecutarEventoCompuesto(
+    padre.id,
+    "ING",
+    filaIngreso,
+    data.posterior ? null : "INGRESADO",
+    userId,
+  );
+  if (!res.ok)
+    return err(
+      res.error === "DUPLICADO" ? "Este cupo ya tiene un ingreso registrado." : res.error!,
+    );
 
   await registrarAuditoriaServer(userId, {
     accion: data.posterior ? "confirmar_ingreso_posterior" : "confirmar_ingreso",
@@ -434,10 +459,9 @@ export async function cancelarCupoServer(
 
   const estadoFinal = data.vencimiento ? "CANCELADO_VENCIMIENTO" : "CANCELADO";
 
-  const { error: e1 } = await admin.from("casos_entrantes").insert({
+  // Cierre ATÓMICO: evento CAN + estado final del padre en una transacción.
+  const filaCancelacion = {
     codigo: data.codigo,
-    tipo: "CAN",
-    cod_ref: padre.codigo,
     documento: padre.documento,
     nombres: padre.nombres,
     apellidos: padre.apellidos,
@@ -456,14 +480,11 @@ export async function cancelarCupoServer(
     ingreso_confirmado: false,
     texto_ia: data.mensaje || null,
     created_by: userId,
-  });
-  if (e1) return err(e1.message as string);
+  };
 
-  const { error: e2 } = await admin
-    .from("casos_entrantes")
-    .update({ estado: estadoFinal })
-    .eq("id", padre.id);
-  if (e2) return err(e2.message as string);
+  const res = await ejecutarEventoCompuesto(padre.id, "CAN", filaCancelacion, estadoFinal, userId);
+  if (!res.ok)
+    return err(res.error === "DUPLICADO" ? "Esta cancelación ya fue registrada." : res.error!);
 
   await registrarAuditoriaServer(userId, {
     accion: data.vencimiento ? "archivar_vencimiento" : "cancelar_cupo",
