@@ -410,10 +410,10 @@ export async function ampliarCupoServer(
   if (!Number.isFinite(vence.getTime()) || vence.getTime() <= Date.now())
     return err("El nuevo vencimiento debe ser futuro");
 
-  const { error } = await admin.from("casos_entrantes").insert({
+  // Ampliación ATÓMICA: el evento AMP se inserta bajo el mismo bloqueo del
+  // caso padre que el resto de operaciones compuestas (sin cambio de estado).
+  const filaAmpliacion = {
     codigo: data.codigo,
-    tipo: "AMP",
-    cod_ref: padre.codigo,
     documento: padre.documento,
     nombres: padre.nombres,
     apellidos: padre.apellidos,
@@ -430,8 +430,12 @@ export async function ampliarCupoServer(
     detalle: data.detalle || null,
     texto_ia: data.mensaje || null,
     created_by: userId,
-  });
-  if (error) return err(error.message as string);
+  };
+
+  const res = await ejecutarEventoCompuesto(padre.id, "AMP", filaAmpliacion, null, userId);
+  if (!res.ok)
+    return err(res.error === "DUPLICADO" ? "Esta ampliación ya fue registrada." : res.error!);
+
 
   await registrarAuditoriaServer(userId, {
     accion: "ampliar_cupo",
