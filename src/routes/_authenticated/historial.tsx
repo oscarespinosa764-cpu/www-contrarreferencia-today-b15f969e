@@ -1215,9 +1215,7 @@ function HistorialPage() {
         data: { tipo: "ING", yyyy: ahora.getFullYear(), mm: ahora.getMonth() + 1 },
       })
     ).codigo;
-    const fechaHoraLocal = new Date(ahora.getTime() - 5 * 3_600_000)
-      .toISOString()
-      .slice(0, 16);
+    const fechaHoraLocal = new Date(ahora.getTime() - 5 * 3_600_000).toISOString().slice(0, 16);
     const res = await confirmarIngresoEntrante({
       data: {
         casoId: base.id,
@@ -1620,7 +1618,11 @@ function HistorialPage() {
       bloque: {
         tipoDocumento: "REMISIÓN SALIENTE",
         datosReferencia,
-        seguimientos: timelinePDF("SALIENTES", r as unknown as Record<string, unknown>, eapb || v(r.ips_receptora)),
+        seguimientos: timelinePDF(
+          "SALIENTES",
+          r as unknown as Record<string, unknown>,
+          eapb || v(r.ips_receptora),
+        ),
       },
       casoId: r.id,
       tabla: "remisiones",
@@ -1685,7 +1687,11 @@ function HistorialPage() {
       bloque: {
         tipoDocumento: "PHD / PAD / O2 / ESPECIALES",
         datosReferencia,
-        seguimientos: timelinePDF("ATENCION_DOMICILIARIA", r as unknown as Record<string, unknown>, eapb),
+        seguimientos: timelinePDF(
+          "ATENCION_DOMICILIARIA",
+          r as unknown as Record<string, unknown>,
+          eapb,
+        ),
       },
       casoId: r.id,
       tabla: "domiciliarios",
@@ -1734,7 +1740,11 @@ function HistorialPage() {
       bloque: {
         tipoDocumento: "REFERENCIA INTERNA",
         datosReferencia,
-        seguimientos: timelinePDF("REFERENCIAS_INTERNAS", r as unknown as Record<string, unknown>, v(r.servicio) || eapb),
+        seguimientos: timelinePDF(
+          "REFERENCIAS_INTERNAS",
+          r as unknown as Record<string, unknown>,
+          v(r.servicio) || eapb,
+        ),
       },
       casoId: r.id,
       tabla: "referencia_interna",

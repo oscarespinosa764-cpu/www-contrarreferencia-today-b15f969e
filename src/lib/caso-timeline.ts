@@ -158,7 +158,9 @@ export function eventosDerivadosCaso(
   // La solicitud funcional sólo es un hito distinto de la creación técnica
   // cuando ocurrió en un momento diferente (regla 32).
   const solicitudDistinta =
-    solicitud && (!creado || Math.abs(new Date(solicitud).getTime() - new Date(creado).getTime()) >= SEPARADOS_MS)
+    solicitud &&
+    (!creado ||
+      Math.abs(new Date(solicitud).getTime() - new Date(creado).getTime()) >= SEPARADOS_MS)
       ? solicitud
       : "";
 
@@ -269,7 +271,12 @@ export function eventosDerivadosCaso(
 
   // ENTRANTES: la creación y los hitos de decisión viven en las propias filas
   // de casos_entrantes; aquí sólo se deriva la creación del caso base.
-  return emitir(caseId, module, actor, base.filter((b) => b.eventType === "CREACION"));
+  return emitir(
+    caseId,
+    module,
+    actor,
+    base.filter((b) => b.eventType === "CREACION"),
+  );
 }
 
 // ---------------------------------------------------------------------------

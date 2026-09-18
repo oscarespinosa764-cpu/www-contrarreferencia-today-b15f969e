@@ -173,6 +173,8 @@ describe("línea de tiempo canónica del caso", () => {
 
   it("un caso sin fecha utilizable no produce eventos inventados", () => {
     expect(eventosDerivadosCaso("SALIENTES", { id: "c1" })).toHaveLength(0);
-    expect(eventosDerivadosCaso("SALIENTES", { created_at: "2026-09-02T23:00:00Z" })).toHaveLength(0);
+    expect(eventosDerivadosCaso("SALIENTES", { created_at: "2026-09-02T23:00:00Z" })).toHaveLength(
+      0,
+    );
   });
 });
