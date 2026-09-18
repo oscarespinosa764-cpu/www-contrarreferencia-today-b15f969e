@@ -991,18 +991,35 @@ function HistorialPage() {
     return Array.from(set);
   }, [catServicios]);
 
+  // Seguimientos SIEMPRE acotados a los casos hidratados de la página vigente.
+  // Antes se traía el universo completo ordenado por fecha ascendente: el tope
+  // de filas del Data API devolvía únicamente los seguimientos MÁS ANTIGUOS, de
+  // modo que los casos recientes quedaban sin seguimientos en la bitácora
+  // individual, la consolidada y las exportaciones. La relación canónica es
+  // seguimientos.caso_id = <id real del caso>; no se usa código de gestión.
+  const idsSeguimientos = useMemo(
+    () => Array.from(new Set([...idsActivos, ...idsHistoricos])),
+    [idsActivos, idsHistoricos],
+  );
   const { data: seguimientos } = useQuery({
-    queryKey: ["historial-seguimientos"],
+    queryKey: ["historial-seguimientos", claveIds],
+    enabled: idsSeguimientos.length > 0,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("seguimientos")
-        .select(
-          "caso_id, tipo_caso, tipo_seguimiento, detalle, plantilla_indigo, estado_solicitud, nombre_contacto, nombre_usuario, created_at",
-        )
-        .order("created_at", { ascending: true })
-        .limit(5000);
-      if (error) throw error;
-      return data as Record<string, unknown>[];
+      const out: Record<string, unknown>[] = [];
+      const LOTE = 100;
+      for (let i = 0; i < idsSeguimientos.length; i += LOTE) {
+        const { data, error } = await supabase
+          .from("seguimientos")
+          .select(
+            "caso_id, tipo_caso, tipo_seguimiento, detalle, plantilla_indigo, estado_solicitud, nombre_contacto, nombre_usuario, created_at",
+          )
+          .in("caso_id", idsSeguimientos.slice(i, i + LOTE))
+          .order("created_at", { ascending: true })
+          .limit(1000);
+        if (error) throw error;
+        out.push(...((data ?? []) as Record<string, unknown>[]));
+      }
+      return out;
     },
   });
 
