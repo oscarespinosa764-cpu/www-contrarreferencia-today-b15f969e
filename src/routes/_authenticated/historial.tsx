@@ -1525,15 +1525,32 @@ function HistorialPage() {
             : "—",
       },
     ];
-    const seguimientos: SeguimientoPDF[] = g.eventos.map((e) => ({
-      fecha: fmtFechaHora(e.created_at || e.fecha),
-      entidad: v(e.ips) || "—",
-      observaciones: observacionEntrante(e),
-      estado: estadoEntrante(e.tipo || ""),
-      accion: accionEntrante(e.tipo || ""),
-      funcionario: v((e as Record<string, unknown>).usuario_registro) || "—",
-      _orden: new Date(e.created_at || e.fecha || 0).getTime(),
-    }));
+    // Entrantes: cada fila de casos_entrantes ES un hito funcional real
+    // (ACEP/NEG/CRUE/ING/AMP/CAN). Se fusionan con los seguimientos reales de
+    // todas las filas del grupo usando la misma línea de tiempo canónica.
+    const eventosEntrante = g.eventos.map((e) =>
+      eventoFuncional({
+        caseId: v(b.id) || g.key,
+        module: "ENTRANTES",
+        eventType: (e.tipo || "EVENTO").toUpperCase(),
+        fecha: e.created_at || e.fecha,
+        title: accionEntrante(e.tipo || ""),
+        description: observacionEntrante(e),
+        status: estadoEntrante(e.tipo || ""),
+        entity: v(e.ips),
+        actor: v((e as Record<string, unknown>).usuario_registro),
+        sourceId: v(e.id) || `${g.key}:${v(e.codigo)}`,
+      }),
+    );
+    const segsEntrante = g.eventos.flatMap((e) =>
+      eventosDesdeSeguimientos(v(b.id) || g.key, "ENTRANTES", segMap.get(v(e.id)) ?? [], v(e.ips)),
+    );
+    const seguimientos: SeguimientoPDF[] = eventosAPdf(
+      fusionarTimeline(
+        eventosEntrante.filter((e): e is EventoCaso => Boolean(e)),
+        segsEntrante,
+      ),
+    );
     return {
       documento: v(b.documento),
       paciente: [b.nombres, b.apellidos].filter(Boolean).join(" ") || "—",
