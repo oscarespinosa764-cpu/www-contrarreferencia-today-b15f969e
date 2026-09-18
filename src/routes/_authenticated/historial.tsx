@@ -1603,7 +1603,7 @@ function HistorialPage() {
       bloque: {
         tipoDocumento: "REMISIÓN SALIENTE",
         datosReferencia,
-        seguimientos: segPDFpara(r.id, eapb || v(r.ips_receptora)),
+        seguimientos: timelinePDF("SALIENTES", r as unknown as Record<string, unknown>, eapb || v(r.ips_receptora)),
       },
       casoId: r.id,
       tabla: "remisiones",
@@ -1668,7 +1668,7 @@ function HistorialPage() {
       bloque: {
         tipoDocumento: "PHD / PAD / O2 / ESPECIALES",
         datosReferencia,
-        seguimientos: segPDFpara(r.id, eapb),
+        seguimientos: timelinePDF("ATENCION_DOMICILIARIA", r as unknown as Record<string, unknown>, eapb),
       },
       casoId: r.id,
       tabla: "domiciliarios",
@@ -1717,7 +1717,7 @@ function HistorialPage() {
       bloque: {
         tipoDocumento: "REFERENCIA INTERNA",
         datosReferencia,
-        seguimientos: segPDFpara(r.id, v(r.servicio) || eapb),
+        seguimientos: timelinePDF("REFERENCIAS_INTERNAS", r as unknown as Record<string, unknown>, v(r.servicio) || eapb),
       },
       casoId: r.id,
       tabla: "referencia_interna",
