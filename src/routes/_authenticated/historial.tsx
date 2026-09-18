@@ -842,7 +842,12 @@ function HistorialPage() {
   );
 
   const fnListarHistorial = useServerFn(listarHistorialCasos);
-  const { data: listado, isFetching: cargandoListado } = useQuery({
+  const {
+    data: listado,
+    isFetching: cargandoListado,
+    isError: errorListado,
+    refetch: reintentarListado,
+  } = useQuery({
     queryKey: historialQueryKey(listadoInput),
     queryFn: () => fnListarHistorial({ data: listadoInput }),
     placeholderData: keepPreviousData,
