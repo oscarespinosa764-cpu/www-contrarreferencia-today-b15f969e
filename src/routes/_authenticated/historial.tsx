@@ -85,6 +85,14 @@ import {
   type CampoPDF,
   type BloqueCaso,
 } from "@/lib/bitacora-pdf";
+import {
+  construirTimelineCaso,
+  eventoFuncional,
+  fusionarTimeline,
+  eventosDesdeSeguimientos,
+  type EventoCaso,
+  type ModuloTimeline,
+} from "@/lib/caso-timeline";
 import { DeshacerCancelacionDialog } from "@/components/historial/deshacer-cancelacion-dialog";
 import { ESTADOS_CANCEL_POR_TIPO, type TipoCasoReactivable } from "@/lib/reactivar-caso";
 
