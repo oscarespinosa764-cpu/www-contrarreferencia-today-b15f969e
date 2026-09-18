@@ -2250,7 +2250,16 @@ function HistorialPage() {
         {/* Consulta por paciente activa: cabecera + casos separados por case_id.
             Sin búsqueda: barra plegable "Últimos 10 casos". */}
         {docTrim ? (
-          cargando ? (
+          errorListado ? (
+            <div className="rounded-2xl border border-border bg-card py-12 text-center shadow-sm">
+              <p className="text-sm font-semibold text-foreground">
+                NO SE PUDO CONSULTAR EL HISTORIAL EN ESTE MOMENTO.
+              </p>
+              <Button className="mt-4" variant="outline" onClick={() => void reintentarListado()}>
+                REINTENTAR
+              </Button>
+            </div>
+          ) : cargando ? (
             <p className="py-10 text-center text-sm text-muted-foreground">Cargando…</p>
           ) : !pacienteExiste ? (
             <div className="rounded-2xl border border-border bg-card py-14 text-center shadow-sm">
