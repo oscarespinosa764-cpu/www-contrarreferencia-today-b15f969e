@@ -85,6 +85,14 @@ import {
   type CampoPDF,
   type BloqueCaso,
 } from "@/lib/bitacora-pdf";
+import {
+  construirTimelineCaso,
+  eventoFuncional,
+  fusionarTimeline,
+  eventosDesdeSeguimientos,
+  type EventoCaso,
+  type ModuloTimeline,
+} from "@/lib/caso-timeline";
 import { DeshacerCancelacionDialog } from "@/components/historial/deshacer-cancelacion-dialog";
 import { ESTADOS_CANCEL_POR_TIPO, type TipoCasoReactivable } from "@/lib/reactivar-caso";
 
@@ -1207,9 +1215,7 @@ function HistorialPage() {
         data: { tipo: "ING", yyyy: ahora.getFullYear(), mm: ahora.getMonth() + 1 },
       })
     ).codigo;
-    const fechaHoraLocal = new Date(ahora.getTime() - 5 * 3_600_000)
-      .toISOString()
-      .slice(0, 16);
+    const fechaHoraLocal = new Date(ahora.getTime() - 5 * 3_600_000).toISOString().slice(0, 16);
     const res = await confirmarIngresoEntrante({
       data: {
         casoId: base.id,
@@ -1408,18 +1414,34 @@ function HistorialPage() {
   };
 
   // ---- PDF bitácora ----
-  const segPDFpara = (casoId: string, defaultEntidad = ""): SeguimientoPDF[] => {
-    const arr = segMap.get(casoId) ?? [];
-    return arr.map((s) => ({
-      fecha: fmtFechaHora(s.created_at),
-      entidad: s.contacto || defaultEntidad || "—",
-      observaciones: s.detalle || "—",
-      estado: s.estado || "—",
-      accion: s.tipo || "—",
-      funcionario: s.usuario || "—",
-      _orden: new Date(s.created_at || 0).getTime(),
+  // Línea de tiempo canónica: hitos derivados de la fila del caso (creación,
+  // solicitud, radicación, aceptación, cierre...) + seguimientos reales. Es la
+  // MISMA fuente para Historial, bitácora individual y bitácora unificada.
+  const eventosAPdf = (eventos: EventoCaso[], defaultEntidad = ""): SeguimientoPDF[] =>
+    eventos.map((e) => ({
+      fecha: fmtFechaHora(e.functionalDateTime),
+      entidad: e.entity || defaultEntidad || "—",
+      observaciones: e.description || e.title || "—",
+      estado: e.status || "—",
+      accion: e.action || e.title || "—",
+      funcionario: e.actorSnapshot || "—",
+      _orden: new Date(e.functionalDateTime).getTime(),
     }));
-  };
+
+  const timelinePDF = (
+    module: ModuloTimeline,
+    caso: Record<string, unknown>,
+    defaultEntidad = "",
+  ): SeguimientoPDF[] =>
+    eventosAPdf(
+      construirTimelineCaso({
+        module,
+        caso,
+        seguimientos: segMap.get(String(caso.id)) ?? [],
+        entidad: defaultEntidad,
+      }),
+      defaultEntidad,
+    );
 
   // ---- Constructores de bitácora (reutilizados por caso y por consolidado) ----
 
@@ -1501,15 +1523,32 @@ function HistorialPage() {
             : "—",
       },
     ];
-    const seguimientos: SeguimientoPDF[] = g.eventos.map((e) => ({
-      fecha: fmtFechaHora(e.created_at || e.fecha),
-      entidad: v(e.ips) || "—",
-      observaciones: observacionEntrante(e),
-      estado: estadoEntrante(e.tipo || ""),
-      accion: accionEntrante(e.tipo || ""),
-      funcionario: v((e as Record<string, unknown>).usuario_registro) || "—",
-      _orden: new Date(e.created_at || e.fecha || 0).getTime(),
-    }));
+    // Entrantes: cada fila de casos_entrantes ES un hito funcional real
+    // (ACEP/NEG/CRUE/ING/AMP/CAN). Se fusionan con los seguimientos reales de
+    // todas las filas del grupo usando la misma línea de tiempo canónica.
+    const eventosEntrante = g.eventos.map((e) =>
+      eventoFuncional({
+        caseId: v(b.id) || g.key,
+        module: "ENTRANTES",
+        eventType: (e.tipo || "EVENTO").toUpperCase(),
+        fecha: e.created_at || e.fecha,
+        title: accionEntrante(e.tipo || ""),
+        description: observacionEntrante(e),
+        status: estadoEntrante(e.tipo || ""),
+        entity: v(e.ips),
+        actor: v((e as Record<string, unknown>).usuario_registro),
+        sourceId: v(e.id) || `${g.key}:${v(e.codigo)}`,
+      }),
+    );
+    const segsEntrante = g.eventos.flatMap((e) =>
+      eventosDesdeSeguimientos(v(b.id) || g.key, "ENTRANTES", segMap.get(v(e.id)) ?? [], v(e.ips)),
+    );
+    const seguimientos: SeguimientoPDF[] = eventosAPdf(
+      fusionarTimeline(
+        eventosEntrante.filter((e): e is EventoCaso => Boolean(e)),
+        segsEntrante,
+      ),
+    );
     return {
       documento: v(b.documento),
       paciente: [b.nombres, b.apellidos].filter(Boolean).join(" ") || "—",
@@ -1579,7 +1618,11 @@ function HistorialPage() {
       bloque: {
         tipoDocumento: "REMISIÓN SALIENTE",
         datosReferencia,
-        seguimientos: segPDFpara(r.id, eapb || v(r.ips_receptora)),
+        seguimientos: timelinePDF(
+          "SALIENTES",
+          r as unknown as Record<string, unknown>,
+          eapb || v(r.ips_receptora),
+        ),
       },
       casoId: r.id,
       tabla: "remisiones",
@@ -1644,7 +1687,11 @@ function HistorialPage() {
       bloque: {
         tipoDocumento: "PHD / PAD / O2 / ESPECIALES",
         datosReferencia,
-        seguimientos: segPDFpara(r.id, eapb),
+        seguimientos: timelinePDF(
+          "ATENCION_DOMICILIARIA",
+          r as unknown as Record<string, unknown>,
+          eapb,
+        ),
       },
       casoId: r.id,
       tabla: "domiciliarios",
@@ -1693,7 +1740,11 @@ function HistorialPage() {
       bloque: {
         tipoDocumento: "REFERENCIA INTERNA",
         datosReferencia,
-        seguimientos: segPDFpara(r.id, v(r.servicio) || eapb),
+        seguimientos: timelinePDF(
+          "REFERENCIAS_INTERNAS",
+          r as unknown as Record<string, unknown>,
+          v(r.servicio) || eapb,
+        ),
       },
       casoId: r.id,
       tabla: "referencia_interna",
