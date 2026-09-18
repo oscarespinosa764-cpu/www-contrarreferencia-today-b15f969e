@@ -1408,18 +1408,34 @@ function HistorialPage() {
   };
 
   // ---- PDF bitácora ----
-  const segPDFpara = (casoId: string, defaultEntidad = ""): SeguimientoPDF[] => {
-    const arr = segMap.get(casoId) ?? [];
-    return arr.map((s) => ({
-      fecha: fmtFechaHora(s.created_at),
-      entidad: s.contacto || defaultEntidad || "—",
-      observaciones: s.detalle || "—",
-      estado: s.estado || "—",
-      accion: s.tipo || "—",
-      funcionario: s.usuario || "—",
-      _orden: new Date(s.created_at || 0).getTime(),
+  // Línea de tiempo canónica: hitos derivados de la fila del caso (creación,
+  // solicitud, radicación, aceptación, cierre...) + seguimientos reales. Es la
+  // MISMA fuente para Historial, bitácora individual y bitácora unificada.
+  const eventosAPdf = (eventos: EventoCaso[], defaultEntidad = ""): SeguimientoPDF[] =>
+    eventos.map((e) => ({
+      fecha: fmtFechaHora(e.functionalDateTime),
+      entidad: e.entity || defaultEntidad || "—",
+      observaciones: e.description || e.title || "—",
+      estado: e.status || "—",
+      accion: e.action || e.title || "—",
+      funcionario: e.actorSnapshot || "—",
+      _orden: new Date(e.functionalDateTime).getTime(),
     }));
-  };
+
+  const timelinePDF = (
+    module: ModuloTimeline,
+    caso: Record<string, unknown>,
+    defaultEntidad = "",
+  ): SeguimientoPDF[] =>
+    eventosAPdf(
+      construirTimelineCaso({
+        module,
+        caso,
+        seguimientos: segMap.get(String(caso.id)) ?? [],
+        entidad: defaultEntidad,
+      }),
+      defaultEntidad,
+    );
 
   // ---- Constructores de bitácora (reutilizados por caso y por consolidado) ----
 
