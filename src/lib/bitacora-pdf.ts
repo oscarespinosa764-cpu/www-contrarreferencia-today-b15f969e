@@ -364,7 +364,7 @@ async function renderBitacora(
   }
 
   // Nunca "NO APLICA"/"PENDIENTE" en el nombre: respaldo al documento del paciente.
-  const docPac = input.datosPaciente.find((c) => /^(n[uú]mero de )?documento$/i.test(c.label))?.value;
+  const docPac = input.datosPaciente.find((c) => /^(n[uú]mero( de)? )?documento$/i.test(c.label))?.value;
   const safeRef = referenciaArchivo(input.referencia, docPac).replace(/[^\w\-]+/g, "_");
   doc.save(`bitacora_${safeRef}_${ahora.toISOString().slice(0, 10)}.pdf`);
 }
