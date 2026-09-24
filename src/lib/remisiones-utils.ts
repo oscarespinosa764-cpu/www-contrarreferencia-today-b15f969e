@@ -261,3 +261,25 @@ export function resumenEvolucion(
         : "Sin evolucionar";
   return { estado, label, faltan };
 }
+
+/**
+ * Indica si un valor visible representa un código de gestión/radicado REAL.
+ * "NO APLICA", "PENDIENTE…", "—" o vacío NO son códigos y nunca se copian ni
+ * se usan como nombre de archivo.
+ */
+export function esCodigoReal(v: string | null | undefined): boolean {
+  const s = (v || "").trim();
+  if (!s || /^[—\-–\s]+$/.test(s)) return false;
+  if (/NO\s*APLICA/i.test(s) || /PENDIENTE/i.test(s)) return false;
+  return true;
+}
+
+/** Primer valor que sea un código real; si ninguno lo es, primer valor no vacío de los respaldos. */
+export function referenciaArchivo(referencia: string | null | undefined, ...respaldos: (string | null | undefined)[]): string {
+  if (esCodigoReal(referencia)) return (referencia as string).trim();
+  for (const r of respaldos) {
+    const s = (r || "").trim();
+    if (s && esCodigoReal(s)) return s;
+  }
+  return "caso";
+}

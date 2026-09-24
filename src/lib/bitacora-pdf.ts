@@ -9,6 +9,7 @@
 // seguimientos, estados, fechas, responsables y orden cronológico) NO son
 // configurables: sólo etiquetas, encabezados y visibilidad de columnas.
 
+import { referenciaArchivo } from "./remisiones-utils";
 import type { jsPDF } from "jspdf";
 import logoAsset from "@/assets/cedim-logo.png.asset.json";
 import {
@@ -362,7 +363,9 @@ async function renderBitacora(
     drawFooter(p, total);
   }
 
-  const safeRef = (input.referencia || "caso").replace(/[^\w\-]+/g, "_");
+  // Nunca "NO APLICA"/"PENDIENTE" en el nombre: respaldo al documento del paciente.
+  const docPac = input.datosPaciente.find((c) => /^(n[uú]mero( de)? )?documento$/i.test(c.label))?.value;
+  const safeRef = referenciaArchivo(input.referencia, docPac).replace(/[^\w\-]+/g, "_");
   doc.save(`bitacora_${safeRef}_${ahora.toISOString().slice(0, 10)}.pdf`);
 }
 
