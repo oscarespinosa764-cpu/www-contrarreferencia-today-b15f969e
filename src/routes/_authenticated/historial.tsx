@@ -25,7 +25,11 @@ import {
   type ModuloHistorial,
   type SubtipoAD,
 } from "@/lib/historial-filtro";
-import { historialQueryKey, type HistorialQueryInput } from "@/lib/historial-listado";
+import {
+  historialQueryKey,
+  type HistorialQueryInput,
+  type HistorialUnidad,
+} from "@/lib/historial-listado";
 import { buscarPacientesHistorial, listarHistorialCasos } from "@/lib/historial-listado.functions";
 import {
   Dialog,
@@ -66,7 +70,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
-import { fmtFechaHora, fmtEdad, fmtRadicado } from "@/lib/remisiones-utils";
+import { esCodigoReal, fmtFechaHora, fmtEdad, fmtRadicado } from "@/lib/remisiones-utils";
 import {
   buildSegMap,
   estadoLabel,
@@ -460,6 +464,25 @@ const docBuscableServer = (doc: string): boolean => doc.length >= 4 && /^\d+$/.t
 
 function tieneTipo(eventos: Caso[], tipo: string): boolean {
   return eventos.some((e) => (e.tipo || "").toUpperCase().includes(tipo));
+}
+
+/** Agrupa filas de Entrantes en unidades visuales según el orden del servidor. */
+function agruparEntrantes(filas: HistorialUnidad[], casos: Caso[]): Grupo[] {
+  const porId = new Map<string, Caso>();
+  for (const c of casos) porId.set(String(c.id), c);
+  const out: Grupo[] = [];
+  for (const fila of filas) {
+    const eventos = fila.ids
+      .map((id) => porId.get(id.startsWith("hist-") ? id.slice(5) : id))
+      .filter((c): c is Caso => Boolean(c));
+    if (eventos.length === 0) continue;
+    eventos.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    const base = eventos.find((e) => !e.cod_ref) ?? eventos[0];
+    const { estadoFinal, activa } = calcularEstado(base, eventos);
+    const confirmable = esConfirmable(base, eventos, activa);
+    out.push({ key: fila.unitKey, base, eventos, estadoFinal, activa, confirmable });
+  }
+  return out;
 }
 
 function calcularEstado(
@@ -999,6 +1022,60 @@ function HistorialPage() {
     return Array.from(set);
   }, [catServicios]);
 
+  // ============================================================
+  // NIVEL PACIENTE (4 módulos): mismo listado canónico con module GENERAL.
+  // Se pide una vez por documento y se reutiliza al cambiar de pestaña.
+  // ============================================================
+  const { data: pacienteGlobal } = useQuery({
+    queryKey: ["historial-paciente-global", docServer],
+    enabled: !!docServer,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const unidades: HistorialUnidad[] = [];
+      for (let page = 1; page <= 20; page++) {
+        const r = await fnListarHistorial({
+          data: { module: "GENERAL", periodMode: "ALL", documento: docServer, page, pageSize: 100 },
+        });
+        unidades.push(...r.rows);
+        if (!r.hasNextPage) break;
+      }
+      const idsDe = (m: string) =>
+        unidades.filter((u) => u.modulo === m).flatMap((u) => u.ids).filter((id) => !id.startsWith("hist-"));
+      const idsHist = unidades.flatMap((u) => u.ids).filter((id) => id.startsWith("hist-")).map((id) => id.slice(5));
+      const leer = async <T,>(tabla: "casos_entrantes" | "remisiones" | "domiciliarios" | "referencia_interna", ids: string[]) => {
+        if (ids.length === 0) return [] as T[];
+        const { data, error } = await supabase.from(tabla).select("*").in("id", ids);
+        if (error) throw error;
+        return (data ?? []) as T[];
+      };
+      const [ent, sal, dom, ri, hist] = await Promise.all([
+        leer<Caso>("casos_entrantes", idsDe("ENTRANTES")),
+        leer<Remision>("remisiones", idsDe("SALIENTES")),
+        leer<Generico>("domiciliarios", idsDe("ATENCION_DOMICILIARIA")),
+        leer<Generico>("referencia_interna", idsDe("REFERENCIAS_INTERNAS")),
+        fetchHistoricosCasos({ ids: idsHist }),
+      ]);
+      const hE = hist.filter((h) => h.seccion === "entrante").map(historicoAEntrante);
+      const hS = hist
+        .filter((h) => h.seccion === "saliente" && !esHistoricoPHD(h) && !esHistoricoInterna(h))
+        .map(historicoASaliente);
+      return {
+        unidades,
+        grupos: agruparEntrantes(unidades.filter((u) => u.modulo === "ENTRANTES"), [...ent, ...hE]),
+        salientes: [...sal, ...hS],
+        phd: [...dom, ...hist.filter(esHistoricoPHD).map(historicoAGenerico)],
+        internas: [...ri, ...hist.filter(esHistoricoInterna).map(historicoAGenerico)],
+      };
+    },
+  });
+  const idsGlobales = useMemo(
+    () =>
+      (pacienteGlobal?.unidades ?? [])
+        .flatMap((u) => u.ids)
+        .map((id) => (id.startsWith("hist-") ? id.slice(5) : id)),
+    [pacienteGlobal],
+  );
+
   // Seguimientos SIEMPRE acotados a los casos hidratados de la página vigente.
   // Antes se traía el universo completo ordenado por fecha ascendente: el tope
   // de filas del Data API devolvía únicamente los seguimientos MÁS ANTIGUOS, de
@@ -1006,11 +1083,11 @@ function HistorialPage() {
   // individual, la consolidada y las exportaciones. La relación canónica es
   // seguimientos.caso_id = <id real del caso>; no se usa código de gestión.
   const idsSeguimientos = useMemo(
-    () => Array.from(new Set([...idsActivos, ...idsHistoricos])),
-    [idsActivos, idsHistoricos],
+    () => Array.from(new Set([...idsActivos, ...idsHistoricos, ...idsGlobales])).sort(),
+    [idsActivos, idsHistoricos, idsGlobales],
   );
   const { data: seguimientos } = useQuery({
-    queryKey: ["historial-seguimientos", claveIds],
+    queryKey: ["historial-seguimientos", idsSeguimientos.join(",")],
     enabled: idsSeguimientos.length > 0,
     queryFn: async () => {
       const out: Record<string, unknown>[] = [];
@@ -1036,24 +1113,10 @@ function HistorialPage() {
   // Agrupación canónica: las UNIDADES y su orden los define el servidor
   // (una tarjeta = una unidad). Aquí sólo se hidratan los eventos de cada
   // unidad de la página vigente; no se reagrupa ni se reordena en memoria.
-  const grupos = useMemo<Grupo[]>(() => {
-    const porId = new Map<string, Caso>();
-    for (const c of casos ?? []) porId.set(String(c.id), c);
-    for (const c of historicosEntrantes) porId.set(String(c.id), c);
-    const out: Grupo[] = [];
-    for (const fila of filas) {
-      const eventos = fila.ids
-        .map((id) => porId.get(id.startsWith("hist-") ? id.slice(5) : id))
-        .filter((c): c is Caso => Boolean(c));
-      if (eventos.length === 0) continue;
-      eventos.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-      const base = eventos.find((e) => !e.cod_ref) ?? eventos[0];
-      const { estadoFinal, activa } = calcularEstado(base, eventos);
-      const confirmable = esConfirmable(base, eventos, activa);
-      out.push({ key: fila.unitKey, base, eventos, estadoFinal, activa, confirmable });
-    }
-    return out;
-  }, [casos, historicosEntrantes, filas]);
+  const grupos = useMemo<Grupo[]>(
+    () => agruparEntrantes(filas, [...(casos ?? []), ...historicosEntrantes]),
+    [casos, historicosEntrantes, filas],
+  );
 
   // El documento de la consulta por paciente tiene prioridad sobre el buscador
   // libre; el documento normalizado alimenta el término de filtrado.
@@ -1839,6 +1902,17 @@ function HistorialPage() {
 
   const pdfConstruido = (c: Construido) => generarUno(c, c.bloque.tipoDocumento);
 
+  // Casos del paciente en los 4 módulos (nivel paciente), ya construidos con la
+  // misma lógica y la misma línea de tiempo canónica que cada pestaña.
+  const construidosGlobales: Construido[] = pacienteGlobal
+    ? [
+        ...pacienteGlobal.grupos.map(buildEntrante),
+        ...pacienteGlobal.salientes.map(buildSaliente),
+        ...pacienteGlobal.phd.map(buildPHD),
+        ...pacienteGlobal.internas.map(buildInterna),
+      ]
+    : [];
+
   const pdfConsolidado = (cs: Construido[], doc: string, filtros: string) => {
     if (cs.length === 0) {
       toast.info("No hay casos para consolidar.");
@@ -1874,7 +1948,7 @@ function HistorialPage() {
 
   const copiarCodigo = (c: Construido) => {
     const cod = (c.codigo || "").trim();
-    if (!cod) {
+    if (!esCodigoReal(cod)) {
       toast.info("Este caso no tiene código de gestión.");
       return;
     }
@@ -2354,6 +2428,7 @@ function HistorialPage() {
               onToggleCaso={(k) => setCasoExpandido((p) => (p === k ? null : k))}
               onBitacoraCaso={pdfConstruido}
               onBitacoraUnificada={pdfConsolidado}
+              globales={construidosGlobales}
               onInfoCaso={(c) => setInfoCaso(c)}
               onCopiarCodigo={copiarCodigo}
               onExportarExcelCaso={exportarCasoExcel}
@@ -2907,6 +2982,13 @@ function construirLineaTiempo(items: Construido[]): LineaEvento[] {
   return out;
 }
 
+const ETIQUETA_MODULO: Partial<Record<Vista, string>> = {
+  entrantes: "ENTRANTES",
+  salientes: "SALIENTES",
+  phd: "ATENCIÓN DOMICILIARIA",
+  interna: "REFERENCIAS INTERNAS",
+};
+
 function resumenPaciente(items: Construido[]): { nombre: string; campos: CampoPDF[] } {
   const c = items.find((x) => x.datosPaciente.length > 0) ?? items[0];
   if (!c) return { nombre: "", campos: [] };
@@ -3042,13 +3124,19 @@ function PacienteCabecera({
   documento,
   resumen,
   totalCasos,
+  moduloLabel,
   onBitacoraUnificada,
+  onBitacoraTotal,
+  onVerTodos,
 }: {
   nombre: string;
   documento: string;
   resumen: { tipoDoc: string; edad: string; entidad: string; regimen: string; telefono: string };
   totalCasos: number;
+  moduloLabel: string;
   onBitacoraUnificada: () => void;
+  onBitacoraTotal: () => void;
+  onVerTodos: () => void;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -3087,19 +3175,30 @@ function PacienteCabecera({
         <MenuBtn
           icon={ListTree}
           label="Ver todos los casos del paciente"
-          onClick={() => setOpen(false)}
+          onClick={() => {
+            onVerTodos();
+            setOpen(false);
+          }}
         />
+        <p className="px-2 pb-0.5 pt-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+          Generar bitácora unificada
+        </p>
         <MenuBtn
           icon={FileText}
-          label="Generar bitácora unificada"
+          label={`Solo ${moduloLabel}`}
           onClick={() => {
             onBitacoraUnificada();
             setOpen(false);
           }}
         />
-        <p className="px-2 pb-1 pt-0.5 text-[10px] text-muted-foreground">
-          La bitácora unificada incluye todos los casos de esta subventana.
-        </p>
+        <MenuBtn
+          icon={FileText}
+          label="Todos los módulos (paciente completo)"
+          onClick={() => {
+            onBitacoraTotal();
+            setOpen(false);
+          }}
+        />
         <MenuBtn icon={X} label="Cancelar" onClick={() => setOpen(false)} danger />
       </PopoverContent>
     </Popover>
@@ -3293,6 +3392,7 @@ function PacienteResultado({
   onToggleCaso,
   onBitacoraCaso,
   onBitacoraUnificada,
+  globales,
   onInfoCaso,
   onCopiarCodigo,
   onExportarExcelCaso,
@@ -3318,6 +3418,7 @@ function PacienteResultado({
   onToggleCaso: (key: string) => void;
   onBitacoraCaso: (c: Construido) => void;
   onBitacoraUnificada: (cs: Construido[], doc: string, filtros: string) => void;
+  globales: Construido[];
   onInfoCaso: (c: Construido) => void;
   onCopiarCodigo: (c: Construido) => void;
   onExportarExcelCaso: (c: Construido) => void;
@@ -3359,7 +3460,17 @@ function PacienteResultado({
   ]);
 
   const construidos = rows.map((x) => x.construido);
-  const { campos } = resumenPaciente(construidos);
+  // Datos demográficos a nivel paciente (4 módulos); respaldo a la pestaña.
+  const { campos } = resumenPaciente(globales.length > 0 ? globales : construidos);
+  const [verTodos, setVerTodos] = useState(false);
+  const delModulo = useMemo(
+    () =>
+      [...(globales.length > 0 ? globales.filter((c) => c.vista === vista) : construidos)].sort(
+        (a, b) => new Date(a.fechaBase || 0).getTime() - new Date(b.fechaBase || 0).getTime(),
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [globales, vista, rows],
+  );
   const campoVal = (l: string) => campos.find((c) => c.label === l)?.value || "—";
   const resumen = {
     tipoDoc: campoVal("Tipo documento"),
@@ -3376,10 +3487,35 @@ function PacienteResultado({
         documento={documento}
         resumen={resumen}
         totalCasos={rows.length}
+        moduloLabel={ETIQUETA_MODULO[vista] ?? vista}
         onBitacoraUnificada={() =>
           onBitacoraUnificada(construidos, documento, `Paciente=${documento}; Subventana=${vista}`)
         }
+        onBitacoraTotal={() =>
+          onBitacoraUnificada(
+            globales.length > 0 ? globales : construidos,
+            documento,
+            `Paciente=${documento}; Subventana=GENERAL`,
+          )
+        }
+        onVerTodos={() => setVerTodos(true)}
       />
+      <Dialog open={verTodos} onOpenChange={setVerTodos}>
+        <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Todos los casos del paciente · {ETIQUETA_MODULO[vista] ?? vista}
+            </DialogTitle>
+          </DialogHeader>
+          {delModulo.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              El paciente no tiene casos en este módulo.
+            </p>
+          ) : (
+            <LineaTiempoPaciente items={delModulo} documento={documento} />
+          )}
+        </DialogContent>
+      </Dialog>
       {rows.length === 0 ? (
         <div className="rounded-lg border border-border bg-card py-10 text-center">
           <p className="text-sm font-semibold text-foreground">
