@@ -131,6 +131,16 @@ describe("línea de tiempo canónica del caso", () => {
     expect(t).toHaveLength(2);
   });
 
+  it("dos seguimientos del mismo tipo en el mismo minuto se conservan", () => {
+    const t = fusionarTimeline(
+      eventosDesdeSeguimientos("c1", "SALIENTES", [
+        seg("2026-09-03T02:26:10Z", "TRAZABILIDAD DE NEGACIONES", "IPS A"),
+        seg("2026-09-03T02:26:40Z", "TRAZABILIDAD DE NEGACIONES", "IPS B"),
+      ]),
+    );
+    expect(t).toHaveLength(2);
+  });
+
   it("no duplica el mismo hito cuando existe en fuente funcional y derivada", () => {
     const derivado = eventosDerivadosCaso("SALIENTES", {
       id: "c1",

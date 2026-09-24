@@ -365,26 +365,28 @@ export function eventoFuncional(e: {
  */
 export function fusionarTimeline(...grupos: (EventoCaso[] | null | undefined)[]): EventoCaso[] {
   const porId = new Map<string, EventoCaso>();
-  const porHito = new Map<string, EventoCaso>();
-
   for (const g of grupos) {
     for (const e of g ?? []) {
-      if (porId.has(e.eventId)) continue;
-      porId.set(e.eventId, e);
-      // Mismo caso + mismo tipo + mismo minuto = mismo hito real.
-      const minuto = e.functionalDateTime.slice(0, 16);
-      const clave = `${e.caseId}|${e.eventType}|${minuto}`;
-      const previo = porHito.get(clave);
-      if (!previo) {
-        porHito.set(clave, e);
-        continue;
-      }
-      // Prioridad de fuentes: funcional (EVENTO/SEGUIMIENTO) sobre derivada.
-      if (previo.sourceType === "CASO" && e.sourceType !== "CASO") porHito.set(clave, e);
+      if (!porId.has(e.eventId)) porId.set(e.eventId, e);
     }
   }
+  const todos = Array.from(porId.values());
+  // Hitos cubiertos por una fuente funcional real (mismo caso+tipo+minuto).
+  // Sólo los eventos DERIVADOS (CASO) se descartan cuando están cubiertos;
+  // las filas reales (EVENTO/SEGUIMIENTO) nunca se colapsan entre sí.
+  const cubiertos = new Set<string>();
+  for (const e of todos) {
+    if (e.sourceType !== "CASO") {
+      cubiertos.add(`${e.caseId}|${e.eventType}|${e.functionalDateTime.slice(0, 16)}`);
+    }
+  }
+  const resultado = todos.filter(
+    (e) =>
+      e.sourceType !== "CASO" ||
+      !cubiertos.has(`${e.caseId}|${e.eventType}|${e.functionalDateTime.slice(0, 16)}`),
+  );
 
-  return Array.from(porHito.values()).sort((a, b) => {
+  return resultado.sort((a, b) => {
     const ta = new Date(a.functionalDateTime).getTime();
     const tb = new Date(b.functionalDateTime).getTime();
     if (ta !== tb) return ta - tb;
