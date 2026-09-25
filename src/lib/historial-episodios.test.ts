@@ -1,31 +1,58 @@
 import { describe, expect, it } from "vitest";
-import { derivarFases, etiquetaEpisodio, SIN_ESTADO } from "./historial-episodios";
+import { derivarFases, etiquetaEpisodio, TRANSICIONES } from "./historial-episodios";
 
-const a = (estado: string, t: number) => ({ estado, _orden: t });
+const a = (accion: string, estado: string, t: number) => ({ accion, estado, _orden: t });
 
 describe("derivarFases", () => {
-  it("estado consecutivo forma una sola fase", () => {
-    const f = derivarFases([a("PENDIENTE", 1), a("PENDIENTE", 2)])!;
+  it("resultados de actuación no abren fase (Salientes)", () => {
+    const acts = [
+      a("SOLICITUD REGISTRADA", "SOLICITUD", 1),
+      a("CREACIÓN DEL CASO", "CASO REGISTRADO EN SISTEMA", 2),
+      a("TRAZABILIDAD DE NEGACIONES", "NO ACEPTA", 3),
+      a("TRAZABILIDAD DE NEGACIONES", "PENDIENTE", 4),
+      a("TRAZABILIDAD DE NEGACIONES", "NO ACEPTA", 5),
+    ];
+    const f = derivarFases(acts, { estadoActual: "PENDIENTE ACEPTACION", inicio: 0 });
     expect(f).toHaveLength(1);
+    expect(f[0].estado).toBe("PENDIENTE ACEPTACION");
+    expect(f[0].inicio).toBe(0);
+    expect(f[0].actuaciones).toHaveLength(5);
+  });
+  it("hitos no abren fase y la única fase es el estado de cierre (RI)", () => {
+    const f = derivarFases([a("CREACIÓN DEL CASO", "", 1), a("RADICACIÓN", "RADICADO", 2)], {
+      estadoActual: "CERRADO POR CULMINACION DE SOLICITUD",
+      inicio: 1,
+    });
+    expect(f.map((x) => x.estado)).toEqual(["CERRADO POR CULMINACION DE SOLICITUD"]);
     expect(f[0].actuaciones).toHaveLength(2);
-    expect(f[0].inicio).toBe(1);
-    expect(f[0].fin).toBe(2);
   });
-  it("estado repetido tras otro abre fase nueva", () => {
-    const f = derivarFases([a("CANCELADO", 1), a("ACTIVO", 2), a("CANCELADO", 3)])!;
-    expect(f.map((x) => x.estado)).toEqual(["CANCELADO", "ACTIVO", "CANCELADO"]);
+  it("evento de transición abre fase y la última fase = estado actual", () => {
+    const f = derivarFases(
+      [a("CREACIÓN DEL CASO", "", 1), a("ACEPTACIÓN", "", 2), a("EVOLUCIÓN", "X", 3)],
+      { estadoActual: "EN ATENCION", inicio: 1, transiciones: TRANSICIONES.phd },
+    );
+    expect(f.map((x) => x.estado)).toEqual(["SIN ESTADO REGISTRADO", "EN ATENCION"]);
+    expect(f[1].actuaciones).toHaveLength(2);
   });
-  it("actuación sin estado va a la fase vigente", () => {
-    const f = derivarFases([a("ACEPTADO", 1), a("", 2), a("—", 3)])!;
-    expect(f).toHaveLength(1);
-    expect(f[0].actuaciones).toHaveLength(3);
+  it("estado repetido tras reactivación abre fase nueva", () => {
+    const tr = { CIERRE: "CERRADO", "REACTIVACIÓN": "ACTIVO" };
+    const f = derivarFases([a("CIERRE", "", 1), a("REACTIVACIÓN", "", 2), a("CIERRE", "", 3)], {
+      estadoActual: "CERRADO",
+      inicio: 0,
+      estadoInicial: "ACTIVO",
+      transiciones: tr,
+    });
+    expect(f.map((x) => x.estado)).toEqual(["CERRADO", "ACTIVO", "CERRADO"]);
   });
-  it("sin estado antes del primer estado va a fase SIN ESTADO REGISTRADO", () => {
-    const f = derivarFases([a("", 1), a("ACEPTADO", 2)])!;
-    expect(f.map((x) => x.estado)).toEqual([SIN_ESTADO, "ACEPTADO"]);
-  });
-  it("sin estados en el módulo no genera fases ni inventa estados", () => {
-    expect(derivarFases([a("", 1), a("", 2)])).toBeNull();
+  it("suma de actuaciones por fase = total", () => {
+    const acts = [a("X", "A", 1), a("ACEPTACIÓN", "", 2), a("Y", "B", 3)];
+    const f = derivarFases(acts, {
+      estadoActual: "Z",
+      inicio: 0,
+      estadoInicial: "PENDIENTE",
+      transiciones: TRANSICIONES.phd,
+    });
+    expect(f.reduce((n, x) => n + x.actuaciones.length, 0)).toBe(3);
   });
 });
 

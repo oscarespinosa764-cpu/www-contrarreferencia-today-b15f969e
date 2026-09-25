@@ -72,7 +72,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
-import { derivarFases, etiquetaEpisodio } from "@/lib/historial-episodios";
+import { derivarFases, etiquetaEpisodio, TRANSICIONES } from "@/lib/historial-episodios";
 import { esCodigoReal, fmtFechaHora, fmtEdad, fmtRadicado } from "@/lib/remisiones-utils";
 import {
   buildSegMap,
@@ -3008,10 +3008,22 @@ const ETIQUETA_MODULO: Partial<Record<Vista, string>> = {
   interna: "REFERENCIAS INTERNAS",
 };
 
+// Ficha a nivel paciente: por cada dato toma el primer valor REAL entre todos
+// los casos (un caso de RI sin edad/régimen no debe ocultar los de otro módulo).
 function resumenPaciente(items: Construido[]): { nombre: string; campos: CampoPDF[] } {
   const c = items.find((x) => x.datosPaciente.length > 0) ?? items[0];
   if (!c) return { nombre: "", campos: [] };
-  return { nombre: c.paciente, campos: c.datosPaciente };
+  const vacio = (s: string | undefined) =>
+    !s || ["—", "-", "N/A", "NO APLICA"].includes(s.trim().toUpperCase());
+  const campos = c.datosPaciente.map((campo) => {
+    if (!vacio(campo.value)) return campo;
+    for (const it of items) {
+      const val = it.datosPaciente.find((x) => x.label === campo.label)?.value;
+      if (!vacio(val)) return { ...campo, value: val as string };
+    }
+    return campo;
+  });
+  return { nombre: c.paciente, campos };
 }
 
 function LineaTiempoPaciente({ items, documento }: { items: Construido[]; documento: string }) {
@@ -3259,7 +3271,15 @@ function EpisodioRow({
     () => [...c.bloque.seguimientos].sort((a, b) => (a._orden ?? 0) - (b._orden ?? 0)),
     [c.bloque.seguimientos],
   );
-  const fases = useMemo(() => derivarFases(acts), [acts]);
+  const fases = useMemo(() => {
+    const ini = new Date(c.fechaBase || 0).getTime();
+    return derivarFases(acts, {
+      estadoActual: c.estado,
+      inicio: Number.isFinite(ini) && ini > 0 ? ini : null,
+      transiciones: TRANSICIONES[c.vista],
+    });
+  }, [acts, c.estado, c.fechaBase, c.vista]);
+  const cerrado = /CERRAD|CANCELAD|EGRES|FINALIZ|CULMIN|ANULAD/i.test(c.estado || "");
   const etiqueta = etiquetaEpisodio(c.vista, c.fechaBase, c.tipoEpisodio);
   const fmtT = (t: number | null) => (t == null ? "—" : fmtFechaHora(new Date(t).toISOString()));
   return (
@@ -3368,18 +3388,20 @@ function EpisodioRow({
             <p className="py-3 text-center text-[11px] text-muted-foreground">
               Sin actuaciones registradas.
             </p>
-          ) : fases ? (
-            <div className="grid gap-1.5">
-              {fases.map((f, i) => (
-                <FaseBloque
-                  key={i}
-                  titulo={`${f.estado} · ${fmtT(f.inicio)} → ${i === fases.length - 1 ? "actual" : fmtT(fases[i + 1].inicio)} · ${f.actuaciones.length} actuación(es)`}
-                  acts={f.actuaciones}
-                />
-              ))}
-            </div>
           ) : (
-            <ActuacionesLista acts={acts} />
+            <div className="grid gap-1.5">
+              {fases.map((f, i) => {
+                const ultima = i === fases.length - 1;
+                const fin = ultima ? (cerrado ? fmtT(f.fin) : "actual") : fmtT(fases[i + 1].inicio);
+                return (
+                  <FaseBloque
+                    key={i}
+                    titulo={`${f.estado} · ${fmtT(f.inicio)} → ${fin} · ${f.actuaciones.length} actuación(es)`}
+                    acts={f.actuaciones}
+                  />
+                );
+              })}
+            </div>
           )}
         </div>
       )}
@@ -3427,7 +3449,7 @@ function ActuacionesLista({ acts }: { acts: SeguimientoPDF[] }) {
             )}
             {s.estado && s.estado !== "—" && (
               <span>
-                <b className="text-foreground">Estado:</b> {s.estado}
+                <b className="text-foreground">Resultado:</b> {s.estado}
               </span>
             )}
             {s.entidad && s.entidad !== "—" && (
