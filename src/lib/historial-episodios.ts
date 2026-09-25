@@ -45,9 +45,6 @@ export function derivarFases<T extends ActuacionFase>(acts: T[]): Fase<T>[] | nu
     if (actual && actual.estado === est) {
       actual.actuaciones.push(a);
       if (t != null) actual.fin = t;
-    } else if (actual && actual.estado === SIN_ESTADO && fases.length === 1 && !actual.actuaciones.some((x) => limpio(x.estado))) {
-      // La fase inicial sin estado se conserva; el estado registrado abre fase nueva.
-      fases.push({ estado: est, inicio: t, fin: t, actuaciones: [a] });
     } else {
       fases.push({ estado: est, inicio: t, fin: t, actuaciones: [a] });
     }
