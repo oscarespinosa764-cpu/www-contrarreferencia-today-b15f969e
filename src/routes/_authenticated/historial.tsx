@@ -3174,7 +3174,8 @@ function PacienteCabecera({
             </span>
           </div>
           <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {totalCasos} caso(s) en esta subventana · clic para acciones
+            {totalCasos} {esRemision ? "remisión(es)" : "caso(s)"} en esta subventana · clic
+            para acciones
           </p>
         </button>
       </PopoverTrigger>
@@ -3188,7 +3189,7 @@ function PacienteCabecera({
           }}
         />
         <p className="px-2 pb-0.5 pt-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-          Generar bitácora unificada
+          Bitácora PDF
         </p>
         <MenuBtn
           icon={FileText}
@@ -3206,7 +3207,7 @@ function PacienteCabecera({
             setOpen(false);
           }}
         />
-        <MenuBtn icon={X} label="Cancelar" onClick={() => setOpen(false)} danger />
+        <MenuBtn icon={X} label="Cerrar" onClick={() => setOpen(false)} danger />
       </PopoverContent>
     </Popover>
   );
