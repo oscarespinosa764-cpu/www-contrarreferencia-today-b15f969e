@@ -1139,6 +1139,9 @@ function HistorialPage() {
   const { data: cambiosEstado } = useQuery({
     queryKey: ["historial-cambios-estado", idsSeguimientos.join(",")],
     enabled: idsSeguimientos.length > 0,
+    // Una gestión hecha en otra pantalla se refleja al volver, sin recargar.
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const out: CambioEstado[] = [];
       const LOTE = 100;
@@ -1380,6 +1383,8 @@ function HistorialPage() {
         toast.success("Ingreso confirmado · alerta de visita IPS enviada a Coordinación");
         setIngresoFor(null);
         qc.invalidateQueries({ queryKey: ["historial-listado"] });
+        qc.invalidateQueries({ queryKey: ["historial-cambios-estado"] });
+        qc.invalidateQueries({ queryKey: ["historial-cambios-phd"] });
         qc.invalidateQueries({ queryKey: ["historial-hidrata-entrantes"] });
         qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
         qc.invalidateQueries({ queryKey: ["coordinacion-alertas"] });
@@ -1389,6 +1394,8 @@ function HistorialPage() {
     toast.success("Ingreso confirmado");
     setIngresoFor(null);
     qc.invalidateQueries({ queryKey: ["historial-listado"] });
+    qc.invalidateQueries({ queryKey: ["historial-cambios-estado"] });
+    qc.invalidateQueries({ queryKey: ["historial-cambios-phd"] });
     qc.invalidateQueries({ queryKey: ["historial-hidrata-entrantes"] });
     qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
   };
