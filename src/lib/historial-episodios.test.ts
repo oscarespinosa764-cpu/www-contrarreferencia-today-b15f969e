@@ -31,7 +31,9 @@ describe("derivarFases", () => {
 
 describe("etiquetaEpisodio", () => {
   it("remisión con fecha y hora Bogotá", () => {
-    expect(etiquetaEpisodio("salientes", "2026-09-02T23:00:00Z")).toBe("REMISIÓN del 02/09/2026 18:00");
+    expect(etiquetaEpisodio("salientes", "2026-09-02T23:00:00Z")).toBe(
+      "REMISIÓN del 02/09/2026 18:00",
+    );
   });
   it("RI usa el examen real y nunca la palabra trámite", () => {
     const l = etiquetaEpisodio("interna", "2026-09-05T18:00:35Z", "resonancia");

@@ -1045,9 +1045,18 @@ function HistorialPage() {
         if (!r.hasNextPage) break;
       }
       const idsDe = (m: string) =>
-        unidades.filter((u) => u.modulo === m).flatMap((u) => u.ids).filter((id) => !id.startsWith("hist-"));
-      const idsHist = unidades.flatMap((u) => u.ids).filter((id) => id.startsWith("hist-")).map((id) => id.slice(5));
-      const leer = async <T,>(tabla: "casos_entrantes" | "remisiones" | "domiciliarios" | "referencia_interna", ids: string[]) => {
+        unidades
+          .filter((u) => u.modulo === m)
+          .flatMap((u) => u.ids)
+          .filter((id) => !id.startsWith("hist-"));
+      const idsHist = unidades
+        .flatMap((u) => u.ids)
+        .filter((id) => id.startsWith("hist-"))
+        .map((id) => id.slice(5));
+      const leer = async <T,>(
+        tabla: "casos_entrantes" | "remisiones" | "domiciliarios" | "referencia_interna",
+        ids: string[],
+      ) => {
         if (ids.length === 0) return [] as T[];
         const { data, error } = await supabase.from(tabla).select("*").in("id", ids);
         if (error) throw error;
@@ -1066,7 +1075,10 @@ function HistorialPage() {
         .map(historicoASaliente);
       return {
         unidades,
-        grupos: agruparEntrantes(unidades.filter((u) => u.modulo === "ENTRANTES"), [...ent, ...hE]),
+        grupos: agruparEntrantes(
+          unidades.filter((u) => u.modulo === "ENTRANTES"),
+          [...ent, ...hE],
+        ),
         salientes: [...sal, ...hS],
         phd: [...dom, ...hist.filter(esHistoricoPHD).map(historicoAGenerico)],
         internas: [...ri, ...hist.filter(esHistoricoInterna).map(historicoAGenerico)],
@@ -3176,8 +3188,8 @@ function PacienteCabecera({
             </span>
           </div>
           <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {totalCasos} {esRemision ? "remisión(es)" : "caso(s)"} en esta subventana · clic
-            para acciones
+            {totalCasos} {esRemision ? "remisión(es)" : "caso(s)"} en esta subventana · clic para
+            acciones
           </p>
         </button>
       </PopoverTrigger>
@@ -3265,7 +3277,9 @@ function EpisodioRow({
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-extrabold uppercase text-foreground">{etiqueta}</span>
             {c.codigo && (
-              <span className="font-mono text-[11px] font-semibold text-status-blue">{c.codigo}</span>
+              <span className="font-mono text-[11px] font-semibold text-status-blue">
+                {c.codigo}
+              </span>
             )}
           </div>
           <div className="mt-0.5 flex flex-wrap gap-x-3 text-[10px] text-muted-foreground">
@@ -3298,16 +3312,51 @@ function EpisodioRow({
             </button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-64 p-1.5">
-            <MenuBtn icon={FileText} label="Exportar bitácora PDF" onClick={() => { onBitacora(); setMenu(false); }} />
-            <MenuBtn icon={FileSpreadsheet} label="Exportar a Excel" onClick={() => { onExportarExcel(); setMenu(false); }} />
+            <MenuBtn
+              icon={FileText}
+              label="Exportar bitácora PDF"
+              onClick={() => {
+                onBitacora();
+                setMenu(false);
+              }}
+            />
+            <MenuBtn
+              icon={FileSpreadsheet}
+              label="Exportar a Excel"
+              onClick={() => {
+                onExportarExcel();
+                setMenu(false);
+              }}
+            />
             {c.codigo.trim().length > 0 && (
-              <MenuBtn icon={Copy} label="Copiar código de gestión" onClick={() => { onCopiarCodigo(); setMenu(false); }} />
+              <MenuBtn
+                icon={Copy}
+                label="Copiar código de gestión"
+                onClick={() => {
+                  onCopiarCodigo();
+                  setMenu(false);
+                }}
+              />
             )}
             {puedeReactivar && (
-              <MenuBtn icon={RotateCcw} label="Reactivar" onClick={() => { onReactivar(); setMenu(false); }} />
+              <MenuBtn
+                icon={RotateCcw}
+                label="Reactivar"
+                onClick={() => {
+                  onReactivar();
+                  setMenu(false);
+                }}
+              />
             )}
             {puedeAuditar && (
-              <MenuBtn icon={ListTree} label="Ver auditoría (admin)" onClick={() => { onVerAuditoria(); setMenu(false); }} />
+              <MenuBtn
+                icon={ListTree}
+                label="Ver auditoría (admin)"
+                onClick={() => {
+                  onVerAuditoria();
+                  setMenu(false);
+                }}
+              />
             )}
             <MenuBtn icon={X} label="Cerrar" onClick={() => setMenu(false)} danger />
           </PopoverContent>
@@ -3316,7 +3365,9 @@ function EpisodioRow({
       {abierto && (
         <div className="border-t border-dashed border-border bg-muted/20 p-2">
           {acts.length === 0 ? (
-            <p className="py-3 text-center text-[11px] text-muted-foreground">Sin actuaciones registradas.</p>
+            <p className="py-3 text-center text-[11px] text-muted-foreground">
+              Sin actuaciones registradas.
+            </p>
           ) : fases ? (
             <div className="grid gap-1.5">
               {fases.map((f, i) => (
@@ -3363,22 +3414,32 @@ function ActuacionesLista({ acts }: { acts: SeguimientoPDF[] }) {
       {acts.map((s, i) => (
         <div key={i} className="rounded border border-border bg-background px-2 py-1.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-[11px] font-bold uppercase text-foreground">{s.accion || "—"}</span>
+            <span className="text-[11px] font-bold uppercase text-foreground">
+              {s.accion || "—"}
+            </span>
             <span className="font-mono text-[10px] text-muted-foreground">{s.fecha}</span>
           </div>
           <div className="mt-0.5 flex flex-wrap gap-x-3 text-[10px] text-muted-foreground">
             {s.funcionario && s.funcionario !== "—" && (
-              <span><b className="text-foreground">Gestor:</b> {s.funcionario}</span>
+              <span>
+                <b className="text-foreground">Gestor:</b> {s.funcionario}
+              </span>
             )}
             {s.estado && s.estado !== "—" && (
-              <span><b className="text-foreground">Estado:</b> {s.estado}</span>
+              <span>
+                <b className="text-foreground">Estado:</b> {s.estado}
+              </span>
             )}
             {s.entidad && s.entidad !== "—" && (
-              <span><b className="text-foreground">Entidad/contacto:</b> {s.entidad}</span>
+              <span>
+                <b className="text-foreground">Entidad/contacto:</b> {s.entidad}
+              </span>
             )}
           </div>
           {s.observaciones && s.observaciones !== "—" && (
-            <p className="mt-0.5 whitespace-pre-wrap break-words text-[11px] text-foreground">{s.observaciones}</p>
+            <p className="mt-0.5 whitespace-pre-wrap break-words text-[11px] text-foreground">
+              {s.observaciones}
+            </p>
           )}
         </div>
       ))}
@@ -3538,28 +3599,34 @@ function PacienteResultado({
         </div>
       ) : (
         [...rows]
-          .sort((a, b) => new Date(b.construido.fechaBase || 0).getTime() - new Date(a.construido.fechaBase || 0).getTime())
+          .sort(
+            (a, b) =>
+              new Date(b.construido.fechaBase || 0).getTime() -
+              new Date(a.construido.fechaBase || 0).getTime(),
+          )
           .map((row) => {
-          const tipoReact = tipoCasoReactivableDesdeTabla(row.construido.tabla);
-          const puedeReactivarEste =
-            puedeReactivar && !!tipoReact && esEstadoCancelatorio(tipoReact, row.construido.estado);
-          return (
-            <EpisodioRow
-              key={row.key}
-              c={row.construido}
-              confirmable={!!row.grupo?.confirmable}
-              canEdit={canEdit}
-              onConfirmar={row.grupo ? () => onConfirmar(row.grupo as Grupo) : undefined}
-              onBitacora={() => onBitacoraCaso(row.construido)}
-              onCopiarCodigo={() => onCopiarCodigo(row.construido)}
-              onExportarExcel={() => onExportarExcelCaso(row.construido)}
-              onVerAuditoria={() => onVerAuditoriaCaso(row.construido)}
-              puedeAuditar={puedeAuditar}
-              onReactivar={() => onReactivarCaso(row.construido)}
-              puedeReactivar={puedeReactivarEste}
-            />
-          );
-        })
+            const tipoReact = tipoCasoReactivableDesdeTabla(row.construido.tabla);
+            const puedeReactivarEste =
+              puedeReactivar &&
+              !!tipoReact &&
+              esEstadoCancelatorio(tipoReact, row.construido.estado);
+            return (
+              <EpisodioRow
+                key={row.key}
+                c={row.construido}
+                confirmable={!!row.grupo?.confirmable}
+                canEdit={canEdit}
+                onConfirmar={row.grupo ? () => onConfirmar(row.grupo as Grupo) : undefined}
+                onBitacora={() => onBitacoraCaso(row.construido)}
+                onCopiarCodigo={() => onCopiarCodigo(row.construido)}
+                onExportarExcel={() => onExportarExcelCaso(row.construido)}
+                onVerAuditoria={() => onVerAuditoriaCaso(row.construido)}
+                puedeAuditar={puedeAuditar}
+                onReactivar={() => onReactivarCaso(row.construido)}
+                puedeReactivar={puedeReactivarEste}
+              />
+            );
+          })
       )}
     </div>
   );

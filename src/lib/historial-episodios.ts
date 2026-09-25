@@ -73,7 +73,8 @@ export function etiquetaEpisodio(
     const f = fmt(fechaInicio, true);
     return f ? `REMISIÓN del ${f}` : "REMISIÓN";
   }
-  const base = (tipo ?? "").trim().toUpperCase() ||
+  const base =
+    (tipo ?? "").trim().toUpperCase() ||
     (vista === "phd" ? "ATENCIÓN DOMICILIARIA" : "REFERENCIA INTERNA");
   const f = fmt(fechaInicio, false);
   return f ? `${base} del ${f}` : base;
