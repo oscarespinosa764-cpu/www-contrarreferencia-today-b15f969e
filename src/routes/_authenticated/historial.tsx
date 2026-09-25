@@ -3213,173 +3213,176 @@ function PacienteCabecera({
       </PopoverContent>
     </Popover>
   );
-}
-
-// Fila de un caso individual con menú contextual y secuencia desplegable.
-function CasoConMenu({
-  expanded,
-  onVerSecuencia,
+// Episodio (fila maestra) → Estados (fases) → Actuaciones. Maestro-detalle.
+function EpisodioRow({
+  c,
+  confirmable,
+  canEdit,
+  onConfirmar,
   onBitacora,
-  onInfo,
   onCopiarCodigo,
   onExportarExcel,
-  onVerAuditoria,
-  puedeAuditar,
   onReactivar,
   puedeReactivar,
-  codigo,
-  sequenceItems,
-  documento,
-  children,
+  onVerAuditoria,
+  puedeAuditar,
 }: {
-  expanded: boolean;
-  onVerSecuencia: () => void;
+  c: Construido;
+  confirmable: boolean;
+  canEdit: boolean;
+  onConfirmar?: () => void;
   onBitacora: () => void;
-  onInfo: () => void;
   onCopiarCodigo: () => void;
   onExportarExcel: () => void;
-  onVerAuditoria: () => void;
-  puedeAuditar: boolean;
   onReactivar: () => void;
   puedeReactivar: boolean;
-  codigo: string;
-  sequenceItems: Construido[];
-  documento: string;
-  children: ReactNode;
+  onVerAuditoria: () => void;
+  puedeAuditar: boolean;
 }) {
-  const [open, setOpen] = useState(false);
-  const tieneCodigo = codigo.trim().length > 0;
+  const [abierto, setAbierto] = useState(false);
+  const [menu, setMenu] = useState(false);
+  const acts = useMemo(
+    () => [...c.bloque.seguimientos].sort((a, b) => (a._orden ?? 0) - (b._orden ?? 0)),
+    [c.bloque.seguimientos],
+  );
+  const fases = useMemo(() => derivarFases(acts), [acts]);
+  const etiqueta = etiquetaEpisodio(c.vista, c.fechaBase, c.tipoEpisodio);
+  const fmtT = (t: number | null) => (t == null ? "—" : fmtFechaHora(new Date(t).toISOString()));
   return (
-    <div>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <div role="button" tabIndex={0} className="cursor-pointer">
-            {children}
+    <div className="rounded-lg border border-border bg-card shadow-sm">
+      <div className="flex items-start gap-2 px-3 py-2">
+        <button
+          type="button"
+          aria-label={abierto ? "Contraer episodio" : "Desplegar episodio"}
+          onClick={() => setAbierto((x) => !x)}
+          className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-border hover:bg-muted"
+        >
+          {abierto ? <Minus className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+        </button>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-extrabold uppercase text-foreground">{etiqueta}</span>
+            {c.codigo && (
+              <span className="font-mono text-[11px] font-semibold text-status-blue">{c.codigo}</span>
+            )}
           </div>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-72 p-1.5">
-          <MenuBtn
-            icon={Search}
-            label="Información rápida del caso"
-            onClick={() => {
-              onInfo();
-              setOpen(false);
-            }}
-          />
-          <MenuBtn
-            icon={Clock}
-            label={expanded ? "Ocultar historial completo" : "Ver historial completo"}
-            onClick={() => {
-              onVerSecuencia();
-              setOpen(false);
-            }}
-          />
-          <MenuBtn
-            icon={FileText}
-            label="Exportar bitácora PDF de este caso"
-            onClick={() => {
-              onBitacora();
-              setOpen(false);
-            }}
-          />
-          {tieneCodigo && (
-            <MenuBtn
-              icon={Copy}
-              label="Copiar código de gestión"
-              onClick={() => {
-                onCopiarCodigo();
-                setOpen(false);
-              }}
-            />
+          <div className="mt-0.5 flex flex-wrap gap-x-3 text-[10px] text-muted-foreground">
+            <span>
+              <b className="text-foreground">Estado actual:</b> {c.estado || "—"}
+            </span>
+            <span>
+              <b className="text-foreground">Inicio:</b> {fmtFechaHora(c.fechaBase)}
+            </span>
+            <span>{acts.length} actuación(es)</span>
+          </div>
+        </div>
+        {confirmable && canEdit && onConfirmar && (
+          <Button
+            size="sm"
+            className="h-7 rounded-md bg-status-green text-[11px] text-white hover:bg-status-green/90"
+            onClick={onConfirmar}
+          >
+            <Hospital className="mr-1.5 h-3.5 w-3.5" /> Confirmar Ingreso
+          </Button>
+        )}
+        <Popover open={menu} onOpenChange={setMenu}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              aria-label="Acciones del episodio"
+              className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-muted"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-64 p-1.5">
+            <MenuBtn icon={FileText} label="Exportar bitácora PDF" onClick={() => { onBitacora(); setMenu(false); }} />
+            <MenuBtn icon={FileSpreadsheet} label="Exportar a Excel" onClick={() => { onExportarExcel(); setMenu(false); }} />
+            {c.codigo.trim().length > 0 && (
+              <MenuBtn icon={Copy} label="Copiar código de gestión" onClick={() => { onCopiarCodigo(); setMenu(false); }} />
+            )}
+            {puedeReactivar && (
+              <MenuBtn icon={RotateCcw} label="Reactivar" onClick={() => { onReactivar(); setMenu(false); }} />
+            )}
+            {puedeAuditar && (
+              <MenuBtn icon={ListTree} label="Ver auditoría (admin)" onClick={() => { onVerAuditoria(); setMenu(false); }} />
+            )}
+            <MenuBtn icon={X} label="Cerrar" onClick={() => setMenu(false)} danger />
+          </PopoverContent>
+        </Popover>
+      </div>
+      {abierto && (
+        <div className="border-t border-dashed border-border bg-muted/20 p-2">
+          {acts.length === 0 ? (
+            <p className="py-3 text-center text-[11px] text-muted-foreground">Sin actuaciones registradas.</p>
+          ) : fases ? (
+            <div className="grid gap-1.5">
+              {fases.map((f, i) => (
+                <FaseBloque
+                  key={i}
+                  titulo={`${f.estado} · ${fmtT(f.inicio)} → ${i === fases.length - 1 ? "actual" : fmtT(fases[i + 1].inicio)} · ${f.actuaciones.length} actuación(es)`}
+                  acts={f.actuaciones}
+                />
+              ))}
+            </div>
+          ) : (
+            <ActuacionesLista acts={acts} />
           )}
-          <MenuBtn
-            icon={FileSpreadsheet}
-            label="Exportar este caso a Excel"
-            onClick={() => {
-              onExportarExcel();
-              setOpen(false);
-            }}
-          />
-          {puedeAuditar && (
-            <MenuBtn
-              icon={ListTree}
-              label="Ver auditoría del caso"
-              onClick={() => {
-                onVerAuditoria();
-                setOpen(false);
-              }}
-            />
-          )}
-          {puedeReactivar && (
-            <MenuBtn
-              icon={RotateCcw}
-              label="Deshacer cancelación / Reactivar caso"
-              onClick={() => {
-                onReactivar();
-                setOpen(false);
-              }}
-            />
-          )}
-          <MenuBtn icon={X} label="Cancelar" onClick={() => setOpen(false)} danger />
-        </PopoverContent>
-      </Popover>
-      {expanded && (
-        <div className="mt-1.5 rounded-lg border border-dashed border-border bg-muted/20 p-2">
-          <LineaTiempoPaciente items={sequenceItems} documento={documento} />
         </div>
       )}
     </div>
   );
 }
 
-// Resumen compacto de un caso (por case_id).
-function CasoResumenRow({
-  c,
-  indice,
-  confirmable,
-  canEdit,
-  onConfirmar,
-}: {
-  c: Construido;
-  indice: number;
-  confirmable: boolean;
-  canEdit: boolean;
-  onConfirmar?: () => void;
-}) {
+function FaseBloque({ titulo, acts }: { titulo: string; acts: SeguimientoPDF[] }) {
+  const [abierto, setAbierto] = useState(false);
   return (
-    <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-sm transition hover:border-status-blue/50">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
-            CASO {indice}
-          </span>
-          <span className="rounded-full bg-status-blue/10 px-2 py-0.5 text-[9px] font-bold uppercase text-status-blue">
-            {c.bloque.tipoDocumento}
-          </span>
-          {c.codigo && (
-            <span className="font-mono text-[11px] font-semibold text-status-blue">{c.codigo}</span>
+    <div className="rounded-md border border-border bg-card">
+      <button
+        type="button"
+        onClick={() => setAbierto((x) => !x)}
+        className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-[11px] font-bold uppercase text-foreground hover:bg-muted"
+      >
+        {abierto ? <Minus className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+        {titulo}
+      </button>
+      {abierto && (
+        <div className="border-t border-border p-1.5">
+          <ActuacionesLista acts={acts} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ActuacionesLista({ acts }: { acts: SeguimientoPDF[] }) {
+  return (
+    <div className="grid gap-1">
+      {acts.map((s, i) => (
+        <div key={i} className="rounded border border-border bg-background px-2 py-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[11px] font-bold uppercase text-foreground">{s.accion || "—"}</span>
+            <span className="font-mono text-[10px] text-muted-foreground">{s.fecha}</span>
+          </div>
+          <div className="mt-0.5 flex flex-wrap gap-x-3 text-[10px] text-muted-foreground">
+            {s.funcionario && s.funcionario !== "—" && (
+              <span><b className="text-foreground">Gestor:</b> {s.funcionario}</span>
+            )}
+            {s.estado && s.estado !== "—" && (
+              <span><b className="text-foreground">Estado:</b> {s.estado}</span>
+            )}
+            {s.entidad && s.entidad !== "—" && (
+              <span><b className="text-foreground">Entidad/contacto:</b> {s.entidad}</span>
+            )}
+          </div>
+          {s.observaciones && s.observaciones !== "—" && (
+            <p className="mt-0.5 whitespace-pre-wrap break-words text-[11px] text-foreground">{s.observaciones}</p>
           )}
         </div>
-        <span className="font-mono text-[10px] text-muted-foreground">
-          {fmtFechaHora(c.fechaBase)}
-        </span>
-      </div>
-      <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
-        <span className="text-[11px] font-semibold text-foreground">{c.estado || "—"}</span>
-        {confirmable && canEdit && onConfirmar && (
-          <Button
-            size="sm"
-            className="h-7 rounded-md bg-status-green text-[11px] text-white hover:bg-status-green/90"
-            onClick={(e) => {
-              e.stopPropagation();
-              onConfirmar();
-            }}
-          >
-            <Hospital className="mr-1.5 h-3.5 w-3.5" /> Confirmar Ingreso
-          </Button>
-        )}
-      </div>
+      ))}
     </div>
+  );
+}
   );
 }
 
