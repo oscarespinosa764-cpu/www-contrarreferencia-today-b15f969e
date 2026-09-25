@@ -3311,7 +3311,9 @@ function EpisodioRow({
     () =>
       [
         ...c.bloque.seguimientos,
-        ...(cambios ?? []).map((x) => ({ ...actuacionCambioEstado(x) }) as typeof c.bloque.seguimientos[number]),
+        ...(cambios ?? []).map(
+          (x) => ({ ...actuacionCambioEstado(x) }) as (typeof c.bloque.seguimientos)[number],
+        ),
       ].sort((a, b) => (a._orden ?? 0) - (b._orden ?? 0)),
     [c.bloque.seguimientos, cambios],
   );

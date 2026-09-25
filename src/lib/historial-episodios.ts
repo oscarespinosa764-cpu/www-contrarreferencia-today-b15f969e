@@ -30,15 +30,15 @@ export const SIN_ESTADO = "SIN ESTADO REGISTRADO";
  */
 export const TRANSICIONES: Record<string, Record<string, string>> = {
   phd: {
-    "ACEPTACIÓN": "ACEPTADA",
+    ACEPTACIÓN: "ACEPTADA",
     "COORDINACIÓN DE AMBULANCIA": "AMBULANCIA COORDINADA",
     EGRESO: "EGRESO",
     CIERRE: "CERRADO",
   },
   entrantes: {
     "INGRESO CONFIRMADO": "INGRESO CONFIRMADO",
-    "AMPLIACIÓN": "RESERVA AMPLIADA",
-    "CANCELACIÓN": "RESERVA CANCELADA",
+    AMPLIACIÓN: "RESERVA AMPLIADA",
+    CANCELACIÓN: "RESERVA CANCELADA",
   },
 };
 
@@ -66,7 +66,6 @@ export function actuacionCambioEstado(c: CambioEstado) {
     _anterior: ant,
   };
 }
-
 
 export interface OpcionesFases {
   /** Estado actual del episodio (fila maestra). */
