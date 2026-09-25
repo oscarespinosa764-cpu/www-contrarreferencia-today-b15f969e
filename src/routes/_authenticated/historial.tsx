@@ -72,7 +72,15 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
-import { derivarFases, etiquetaEpisodio, TRANSICIONES } from "@/lib/historial-episodios";
+import {
+  actuacionCambioEstado,
+  derivarFases,
+  etiquetaEpisodio,
+  TRANSICIONES,
+  type CambioEstado,
+} from "@/lib/historial-episodios";
+// Cambios de estado de los casos visibles (lo llena la consulta por lotes del listado).
+const cambiosGlobal: { current: Map<string, CambioEstado[]> } = { current: new Map() };
 import { esCodigoReal, fmtFechaHora, fmtEdad, fmtRadicado } from "@/lib/remisiones-utils";
 import {
   buildSegMap,
@@ -1126,6 +1134,37 @@ function HistorialPage() {
   });
 
   const segMap = useMemo<SegMap>(() => buildSegMap(seguimientos ?? []), [seguimientos]);
+
+  // Cambios de estado registrados (caso_cambios_estado), solo casos visibles, por lotes.
+  const { data: cambiosEstado } = useQuery({
+    queryKey: ["historial-cambios-estado", idsSeguimientos.join(",")],
+    enabled: idsSeguimientos.length > 0,
+    queryFn: async () => {
+      const out: CambioEstado[] = [];
+      const LOTE = 100;
+      for (let i = 0; i < idsSeguimientos.length; i += LOTE) {
+        const { data, error } = await supabase
+          .from("caso_cambios_estado")
+          .select("caso_id, estado_anterior, estado_nuevo, actor_nombre, created_at")
+          .in("caso_id", idsSeguimientos.slice(i, i + LOTE))
+          .order("created_at", { ascending: true })
+          .limit(1000);
+        if (error) throw error;
+        out.push(...((data ?? []) as CambioEstado[]));
+      }
+      return out;
+    },
+  });
+  const cambiosMap = useMemo(() => {
+    const m = new Map<string, CambioEstado[]>();
+    for (const c of cambiosEstado ?? []) {
+      const l = m.get(c.caso_id) ?? [];
+      l.push(c);
+      m.set(c.caso_id, l);
+    }
+    return m;
+  }, [cambiosEstado]);
+  cambiosGlobal.current = cambiosMap;
 
   // Agrupación canónica: las UNIDADES y su orden los define el servidor
   // (una tarjeta = una unidad). Aquí sólo se hidratan los eventos de cada
@@ -3267,9 +3306,16 @@ function EpisodioRow({
 }) {
   const [abierto, setAbierto] = useState(false);
   const [menu, setMenu] = useState(false);
+  const cambios = cambiosGlobal.current.get(c.casoId);
   const acts = useMemo(
-    () => [...c.bloque.seguimientos].sort((a, b) => (a._orden ?? 0) - (b._orden ?? 0)),
-    [c.bloque.seguimientos],
+    () =>
+      [
+        ...c.bloque.seguimientos,
+        ...(cambios ?? []).map(
+          (x) => ({ ...actuacionCambioEstado(x) }) as (typeof c.bloque.seguimientos)[number],
+        ),
+      ].sort((a, b) => (a._orden ?? 0) - (b._orden ?? 0)),
+    [c.bloque.seguimientos, cambios],
   );
   const fases = useMemo(() => {
     const ini = new Date(c.fechaBase || 0).getTime();

@@ -35,7 +35,7 @@ describe("derivarFases", () => {
     expect(f[1].actuaciones).toHaveLength(2);
   });
   it("estado repetido tras reactivación abre fase nueva", () => {
-    const tr = { CIERRE: "CERRADO", "REACTIVACIÓN": "ACTIVO" };
+    const tr = { CIERRE: "CERRADO", REACTIVACIÓN: "ACTIVO" };
     const f = derivarFases([a("CIERRE", "", 1), a("REACTIVACIÓN", "", 2), a("CIERRE", "", 3)], {
       estadoActual: "CERRADO",
       inicio: 0,
@@ -66,5 +66,51 @@ describe("etiquetaEpisodio", () => {
     const l = etiquetaEpisodio("interna", "2026-09-05T18:00:35Z", "resonancia");
     expect(l).toBe("RESONANCIA del 05/09/2026");
     expect(l.toUpperCase()).not.toContain("TRÁMITE");
+  });
+});
+
+import { actuacionCambioEstado } from "./historial-episodios";
+describe("cambios de estado registrados", () => {
+  const ce = (ant: string, nue: string, t: string, actor = "ANA") => ({
+    ...actuacionCambioEstado({
+      caso_id: "x",
+      estado_anterior: ant,
+      estado_nuevo: nue,
+      actor_nombre: actor,
+      created_at: t,
+    }),
+  });
+  it("2 cambios → 3 fases, cambio es primera actuación y gestores propios", () => {
+    const acts = [
+      {
+        accion: "SEG",
+        estado: "NO ACEPTA",
+        funcionario: "LUIS",
+        _orden: Date.parse("2026-01-01T01:00Z"),
+      },
+      ce("PENDIENTE ACEPTACION", "ACEPTADO", "2026-01-01T02:00Z"),
+      { accion: "SEG", estado: "X", funcionario: "PEDRO", _orden: Date.parse("2026-01-01T03:00Z") },
+      ce("ACEPTADO", "AMBULANCIA COORDINADA", "2026-01-01T04:00Z", "SISTEMA"),
+    ];
+    const f = derivarFases(acts, { estadoActual: "AMBULANCIA COORDINADA", inicio: 0 });
+    expect(f.map((x) => x.estado)).toEqual([
+      "PENDIENTE ACEPTACION",
+      "ACEPTADO",
+      "AMBULANCIA COORDINADA",
+    ]);
+    expect(f[1].actuaciones[0].accion).toBe("CAMBIO DE ESTADO");
+    expect(f[1].actuaciones.map((a) => (a as { funcionario: string }).funcionario)).toEqual([
+      "ANA",
+      "PEDRO",
+    ]);
+    expect(f.reduce((n, x) => n + x.actuaciones.length, 0)).toBe(4);
+  });
+  it("entrantes: clasificación no abre fase, ingreso sí", () => {
+    const f = derivarFases([a("ACEPTACIÓN", "ACEPTADO", 1), a("INGRESO CONFIRMADO", "", 2)], {
+      estadoActual: "INGRESO CONFIRMADO",
+      inicio: 0,
+      transiciones: TRANSICIONES.entrantes,
+    });
+    expect(f).toHaveLength(2);
   });
 });

@@ -331,6 +331,42 @@ export type Database = {
         }
         Relationships: []
       }
+      caso_cambios_estado: {
+        Row: {
+          actor_id: string | null
+          actor_nombre: string
+          caso_id: string
+          created_at: string
+          estado_anterior: string | null
+          estado_nuevo: string | null
+          id: string
+          modulo: string
+          origen: string
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_nombre?: string
+          caso_id: string
+          created_at?: string
+          estado_anterior?: string | null
+          estado_nuevo?: string | null
+          id?: string
+          modulo: string
+          origen?: string
+        }
+        Update: {
+          actor_id?: string | null
+          actor_nombre?: string
+          caso_id?: string
+          created_at?: string
+          estado_anterior?: string | null
+          estado_nuevo?: string | null
+          id?: string
+          modulo?: string
+          origen?: string
+        }
+        Relationships: []
+      }
       casos_entrantes: {
         Row: {
           apellidos: string | null
