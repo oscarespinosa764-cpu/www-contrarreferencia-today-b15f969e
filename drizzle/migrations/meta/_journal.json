@@ -29,6 +29,13 @@
       "when": 1789699966655,
       "tag": "0003_optimizar_v_hist_unidades",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790302391994,
+      "tag": "0004_caso_cambios_estado",
+      "breakpoints": true
     }
   ]
 }
