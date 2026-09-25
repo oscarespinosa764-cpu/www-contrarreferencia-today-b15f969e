@@ -3213,6 +3213,8 @@ function PacienteCabecera({
       </PopoverContent>
     </Popover>
   );
+}
+
 // Episodio (fila maestra) → Estados (fases) → Actuaciones. Maestro-detalle.
 function EpisodioRow({
   c,
@@ -3381,8 +3383,6 @@ function ActuacionesLista({ acts }: { acts: SeguimientoPDF[] }) {
         </div>
       ))}
     </div>
-  );
-}
   );
 }
 
