@@ -56,6 +56,7 @@ export function actuacionCambioEstado(c: CambioEstado) {
   const ant = (c.estado_anterior ?? "").trim() || SIN_ESTADO;
   const nue = (c.estado_nuevo ?? "").trim() || SIN_ESTADO;
   return {
+    fecha: new Date(c.created_at).toISOString(),
     accion: "CAMBIO DE ESTADO",
     estado: nue,
     observaciones: `Cambio de estado: ${ant} → ${nue} · Responsable: ${c.actor_nombre || "SISTEMA"}`,
