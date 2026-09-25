@@ -112,6 +112,8 @@ export function DeshacerCancelacionDialog({
       // Invalidación selectiva de consumidores reales.
       qc.invalidateQueries({ queryKey: ["historial"] });
       qc.invalidateQueries({ queryKey: ["historial-listado"] });
+      qc.invalidateQueries({ queryKey: ["historial-cambios-estado"] });
+      qc.invalidateQueries({ queryKey: ["historial-cambios-phd"] });
       qc.invalidateQueries({ queryKey: ["historial-hidrata-entrantes"] });
       qc.invalidateQueries({ queryKey: ["historial-hidrata-salientes"] });
       qc.invalidateQueries({ queryKey: ["historial-hidrata-domiciliarios"] });

@@ -150,3 +150,25 @@ export function etiquetaEpisodio(
   const f = fmt(fechaInicio, false);
   return f ? `${base} del ${f}` : base;
 }
+
+/**
+ * Transiciones por fechas del caso SOLO si su última fase coincide con el
+ * estado actual (Atención Domiciliaria sin eventos). Si hay cambios
+ * registrados, estos mandan y no se usan fechas.
+ */
+export function transicionesParaFases(
+  vista: string,
+  acts: ActuacionFase[],
+  estadoActual: string,
+  hayCambios: boolean,
+): Record<string, string> | undefined {
+  const tr = TRANSICIONES[vista];
+  if (!tr || hayCambios) return hayCambios ? undefined : tr;
+  if (vista !== "phd") return tr;
+  let ultimo = "";
+  for (const a of acts) {
+    const d = tr[norm(a.accion)];
+    if (d) ultimo = d;
+  }
+  return ultimo && ultimo === norm(estadoActual) ? tr : undefined;
+}

@@ -114,3 +114,36 @@ describe("cambios de estado registrados", () => {
     expect(f).toHaveLength(2);
   });
 });
+
+import { transicionesParaFases } from "./historial-episodios";
+describe("paridad Atención Domiciliaria", () => {
+  it("eventos registrados mandan (sin fechas)", () => {
+    expect(transicionesParaFases("phd", [a("ACEPTACIÓN", "", 1)], "X", true)).toBeUndefined();
+  });
+  it("fechas solo si la última fase coincide con estado_ciclo", () => {
+    expect(transicionesParaFases("phd", [a("CIERRE", "", 1)], "CERRADO", false)).toBe(
+      TRANSICIONES.phd,
+    );
+    expect(
+      transicionesParaFases("phd", [a("CIERRE", "", 1)], "CERRADO POR EGRESO", false),
+    ).toBeUndefined();
+  });
+  it("última fase reconstruida = último estado_nuevo de los eventos", () => {
+    const ev = (ant: string, nue: string, t: string) =>
+      actuacionCambioEstado({
+        caso_id: "p",
+        estado_anterior: ant,
+        estado_nuevo: nue,
+        actor_nombre: "A",
+        created_at: t,
+      });
+    const f = derivarFases(
+      [
+        ev("PENDIENTE ACEPTACION", "ACEPTADO CON PENDIENTE EGRESO", "2026-08-01T00:00Z"),
+        ev("ACEPTADO CON PENDIENTE EGRESO", "CERRADO POR EGRESO", "2026-08-02T00:00Z"),
+      ],
+      { estadoActual: "CERRADO POR EGRESO", inicio: 0 },
+    );
+    expect(f.map((x) => x.estado)).toEqual(["ACEPTADO CON PENDIENTE EGRESO", "CERRADO POR EGRESO"]);
+  });
+});
