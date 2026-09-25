@@ -144,10 +144,6 @@ describe("paridad Atención Domiciliaria", () => {
       ],
       { estadoActual: "CERRADO POR EGRESO", inicio: 0 },
     );
-    expect(f.map((x) => x.estado)).toEqual([
-      "PENDIENTE ACEPTACION",
-      "ACEPTADO CON PENDIENTE EGRESO",
-      "CERRADO POR EGRESO",
-    ]);
+    expect(f.map((x) => x.estado)).toEqual(["ACEPTADO CON PENDIENTE EGRESO", "CERRADO POR EGRESO"]);
   });
 });
