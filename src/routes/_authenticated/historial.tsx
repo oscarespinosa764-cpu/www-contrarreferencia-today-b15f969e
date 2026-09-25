@@ -76,9 +76,10 @@ import {
   actuacionCambioEstado,
   derivarFases,
   etiquetaEpisodio,
-  TRANSICIONES,
+  transicionesParaFases,
   type CambioEstado,
 } from "@/lib/historial-episodios";
+import { listarCambiosPhd } from "@/lib/phd-cambios.functions";
 // Cambios de estado de los casos visibles (lo llena la consulta por lotes del listado).
 const cambiosGlobal: { current: Map<string, CambioEstado[]> } = { current: new Map() };
 // Atención Domiciliaria histórica: transiciones emitidas por registrar_evento_phd.

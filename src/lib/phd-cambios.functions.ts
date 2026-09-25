@@ -18,7 +18,10 @@ export interface CambioPhd {
 export const listarCambiosPhd = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z.object({ ids: z.array(z.string().uuid()).max(500) }).strict().parse(d),
+    z
+      .object({ ids: z.array(z.string().uuid()).max(500) })
+      .strict()
+      .parse(d),
   )
   .handler(async ({ data, context }): Promise<CambioPhd[]> => {
     const { data: activo } = await context.supabase.rpc("is_active_member", {
