@@ -3013,7 +3013,8 @@ const ETIQUETA_MODULO: Partial<Record<Vista, string>> = {
 function resumenPaciente(items: Construido[]): { nombre: string; campos: CampoPDF[] } {
   const c = items.find((x) => x.datosPaciente.length > 0) ?? items[0];
   if (!c) return { nombre: "", campos: [] };
-  const vacio = (s: string | undefined) => !s || ["—", "-", "N/A", "NO APLICA"].includes(s.trim().toUpperCase());
+  const vacio = (s: string | undefined) =>
+    !s || ["—", "-", "N/A", "NO APLICA"].includes(s.trim().toUpperCase());
   const campos = c.datosPaciente.map((campo) => {
     if (!vacio(campo.value)) return campo;
     for (const it of items) {
