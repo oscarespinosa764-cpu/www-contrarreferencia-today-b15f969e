@@ -81,6 +81,8 @@ import {
 } from "@/lib/historial-episodios";
 // Cambios de estado de los casos visibles (lo llena la consulta por lotes del listado).
 const cambiosGlobal: { current: Map<string, CambioEstado[]> } = { current: new Map() };
+// Atención Domiciliaria histórica: transiciones emitidas por registrar_evento_phd.
+const cambiosPhdGlobal: { current: Map<string, CambioEstado[]> } = { current: new Map() };
 import { esCodigoReal, fmtFechaHora, fmtEdad, fmtRadicado } from "@/lib/remisiones-utils";
 import {
   buildSegMap,
@@ -1168,6 +1170,25 @@ function HistorialPage() {
     return m;
   }, [cambiosEstado]);
   cambiosGlobal.current = cambiosMap;
+  const listarPhd = useServerFn(listarCambiosPhd);
+  const { data: cambiosPhd } = useQuery({
+    queryKey: ["historial-cambios-phd", idsSeguimientos.join(",")],
+    enabled: idsSeguimientos.length > 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const out: CambioEstado[] = [];
+      for (let i = 0; i < idsSeguimientos.length; i += 500) {
+        out.push(...(await listarPhd({ data: { ids: idsSeguimientos.slice(i, i + 500) } })));
+      }
+      return out;
+    },
+  });
+  cambiosPhdGlobal.current = useMemo(() => {
+    const m = new Map<string, CambioEstado[]>();
+    for (const c of cambiosPhd ?? []) m.set(c.caso_id, [...(m.get(c.caso_id) ?? []), c]);
+    return m;
+  }, [cambiosPhd]);
 
   // Agrupación canónica: las UNIDADES y su orden los define el servidor
   // (una tarjeta = una unidad). Aquí sólo se hidratan los eventos de cada
@@ -3313,7 +3334,11 @@ function EpisodioRow({
 }) {
   const [abierto, setAbierto] = useState(false);
   const [menu, setMenu] = useState(false);
-  const cambios = cambiosGlobal.current.get(c.casoId);
+  // Atención Domiciliaria: los eventos de registrar_evento_phd (misma lógica
+  // que estado_ciclo) cubren también los cambios nuevos; sin ellos, el registro.
+  const cambios =
+    (c.vista === "phd" ? cambiosPhdGlobal.current.get(c.casoId) : undefined) ??
+    cambiosGlobal.current.get(c.casoId);
   const acts = useMemo(
     () =>
       [
@@ -3329,7 +3354,7 @@ function EpisodioRow({
     return derivarFases(acts, {
       estadoActual: c.estado,
       inicio: Number.isFinite(ini) && ini > 0 ? ini : null,
-      transiciones: TRANSICIONES[c.vista],
+      transiciones: transicionesParaFases(c.vista, acts, c.estado, Boolean(cambios?.length)),
     });
   }, [acts, c.estado, c.fechaBase, c.vista]);
   const cerrado = /CERRAD|CANCELAD|EGRES|FINALIZ|CULMIN|ANULAD/i.test(c.estado || "");
