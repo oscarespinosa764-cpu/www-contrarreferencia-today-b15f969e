@@ -3135,6 +3135,7 @@ function PacienteCabecera({
   onBitacoraUnificada,
   onBitacoraTotal,
   onVerTodos,
+  esRemision,
 }: {
   nombre: string;
   documento: string;
@@ -3144,6 +3145,7 @@ function PacienteCabecera({
   onBitacoraUnificada: () => void;
   onBitacoraTotal: () => void;
   onVerTodos: () => void;
+  esRemision: boolean;
 }) {
   const [open, setOpen] = useState(false);
   return (
