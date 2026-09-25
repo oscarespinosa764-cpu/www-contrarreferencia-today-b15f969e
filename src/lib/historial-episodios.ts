@@ -8,6 +8,8 @@ export interface ActuacionFase {
   accion?: string;
   estado: string;
   _orden?: number;
+  /** Estado del caso que produce esta actuación (registro de cambio de estado). */
+  _destino?: string;
 }
 
 export interface Fase<T extends ActuacionFase> {
@@ -20,10 +22,11 @@ export interface Fase<T extends ActuacionFase> {
 export const SIN_ESTADO = "SIN ESTADO REGISTRADO";
 
 /**
- * Transiciones del ciclo por módulo, derivadas de los hitos canónicos de
- * `caso-timeline.ts` (título del evento → estado del caso que produce).
- * Sólo Atención Domiciliaria registra hitos de transición con fecha real
- * (fecha_aceptacion, fecha_coordinacion_ambulancia, fecha_egreso, fecha_cierre).
+ * Transiciones del ciclo por módulo (título de actuación → estado del caso).
+ * Atención Domiciliaria: hitos con fecha real. Entrantes: eventos operativos
+ * (ingreso, ampliación, cancelación); la clasificación ACEPTADO/NEGADO/CRUE
+ * no es estado operativo y NO abre fase. Salientes y RI usan los registros
+ * de `caso_cambios_estado` (campo `_destino`).
  */
 export const TRANSICIONES: Record<string, Record<string, string>> = {
   phd: {
@@ -32,7 +35,38 @@ export const TRANSICIONES: Record<string, Record<string, string>> = {
     EGRESO: "EGRESO",
     CIERRE: "CERRADO",
   },
+  entrantes: {
+    "INGRESO CONFIRMADO": "INGRESO CONFIRMADO",
+    "AMPLIACIÓN": "RESERVA AMPLIADA",
+    "CANCELACIÓN": "RESERVA CANCELADA",
+  },
 };
+
+/** Registro de cambio de estado persistido (tabla caso_cambios_estado). */
+export interface CambioEstado {
+  caso_id: string;
+  estado_anterior: string | null;
+  estado_nuevo: string | null;
+  actor_nombre: string;
+  created_at: string;
+}
+
+/** Convierte un cambio de estado en la actuación que abre su fase. */
+export function actuacionCambioEstado(c: CambioEstado) {
+  const ant = (c.estado_anterior ?? "").trim() || SIN_ESTADO;
+  const nue = (c.estado_nuevo ?? "").trim() || SIN_ESTADO;
+  return {
+    accion: "CAMBIO DE ESTADO",
+    estado: nue,
+    observaciones: `Cambio de estado: ${ant} → ${nue} · Responsable: ${c.actor_nombre || "SISTEMA"}`,
+    funcionario: c.actor_nombre || "SISTEMA",
+    entidad: "—",
+    _orden: new Date(c.created_at).getTime(),
+    _destino: nue,
+    _anterior: ant,
+  };
+}
+
 
 export interface OpcionesFases {
   /** Estado actual del episodio (fila maestra). */
@@ -52,7 +86,8 @@ export function derivarFases<T extends ActuacionFase>(acts: T[], o: OpcionesFase
   const tr = o.transiciones ?? {};
   const tiempo = (a: T) =>
     typeof a._orden === "number" && Number.isFinite(a._orden) ? a._orden : null;
-  const hayTransicion = acts.some((a) => tr[norm(a.accion)]);
+  const destinoDe = (a: T) => (a._destino ? norm(a._destino) : tr[norm(a.accion)]);
+  const hayTransicion = acts.some((a) => destinoDe(a));
 
   // Regla 3.7: sin evidencia de transición → una sola fase con el estado actual.
   if (!hayTransicion) {
@@ -60,9 +95,10 @@ export function derivarFases<T extends ActuacionFase>(acts: T[], o: OpcionesFase
     return [{ estado: actual, inicio: o.inicio, fin: ultimo, actuaciones: [...acts] }];
   }
 
+  const primerCambio = acts.find((a) => a._destino) as (T & { _anterior?: string }) | undefined;
   const fases: Fase<T>[] = [
     {
-      estado: norm(o.estadoInicial) || SIN_ESTADO,
+      estado: norm(primerCambio?._anterior) || norm(o.estadoInicial) || SIN_ESTADO,
       inicio: o.inicio,
       fin: o.inicio,
       actuaciones: [],
@@ -70,7 +106,8 @@ export function derivarFases<T extends ActuacionFase>(acts: T[], o: OpcionesFase
   ];
   for (const a of acts) {
     const t = tiempo(a);
-    const destino = tr[norm(a.accion)];
+    const destino = destinoDe(a);
+
     if (destino) {
       // La transición siempre abre fase nueva (también un estado repetido).
       fases.push({ estado: destino, inicio: t, fin: t, actuaciones: [a] });
