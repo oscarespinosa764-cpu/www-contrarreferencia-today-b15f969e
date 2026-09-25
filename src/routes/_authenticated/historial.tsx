@@ -67,9 +67,12 @@ import {
   Eraser,
   MapPin,
   Plus,
+  Minus,
+  MoreVertical,
   RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
+import { derivarFases, etiquetaEpisodio } from "@/lib/historial-episodios";
 import { esCodigoReal, fmtFechaHora, fmtEdad, fmtRadicado } from "@/lib/remisiones-utils";
 import {
   buildSegMap,
@@ -582,6 +585,8 @@ type Construido = {
   tabla: "casos_entrantes" | "remisiones" | "domiciliarios" | "referencia_interna";
   /** Vista de historial a la que pertenece — usado para reutilizar exportador. */
   vista: "entrantes" | "salientes" | "phd" | "interna";
+  /** Tipo real del episodio (subtipo AD / examen RI) para su etiqueta. */
+  tipoEpisodio?: string;
 };
 
 type ResultadosBitacora = {
@@ -1759,6 +1764,7 @@ function HistorialPage() {
       casoId: r.id,
       tabla: "domiciliarios",
       vista: "phd",
+      tipoEpisodio: v(r.tipo_solicitud),
     };
   };
 
@@ -1812,6 +1818,7 @@ function HistorialPage() {
       casoId: r.id,
       tabla: "referencia_interna",
       vista: "interna",
+      tipoEpisodio: v(r.tipo_solicitud) || v(r.servicio),
     };
   };
 
