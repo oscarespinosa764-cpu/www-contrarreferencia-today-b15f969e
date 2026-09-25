@@ -67,9 +67,12 @@ import {
   Eraser,
   MapPin,
   Plus,
+  Minus,
+  MoreVertical,
   RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
+import { derivarFases, etiquetaEpisodio } from "@/lib/historial-episodios";
 import { esCodigoReal, fmtFechaHora, fmtEdad, fmtRadicado } from "@/lib/remisiones-utils";
 import {
   buildSegMap,
@@ -582,6 +585,8 @@ type Construido = {
   tabla: "casos_entrantes" | "remisiones" | "domiciliarios" | "referencia_interna";
   /** Vista de historial a la que pertenece — usado para reutilizar exportador. */
   vista: "entrantes" | "salientes" | "phd" | "interna";
+  /** Tipo real del episodio (subtipo AD / examen RI) para su etiqueta. */
+  tipoEpisodio?: string;
 };
 
 type ResultadosBitacora = {
@@ -1040,9 +1045,18 @@ function HistorialPage() {
         if (!r.hasNextPage) break;
       }
       const idsDe = (m: string) =>
-        unidades.filter((u) => u.modulo === m).flatMap((u) => u.ids).filter((id) => !id.startsWith("hist-"));
-      const idsHist = unidades.flatMap((u) => u.ids).filter((id) => id.startsWith("hist-")).map((id) => id.slice(5));
-      const leer = async <T,>(tabla: "casos_entrantes" | "remisiones" | "domiciliarios" | "referencia_interna", ids: string[]) => {
+        unidades
+          .filter((u) => u.modulo === m)
+          .flatMap((u) => u.ids)
+          .filter((id) => !id.startsWith("hist-"));
+      const idsHist = unidades
+        .flatMap((u) => u.ids)
+        .filter((id) => id.startsWith("hist-"))
+        .map((id) => id.slice(5));
+      const leer = async <T,>(
+        tabla: "casos_entrantes" | "remisiones" | "domiciliarios" | "referencia_interna",
+        ids: string[],
+      ) => {
         if (ids.length === 0) return [] as T[];
         const { data, error } = await supabase.from(tabla).select("*").in("id", ids);
         if (error) throw error;
@@ -1061,7 +1075,10 @@ function HistorialPage() {
         .map(historicoASaliente);
       return {
         unidades,
-        grupos: agruparEntrantes(unidades.filter((u) => u.modulo === "ENTRANTES"), [...ent, ...hE]),
+        grupos: agruparEntrantes(
+          unidades.filter((u) => u.modulo === "ENTRANTES"),
+          [...ent, ...hE],
+        ),
         salientes: [...sal, ...hS],
         phd: [...dom, ...hist.filter(esHistoricoPHD).map(historicoAGenerico)],
         internas: [...ri, ...hist.filter(esHistoricoInterna).map(historicoAGenerico)],
@@ -1759,6 +1776,7 @@ function HistorialPage() {
       casoId: r.id,
       tabla: "domiciliarios",
       vista: "phd",
+      tipoEpisodio: v(r.tipo_solicitud),
     };
   };
 
@@ -1812,6 +1830,7 @@ function HistorialPage() {
       casoId: r.id,
       tabla: "referencia_interna",
       vista: "interna",
+      tipoEpisodio: v(r.tipo_solicitud) || v(r.servicio),
     };
   };
 
@@ -3128,6 +3147,7 @@ function PacienteCabecera({
   onBitacoraUnificada,
   onBitacoraTotal,
   onVerTodos,
+  esRemision,
 }: {
   nombre: string;
   documento: string;
@@ -3137,6 +3157,7 @@ function PacienteCabecera({
   onBitacoraUnificada: () => void;
   onBitacoraTotal: () => void;
   onVerTodos: () => void;
+  esRemision: boolean;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -3167,7 +3188,8 @@ function PacienteCabecera({
             </span>
           </div>
           <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {totalCasos} caso(s) en esta subventana · clic para acciones
+            {totalCasos} {esRemision ? "remisión(es)" : "caso(s)"} en esta subventana · clic para
+            acciones
           </p>
         </button>
       </PopoverTrigger>
@@ -3181,7 +3203,7 @@ function PacienteCabecera({
           }}
         />
         <p className="px-2 pb-0.5 pt-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-          Generar bitácora unificada
+          Bitácora PDF
         </p>
         <MenuBtn
           icon={FileText}
@@ -3199,176 +3221,228 @@ function PacienteCabecera({
             setOpen(false);
           }}
         />
-        <MenuBtn icon={X} label="Cancelar" onClick={() => setOpen(false)} danger />
+        <MenuBtn icon={X} label="Cerrar" onClick={() => setOpen(false)} danger />
       </PopoverContent>
     </Popover>
   );
 }
 
-// Fila de un caso individual con menú contextual y secuencia desplegable.
-function CasoConMenu({
-  expanded,
-  onVerSecuencia,
+// Episodio (fila maestra) → Estados (fases) → Actuaciones. Maestro-detalle.
+function EpisodioRow({
+  c,
+  confirmable,
+  canEdit,
+  onConfirmar,
   onBitacora,
-  onInfo,
   onCopiarCodigo,
   onExportarExcel,
-  onVerAuditoria,
-  puedeAuditar,
   onReactivar,
   puedeReactivar,
-  codigo,
-  sequenceItems,
-  documento,
-  children,
+  onVerAuditoria,
+  puedeAuditar,
 }: {
-  expanded: boolean;
-  onVerSecuencia: () => void;
+  c: Construido;
+  confirmable: boolean;
+  canEdit: boolean;
+  onConfirmar?: () => void;
   onBitacora: () => void;
-  onInfo: () => void;
   onCopiarCodigo: () => void;
   onExportarExcel: () => void;
-  onVerAuditoria: () => void;
-  puedeAuditar: boolean;
   onReactivar: () => void;
   puedeReactivar: boolean;
-  codigo: string;
-  sequenceItems: Construido[];
-  documento: string;
-  children: ReactNode;
+  onVerAuditoria: () => void;
+  puedeAuditar: boolean;
 }) {
-  const [open, setOpen] = useState(false);
-  const tieneCodigo = codigo.trim().length > 0;
+  const [abierto, setAbierto] = useState(false);
+  const [menu, setMenu] = useState(false);
+  const acts = useMemo(
+    () => [...c.bloque.seguimientos].sort((a, b) => (a._orden ?? 0) - (b._orden ?? 0)),
+    [c.bloque.seguimientos],
+  );
+  const fases = useMemo(() => derivarFases(acts), [acts]);
+  const etiqueta = etiquetaEpisodio(c.vista, c.fechaBase, c.tipoEpisodio);
+  const fmtT = (t: number | null) => (t == null ? "—" : fmtFechaHora(new Date(t).toISOString()));
   return (
-    <div>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <div role="button" tabIndex={0} className="cursor-pointer">
-            {children}
+    <div className="rounded-lg border border-border bg-card shadow-sm">
+      <div className="flex items-start gap-2 px-3 py-2">
+        <button
+          type="button"
+          aria-label={abierto ? "Contraer episodio" : "Desplegar episodio"}
+          onClick={() => setAbierto((x) => !x)}
+          className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-border hover:bg-muted"
+        >
+          {abierto ? <Minus className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+        </button>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-extrabold uppercase text-foreground">{etiqueta}</span>
+            {c.codigo && (
+              <span className="font-mono text-[11px] font-semibold text-status-blue">
+                {c.codigo}
+              </span>
+            )}
           </div>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-72 p-1.5">
-          <MenuBtn
-            icon={Search}
-            label="Información rápida del caso"
-            onClick={() => {
-              onInfo();
-              setOpen(false);
-            }}
-          />
-          <MenuBtn
-            icon={Clock}
-            label={expanded ? "Ocultar historial completo" : "Ver historial completo"}
-            onClick={() => {
-              onVerSecuencia();
-              setOpen(false);
-            }}
-          />
-          <MenuBtn
-            icon={FileText}
-            label="Exportar bitácora PDF de este caso"
-            onClick={() => {
-              onBitacora();
-              setOpen(false);
-            }}
-          />
-          {tieneCodigo && (
+          <div className="mt-0.5 flex flex-wrap gap-x-3 text-[10px] text-muted-foreground">
+            <span>
+              <b className="text-foreground">Estado actual:</b> {c.estado || "—"}
+            </span>
+            <span>
+              <b className="text-foreground">Inicio:</b> {fmtFechaHora(c.fechaBase)}
+            </span>
+            <span>{acts.length} actuación(es)</span>
+          </div>
+        </div>
+        {confirmable && canEdit && onConfirmar && (
+          <Button
+            size="sm"
+            className="h-7 rounded-md bg-status-green text-[11px] text-white hover:bg-status-green/90"
+            onClick={onConfirmar}
+          >
+            <Hospital className="mr-1.5 h-3.5 w-3.5" /> Confirmar Ingreso
+          </Button>
+        )}
+        <Popover open={menu} onOpenChange={setMenu}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              aria-label="Acciones del episodio"
+              className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-muted"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-64 p-1.5">
             <MenuBtn
-              icon={Copy}
-              label="Copiar código de gestión"
+              icon={FileText}
+              label="Exportar bitácora PDF"
               onClick={() => {
-                onCopiarCodigo();
-                setOpen(false);
+                onBitacora();
+                setMenu(false);
               }}
             />
-          )}
-          <MenuBtn
-            icon={FileSpreadsheet}
-            label="Exportar este caso a Excel"
-            onClick={() => {
-              onExportarExcel();
-              setOpen(false);
-            }}
-          />
-          {puedeAuditar && (
             <MenuBtn
-              icon={ListTree}
-              label="Ver auditoría del caso"
+              icon={FileSpreadsheet}
+              label="Exportar a Excel"
               onClick={() => {
-                onVerAuditoria();
-                setOpen(false);
+                onExportarExcel();
+                setMenu(false);
               }}
             />
+            {c.codigo.trim().length > 0 && (
+              <MenuBtn
+                icon={Copy}
+                label="Copiar código de gestión"
+                onClick={() => {
+                  onCopiarCodigo();
+                  setMenu(false);
+                }}
+              />
+            )}
+            {puedeReactivar && (
+              <MenuBtn
+                icon={RotateCcw}
+                label="Reactivar"
+                onClick={() => {
+                  onReactivar();
+                  setMenu(false);
+                }}
+              />
+            )}
+            {puedeAuditar && (
+              <MenuBtn
+                icon={ListTree}
+                label="Ver auditoría (admin)"
+                onClick={() => {
+                  onVerAuditoria();
+                  setMenu(false);
+                }}
+              />
+            )}
+            <MenuBtn icon={X} label="Cerrar" onClick={() => setMenu(false)} danger />
+          </PopoverContent>
+        </Popover>
+      </div>
+      {abierto && (
+        <div className="border-t border-dashed border-border bg-muted/20 p-2">
+          {acts.length === 0 ? (
+            <p className="py-3 text-center text-[11px] text-muted-foreground">
+              Sin actuaciones registradas.
+            </p>
+          ) : fases ? (
+            <div className="grid gap-1.5">
+              {fases.map((f, i) => (
+                <FaseBloque
+                  key={i}
+                  titulo={`${f.estado} · ${fmtT(f.inicio)} → ${i === fases.length - 1 ? "actual" : fmtT(fases[i + 1].inicio)} · ${f.actuaciones.length} actuación(es)`}
+                  acts={f.actuaciones}
+                />
+              ))}
+            </div>
+          ) : (
+            <ActuacionesLista acts={acts} />
           )}
-          {puedeReactivar && (
-            <MenuBtn
-              icon={RotateCcw}
-              label="Deshacer cancelación / Reactivar caso"
-              onClick={() => {
-                onReactivar();
-                setOpen(false);
-              }}
-            />
-          )}
-          <MenuBtn icon={X} label="Cancelar" onClick={() => setOpen(false)} danger />
-        </PopoverContent>
-      </Popover>
-      {expanded && (
-        <div className="mt-1.5 rounded-lg border border-dashed border-border bg-muted/20 p-2">
-          <LineaTiempoPaciente items={sequenceItems} documento={documento} />
         </div>
       )}
     </div>
   );
 }
 
-// Resumen compacto de un caso (por case_id).
-function CasoResumenRow({
-  c,
-  indice,
-  confirmable,
-  canEdit,
-  onConfirmar,
-}: {
-  c: Construido;
-  indice: number;
-  confirmable: boolean;
-  canEdit: boolean;
-  onConfirmar?: () => void;
-}) {
+function FaseBloque({ titulo, acts }: { titulo: string; acts: SeguimientoPDF[] }) {
+  const [abierto, setAbierto] = useState(false);
   return (
-    <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-sm transition hover:border-status-blue/50">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
-            CASO {indice}
-          </span>
-          <span className="rounded-full bg-status-blue/10 px-2 py-0.5 text-[9px] font-bold uppercase text-status-blue">
-            {c.bloque.tipoDocumento}
-          </span>
-          {c.codigo && (
-            <span className="font-mono text-[11px] font-semibold text-status-blue">{c.codigo}</span>
+    <div className="rounded-md border border-border bg-card">
+      <button
+        type="button"
+        onClick={() => setAbierto((x) => !x)}
+        className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-[11px] font-bold uppercase text-foreground hover:bg-muted"
+      >
+        {abierto ? <Minus className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+        {titulo}
+      </button>
+      {abierto && (
+        <div className="border-t border-border p-1.5">
+          <ActuacionesLista acts={acts} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ActuacionesLista({ acts }: { acts: SeguimientoPDF[] }) {
+  return (
+    <div className="grid gap-1">
+      {acts.map((s, i) => (
+        <div key={i} className="rounded border border-border bg-background px-2 py-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[11px] font-bold uppercase text-foreground">
+              {s.accion || "—"}
+            </span>
+            <span className="font-mono text-[10px] text-muted-foreground">{s.fecha}</span>
+          </div>
+          <div className="mt-0.5 flex flex-wrap gap-x-3 text-[10px] text-muted-foreground">
+            {s.funcionario && s.funcionario !== "—" && (
+              <span>
+                <b className="text-foreground">Gestor:</b> {s.funcionario}
+              </span>
+            )}
+            {s.estado && s.estado !== "—" && (
+              <span>
+                <b className="text-foreground">Estado:</b> {s.estado}
+              </span>
+            )}
+            {s.entidad && s.entidad !== "—" && (
+              <span>
+                <b className="text-foreground">Entidad/contacto:</b> {s.entidad}
+              </span>
+            )}
+          </div>
+          {s.observaciones && s.observaciones !== "—" && (
+            <p className="mt-0.5 whitespace-pre-wrap break-words text-[11px] text-foreground">
+              {s.observaciones}
+            </p>
           )}
         </div>
-        <span className="font-mono text-[10px] text-muted-foreground">
-          {fmtFechaHora(c.fechaBase)}
-        </span>
-      </div>
-      <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
-        <span className="text-[11px] font-semibold text-foreground">{c.estado || "—"}</span>
-        {confirmable && canEdit && onConfirmar && (
-          <Button
-            size="sm"
-            className="h-7 rounded-md bg-status-green text-[11px] text-white hover:bg-status-green/90"
-            onClick={(e) => {
-              e.stopPropagation();
-              onConfirmar();
-            }}
-          >
-            <Hospital className="mr-1.5 h-3.5 w-3.5" /> Confirmar Ingreso
-          </Button>
-        )}
-      </div>
+      ))}
     </div>
   );
 }
@@ -3487,6 +3561,7 @@ function PacienteResultado({
         documento={documento}
         resumen={resumen}
         totalCasos={rows.length}
+        esRemision={vista === "entrantes" || vista === "salientes"}
         moduloLabel={ETIQUETA_MODULO[vista] ?? vista}
         onBitacoraUnificada={() =>
           onBitacoraUnificada(construidos, documento, `Paciente=${documento}; Subventana=${vista}`)
@@ -3523,37 +3598,35 @@ function PacienteResultado({
           </p>
         </div>
       ) : (
-        rows.map((row, idx) => {
-          const tipoReact = tipoCasoReactivableDesdeTabla(row.construido.tabla);
-          const puedeReactivarEste =
-            puedeReactivar && !!tipoReact && esEstadoCancelatorio(tipoReact, row.construido.estado);
-          return (
-            <CasoConMenu
-              key={row.key}
-              expanded={casoExpandido === row.key}
-              onVerSecuencia={() => onToggleCaso(row.key)}
-              onBitacora={() => onBitacoraCaso(row.construido)}
-              onInfo={() => onInfoCaso(row.construido)}
-              onCopiarCodigo={() => onCopiarCodigo(row.construido)}
-              onExportarExcel={() => onExportarExcelCaso(row.construido)}
-              onVerAuditoria={() => onVerAuditoriaCaso(row.construido)}
-              puedeAuditar={puedeAuditar}
-              onReactivar={() => onReactivarCaso(row.construido)}
-              puedeReactivar={puedeReactivarEste}
-              codigo={row.construido.codigo}
-              sequenceItems={[row.construido]}
-              documento={documento}
-            >
-              <CasoResumenRow
+        [...rows]
+          .sort(
+            (a, b) =>
+              new Date(b.construido.fechaBase || 0).getTime() -
+              new Date(a.construido.fechaBase || 0).getTime(),
+          )
+          .map((row) => {
+            const tipoReact = tipoCasoReactivableDesdeTabla(row.construido.tabla);
+            const puedeReactivarEste =
+              puedeReactivar &&
+              !!tipoReact &&
+              esEstadoCancelatorio(tipoReact, row.construido.estado);
+            return (
+              <EpisodioRow
+                key={row.key}
                 c={row.construido}
-                indice={idx + 1}
                 confirmable={!!row.grupo?.confirmable}
                 canEdit={canEdit}
                 onConfirmar={row.grupo ? () => onConfirmar(row.grupo as Grupo) : undefined}
+                onBitacora={() => onBitacoraCaso(row.construido)}
+                onCopiarCodigo={() => onCopiarCodigo(row.construido)}
+                onExportarExcel={() => onExportarExcelCaso(row.construido)}
+                onVerAuditoria={() => onVerAuditoriaCaso(row.construido)}
+                puedeAuditar={puedeAuditar}
+                onReactivar={() => onReactivarCaso(row.construido)}
+                puedeReactivar={puedeReactivarEste}
               />
-            </CasoConMenu>
-          );
-        })
+            );
+          })
       )}
     </div>
   );
